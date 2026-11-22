@@ -23,7 +23,7 @@ This project is early. The table says exactly what runs today.
 | Job index from public Greenhouse, Lever and Ashby boards | **Working** |
 | Closed-job detection, fetch history, duplicate folding | **Working** |
 | Keyword search API with country and remote filters | **Working** |
-| System design: architecture, data model, API, AI system, front end | Written, being reconciled; will be published in `docs/` |
+| System design: overview, requirements, roadmap, architecture, data model, API, AI system, front end | **Published** in [`docs/`](docs/OVERVIEW.md); the data model's schema and integrity rules were executed and tested on PostgreSQL |
 | Career record, matching with cited evidence, morning brief | Planned (phases 3 and 4) |
 | Chat agent, resume tailoring that cannot invent, application tracking | Planned (phase 5) |
 | Hiring desk: roles, consent-first introductions, answer clock | Planned (phase 6) |
@@ -91,7 +91,9 @@ Unknown values stay unknown. Nothing is guessed to fill a gap.
 
 ## Stack
 
-Python, FastAPI, PostgreSQL 17 (full-text search and pgvector), Docker Compose today. Next.js for the web app, local embeddings, and a provider-agnostic model gateway are planned. No vector database product, no knowledge graph and no multi-agent chat framework: one database and plain code wherever plain code is enough.
+Python, FastAPI, PostgreSQL 17 (full-text search and pgvector), Docker Compose today. Planned: Next.js for the web app, local embeddings, a provider-agnostic model gateway, and LangGraph for the campaign graph, approval pauses and agent loops, with its state checkpointed in PostgreSQL. No vector database product, no knowledge graph, no hosted agent platform: one database, and plain code wherever plain code is enough.
+
+Start with [`docs/OVERVIEW.md`](docs/OVERVIEW.md) for the design set.
 
 ## How this is built
 
