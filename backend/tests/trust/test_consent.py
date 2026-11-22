@@ -6,13 +6,15 @@ models.toml of their own and settings that pick one provider. The wording versio
 
 import os
 from contextlib import contextmanager
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
-from app.platform import config
+from app.platform import auth, config, sessions
 from app.platform.llm import registry
+from app.platform.sessions import Principal, current_user
 from app.trust import api, consent
 
 TOML = """
@@ -281,3 +283,194 @@ def test_a_person_sees_only_their_own_consents_and_cannot_record_one_for_someone
     conn.execute(text("RESET ROLE"))
     act_as(conn, "app_worker")
     assert conn.execute(text("SELECT count(*) FROM consents")).scalar_one() == 3
+
+
+# ---- through the API: GET and PATCH /v1/me -------------------------------------------------------------------------
+# The API opens its own connections and commits, so these use api_client (it empties the tables around each test) and
+# read what was stored through the bootstrap engine.
+
+PURPOSES = ["terms", "ai_processing", "brief_email", "open_to_introductions"]
+
+
+@pytest.fixture
+def person(api_client, engine, providers):
+    """The API client acting as a signed-in person made here. The sign-in flow has its own tests (test_signin_flow)."""
+    with engine.begin() as c:
+        user = c.execute(text("INSERT INTO users (email) VALUES ('ada@example.test') RETURNING id")).scalar_one()
+    api_client.app.dependency_overrides[current_user] = lambda: Principal(user)
+    api_client.user = user
+    return api_client
+
+
+def patch(client, consents, key=None, **extra):
+    return client.patch("/v1/me", json={"consents": consents, **extra}, headers={"Idempotency-Key": key or uuid4().hex})
+
+
+def agree(purpose, version):
+    return {"purpose": purpose, "granted": True, "text_version": version}
+
+
+def stored(engine, sql, **params):
+    with engine.connect() as c:
+        return c.execute(text(sql), params).all()
+
+
+def stored_consents(engine, user):
+    sql = "SELECT purpose, action, text_version FROM consents WHERE user_id = :u ORDER BY created_at, id"
+    return [tuple(row) for row in stored(engine, sql, u=user)]
+
+
+def test_me_lists_every_consent_with_the_ai_wording_to_show_before_anything_is_granted(person):
+    data = person.get("/v1/me").json()["data"]
+    assert [c["purpose"] for c in data["consents"]] == PURPOSES
+    assert not any(c["granted"] for c in data["consents"])
+    ai = data["consents"][1]
+    assert (ai["providers"], ai["current_text_version"]) == (["Alpha AI"], api.ai_processing_text_version())
+    assert (ai["text_version"], ai["granted_at"]) == (None, None)
+    assert all(c["providers"] is None and c["current_text_version"] is None for c in data["consents"] if c is not ai)
+
+
+def test_granting_the_ai_wording_in_force_records_it_and_me_shows_it(person, engine):
+    version = api.ai_processing_text_version()
+    response = patch(person, [agree("ai_processing", version)])
+    assert response.status_code == 200 and response.json()["success"] is True
+    ai = response.json()["data"]["consents"][1]
+    assert (ai["granted"], ai["text_version"], ai["current_text_version"]) == (True, version, version)
+    assert ai["granted_at"] is not None
+    assert person.get("/v1/me").json()["data"]["consents"][1] == ai
+    assert stored_consents(engine, person.user) == [("ai_processing", "granted", version)]
+    (audit,) = stored(
+        engine, "SELECT event_type, actor_user_id FROM audit_log WHERE subject_user_id = :u", u=person.user
+    )
+    assert tuple(audit) == ("consent.granted", person.user)
+    with engine.connect() as c:
+        api.require_consent(c, person.user, "ai_processing")  # the gate the AI features use now opens
+
+
+def test_withdrawing_turns_it_off_at_once_and_keeps_the_history(person, engine):
+    version = api.ai_processing_text_version()
+    patch(person, [agree("ai_processing", version)])
+    response = patch(person, [{"purpose": "ai_processing", "granted": False}])
+    ai = response.json()["data"]["consents"][1]
+    assert (response.status_code, ai["granted"], ai["text_version"], ai["granted_at"]) == (200, False, None, None)
+    assert [row[1] for row in stored_consents(engine, person.user)] == ["granted", "withdrawn"]
+    with engine.connect() as c, pytest.raises(api.ConsentRequired):
+        api.require_consent(c, person.user, "ai_processing")
+
+
+def test_a_stale_ai_wording_is_refused_with_the_current_version_and_nothing_is_recorded(person, engine):
+    current = api.ai_processing_text_version()
+    response = patch(person, [agree("terms", "terms-v1"), agree("ai_processing", "not-what-was-shown")])
+    error = response.json()["error"]
+    assert response.status_code == 409 and error["code"] == "conflict"
+    assert error["details"] == {"state": "consent_text_changed", "current_version": current}
+    assert stored_consents(engine, person.user) == []  # the terms grant before it was rolled back as well
+
+
+def test_the_wording_a_person_saw_goes_stale_when_the_providers_change_between_view_and_agree(person, providers):
+    shown = api.ai_processing_text_version()
+    providers("beta")  # the operator changes the provider after the page was rendered
+    response = patch(person, [agree("ai_processing", shown)])
+    assert response.status_code == 409
+    assert response.json()["error"]["details"]["current_version"] == api.ai_processing_text_version() != shown
+
+
+def test_the_other_consents_keep_the_wording_the_person_saw(person, engine):
+    response = patch(person, [agree("brief_email", "brief-2026-11"), agree("terms", "terms-2026-11")])
+    assert response.status_code == 200
+    assert sorted(stored_consents(engine, person.user)) == [
+        ("brief_email", "granted", "brief-2026-11"),
+        ("terms", "granted", "terms-2026-11"),
+    ]
+
+
+@pytest.mark.parametrize("purpose", ["introduction", "agent_access", "everything"])
+def test_purposes_recorded_by_another_action_are_not_set_here(person, engine, purpose):
+    response = patch(person, [agree(purpose, "v1")])
+    assert response.status_code == 422 and response.json()["error"]["code"] == "validation_failed"
+    assert stored_consents(engine, person.user) == []
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"purpose": "terms", "granted": True},  # no wording named
+        {"purpose": "terms", "granted": True, "text_version": ""},
+        {"purpose": "terms", "granted": True, "text_version": "has spaces"},
+        {"purpose": "terms", "granted": True, "text_version": "x" * 65},
+    ],
+)
+def test_a_grant_must_name_a_plausible_wording_version(person, engine, change):
+    response = patch(person, [change])
+    assert response.status_code == 422 and response.json()["error"]["code"] == "validation_failed"
+    assert stored_consents(engine, person.user) == []
+
+
+def test_an_empty_or_missing_list_of_changes_is_refused(person):
+    assert patch(person, []).status_code == 422
+    empty = person.patch("/v1/me", json={}, headers={"Idempotency-Key": uuid4().hex})
+    assert empty.status_code == 422
+
+
+def test_the_person_is_the_session_never_anything_in_the_body(person, engine):
+    with engine.begin() as c:
+        other = c.execute(text("INSERT INTO users (email) VALUES ('mallory@example.test') RETURNING id")).scalar_one()
+    change = {**agree("terms", "terms-v1"), "user_id": str(other)}
+    response = patch(person, [change], user_id=str(other))
+    assert response.status_code == 200
+    assert stored_consents(engine, person.user) == [("terms", "granted", "terms-v1")]
+    assert stored_consents(engine, other) == []
+
+
+def test_the_same_idempotency_key_records_one_grant(person, engine):
+    version = api.ai_processing_text_version()
+    first = patch(person, [agree("ai_processing", version)], key="consent-key-0001")
+    again = patch(person, [agree("ai_processing", version)], key="consent-key-0001")
+    assert (first.status_code, again.status_code) == (200, 200)
+    assert again.json()["meta"].get("idempotent_replay") is True
+    assert len(stored_consents(engine, person.user)) == 1
+
+
+def test_a_change_needs_a_session_a_key_and_json(api_client):
+    body = {"consents": [agree("terms", "terms-v1")]}
+    assert api_client.patch("/v1/me", json=body, headers={"Idempotency-Key": uuid4().hex}).status_code == 401
+    api_client.app.dependency_overrides[current_user] = lambda: Principal(uuid4())
+    assert api_client.patch("/v1/me", json=body).json()["error"]["code"] == "idempotency_key_missing"
+    form = api_client.patch("/v1/me", data={"a": "b"}, headers={"Idempotency-Key": uuid4().hex})
+    assert form.status_code == 415
+
+
+def test_search_the_ledger_and_the_record_work_with_no_consent_at_all(person):
+    assert person.get("/v1/jobs").status_code == 200
+    assert person.get("/v1/control/costs", params={"group_by": "month"}).status_code == 200
+    assert person.get("/v1/me").status_code == 200
+
+
+@pytest.mark.parametrize("reason", ["missing", "providers_changed"])
+def test_consent_required_answers_403_with_the_purpose_and_the_reason(api_client, reason):
+    @api_client.app.get("/_probe")
+    def probe():
+        raise api.ConsentRequired(reason)
+
+    response = api_client.get("/_probe")
+    error = response.json()["error"]
+    assert (response.status_code, error["code"]) == (403, "consent_required")
+    assert error["details"] == {"purpose": "ai_processing", "reason": reason}
+    assert "AI" in error["message"]
+
+
+def test_signing_in_returns_the_consents_too(api_client, engine, providers):
+    auth._recent.clear()  # the per-address limit counts in process memory, across test modules
+    email = "grace@example.test"
+    assert api_client.post("/v1/auth/codes", json={"email": email}).status_code == 202
+    sealed = stored(
+        engine,
+        """SELECT o.payload->>'code_sealed' FROM outbox o
+           JOIN login_codes l ON l.id = CAST(o.payload->>'login_code_id' AS uuid)
+           WHERE lower(l.email) = :e ORDER BY o.created_at DESC LIMIT 1""",
+        e=email,
+    )[0][0]
+    signed_in = api_client.post("/v1/auth/sessions", json={"email": email, "code": sessions.open_sealed(sealed)})
+    assert signed_in.status_code == 201
+    assert [c["purpose"] for c in signed_in.json()["data"]["consents"]] == PURPOSES
+    assert api_client.get("/v1/me").json()["data"]["consents"] == signed_in.json()["data"]["consents"]

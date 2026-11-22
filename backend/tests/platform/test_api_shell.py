@@ -59,6 +59,7 @@ CONTRACT = [
     ("post", "/v1/auth/sessions"),
     ("delete", "/v1/auth/sessions/current"),
     ("get", "/v1/me"),
+    ("patch", "/v1/me"),
     ("get", "/v1/control/costs"),
     ("get", "/v1/privacy/subprocessors"),
     ("get", "/v1/jobs"),
@@ -66,7 +67,7 @@ CONTRACT = [
     ("get", "/healthz"),
 ]
 FIELDS = {
-    "Me": {"id", "email", "timezone", "created_at"},
+    "Me": {"id", "email", "timezone", "created_at", "consents"},  # consents: plan 03-01 (TRU-05)
     "CostRow": {"period", "task", "calls", "cost_usd", "input_tokens", "output_tokens"},
     "Subprocessor": {"name", "kind", "purpose", "receives", "tasks"},
 }
