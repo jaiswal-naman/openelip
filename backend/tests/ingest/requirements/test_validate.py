@@ -91,6 +91,11 @@ def test_min_years_must_match_a_whole_number_not_a_digit_of_a_longer_one():
     assert convert(item([1], min_years=10), description=description).rows[0].min_years == 10
 
 
+def test_a_digit_run_too_long_for_int_does_not_break_the_check():
+    description = "7" * 5000 + " years of Go"  # int() refuses more than 4300 digits
+    assert convert(item([1], min_years=7), description=description).rows[0].min_years is None
+
+
 def test_min_years_outside_the_database_range_is_dropped_even_when_written():
     done = convert(item([1], min_years=61), description="61 years of Go")
     assert done.rows[0].min_years is None
