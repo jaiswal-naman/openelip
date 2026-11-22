@@ -34,8 +34,22 @@ _ADDRESS_RE = re.compile(
     r"(?:Street|St|Road|Rd|Avenue|Ave|Boulevard|Blvd|Lane|Ln|Drive|Dr|Way|Court|Ct|Place|Pl|Marg|Nagar)\b"
 )
 
-_YEAR = re.compile(r"(?:19|20)\d{2}")
-_DATE_SHAPES = (re.compile(r"\d{4}-\d{2}-\d{2}"), re.compile(r"\d{1,2}[-.]\d{1,2}[-.]\d{2,4}"))
+# A date, or a span of dates, is a run of digits too and must never be taken for a phone number: "2021-03 - 2023-08",
+# "03.2021 - 08.2023", "03-21 - 08-23", "2019 - 2021", "04-03-1998", "202103 - 202308". A phone number's groups (415,
+# 5551234, 0132, 90000) are not a year, a month or a day in these shapes, and a leading + never fits them. A span with a
+# slash or an en dash is already safe: neither can be inside a candidate of _PHONE_RE, so it splits into short runs.
+_Y = r"(?:19|20)\d\d"
+_M = r"(?:0?[1-9]|1[0-2])"
+_D = r"(?:0?[1-9]|[12]\d|3[01])"
+_S = r"[-./ ]"
+_DATE = (
+    rf"(?:{_Y}(?:{_S}{_M}(?:{_S}{_D})?)?"  # 2021, 2021-03, 2021-03-15
+    rf"|{_M}{_S}(?:{_Y}|\d\d)"  # 03-2021, 03-21
+    rf"|{_D}{_S}{_M}{_S}(?:{_Y}|\d\d)"  # 15.03.2021
+    rf"|{_Y}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])?)"  # 202103, 20210315
+)
+_DATE_SPAN = re.compile(rf"{_DATE}(?:\s*-\s*{_DATE})*")
+_YEAR_LIST = re.compile(rf"{_Y}(?:(?:\s*-\s*|\s+){_Y})*")  # 2018 2020 2022, 2018-2020 2021-2023
 MIN_PHONE_DIGITS, MAX_PHONE_DIGITS = 7, 15  # E.164 allows 15; fewer than 7 is not a phone number
 _LINK_TRAILING = ".,;:!?)]}"  # sentence punctuation that follows a link without being part of it
 
@@ -68,15 +82,14 @@ class Masked:
 
 
 def _is_phone(candidate: str) -> bool:
-    digits = [c for c in candidate if c.isdigit()]
-    if not MIN_PHONE_DIGITS <= len(digits) <= MAX_PHONE_DIGITS:
+    digits = sum(c.isdigit() for c in candidate)
+    if not MIN_PHONE_DIGITS <= digits <= MAX_PHONE_DIGITS:
         return False
-    if all(_YEAR.fullmatch(g) for g in re.findall(r"\d+", candidate)):  # 2021-2024, 2018 2020 2022
-        return False
-    if any(shape.fullmatch(candidate) for shape in _DATE_SHAPES):  # 2021-03-15, 04-03-1998
+    core = candidate.replace("\N{NO-BREAK SPACE}", " ").strip(" ()")  # "(2021-03 - 2023-08)" is a date in brackets
+    if _DATE_SPAN.fullmatch(core) or _YEAR_LIST.fullmatch(core):
         return False
     # A bare run of fewer than 9 digits is an amount or an id far more often than a phone number.
-    return not (candidate.isdigit() and len(digits) < 9)
+    return not (core.isdigit() and digits < 9)
 
 
 def _spans(
