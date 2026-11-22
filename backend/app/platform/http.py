@@ -6,7 +6,10 @@ through fetch_public(url), which reads one public web page:
 - HTTP or HTTPS only, and the URL must name a host;
 - refused if any address the host resolves to is not a public one (private, loopback, link-local, the cloud metadata
   address, unspecified, reserved), and the same check is made again for every redirect, at most 5 of them;
-- at most 5 MB and 15 s in all, and only HTML, plain text and JSON are read; any other type gives the status alone.
+- at most 5 MB and 15 s, and only HTML, plain text and JSON are read; any other type gives the status alone. The 15 s is
+  a budget for the whole call: each wait is limited to what is left of it, the connect time is shared among the host's
+  addresses, and a body that drips in is cut when the budget is spent. A read that began just before the end can still
+  wait out its own limit, so a hostile server can hold a call for up to twice the budget and no longer.
 
 It sends no credentials and keeps no state between calls. A refusal is UnsafeUrl and any other failure is FetchFailed,
 each with a short reason code. The log gets the reason code and never the URL, which a feed supplied.
@@ -23,7 +26,7 @@ from . import log
 
 USER_AGENT = "open-career-agent-indexer/0.1"
 MAX_BYTES = 5 * 1024 * 1024  # ARCHITECTURE 7.6, an assumption there
-TIMEOUT_S = 15  # for the whole call, and for each single connect, read or write
+TIMEOUT_S = 15  # the budget for the whole call (ARCHITECTURE 7.6, an assumption there)
 MAX_REDIRECTS = 5
 ALLOWED_TYPES = frozenset({"text/html", "text/plain", "application/json"})
 REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
@@ -65,7 +68,8 @@ def _is_public(address: str) -> bool:
     return ip.is_global
 
 
-def _check_public(url: httpx.URL) -> None:
+def _check_public(url: httpx.URL) -> int:
+    """Refuse a URL that may not be fetched. Returns how many addresses its host resolves to."""
     if url.scheme not in ("http", "https"):
         raise UnsafeUrl("scheme")
     host = url.raw_host.decode("ascii")  # the very name httpx will connect to
@@ -79,6 +83,7 @@ def _check_public(url: httpx.URL) -> None:
         raise FetchFailed("network") from error
     if not addresses or not all(_is_public(address) for address in addresses):
         raise UnsafeUrl("non_public_address")
+    return len(addresses)
 
 
 def _url(text: str, base: httpx.URL | None = None) -> httpx.URL:
@@ -117,19 +122,22 @@ def _fetch(url: str, transport: httpx.BaseTransport | None) -> PublicResponse:
     with httpx.Client(
         transport=transport,
         headers={"User-Agent": USER_AGENT, "Accept-Encoding": "identity"},
-        timeout=TIMEOUT_S,
         follow_redirects=False,
         trust_env=False,
     ) as client:
         for _ in range(MAX_REDIRECTS + 1):
-            if time.monotonic() > deadline:
+            addresses = _check_public(current)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
                 raise FetchFailed("timeout")
-            _check_public(current)
+            # httpx tries each address the name resolved to in turn, each with the connect timeout, so the connect
+            # budget is split among them: four dead addresses must not hold the call for four times the budget.
+            timeout = httpx.Timeout(remaining, connect=remaining / addresses)
             # ponytail: the host is resolved here and again when httpx connects, so a DNS answer that changes in
             # between (rebinding) is not caught. Closing it means connecting to the address checked here, with the
             # Host header and TLS name kept. Add it when fetch_public carries more than reads of public pages.
             try:
-                with client.stream("GET", current) as response:
+                with client.stream("GET", current, timeout=timeout) as response:
                     if response.status_code not in REDIRECT_STATUSES or "location" not in response.headers:
                         return _read(response, current, deadline)
                     location = response.headers["location"]

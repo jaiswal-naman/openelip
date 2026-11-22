@@ -142,6 +142,11 @@ def test_an_address_that_is_not_public_is_refused_before_any_request(url):
     assert refused(url) == "non_public_address"
 
 
+def test_a_resolver_that_answers_with_no_address_at_all_is_refused_not_trusted(monkeypatch):
+    monkeypatch.setitem(NAMES, "empty.test", [])
+    assert refused("http://empty.test/jobs/1") == "non_public_address"
+
+
 def test_a_name_that_does_not_resolve_is_a_network_failure_not_a_refusal():
     transport, requested = served(lambda request: pytest.fail("a request was sent"))
     with pytest.raises(http.FetchFailed) as error:
@@ -300,6 +305,35 @@ def test_a_huge_body_stops_being_read_one_piece_after_the_cap():
 
     assert error.value.reason == "too_large"
     assert body.sent <= http.MAX_BYTES + PIECE  # not 20 MB
+
+
+def test_connect_time_is_shared_among_the_addresses_so_a_name_with_many_dead_ones_cannot_hold_the_call(monkeypatch):
+    # httpx tries each resolved address in turn, each with the connect timeout: four dead ones must not cost 4 x 15 s.
+    monkeypatch.setitem(NAMES, "many.test", [f"93.184.216.{n}" for n in range(30, 34)])
+    seen = {}
+
+    def handler(request):
+        seen.update(request.extensions["timeout"])
+        return page()
+
+    http.fetch_public("https://many.test/jobs/1", transport=served(handler)[0])
+
+    assert seen["connect"] <= http.TIMEOUT_S / 4
+    assert max(seen.values()) <= http.TIMEOUT_S  # no single wait is longer than the whole budget
+
+
+def test_a_chain_of_redirects_that_has_spent_the_budget_is_not_followed_further(monkeypatch):
+    monkeypatch.setattr(http, "TIMEOUT_S", 0.1)
+
+    def handler(request):
+        time.sleep(0.15)  # the first hop alone uses up the whole budget
+        return redirect("/jobs/2")
+
+    transport, requested = served(handler)
+    with pytest.raises(http.FetchFailed) as error:
+        http.fetch_public(JOB, transport=transport)
+
+    assert error.value.reason == "timeout" and requested == [JOB]
 
 
 def test_a_body_that_drips_in_runs_into_the_time_limit(monkeypatch):
