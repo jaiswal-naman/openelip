@@ -1,7 +1,7 @@
 # Secret-scan configuration, read by gitleaks in .github/workflows/ci.yml and scripts/ci-local.ps1.
-# Every default rule stays on. Only the generic-api-key rule is relaxed, for two kinds of invented value it mistakes for
-# secrets: UUID-shaped strings (idempotency-key examples in docs/API.md, test constants) and the one sample agent token
-# printed in docs/API.md. Needs gitleaks 8.25 or newer ([[allowlists]]); the workflow pins 8.30.1.
+# Every default rule stays on. Only the generic-api-key rule is relaxed, for three kinds of invented value it mistakes for
+# secrets: UUID-shaped strings (idempotency-key examples in docs/API.md, test constants), the one sample agent token
+# printed in docs/API.md, and the published development data key in .env.example. Needs gitleaks 8.25 or newer ([[allowlists]]); the workflow pins 8.30.1.
 title = "open career agent"
 
 [extend]
@@ -16,3 +16,8 @@ regexes = ['''[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-
 description = "The sample agent token in the API design document is invented"
 targetRules = ["generic-api-key"]
 regexes = ['''agt_7Qm2xV9pL4sR8tW1yZ6bN3cK5dF0gH2j''']
+
+[[allowlists]]
+description = "The development data key in .env.example is published on purpose; config.py refuses it unless APP_BASE_URL is a localhost address"
+targetRules = ["generic-api-key"]
+regexes = ['''b3BlbmVsaXAtZGV2ZWxvcG1lbnQtb25seS1rZXktMDA=''']
