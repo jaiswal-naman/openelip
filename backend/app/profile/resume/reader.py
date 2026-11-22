@@ -39,7 +39,7 @@ MIN_CHARS_PER_PAGE = 200
 OVERLAP_RATIO = 0.5  # of the smaller character box, for "covered by another character"
 
 # ponytail: layout heuristics for one gutter, so two columns. A page with three columns is read row by row.
-ROW_TOLERANCE_PT = 3  # characters whose bottoms differ by less share a row
+ROW_TOLERANCE_PT = 4  # characters whose vertical centres differ by less share a row (a superscript sits off its line)
 WORD_GAP_EM = 0.15  # a gap wider than this fraction of the font size is a space
 MIN_GUTTER_PT = 10
 MIN_COLUMN_SHARE = 0.15  # each side of a gutter holds at least this share of the characters ...
@@ -301,11 +301,15 @@ def _pdf_page_lines(page: Any, hidden: _Hidden) -> list[str]:
     return _page_lines([chars[i] for i in live if i not in dropped and not why[i]])
 
 
+def _middle(char: dict[str, Any]) -> float:
+    return float((char["top"] + char["bottom"]) / 2)
+
+
 def _rows(chars: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
     """Upright text: rows from top to bottom, each from left to right. Sideways text (a rotated title, or a page shown
     on its side): each line is a column of characters, read the way it runs, the lines in the order they stack."""
     upright = [c for c in chars if c["upright"]]
-    rows = [sorted(row, key=itemgetter("x0")) for row in cluster_objects(upright, "bottom", ROW_TOLERANCE_PT)]
+    rows = [sorted(row, key=itemgetter("x0")) for row in cluster_objects(upright, _middle, ROW_TOLERANCE_PT)]
     sideways = [c for c in chars if not c["upright"]]
     for reads_down in (True, False):  # the text matrix says which way a line runs
         turned = [c for c in sideways if (c["matrix"][1] < 0) == reads_down]

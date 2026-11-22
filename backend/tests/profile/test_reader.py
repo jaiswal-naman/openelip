@@ -172,6 +172,45 @@ def test_right_aligned_dates_stay_on_their_line_in_a_single_column():
     ]
 
 
+def test_a_superscript_stays_in_its_line():
+    def ordinals(c):
+        write(BODY)(c)
+        y = 600
+        for before, raised, after in [
+            ("Awarded 2", "nd", " place in the regional engineering contest and led the winning team"),
+            ("Finished 1", "st", " in the company hackathon, shipping a prototype used by ten thousand people"),
+        ]:
+            c.setFont("Helvetica", 11)
+            c.drawString(50, y, before)
+            x = 50 + c.stringWidth(before, "Helvetica", 11)
+            c.setFont("Helvetica", 7)
+            c.drawString(x, y + 4, raised)  # smaller and raised, as Word sets an ordinal
+            c.setFont("Helvetica", 11)
+            c.drawString(x + c.stringWidth(raised, "Helvetica", 7), y, after)
+            y -= 18
+
+    result = read_resume(pdf(ordinals), PDF_MIME)
+
+    assert texts(result) == [
+        *BODY,
+        "Awarded 2nd place in the regional engineering contest and led the winning team",
+        "Finished 1st in the company hackathon, shipping a prototype used by ten thousand people",
+    ]
+
+
+def test_a_large_name_and_a_small_title_on_one_baseline_are_one_line():
+    def heading(c):
+        write(BODY)(c)
+        c.setFont("Helvetica-Bold", 20)
+        c.drawString(50, 600, "Avery Fairweather")
+        c.setFont("Helvetica", 10)
+        c.drawString(50 + c.stringWidth("Avery Fairweather", "Helvetica-Bold", 20) + 12, 600, "Senior Backend Engineer")
+
+    result = read_resume(pdf(heading), PDF_MIME)
+
+    assert texts(result) == [*BODY, "Avery Fairweather Senior Backend Engineer"]
+
+
 def on_its_side(rotation: int) -> Draw:
     """Upright content on a page marked /Rotate: it is shown turned, so its characters are sideways."""
 
