@@ -534,7 +534,7 @@ Each person sees only their own work. There are no instance-wide views in v1 (ow
 | GET | `/v1/control/recorder/{entry_id}` | One entry in full for replay: input references, cited evidence, model, tokens, cost, policy decision, Guardian checks with reasons, payload | C | GRD-03 | 7 |
 | GET | `/v1/control/stream` | The per-person live event stream (section 4.3) | U | GRD-06, HIR-06, TWN-04 | 7 |
 | POST | `/v1/control/actions/{action_id}/undo` | Undo a follow-up email still in its undo window (it becomes `cancelled`) | C | GRD-04 | 7 |
-| GET | `/v1/control/costs` | The caller's model cost grouped by `campaign` or `month`, read from the cost ledger | C | GRD-05, PLT-04 | 7 |
+| GET | `/v1/control/costs` | The caller's model cost grouped by `month` or `task`, read from the cost ledger (`group_by=campaign` is added in Phase 7) | C | GRD-05, PLT-04 | 1 |
 | GET | `/v1/control/evals` | The scoreboard: the latest recorded run per suite and scenario; every number carries its `eval_run_id` | U | EVL-04, EVL-05 | E |
 | GET | `/v1/control/evals/runs/{eval_run_id}` | One eval run: suite, git commit, model and prompt versions, per-item results, the repeats of a wind-tunnel scenario | U | EVL-01, EVL-02, EVL-03, EVL-04 | E |
 
@@ -549,7 +549,7 @@ Eval runs are started by CI and the command line, not by the API.
 | GET | `/v1/privacy/requests/{request_id}/download` | The export archive (`application/zip`), available for 7 days | C | TRU-01 | 2 |
 | POST | `/v1/privacy/deletion` | Delete the account and everything about the person in every store the project controls; confirmed with a fresh emailed `code`; `202` | C | TRU-02 | 2 |
 | GET | `/v1/privacy/audit-log` | Every automated decision and every agent or outside-agent action about the caller, including refused agent-token calls; filter `?agent_token_id=`, `?campaign_id=` | C | TRU-03, NET-03, GRD-02 | 2 |
-| GET | `/v1/privacy/subprocessors` | Model providers and sub-processors configured on this installation, with what each receives (read by the public `/trust` page) | P | TRU-04, TRU-05 | 2 |
+| GET | `/v1/privacy/subprocessors` | Model providers and sub-processors configured on this installation, with what each receives (read by the public `/trust` page) | P | TRU-04, TRU-05 | 1 |
 
 ### 2.21 `/v1/webhooks`
 
