@@ -8,7 +8,7 @@ import asyncio
 
 from sqlalchemy import text
 
-from app.ingest import jobs
+from app.ingest import discover, jobs
 from app.ingest.fetch import mark_duplicates, store
 from app.platform import queue
 
@@ -164,3 +164,25 @@ def test_only_the_three_fixed_hosts_and_plain_tokens_reach_the_network():
 
 def test_the_ingest_handlers_are_registered_with_the_queue():
     assert {"ingest.fetch", "ingest.dedupe", "ingest.discover"} <= set(queue._handlers)
+
+
+def test_discovery_registers_a_live_board_once_and_reactivates_a_known_one(conn):
+    discover.register(conn, [("lever", "fixture-board", "fixture-board", 3)])
+    conn.execute(text("UPDATE job_sources SET is_active = false WHERE token = 'fixture-board'"))
+    discover.register(conn, [("lever", "fixture-board", "Fixture Co", 3)])
+    rows = conn.execute(text("SELECT company_name, is_active FROM job_sources WHERE token = 'fixture-board'")).all()
+    assert [tuple(row) for row in rows] == [("Fixture Co", True)]
+
+
+def test_discovery_keeps_only_boards_that_answer_with_postings(monkeypatch):
+    async def answer(client, ats, token):
+        if (ats, token) == ("lever", "alive"):
+            return "ok", 200, [posting(1)], None
+        return "http_error", 404, None, None
+
+    async def no_name(client, token):
+        return None
+
+    monkeypatch.setattr(discover, "fetch_postings", answer)
+    monkeypatch.setattr(discover, "greenhouse_name", no_name)
+    assert asyncio.run(discover.find_live_boards(["alive", "gone"])) == [("lever", "alive", "alive", 1)]
