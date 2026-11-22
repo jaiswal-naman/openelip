@@ -1,7 +1,7 @@
 import Link from "next/link";
+import { AccountMenu } from "@/features/auth/AccountMenu";
 import { PRODUCT_NAME } from "@/lib/product";
 import { BrandMark } from "../icons/icons";
-import { LinkButton } from "../ui/LinkButton";
 import styles from "./header.module.css";
 import { NavLink } from "./NavLink";
 import { ThemeToggle } from "./ThemeToggle";
@@ -24,9 +24,7 @@ export function SiteHeader() {
           </nav>
           <div className={styles.tools}>
             <ThemeToggle />
-            <LinkButton href="/sign-in" size="sm">
-              Sign in
-            </LinkButton>
+            <AccountMenu />
           </div>
         </div>
       </header>

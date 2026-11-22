@@ -80,7 +80,7 @@
 }
 
 /* Pending keeps the label and adds a spinner, so the button does not change width (FRONTEND_UI 5.7) */
-.button[data-pending] {
+.button[aria-disabled="true"] {
   cursor: progress;
 }
 

@@ -39,6 +39,11 @@
   color: var(--text);
 }
 
+/* The container takes focus when the menu opens; the item that is focused inside it shows the ring, so this one would only box the whole menu */
+.popover:focus-visible {
+  outline: none;
+}
+
 .popover[data-entering] {
   animation: pop var(--dur-mid) var(--ease-in);
 }

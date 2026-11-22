@@ -3,11 +3,16 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import Home from "@/app/page";
 import { INDEPENDENCE_STATEMENT, PRODUCT_NAME } from "@/lib/product";
+import { fail, renderWithApi } from "@/test/render";
 import { SiteFooter } from "./SiteFooter";
 import { SiteHeader } from "./SiteHeader";
 import { ThemeToggle } from "./ThemeToggle";
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/jobs" }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/jobs",
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+}));
 
 describe("ThemeToggle", () => {
   it("offers system, light and dark, and starts on the system", async () => {
@@ -42,24 +47,26 @@ describe("ThemeToggle", () => {
 });
 
 describe("SiteHeader", () => {
-  it("has the landmarks, the product name, the two links and a way to sign in", () => {
-    render(<SiteHeader />);
+  const signedOut = { "GET /v1/me": fail(401, "unauthenticated") };
+
+  it("has the landmarks, the product name, the two links and a way to sign in", async () => {
+    renderWithApi(<SiteHeader />, signedOut);
     expect(screen.getByRole("banner")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: `${PRODUCT_NAME} home` })).toHaveAttribute("href", "/");
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(within(nav).getByRole("link", { name: "Jobs" })).toHaveAttribute("href", "/jobs");
     expect(within(nav).getByRole("link", { name: "Trust" })).toHaveAttribute("href", "/trust");
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/sign-in");
+    expect(await screen.findByRole("link", { name: "Sign in" })).toBeInTheDocument();
   });
 
   it("marks the page you are on, for screen readers as well as the eye", () => {
-    render(<SiteHeader />);
+    renderWithApi(<SiteHeader />, signedOut);
     expect(screen.getByRole("link", { name: "Jobs" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Trust" })).not.toHaveAttribute("aria-current");
   });
 
   it("starts with a skip link to the main content", () => {
-    render(<SiteHeader />);
+    renderWithApi(<SiteHeader />, signedOut);
     expect(screen.getByRole("link", { name: "Skip to main content" })).toHaveAttribute("href", "#main");
   });
 });

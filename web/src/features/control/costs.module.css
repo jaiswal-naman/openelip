@@ -1,0 +1,67 @@
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-12) var(--sp-32);
+}
+
+.title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-2);
+}
+
+@media (max-width: 39.99rem) {
+  .total {
+    align-items: flex-start;
+  }
+}
+
+.totalFigure {
+  font-size: 1.25rem;
+  line-height: 1.1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.share {
+  display: grid;
+  grid-template-columns: minmax(4rem, 1fr) 3.25rem;
+  align-items: center;
+  gap: var(--sp-8);
+  min-width: 11rem;
+}
+
+.percent {
+  text-align: end;
+}
+
+@media (max-width: 39.99rem) {
+  .percent {
+    text-align: start;
+  }
+}
+
+.hint {
+  color: var(--muted);
+}
+
+.hint code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+  overflow-wrap: anywhere;
+}

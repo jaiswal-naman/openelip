@@ -1,0 +1,35 @@
+.account {
+  position: relative;
+}
+
+.email {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+  font-weight: 500;
+}
+
+/* On a phone only the icon is shown; the email is still in the button's accessible name and in the menu */
+@media (max-width: 39.99rem) {
+  .email {
+    display: none;
+  }
+}
+
+.problem {
+  position: absolute;
+  inset-inline-end: 0;
+  top: calc(100% + var(--sp-4));
+  z-index: 11;
+  width: max-content;
+  max-width: min(18rem, 100vw - var(--sp-32));
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  font-size: var(--fs-small);
+}

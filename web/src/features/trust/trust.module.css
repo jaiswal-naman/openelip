@@ -1,0 +1,42 @@
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  max-width: var(--measure);
+}
+
+.region {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+}
+
+.name {
+  overflow-wrap: anywhere;
+}
+
+.kind {
+  display: block;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.tasks {
+  display: block;
+  margin-top: var(--sp-4);
+  color: var(--muted);
+}
+
+.statement {
+  max-width: var(--measure);
+  padding: var(--sp-16) var(--sp-20);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.skeleton {
+  height: 8rem;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+}

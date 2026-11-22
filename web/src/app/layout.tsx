@@ -1,10 +1,14 @@
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { Providers } from "@/components/shell/Providers";
 import { SiteFooter } from "@/components/shell/SiteFooter";
 import { SiteHeader } from "@/components/shell/SiteHeader";
+import { authKeys, meQuery } from "@/features/auth/queries";
+import { hasSessionCookie, serverApi } from "@/lib/api/server";
 import { PRODUCT_NAME } from "@/lib/product";
+import { makeQueryClient } from "@/lib/query";
 import { THEME_SCRIPT } from "@/lib/themeScript";
 import "@/styles/tokens.css";
 import "@/styles/global.css";
@@ -26,7 +30,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Who is signed in is asked here, once, so the header is right on first paint. With no session cookie nobody is, and the
+  // API is not called. If the API cannot answer, nothing is handed over and the browser asks for itself.
+  const queryClient = makeQueryClient();
+  if (await hasSessionCookie()) await queryClient.prefetchQuery(meQuery(await serverApi()));
+  else queryClient.setQueryData(authKeys.me, null);
+
   return (
     // suppressHydrationWarning: the script below sets data-theme on <html> before React sees it
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
@@ -35,11 +45,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <Providers>
-          <SiteHeader />
-          <main id="main" tabIndex={-1}>
-            {children}
-          </main>
-          <SiteFooter />
+          <HydrationBoundary state={dehydrate(queryClient)}>
+            <SiteHeader />
+            <main id="main" tabIndex={-1}>
+              {children}
+            </main>
+            <SiteFooter />
+          </HydrationBoundary>
         </Providers>
       </body>
     </html>
