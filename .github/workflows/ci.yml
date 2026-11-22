@@ -1,0 +1,175 @@
+# Pull request gates (PLT-08). Each job is also run by scripts/ci-local.ps1 on a developer machine.
+# No secret is used: the database password below is the public development one, and the eval gate replays recorded answers.
+# Every action is pinned to a commit SHA (the version is in the comment) and the token is read-only.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (lint, types, imports, migrations, tests)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      db:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app_local_only
+          POSTGRES_DB: migration_check # an empty database for the migration check; the tests create their own
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      TEST_DATABASE_URL: postgresql://app:app_local_only@localhost:5432/app_test
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --frozen
+      - name: Lint
+        run: uv run --frozen ruff check app tests ../db
+      - name: Formatting
+        run: uv run --frozen ruff format --check app tests ../db
+      - name: Types
+        run: uv run --frozen mypy app
+      - name: Import contracts
+        run: uv run --frozen lint-imports
+      - name: Migration check (empty database up, back to the baseline, up again)
+        env:
+          DATABASE_URL_MIGRATE: postgresql://app:app_local_only@localhost:5432/migration_check
+        run: |
+          uv run --frozen alembic upgrade head
+          uv run --frozen alembic downgrade 0001_baseline
+          uv run --frozen alembic upgrade head
+      - name: Tests
+        run: uv run --frozen pytest tests -q
+
+  eval-gate:
+    name: eval gate (${{ matrix.suite }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [harness_smoke] # later phases add their gold sets here
+    services:
+      db:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app_local_only
+          POSTGRES_DB: evals
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL_MIGRATE: postgresql://app:app_local_only@localhost:5432/evals
+      DATABASE_URL_WORKER: postgresql://app_worker:app_worker_local_only@localhost:5432/evals
+      LLM_PROVIDER: fake # replay: recorded answers through the gateway, so no model key is needed
+      GIT_SHA: ${{ github.sha }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --frozen
+      - run: uv run --frozen alembic upgrade head
+      - name: Replay the recorded answers, then gate the run
+        shell: bash
+        run: |
+          uv run --frozen python -m app.evals run "${{ matrix.suite }}" | tee run.out
+          uv run --frozen python -m app.evals gate "${{ matrix.suite }}" --run "$(tail -n 1 run.out)"
+
+  web:
+    name: web (API types, types, lint, tests)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - name: API types are current (web/openapi.json matches the backend, schema.d.ts matches openapi.json)
+        run: |
+          uv run --frozen --project backend python - web/openapi.json <<'PY'
+          import json, pathlib, sys
+          from app.main import app
+          committed = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+          if json.loads(json.dumps(app.openapi())) != committed:
+              sys.exit("web/openapi.json is out of date: regenerate it from app.openapi() and commit it")
+          PY
+          pnpm --dir web gen:api
+          git diff --exit-code -- web/src/lib/api/schema.d.ts
+      - run: pnpm typecheck
+        working-directory: web
+      - run: pnpm lint
+        working-directory: web
+      - run: pnpm test --run
+        working-directory: web
+
+  secrets:
+    name: secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read # lists the commits of a pull request; the comment and artifact outputs are switched off below
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # v3.0.0, the current release. Free on a personal GitHub account; an organization account needs the free
+      # GITLEAKS_LICENSE secret (see the action's README), or this step becomes the MIT-licensed gitleaks CLI.
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: "8.30.1" # the CLI the action runs; .gitleaks.toml needs 8.25 or newer
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"

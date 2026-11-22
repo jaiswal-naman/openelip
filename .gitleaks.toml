@@ -1,0 +1,18 @@
+# Secret-scan configuration, read by gitleaks in .github/workflows/ci.yml and scripts/ci-local.ps1.
+# Every default rule stays on. Only the generic-api-key rule is relaxed, for two kinds of invented value it mistakes for
+# secrets: UUID-shaped strings (idempotency-key examples in docs/API.md, test constants) and the one sample agent token
+# printed in docs/API.md. Needs gitleaks 8.25 or newer ([[allowlists]]); the workflow pins 8.30.1.
+title = "open career agent"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "A UUID is an id or an example, not a credential"
+targetRules = ["generic-api-key"]
+regexes = ['''[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}''']
+
+[[allowlists]]
+description = "The sample agent token in the API design document is invented"
+targetRules = ["generic-api-key"]
+regexes = ['''agt_7Qm2xV9pL4sR8tW1yZ6bN3cK5dF0gH2j''']
