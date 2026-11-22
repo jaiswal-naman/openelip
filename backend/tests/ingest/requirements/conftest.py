@@ -22,7 +22,7 @@ def settings(**env: str) -> config.Settings:
 
 @pytest.fixture
 def use_settings(monkeypatch: pytest.MonkeyPatch):
-    """use_settings(LLM_PROVIDER="anthropic", ...): run the gateway under these settings (the fake provider by default)."""
+    """use_settings(LLM_PROVIDER="anthropic", ...): run the gateway under these settings (default: the fake)."""
 
     def use(**env: str) -> None:
         chosen = settings(**env)
