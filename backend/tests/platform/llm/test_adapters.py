@@ -1,0 +1,120 @@
+"""The real adapters against stub clients that return the SDKs' own response and error objects. No network."""
+
+from types import SimpleNamespace
+
+import anthropic
+import httpx2
+import openai
+import pytest
+from openai.types import CompletionUsage
+from openai.types.chat import ChatCompletion, ChatCompletionMessage
+from openai.types.chat.chat_completion import Choice
+
+from app.platform import config
+from app.platform.llm import ProviderUnavailable, adapters, registry
+from app.platform.llm.__main__ import PingResult
+
+SCHEMA = PingResult.model_json_schema()
+REQUEST = httpx2.Request("POST", "https://provider.example/v1")
+
+
+def route(**env: str) -> registry.Route:
+    return registry.route("ping", config.load({"APP_ENV": "test", **env}))
+
+
+def stub(monkeypatch, sdk, name, outcome):
+    """Replace the SDK's client class; the stub records its constructor and request arguments."""
+    seen: dict = {}
+
+    class Client:
+        def __init__(self, **kwargs):
+            seen["init"] = kwargs
+            create = self.create
+            self.messages = SimpleNamespace(create=create)
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=create))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def create(self, **kwargs):
+            seen["request"] = kwargs
+            if isinstance(outcome, Exception):
+                raise outcome
+            return outcome
+
+    monkeypatch.setattr(sdk, name, Client)
+    return seen
+
+
+def message(text='{"reply": "pong"}', stop_reason="end_turn"):
+    block = anthropic.types.TextBlock.model_construct(type="text", text=text)
+    usage = anthropic.types.Usage.model_construct(input_tokens=7, output_tokens=3)
+    return anthropic.types.Message.model_construct(content=[block], usage=usage, stop_reason=stop_reason)
+
+
+def completion(content='{"reply": "pong"}', refusal=None):
+    reply = ChatCompletionMessage.model_construct(content=content, refusal=refusal)
+    usage = CompletionUsage.model_construct(prompt_tokens=7, completion_tokens=3)
+    return ChatCompletion.model_construct(choices=[Choice.model_construct(message=reply)], usage=usage)
+
+
+def test_anthropic_sends_the_schema_and_returns_text_and_tokens(monkeypatch):
+    seen = stub(monkeypatch, anthropic, "Anthropic", message())
+    messages = [{"role": "system", "content": "be brief"}, {"role": "user", "content": "hi"}]
+    found = adapters.call_anthropic(route(LLM_PROVIDER="anthropic", ANTHROPIC_API_KEY="k"), messages, SCHEMA)
+    assert found == adapters.Reply('{"reply": "pong"}', 7, 3, False)
+    assert seen["init"] == {"api_key": "k", "timeout": 30.0, "max_retries": 2, "open_telemetry": False}
+    request = seen["request"]
+    assert request["output_config"] == {"format": {"type": "json_schema", "schema": SCHEMA}}
+    assert (request["model"], request["max_tokens"], request["system"]) == ("claude-haiku-5-5", 512, "be brief")
+    assert request["messages"] == [{"role": "user", "content": "hi"}]
+    assert "temperature" not in request  # Sonnet 5.5 rejects sampling parameters
+
+
+def test_an_anthropic_refusal_is_flagged(monkeypatch):
+    stub(monkeypatch, anthropic, "Anthropic", message("", stop_reason="refusal"))
+    assert adapters.call_anthropic(route(LLM_PROVIDER="anthropic", ANTHROPIC_API_KEY="k"), [], SCHEMA).refused
+
+
+@pytest.mark.parametrize(
+    ("sdk", "name", "env"),
+    [(anthropic, "Anthropic", {"LLM_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "k"}),
+     (openai, "OpenAI", {"LLM_PROVIDER": "openai_compatible", "OPENAI_API_KEY": "k"})],
+)  # fmt: skip
+@pytest.mark.parametrize("error", ["timeout", "status"])
+def test_sdk_errors_become_provider_unavailable_without_their_text(monkeypatch, sdk, name, env, error):
+    boom = (
+        sdk.APITimeoutError(request=REQUEST)
+        if error == "timeout"
+        else sdk.InternalServerError("CANARY quoted request", response=httpx2.Response(500, request=REQUEST), body=None)
+    )
+    stub(monkeypatch, sdk, name, boom)
+    call = adapters.call_anthropic if sdk is anthropic else adapters.call_openai_compatible
+    with pytest.raises(ProviderUnavailable) as raised:
+        call(route(**env), [], SCHEMA)
+    assert raised.value.timed_out is (error == "timeout") and "CANARY" not in str(raised.value.message)
+
+
+def test_openai_gets_a_strict_json_schema_and_the_current_token_limit(monkeypatch):
+    seen = stub(monkeypatch, openai, "OpenAI", completion())
+    found = adapters.call_openai_compatible(route(LLM_PROVIDER="openai_compatible", OPENAI_API_KEY="k"), [], SCHEMA)
+    assert found == adapters.Reply('{"reply": "pong"}', 7, 3, False)
+    assert seen["init"]["base_url"] == "https://api.openai.com/v1" and seen["init"]["api_key"] == "k"
+    request = seen["request"]
+    assert request["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {"name": "PingResult", "schema": SCHEMA, "strict": True},
+    }
+    assert request["max_completion_tokens"] == 512 and "max_tokens" not in request
+
+
+def test_a_local_server_gets_json_mode_the_older_token_limit_and_a_placeholder_key(monkeypatch):
+    seen = stub(monkeypatch, openai, "OpenAI", completion(refusal="no"))
+    env = {"LLM_PROVIDER": "openai_compatible", "LLM_BASE_URL": "http://llm:11434/v1"}
+    found = adapters.call_openai_compatible(route(**env), [], SCHEMA)
+    assert found.refused and seen["init"]["api_key"] == "not-needed"
+    assert seen["request"]["response_format"] == {"type": "json_object"}
+    assert seen["request"]["max_tokens"] == 512 and "max_completion_tokens" not in seen["request"]
