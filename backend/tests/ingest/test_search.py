@@ -314,6 +314,18 @@ def test_when_the_model_is_unavailable_a_hybrid_request_falls_back_to_keywords(c
     assert (page.mode, ids(page)) == ("keyword", [found])
 
 
+@pytest.mark.parametrize("mode", ["hybrid", "keyword"])
+def test_a_nul_character_in_the_query_or_the_city_is_only_a_space_not_a_server_error(conn, query_vector, mode):
+    """PostgreSQL text cannot hold a NUL, and anyone can type one into a public search box."""
+    source = add_source(conn)
+    found = add_job(conn, source, 1, title="Alpha", city="Pune", **embedded(vec()))
+
+    assert ids(run(conn, q="alpha\x00", mode=mode)) == [found]
+    assert ids(run(conn, q="al\x00pha", mode="keyword")) == []  # a space inside the word splits it; nothing is guessed
+    assert ids(run(conn, q="alpha", city="Pune\x00", mode=mode)) == [found]
+    assert ids(run(conn, q="\x00 \x00", mode=mode)) == [found]  # nothing left of the query: the plain list
+
+
 def test_an_empty_query_lists_newest_first_then_by_id_and_reports_the_mode_that_was_asked_for(conn, query_vector):
     source = add_source(conn)
     old = add_job(conn, source, 1, posted_at=NOW - timedelta(days=9), **embedded(vec()))

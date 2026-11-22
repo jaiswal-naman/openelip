@@ -87,6 +87,11 @@ class SearchPage:
     mode: str  # the mode that was used: "hybrid" falls back to "keyword" when meaning cannot be searched
 
 
+def _clean(value: str | None) -> str:
+    """Text a person typed: a NUL (PostgreSQL text cannot hold one) counts as a space, and white space is collapsed."""
+    return " ".join((value or "").replace("\x00", " ").split())
+
+
 def _utc(moment: datetime | None) -> datetime | None:
     """API.md 1.4: timestamps are UTC, whatever time zone the database session happens to use."""
     return None if moment is None else moment.astimezone(timezone.utc)
@@ -222,9 +227,9 @@ def search(
     if mode not in MODES:
         raise ValueError(f"mode must be one of {MODES}")
     started = time.monotonic()
-    query = " ".join(q.split())
+    query = _clean(q)
     country = country.upper() if country else None
-    city = city.strip() if city and city.strip() else None
+    city = _clean(city) or None
     where, values = _eligible(country, city, remote)
     vector = _query_vector(conn, where, values, query) if query and mode == "hybrid" else None
     if not query:
