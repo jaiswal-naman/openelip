@@ -153,8 +153,9 @@ def _empty_tables(engine: Engine) -> None:
 def api_client(engine: Engine) -> Iterator["TestClient"]:
     """The API from app.main.create_app() on the test database. The API opens its own connections, so what it
     commits stays; the tables are emptied before and after each test instead of rolled back."""
-    from app.main import create_app
     from fastapi.testclient import TestClient
+
+    from app.main import create_app
 
     _empty_tables(engine)
     with TestClient(create_app()) as client:
