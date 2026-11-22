@@ -132,6 +132,7 @@ ThreadingHTTPServer(("0.0.0.0", 8000), Handler).serve_forever()
             '-v', "$(Join-Path $clone 'Caddyfile'):/etc/caddy/Caddyfile:ro", $caddyImage) | Out-Null
         for ($i = 0; $i -lt 30 -and -not (Test-NetConnection 127.0.0.1 -Port $StreamPort -InformationLevel Quiet -WarningAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 500 }
 
+        Add-Type -AssemblyName System.Net.Http  # Windows PowerShell 5.1 does not load it by default
         $client = [System.Net.Http.HttpClient]::new()
         $clock = [Diagnostics.Stopwatch]::StartNew()
         $response = $client.GetAsync("http://127.0.0.1:$StreamPort/v1/stream", [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).GetAwaiter().GetResult()
