@@ -83,6 +83,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    raise NotImplementedError(
-        "0001 is the baseline: going below it would drop the job index and its rows"
-    )
+    raise NotImplementedError("0001 is the baseline: going below it would drop the job index and its rows")

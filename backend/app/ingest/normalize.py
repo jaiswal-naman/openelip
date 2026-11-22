@@ -3,25 +3,65 @@
 Rule: never guess. If a value cannot be recognised it stays None, and the
 matching layer treats None as "the posting does not say".
 """
+
 import hashlib
 import html
 import re
 
 # City -> canonical name. Only cities whose name is unambiguous for India.
 INDIA_CITIES = {
-    "bengaluru": "Bengaluru", "bangalore": "Bengaluru", "gurugram": "Gurugram", "gurgaon": "Gurugram",
-    "mumbai": "Mumbai", "bombay": "Mumbai", "pune": "Pune", "chennai": "Chennai", "kolkata": "Kolkata",
-    "noida": "Noida", "new delhi": "New Delhi", "delhi": "New Delhi", "ahmedabad": "Ahmedabad",
-    "jaipur": "Jaipur", "kochi": "Kochi", "indore": "Indore", "chandigarh": "Chandigarh",
-    "coimbatore": "Coimbatore", "thiruvananthapuram": "Thiruvananthapuram", "trivandrum": "Thiruvananthapuram",
-    "hyderabad": "Hyderabad", "navi mumbai": "Navi Mumbai", "thane": "Thane", "mysuru": "Mysuru",
-    "mysore": "Mysuru", "vadodara": "Vadodara", "nagpur": "Nagpur", "bhubaneswar": "Bhubaneswar",
+    "bengaluru": "Bengaluru",
+    "bangalore": "Bengaluru",
+    "gurugram": "Gurugram",
+    "gurgaon": "Gurugram",
+    "mumbai": "Mumbai",
+    "bombay": "Mumbai",
+    "pune": "Pune",
+    "chennai": "Chennai",
+    "kolkata": "Kolkata",
+    "noida": "Noida",
+    "new delhi": "New Delhi",
+    "delhi": "New Delhi",
+    "ahmedabad": "Ahmedabad",
+    "jaipur": "Jaipur",
+    "kochi": "Kochi",
+    "indore": "Indore",
+    "chandigarh": "Chandigarh",
+    "coimbatore": "Coimbatore",
+    "thiruvananthapuram": "Thiruvananthapuram",
+    "trivandrum": "Thiruvananthapuram",
+    "hyderabad": "Hyderabad",
+    "navi mumbai": "Navi Mumbai",
+    "thane": "Thane",
+    "mysuru": "Mysuru",
+    "mysore": "Mysuru",
+    "vadodara": "Vadodara",
+    "nagpur": "Nagpur",
+    "bhubaneswar": "Bhubaneswar",
 }
 COUNTRY_NAMES = {
-    "india": "IN", "united states": "US", "usa": "US", "u.s.": "US", "united kingdom": "GB", "uk": "GB",
-    "canada": "CA", "germany": "DE", "singapore": "SG", "australia": "AU", "ireland": "IE",
-    "netherlands": "NL", "france": "FR", "japan": "JP", "brazil": "BR", "poland": "PL", "spain": "ES",
-    "mexico": "MX", "israel": "IL", "united arab emirates": "AE", "uae": "AE", "indonesia": "ID",
+    "india": "IN",
+    "united states": "US",
+    "usa": "US",
+    "u.s.": "US",
+    "united kingdom": "GB",
+    "uk": "GB",
+    "canada": "CA",
+    "germany": "DE",
+    "singapore": "SG",
+    "australia": "AU",
+    "ireland": "IE",
+    "netherlands": "NL",
+    "france": "FR",
+    "japan": "JP",
+    "brazil": "BR",
+    "poland": "PL",
+    "spain": "ES",
+    "mexico": "MX",
+    "israel": "IL",
+    "united arab emirates": "AE",
+    "uae": "AE",
+    "indonesia": "ID",
 }
 _TAG = re.compile(r"<[^>]+>")
 _WS = re.compile(r"\s+")
@@ -77,7 +117,9 @@ def title_key(title: str) -> str:
 
 
 def dedupe_key(company: str, title: str, country: str | None, city: str | None) -> str:
-    basis = "|".join([" ".join(_WORD.findall(company.lower())), title_key(title), country or "?", (city or "?").lower()])
+    basis = "|".join(
+        [" ".join(_WORD.findall(company.lower())), title_key(title), country or "?", (city or "?").lower()]
+    )
     return hashlib.sha1(basis.encode()).hexdigest()
 
 

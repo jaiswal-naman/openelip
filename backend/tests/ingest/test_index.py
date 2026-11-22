@@ -45,19 +45,50 @@ def test_empty_feed_does_not_close_a_busy_source():
 
 
 def test_mappers_skip_incomplete_postings_and_map_fields():
-    gh = map_greenhouse({"jobs": [
-        {"id": 1, "title": " SRE ", "absolute_url": "https://x/1", "location": {"name": "Pune"}, "content": "&lt;p&gt;Run it&lt;/p&gt;"},
-        {"id": 2, "title": "No link"},
-    ]})
+    gh = map_greenhouse(
+        {
+            "jobs": [
+                {
+                    "id": 1,
+                    "title": " SRE ",
+                    "absolute_url": "https://x/1",
+                    "location": {"name": "Pune"},
+                    "content": "&lt;p&gt;Run it&lt;/p&gt;",
+                },
+                {"id": 2, "title": "No link"},
+            ]
+        }
+    )
     assert len(gh) == 1 and gh[0]["title"] == "SRE" and gh[0]["description"] == "Run it"
 
-    lv = map_lever([{"id": "a", "text": "PM", "hostedUrl": "https://y/a", "workplaceType": "remote",
-                     "categories": {"location": "Mumbai"}, "descriptionPlain": "Own the roadmap", "createdAt": 1700000000000}])
+    lv = map_lever(
+        [
+            {
+                "id": "a",
+                "text": "PM",
+                "hostedUrl": "https://y/a",
+                "workplaceType": "remote",
+                "categories": {"location": "Mumbai"},
+                "descriptionPlain": "Own the roadmap",
+                "createdAt": 1700000000000,
+            }
+        ]
+    )
     assert lv[0]["remote_hint"] is True and lv[0]["posted_at"].year == 2023
 
-    ab = map_ashby({"jobs": [
-        {"id": "z", "title": "Designer", "jobUrl": "https://z/z", "isListed": False},
-        {"id": "y", "title": "Designer", "jobUrl": "https://z/y", "isRemote": False,
-         "address": {"postalAddress": {"addressCountry": "India"}}, "descriptionPlain": "Design things"},
-    ]})
+    ab = map_ashby(
+        {
+            "jobs": [
+                {"id": "z", "title": "Designer", "jobUrl": "https://z/z", "isListed": False},
+                {
+                    "id": "y",
+                    "title": "Designer",
+                    "jobUrl": "https://z/y",
+                    "isRemote": False,
+                    "address": {"postalAddress": {"addressCountry": "India"}},
+                    "descriptionPlain": "Design things",
+                },
+            ]
+        }
+    )
     assert len(ab) == 1 and ab[0]["country_hint"] == "India" and ab[0]["remote_hint"] is False
