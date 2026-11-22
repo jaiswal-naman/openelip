@@ -8,7 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import text
 
-from .. import config, db, log
+from .. import config, db, log, telemetry
 from . import adapters, fake, registry
 from .adapters import Reply
 from .failures import AIDisabled, ProviderUnavailable, SchemaInvalid
@@ -103,47 +103,48 @@ def complete(
     or SchemaInvalid (invalid twice). Every provider request leaves one llm_calls row, except AIDisabled's.
     """
     settings = config.get()
-    try:
-        route = registry.route(task, settings)
-    except AIDisabled as disabled:
-        log.event(
-            "llm.unavailable",
-            level=logging.WARNING,
-            task=task,
-            provider=settings.llm_provider,
-            error_code=disabled.reason,
-        )
-        raise
-    # ponytail: Phase 3 requires the ai_processing consent here (trust.consent.require). platform cannot import trust,
-    # so by then the caller will pass the checked consent in.
-    model_id = registry.model_id(route)
-    outcome = "schema_invalid"
-    for attempt in range(1, ATTEMPTS + 1):
-        started = time.monotonic()
+    with telemetry.span("llm.complete", task=task, provider=settings.llm_provider):
         try:
-            reply = _call(route, messages, schema)
-        except ProviderUnavailable as failure:
-            _record(
-                route,
-                model_id,
-                prompt_version,
-                principal,
-                attempt,
-                "timeout" if failure.timed_out else "provider_error",
-                None,
-                started,
+            route = registry.route(task, settings)
+        except AIDisabled as disabled:
+            log.event(
+                "llm.unavailable",
+                level=logging.WARNING,
+                task=task,
+                provider=settings.llm_provider,
+                error_code=disabled.reason,
             )
             raise
-        result: BaseModel | None = None
-        if reply.refused:
-            outcome = "refused"
-        else:
+        # ponytail: Phase 3 requires the ai_processing consent here (trust.consent.require). platform cannot import
+        # trust, so by then the caller will pass the checked consent in.
+        model_id = registry.model_id(route)
+        outcome = "schema_invalid"
+        for attempt in range(1, ATTEMPTS + 1):
+            started = time.monotonic()
             try:
-                result = schema.model_validate_json(reply.text)
-                outcome = "ok"
-            except ValidationError:  # its message quotes the input: caught here, never logged, never chained
-                outcome = "schema_invalid"
-        _record(route, model_id, prompt_version, principal, attempt, outcome, reply, started)
-        if result is not None:
-            return result
-    raise SchemaInvalid(refused=outcome == "refused")
+                reply = _call(route, messages, schema)
+            except ProviderUnavailable as failure:
+                _record(
+                    route,
+                    model_id,
+                    prompt_version,
+                    principal,
+                    attempt,
+                    "timeout" if failure.timed_out else "provider_error",
+                    None,
+                    started,
+                )
+                raise
+            result: BaseModel | None = None
+            if reply.refused:
+                outcome = "refused"
+            else:
+                try:
+                    result = schema.model_validate_json(reply.text)
+                    outcome = "ok"
+                except ValidationError:  # its message quotes the input: caught here, never logged, never chained
+                    outcome = "schema_invalid"
+            _record(route, model_id, prompt_version, principal, attempt, outcome, reply, started)
+            if result is not None:
+                return result
+        raise SchemaInvalid(refused=outcome == "refused")

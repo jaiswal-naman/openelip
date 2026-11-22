@@ -20,7 +20,7 @@ from typing import Any
 
 from sqlalchemy import Connection, text
 
-from . import log
+from . import log, telemetry
 
 Handler = Callable[[Connection, dict[str, Any]], None]
 ConnectionFactory = Callable[[], AbstractContextManager[Connection]]
@@ -142,7 +142,7 @@ def run_once(conn_factory: ConnectionFactory, worker_id: str, queues: Sequence[s
         code, retry = "unknown_kind", False
     else:
         try:
-            with conn_factory() as conn:
+            with telemetry.span("queue.job", job_id=job.id, kind=job.kind), conn_factory() as conn:
                 fn(conn, job.payload)
                 conn.execute(
                     text(
