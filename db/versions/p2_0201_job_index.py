@@ -57,23 +57,35 @@ def _read(name: str) -> str:
     return (SQL_DIR / name).read_text(encoding="utf-8")
 
 
+def _begin() -> None:
+    op.execute(f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'")
+    # The rehearsal on a copy of the real data failed at CREATE INDEX jobs_embedding_hnsw with "could not resize shared
+    # memory segment ... No space left on device": pgvector's parallel HNSW build asks for maintenance_work_mem (64 MB)
+    # of shared memory, and Docker gives a container 64 MB of /dev/shm in all. One process builds these indexes in
+    # seconds, so no parallel workers here.
+    op.execute("SET LOCAL max_parallel_maintenance_workers = 0")
+    op.execute("SET ROLE app_owner")  # every object below is created, and every grant issued, by its owner
+
+
+def _end() -> None:
+    op.execute("RESET ROLE")  # Alembic writes alembic_version next, as the login that started the migration
+    op.execute("RESET max_parallel_maintenance_workers")
+    op.execute("RESET lock_timeout")
+
+
 def upgrade() -> None:
     before_backfill, after_backfill = _read("p2_0201_types_convert.sql").split(BACKFILL_MARKER)
-    op.execute(f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'")
-    op.execute("SET ROLE app_owner")  # every object below is created, and every grant issued, by its owner
+    _begin()
     op.execute(before_backfill)
     # Its own statement: psycopg cannot bind a parameter inside a multi-statement string.
     model = os.environ.get("EMBEDDING_MODEL") or DEFAULT_EMBEDDING_MODEL
     op.get_bind().execute(sa.text(BACKFILL_SQL), {"embedding_model": model})
     op.execute(after_backfill)
     op.execute(_read("p2_0201_tables_triggers_grants.sql"))
-    op.execute("RESET ROLE")  # Alembic writes alembic_version next, as the login that started the migration
-    op.execute("RESET lock_timeout")
+    _end()
 
 
 def downgrade() -> None:
-    op.execute(f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'")
-    op.execute("SET ROLE app_owner")
+    _begin()
     op.execute(_read("p2_0201_downgrade.sql"))
-    op.execute("RESET ROLE")
-    op.execute("RESET lock_timeout")
+    _end()
