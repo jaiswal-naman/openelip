@@ -63,3 +63,61 @@ model = "local-model"   # placeholder: set this to the model name your server ru
 
 [tasks.ping.models.fake]
 model = "recorded"
+
+# Resume facts (AI_SYSTEM 4.2): three calls per resume. They carry resume lines with contact details masked, so the data
+# class is identified. OpenAI has no route here: its retention terms are not checked (see its retention_note), so it
+# does not receive identified data. The Anthropic prices are the ping task's, for the same model and the same date: a
+# resume is far under the 100k-token tier.
+[tasks."resume.facts.roles"]
+description = "Finds the jobs, achievements and projects in a resume, by line number."
+data_class = "identified"
+max_tokens = 8000       # assumption (AI_SYSTEM 2.2)
+timeout_seconds = 40    # assumption (AI_SYSTEM 2.2)
+
+[tasks."resume.facts.roles".models.anthropic]
+model = "claude-haiku-5-5"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-22
+
+[tasks."resume.facts.roles".models.local]
+model = "local-model"   # placeholder: set this to the model name your server runs
+
+[tasks."resume.facts.roles".models.fake]
+model = "recorded"
+
+[tasks."resume.facts.education_skills"]
+description = "Finds the education, skills and certifications in a resume, by line number."
+data_class = "identified"
+max_tokens = 8000       # assumption (AI_SYSTEM 2.2)
+timeout_seconds = 40    # assumption (AI_SYSTEM 2.2)
+
+[tasks."resume.facts.education_skills".models.anthropic]
+model = "claude-haiku-5-5"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-22
+
+[tasks."resume.facts.education_skills".models.local]
+model = "local-model"   # placeholder: set this to the model name your server runs
+
+[tasks."resume.facts.education_skills".models.fake]
+model = "recorded"
+
+[tasks."resume.facts.summary"]
+description = "Finds the candidate's own summary statement in a resume, by line number."
+data_class = "identified"
+max_tokens = 8000       # assumption (AI_SYSTEM 2.2)
+timeout_seconds = 40    # assumption (AI_SYSTEM 2.2)
+
+[tasks."resume.facts.summary".models.anthropic]
+model = "claude-haiku-5-5"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-22
+
+[tasks."resume.facts.summary".models.local]
+model = "local-model"   # placeholder: set this to the model name your server runs
+
+[tasks."resume.facts.summary".models.fake]
+model = "recorded"
