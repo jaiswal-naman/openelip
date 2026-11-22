@@ -1,0 +1,65 @@
+# Which model answers which task, and what it costs (PLT-05; ARCHITECTURE 5.8; AI_SYSTEM 2.2 and 2.12).
+#
+# The gateway reads this file on every call, so an edit needs no code change and no restart.
+# `python -m app.cli models sync` copies it into model_registry; the deploy runs it.
+#
+# The environment picks the provider: LLM_PROVIDER names an entry under [providers] (default "anthropic").
+# "openai_compatible" means any OpenAI-style server: the `local` entry at LLM_BASE_URL when that is set, else `openai`.
+# A provider with no key means "AI disabled" (503 ai_disabled); nothing is called. `fake` is refused in production.
+#
+# Prices are US dollars per million tokens, read from the providers' pricing pages on 2026-11-22 (AI_SYSTEM 2.12).
+# A model that is not local needs both prices and a date. Write "unknown" for a price nobody has checked: the gateway
+# then refuses the route instead of guessing a cost. A local model has no per-token price; its calls cost 0.
+# A task name with dots must be quoted: [tasks."job.requirements.extract"].
+
+[providers.anthropic]
+label = "Anthropic"
+adapter = "anthropic"
+structured_output = "json_schema"
+retention_note = "Provider terms as read on 2026-11-22: real-time calls are not retained by default outside the Covered Models; batch requests are kept 29 days and are not eligible for zero data retention; structured-output schemas are cached up to 24 hours, so they never contain personal data; flagged content may be kept up to 2 years; no training without express permission."
+
+[providers.openai]
+label = "OpenAI"
+adapter = "openai_compatible"
+base_url = "https://api.openai.com/v1"
+structured_output = "json_schema"
+retention_note = "Retention terms not checked. Until they are, this provider carries only public, synthetic and consented evaluation data."
+
+[providers.local]
+label = "Local model server"
+adapter = "openai_compatible"
+base_url = "http://llm:11434/v1"
+structured_output = "json_object"   # Ollama documents JSON mode; its json_schema support is unverified
+token_limit_param = "max_tokens"    # the only limit Ollama's OpenAI-compatible endpoint documents
+is_local = true
+retention_note = "A model server you run yourself. Nothing is sent to a third party."
+
+[providers.fake]
+label = "Recorded responses"
+adapter = "fake"
+is_local = true
+retention_note = "No model is called: answers are replayed from recorded files, so nothing leaves this process."
+
+[tasks.ping]
+description = "Connectivity self-test: one fixed message that carries no personal data."
+data_class = "synthetic"
+max_tokens = 512        # assumption: room for the answer plus any thinking the model bills as output
+timeout_seconds = 30    # assumption
+
+[tasks.ping.models.anthropic]
+model = "claude-haiku-5-5"
+input_usd_per_mtok = 0.10     # prompts up to 100k tokens; ping sends a dozen
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-22
+
+[tasks.ping.models.openai]
+model = "gpt-6-luna"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-22
+
+[tasks.ping.models.local]
+model = "local-model"   # placeholder: set this to the model name your server runs
+
+[tasks.ping.models.fake]
+model = "recorded"
