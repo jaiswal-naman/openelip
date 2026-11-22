@@ -59,7 +59,9 @@ SAMPLE_CHARS = 40
 REASONS = ("tiny_font", "off_page", "overlapped", "text_colour_matches_background", "docx_hidden_run")
 
 _WHITE = (1.0, 1.0, 1.0)
-_LIGATURES = str.maketrans({"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st"})
+_LIGATURES = str.maketrans(
+    {"\ufb00": "ff", "\ufb01": "fi", "\ufb02": "fl", "\ufb03": "ffi", "\ufb04": "ffl", "\ufb05": "st", "\ufb06": "st"}
+)
 _OLE_MAGIC = bytes.fromhex("d0cf11e0a1b11ae1")  # a password-protected DOCX is an OLE file, not a zip
 _MC_FALLBACK = "{http://schemas.openxmlformats.org/markup-compatibility/2006}Fallback"  # a duplicate of a text box
 

@@ -457,7 +457,7 @@ def test_docx_text_in_tables_comes_in_document_order_and_odd_characters_are_clea
     def build(document):
         table = document.add_table(rows=1, cols=2)
         table.cell(0, 0).paragraphs[0].add_run("Left cell: Python, Go and SQL")
-        table.cell(0, 1).paragraphs[0].add_run("Right cell:\tfinance​ team ﬁrst")
+        table.cell(0, 1).paragraphs[0].add_run("Right cell:\tfinance\u200b team \ufb01rst")
         document.add_paragraph("After the table")
 
     result = read_resume(docx(build), DOCX_MIME)

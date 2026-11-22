@@ -14,7 +14,7 @@ is ..."); a model check can be added in front of this table later, never in plac
 
 import re
 
-_LABEL = r"\s*[:=–—-]"  # "Age: 27", "Age - 27", "Age = 27"
+_LABEL = r"\s*[:=\u2013\u2014-]"  # "Age: 27", "Age - 27", "Age = 27"
 
 # Ordered: the first row that matches names the category. Case-insensitive.
 _TABLE: tuple[tuple[str, str], ...] = (

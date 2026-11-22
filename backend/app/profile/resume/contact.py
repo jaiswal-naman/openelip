@@ -28,7 +28,7 @@ _URL_RE = re.compile(
     r"(?:/[^\s<>\"']*)?"
 )
 # Digits with spaces, dots, dashes or brackets between them, an optional leading +. _is_phone() then decides.
-_PHONE_RE = re.compile(r"(?<!\w)(?:\+ ?)?\(?\d[\d  ().-]{5,}\d(?!\w)")
+_PHONE_RE = re.compile(r"(?<!\w)(?:\+ ?)?\(?\d[\d \u00a0().-]{5,}\d(?!\w)")
 _ADDRESS_RE = re.compile(
     r"\b\d{1,5}[A-Za-z]?,?\s+(?:[A-Z][\w'.-]*\s+){1,4}"
     r"(?:Street|St|Road|Rd|Avenue|Ave|Boulevard|Blvd|Lane|Ln|Drive|Dr|Way|Court|Ct|Place|Pl|Marg|Nagar)\b"
