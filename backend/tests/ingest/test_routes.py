@@ -52,7 +52,7 @@ def test_search_returns_open_unique_jobs_in_the_envelope(api_client, index):
     assert _ids(response) == {index["first"]}  # not the closed one, not the duplicate
     assert body["success"] is True and body["error"] is None
     assert body["meta"]["count"] == 1 and body["meta"]["limit"] == 20 and body["meta"]["request_id"].startswith("req_")
-    assert set(body["data"][0]) == JOB_KEYS
+    assert JOB_KEYS <= set(body["data"][0])  # every key it always had; the typed keys came with plan 02-05
 
 
 def test_without_a_query_every_open_unique_job_is_listed(api_client, index):

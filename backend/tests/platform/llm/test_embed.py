@@ -5,12 +5,15 @@ for example on a fresh CI machine). The rest use a stand-in that records what it
 """
 
 import math
+import re
+from pathlib import Path
 
 import pytest
 
 from app.platform.llm import embed
 
 DIMENSIONS = embed.DIMENSIONS
+DOCKERFILE = Path(__file__).resolve().parents[3] / "Dockerfile"
 
 
 def length(vector):
@@ -156,3 +159,12 @@ def test_a_model_with_the_wrong_number_of_dimensions_is_refused_at_load(no_cache
 
     with pytest.raises(embed.EmbeddingUnavailable):  # the vector(384) column would refuse every row
         embed.embed_query("anything")
+
+
+def test_the_image_downloads_the_model_this_code_asks_for():
+    """The Dockerfile names the model once more, to download it when the image is built. The two must not drift apart,
+    or a container would start without the model it asks for."""
+    named = re.search(r"^ARG EMBEDDING_MODEL=(\S+)", DOCKERFILE.read_text(encoding="utf-8"), re.MULTILINE)
+
+    assert named is not None, "backend/Dockerfile must declare ARG EMBEDDING_MODEL"
+    assert named.group(1) == embed.DEFAULT_MODEL

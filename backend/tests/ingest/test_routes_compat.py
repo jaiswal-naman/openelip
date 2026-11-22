@@ -50,7 +50,7 @@ def titles(response):
 
 def test_a_job_has_the_keys_it_had_before_and_is_remote_follows_the_array(api_client, index):
     jobs = api_client.get("/v1/jobs").json()["data"]
-    assert {frozenset(job) for job in jobs} == {frozenset(JOB_KEYS)}
+    assert jobs and all(JOB_KEYS <= set(job) for job in jobs)  # the typed keys came with plan 02-05
     assert {job["title"]: job["is_remote"] for job in jobs} == {
         title: said for title, (_, said) in ARRANGEMENTS.items()
     }

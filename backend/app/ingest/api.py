@@ -5,5 +5,6 @@ app.ingest is part of that interface.
 """
 
 from .normalize import parse_location
+from .search import InvalidCursor, SearchPage, get_job, search
 
-__all__ = ["parse_location"]
+__all__ = ["InvalidCursor", "SearchPage", "get_job", "parse_location", "search"]

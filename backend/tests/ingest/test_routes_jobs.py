@@ -113,11 +113,50 @@ def test_meta_mode_is_keyword_until_jobs_have_vectors_and_hybrid_after(api_clien
 
 def test_the_filters_and_the_limit_reach_the_search(api_client, engine, five):
     with engine.begin() as c:
-        c.execute(text("UPDATE jobs SET country = 'IN', city = 'Pune' WHERE id = :id"), {"id": five[0]})
+        c.execute(
+            text(
+                """UPDATE jobs SET country = 'IN', city = CASE id WHEN :pune THEN 'Pune' ELSE 'Mumbai' END,
+                          work_arrangements = CASE id WHEN :pune THEN '{remote}' ELSE '{onsite}' END::work_arrangement[]
+                    WHERE id IN (:pune, :mumbai)"""
+            ),
+            {"pune": five[0], "mumbai": five[1]},
+        )
 
-    assert [j["id"] for j in get_ok(api_client, "/v1/jobs", country="in", city="pune")["data"]] == [five[0]]
+    def found(**params):
+        return {job["id"] for job in get_ok(api_client, "/v1/jobs", **params)["data"]}
+
+    assert found(country="in") == {five[0], five[1]}
+    assert found(country="in", city="pune") == {five[0]}  # the city narrows within the country
+    assert found(country="IN", remote="true") == {five[0]}
+    assert found(country="IN", remote="false") == {five[1]}
     body = get_ok(api_client, "/v1/jobs", limit=2)
     assert (body["meta"]["count"], body["meta"]["limit"]) == (2, 2) and body["meta"]["next_cursor"] is not None
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"q": "x" * 201},
+        {"city": "x" * 101},
+        {"country": "I"},
+        {"country": "IND"},
+        {"country": "1A"},
+        {"country": "\x00\x00"},
+        {"limit": 0},
+        {"limit": 101},
+    ],
+)
+def test_a_parameter_out_of_range_is_a_422_validation_failed(api_client, five, params):
+    response = api_client.get("/v1/jobs", params=params)
+
+    assert response.status_code == 422 and response.json()["error"]["code"] == "validation_failed"
+
+
+def test_text_typed_into_the_search_box_cannot_make_the_server_fail(api_client, five):
+    """PostgreSQL text cannot hold a NUL character, and anyone can send one."""
+    for params in ({"q": "alpha\x00"}, {"q": "\x00"}, {"q": "alpha", "city": "Pune\x00"}, {"cursor": "\x00"}):
+        response = api_client.get("/v1/jobs", params=params)
+        assert response.status_code in (200, 400), (params, response.status_code)
 
 
 def test_following_the_cursor_returns_every_job_once_in_the_order_of_one_big_page(api_client, five):

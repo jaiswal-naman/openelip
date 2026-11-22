@@ -10,6 +10,9 @@
 # read its digest (docker buildx imagetools inspect <image>:<tag>) and change it below. uv is the version that wrote uv.lock.
 ARG PYTHON_IMAGE=python:3.11.18-slim-bookworm@sha256:a83ba18aef0f865b1a4a611c2cf460fe446f2795673bbb9fe43be570439e3b39
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.10.4@sha256:4cac394b6b72846f8a85a7a0e577c6d61d4e17fe2ccee65d9451a8b3c9efb4ac
+# The embedding model search uses (AI_SYSTEM 3.1). It is downloaded while the image is built and never at run time, so a
+# container works with no network. A test checks that this default is the one app.platform.llm.embed asks for.
+ARG EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
 
 FROM ${UV_IMAGE} AS uv
 
@@ -21,15 +24,24 @@ WORKDIR /srv/backend
 COPY backend/pyproject.toml backend/uv.lock ./
 # --frozen: install exactly what uv.lock says, never re-resolve. --no-dev: no test or lint tools in the image.
 RUN uv sync --frozen --no-dev --no-install-project
+# The embedding model goes into /srv/models. This layer comes before the code, so it is reused until the model name or the
+# locked dependencies change, and the 65 MB download is not repeated on every code change.
+ARG EMBEDDING_MODEL
+RUN FASTEMBED_CACHE_PATH=/srv/models .venv/bin/python -c "import os; from fastembed import TextEmbedding; TextEmbedding(os.environ['EMBEDDING_MODEL'])"
 COPY backend/ ./
 RUN uv sync --frozen --no-dev
 
 # --- runtime: the same base image, the finished environment and the code, run by a user with no shell login
 FROM ${PYTHON_IMAGE} AS runtime
-ENV PATH=/srv/backend/.venv/bin:$PATH PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+ARG EMBEDDING_MODEL
+# HF_HUB_OFFLINE: the model is already in /srv/models, so a missing one fails at once (and search answers by keywords)
+# instead of trying to download it.
+ENV PATH=/srv/backend/.venv/bin:$PATH PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
+    EMBEDDING_MODEL=${EMBEDDING_MODEL} FASTEMBED_CACHE_PATH=/srv/models HF_HUB_OFFLINE=1
 RUN groupadd --system --gid 1001 app && useradd --system --uid 1001 --gid app --no-create-home --shell /usr/sbin/nologin app
 WORKDIR /srv/backend
 COPY --from=build /srv/backend /srv/backend
+COPY --from=build /srv/models /srv/models
 COPY db /srv/db
 COPY data /srv/data
 COPY evals /srv/evals
