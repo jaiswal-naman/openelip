@@ -8,26 +8,83 @@ does not exist yet says so and exits 2.
 
 import argparse
 import sys
+import time
 from collections.abc import Callable, Sequence
 from uuid import UUID
 
 QUEUE_STATUSES = ["queued", "running", "succeeded", "dead"]
+LIST_LIMIT = 100  # `queue list` shows the newest jobs; the scheduler alone adds a job a minute
 
 
 def _queue_list(args: argparse.Namespace) -> None:
-    raise NotImplementedError("plan 01-02")
+    from sqlalchemy import text
+
+    from app.platform import db
+
+    with db.transaction(role="worker") as conn:
+        rows = conn.execute(
+            text(
+                """SELECT id, kind, status, attempts, last_error_code FROM queue_jobs
+                    WHERE CAST(:status AS queue_status) IS NULL OR status = CAST(:status AS queue_status)
+                    ORDER BY id DESC LIMIT :limit"""
+            ),
+            {"status": args.status, "limit": LIST_LIMIT},
+        ).all()
+    print("id      kind                    status     attempts  error_code")
+    for job in rows:
+        print(f"{job.id:<7} {job.kind:<23} {job.status:<10} {job.attempts:<9} {job.last_error_code or ''}")
 
 
 def _queue_retry(args: argparse.Namespace) -> None:
-    raise NotImplementedError("plan 01-02")
+    from sqlalchemy import text
+
+    from app.platform import db
+
+    with db.transaction(role="worker") as conn:
+        found = conn.execute(
+            text(
+                """UPDATE queue_jobs SET status = 'queued', attempts = 0, run_at = now(), last_error_code = NULL,
+                          finished_at = NULL, locked_by = NULL, locked_at = NULL
+                    WHERE id = :id AND status = 'dead' RETURNING id"""
+            ),
+            {"id": args.job_id},
+        ).first()
+    if found is None:
+        raise SystemExit(f"job {args.job_id} is not a dead job")
+    print(f"job {args.job_id} queued again")
 
 
 def _ingest_run(args: argparse.Namespace) -> None:
-    raise NotImplementedError("plan 01-02")
+    from sqlalchemy import text
+
+    from app.platform import db, queue
+
+    slot = f"manual-{int(time.time())}"  # never equal to a scheduled slot, so a manual run is not swallowed by one
+    with db.transaction(role="worker") as conn:
+        source_ids = conn.execute(text("SELECT id FROM job_sources WHERE is_active ORDER BY id")).scalars().all()
+        queued = [
+            queue.enqueue(
+                conn,
+                "ingest.fetch",
+                {"source_id": source_id, "slot": slot},
+                unique_key=f"ingest.fetch:{source_id}:{slot}",
+                queue="ingest",
+            )
+            for source_id in source_ids
+        ]
+    if not source_ids:
+        print("No active sources. Run: python -m app.cli sources discover")
+        return
+    print(f"{sum(job is not None for job in queued)} fetch jobs queued; the worker runs them")
 
 
 def _sources_discover(args: argparse.Namespace) -> None:
-    raise NotImplementedError("plan 01-02")
+    from app.platform import db, queue
+
+    slot = f"manual-{int(time.time())}"
+    with db.transaction(role="worker") as conn:
+        queue.enqueue(conn, "ingest.discover", {}, unique_key=f"ingest.discover:{slot}", queue="ingest")
+    print("discovery queued; the worker runs it")
 
 
 def _outbox_resolve(args: argparse.Namespace) -> None:

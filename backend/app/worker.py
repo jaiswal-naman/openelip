@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from types import FrameType
 
 from app.ingest import jobs  # noqa: F401  (importing it registers the ingest handlers)
-from app.platform import db, log, queue, relay, scheduler
+from app.platform import config, db, log, queue, relay, scheduler
 
 POLL_SECONDS = 1
 
@@ -22,17 +22,24 @@ def main() -> None:
     def request_stop(signum: int, frame: FrameType | None) -> None:
         stop.set()
 
+    # Ctrl+C raises KeyboardInterrupt in the main thread on every platform; SIGTERM is what `docker stop` sends.
     signal.signal(signal.SIGTERM, request_stop)
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
+    queues = config.get().worker_queues  # empty means every queue
     log.event("worker.started")
     try:
         while not stop.is_set():
-            with db.transaction(role="worker") as conn:
-                scheduler.tick(conn, datetime.now(timezone.utc))
-            queue.run_once(lambda: db.transaction(role="worker"), worker_id)
-            with db.transaction(role="worker") as conn:
-                relay.relay_once(conn)
-            stop.wait(POLL_SECONDS)
+            ran = 0
+            try:
+                with db.transaction(role="worker") as conn:
+                    scheduler.tick(conn, datetime.now(timezone.utc))
+                ran = queue.run_once(lambda: db.transaction(role="worker"), worker_id, queues)
+                with db.transaction(role="worker") as conn:
+                    relay.relay_once(conn)
+            except Exception as error:  # a database restart or a bad pass must not end the worker; log and go on
+                log.event("worker.error", error=error)
+            if not ran:
+                stop.wait(POLL_SECONDS)  # a pass that ran a job goes straight on to the next one
     except KeyboardInterrupt:
         pass
     log.event("worker.stopped")
