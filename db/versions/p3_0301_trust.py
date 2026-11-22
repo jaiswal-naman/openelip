@@ -81,10 +81,12 @@ CREATE POLICY candidate_own ON consents TO app_api
   WITH CHECK (user_id = app_user_id() AND app_agent_token_id() IS NULL);
 CREATE POLICY worker_all ON consents TO app_worker USING (true) WITH CHECK (true);
 
+-- DATA_MODEL 5.3 checks only user_id here. erase_user trusts a deletion request's subject, so the API role may also
+-- write only requests whose subject is the person it acts for: it cannot open a request that erases someone else.
 ALTER TABLE data_requests ENABLE ROW LEVEL SECURITY;
 CREATE POLICY candidate_own ON data_requests TO app_api
   USING (user_id = app_user_id() AND app_agent_token_id() IS NULL)
-  WITH CHECK (user_id = app_user_id() AND app_agent_token_id() IS NULL);
+  WITH CHECK (user_id = app_user_id() AND subject_user_id = app_user_id() AND app_agent_token_id() IS NULL);
 CREATE POLICY worker_all ON data_requests TO app_worker USING (true) WITH CHECK (true);
 
 GRANT SELECT, INSERT ON consents TO app_api, app_worker;

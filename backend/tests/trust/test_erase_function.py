@@ -258,6 +258,23 @@ def test_a_request_is_completed_only_with_a_completion_time(conn):
         )
 
 
+def test_the_api_role_cannot_open_a_request_that_erases_someone_else(conn):
+    """erase_user trusts a request's subject, so the policy checks it as well as user_id (T-3-03)."""
+    ada, bob = seed_person(conn, "ada"), seed_person(conn, "bob")
+    forged = """INSERT INTO data_requests (user_id, subject_user_id, kind, due_at)
+                VALUES (:u, :s, 'deletion', now() + interval '30 days')"""
+    act_as(conn, "app_api", ada.user)
+    with refused(conn):
+        run(conn, forged, u=ada.user, s=bob.user)  # mine, but about Bob
+    with refused(conn):
+        run(conn, forged, u=bob.user, s=bob.user)  # Bob's own request, written by Ada
+    mine = open_request(conn, ada.user)  # an honest request is fine
+    with refused(conn):
+        run(conn, "UPDATE data_requests SET subject_user_id = :s WHERE id = :r", s=bob.user, r=mine)
+    conn.execute(text("RESET ROLE"))
+    assert count(conn, "data_requests WHERE subject_user_id = :u", u=bob.user) == 0
+
+
 def test_a_person_sees_only_their_own_requests(conn):
     ada, bob = seed_person(conn, "ada"), seed_person(conn, "bob")
     open_request(conn, ada.user)
