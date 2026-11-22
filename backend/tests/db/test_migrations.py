@@ -5,8 +5,9 @@ from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import make_url
 
 # What information_schema must show after `alembic upgrade head`, as "column udt_name" ("?" marks a nullable column).
-# Transcribed by hand from DATA_MODEL 3.3, 3.7 and 3.13 (the Phase 1 tables) and from the old db/schema.sql (the three
-# adopted job tables), so a change to either side that the other does not follow fails here. Not autogenerate.
+# Transcribed by hand from DATA_MODEL 3.3, 3.7 and 3.13 (the Phase 1 tables), 3.3 again for the trust tables that plan
+# 03-01 added (consents, audit_log, data_requests) and from the old db/schema.sql (the three adopted job tables), so a
+# change to either side that the other does not follow fails here. Not autogenerate.
 EXPECTED = {
     "users": """
         id uuid; email text; display_name text?; status user_status; is_synthetic bool; timezone text
@@ -57,6 +58,17 @@ EXPECTED = {
     "fetch_runs": """
         id int8; source_id int8; started_at timestamptz; finished_at timestamptz?; status text; http_status int4?
         jobs_seen int4; jobs_new int4; jobs_changed int4; jobs_closed int4; error text?""",
+    "consents": """
+        id uuid; user_id uuid; purpose consent_purpose; action consent_action; withdraws_id uuid?
+        organization_id uuid?; role_id uuid?; text_version text; created_at timestamptz""",
+    "audit_log": """
+        id int8; created_at timestamptz; event_type text; actor_type actor_type; actor_user_id uuid?
+        subject_user_id uuid?; organization_id uuid?; agent_token_id uuid?; entity_table text?; entity_id text?
+        details jsonb""",
+    "data_requests": """
+        id uuid; user_id uuid?; subject_user_id uuid; kind data_request_kind; status data_request_status
+        due_at timestamptz; export_archive bytea?; export_expires_at timestamptz?; store_results jsonb
+        created_at timestamptz; completed_at timestamptz?""",
 }
 
 
