@@ -64,7 +64,8 @@ pair counts as a true positive when equal and as a false positive and a false ne
 adds false positives and an unpaired truth fact false negatives. `kind` counts as one field of every fact. F1 is
 `2 * tp / (2 * tp + fp + fn)` from whole numbers, so a replay gives the same score on every machine.
 
-- `score` (what the gate reads) and `f1_overall`: all fields.
+- `score` (what the gate reads) and `f1_overall`: all fields. The gate's "N of 120 items" counts the resumes with no
+  error at all; the score is not that fraction.
 - `f1_employer_title_dates`: employer, title, start date and end date alone.
 - `f1_by_slice`: the three layouts.
 - `quote_exact_share`: the share of kept facts whose `source_quote` equals the text at their `source_span`. It must be
