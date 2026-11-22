@@ -223,6 +223,12 @@ def _background(
     return _WHITE
 
 
+def _font_size(char: dict[str, Any]) -> float:
+    """The font size: the character's box across its baseline. pdfplumber's own `size` is the glyph's advance for
+    sideways text, which would make every narrow letter of a rotated line look tiny."""
+    return char["height"] if char["upright"] else char["width"]
+
+
 def _char_reasons(
     char: dict[str, Any], box: tuple[float, float, float, float], shapes: list[dict[str, Any]]
 ) -> set[str]:
@@ -230,7 +236,7 @@ def _char_reasons(
     cx, cy = (char["x0"] + char["x1"]) / 2, (char["top"] + char["bottom"]) / 2
     if not (box[0] <= cx <= box[2] and box[1] <= cy <= box[3]):
         reasons.add("off_page")
-    if char["size"] < MIN_FONT_PT:
+    if _font_size(char) < MIN_FONT_PT:
         reasons.add("tiny_font")
     fill, behind = _rgb(char.get("non_stroking_color")), _background(shapes, cx, cy, char)
     if fill is not None and behind is not None and _contrast(fill, behind) < MIN_CONTRAST:
@@ -296,14 +302,31 @@ def _pdf_page_lines(page: Any, hidden: _Hidden) -> list[str]:
 
 
 def _rows(chars: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
-    return [sorted(row, key=itemgetter("x0")) for row in cluster_objects(chars, "bottom", ROW_TOLERANCE_PT)]
+    """Upright text: rows from top to bottom, each from left to right. Sideways text (a rotated title, or a page shown
+    on its side): each line is a column of characters, read the way it runs, the lines in the order they stack."""
+    upright = [c for c in chars if c["upright"]]
+    rows = [sorted(row, key=itemgetter("x0")) for row in cluster_objects(upright, "bottom", ROW_TOLERANCE_PT)]
+    sideways = [c for c in chars if not c["upright"]]
+    for reads_down in (True, False):  # the text matrix says which way a line runs
+        turned = [c for c in sideways if (c["matrix"][1] < 0) == reads_down]
+        columns = cluster_objects(turned, "x0", ROW_TOLERANCE_PT)
+        columns.sort(key=lambda column: column[0]["x0"], reverse=reads_down)  # lines stack leftward when reading down
+        rows += [sorted(column, key=itemgetter("top"), reverse=not reads_down) for column in columns]
+    return rows
+
+
+def _gap(previous: dict[str, Any], c: dict[str, Any]) -> float:
+    """The empty space between two neighbours of a row, measured along the way the row runs."""
+    if c["upright"]:
+        return float(c["x0"] - previous["x1"])
+    return float(max(c["top"] - previous["bottom"], previous["top"] - c["bottom"]))
 
 
 def _row_text(row: list[dict[str, Any]]) -> str:
     parts: list[str] = []
     previous = None
     for c in row:
-        if previous is not None and c["x0"] - previous["x1"] > WORD_GAP_EM * previous["size"]:
+        if previous is not None and _gap(previous, c) > WORD_GAP_EM * _font_size(previous):
             parts.append(" ")
         parts.append(c["text"])
         previous = c

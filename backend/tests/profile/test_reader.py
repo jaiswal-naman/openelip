@@ -172,6 +172,41 @@ def test_right_aligned_dates_stay_on_their_line_in_a_single_column():
     ]
 
 
+def on_its_side(rotation: int) -> Draw:
+    """Upright content on a page marked /Rotate: it is shown turned, so its characters are sideways."""
+
+    def draw(c):
+        c.setPageRotation(rotation)
+        write(BODY, x=40, top=560, step=14, size=9)(c)
+
+    return draw
+
+
+@pytest.mark.parametrize("rotation", [90, 270])
+def test_a_page_shown_on_its_side_is_read_line_by_line_and_is_not_taken_for_tiny_text_or_a_scan(rotation):
+    result = read_resume(pdf(on_its_side(rotation)), PDF_MIME)
+
+    assert texts(result) == BODY
+    assert not result.hidden.found and not result.scanned
+
+
+@pytest.mark.parametrize("angle", [90, 270])
+def test_a_rotated_title_beside_upright_text_is_read_as_one_line(angle):
+    def with_a_turned_title(c):
+        write(BODY, x=80)(c)
+        c.saveState()
+        c.translate(*((40, 300) if angle == 90 else (60, 520)))
+        c.rotate(angle)
+        c.setFont("Helvetica", 12)
+        c.drawString(0, 0, "CURRICULUM VITAE OF AVERY")
+        c.restoreState()
+
+    result = read_resume(pdf(with_a_turned_title), PDF_MIME)
+
+    assert set(texts(result)) == {*BODY, "CURRICULUM VITAE OF AVERY"}
+    assert not result.hidden.found
+
+
 # --- hidden text in a PDF ------------------------------------------------------------------------------------------
 
 HIDDEN = "kubernetes golang rust"  # 20 characters without the spaces
@@ -316,6 +351,21 @@ def test_a_hidden_space_under_a_visible_letter_does_not_split_the_word():
 
     assert "SeniorEngineer" in texts(result)
     assert result.hidden.reasons == ["overlapped"]
+
+
+@pytest.mark.parametrize(("points", "flagged"), [(3.9, True), (4, False)])
+def test_the_font_size_of_sideways_text_is_judged_across_its_baseline(points, flagged):
+    def small_and_sideways(c):
+        c.setPageRotation(90)
+        write(BODY, x=40, top=560, step=14, size=9)(c)
+        c.setFont("Helvetica", points)
+        c.drawString(40, 400, HIDDEN)
+
+    result = read_resume(pdf(small_and_sideways), PDF_MIME)
+
+    assert result.hidden.found is flagged
+    assert (result.hidden.samples == [HIDDEN]) is flagged
+    assert (HIDDEN in texts(result)) is not flagged
 
 
 def test_reasons_use_the_fixed_vocabulary_in_its_order():

@@ -62,4 +62,6 @@ one does, the test goes red and the marker is removed on purpose.
 - DOCX text inside a table cell or a text box with no readable shading is not judged on colour: its fill can come from a
   table style or a drawing shape, and guessing would delete legitimate sidebars.
 - Gradient fills are not read. A PDF page with more than 500 filled shapes skips the colour check.
-- One gutter, so two columns. Three columns, rotated text and gutters under 10 pt are read row by row.
+- One gutter, so two columns. Three columns and gutters under 10 pt are read row by row.
+- Text turned by 90 or 270 degrees (a rotated title, a page shown on its side) is read as lines in the direction it
+  runs. Text turned by any other angle is not read in order.
