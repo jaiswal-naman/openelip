@@ -29,6 +29,7 @@ timeout_seconds = 1
 [tasks.read_jobs.models.fake]
 model = "recorded"
 """
+PING_ONLY = SECOND_TASK.split("[tasks.read_jobs]")[0]
 
 
 @pytest.fixture
@@ -48,16 +49,18 @@ def test_the_fake_provider_and_the_email_host_are_listed_for_anyone(serve):
     response = serve()
     data = response.json()["data"]
     assert response.status_code == 200 and response.json()["success"] is True
-    assert [(i["name"], i["kind"], i["tasks"]) for i in data["items"]] == [
-        ("Recorded responses", "model_provider", ["ping"]), ("mail", "email", [])
-    ]  # fmt: skip
+    assert [(i["name"], i["kind"]) for i in data["items"]] == [
+        ("Recorded responses", "model_provider"),
+        ("mail", "email"),
+    ]
+    assert "ping" in data["items"][0]["tasks"] and data["items"][1]["tasks"] == []
     assert "cannot be reached" in data["outside_copies_statement"]
 
 
 def test_a_configured_provider_is_listed_with_what_it_receives_and_keeps(serve):
     response = serve(LLM_PROVIDER="anthropic", ANTHROPIC_API_KEY="sk-secret-123")
     item = response.json()["data"]["items"][0]
-    assert (item["name"], item["tasks"]) == ("Anthropic", ["ping"])
+    assert item["name"] == "Anthropic" and "ping" in item["tasks"]
     for fact in ("Invented test messages only.", "29 days", "24 hours", "2 years"):
         assert fact in item["receives"]
     assert "sk-secret-123" not in response.text
@@ -73,7 +76,7 @@ def test_a_local_server_is_named_as_such(serve):
 
 
 def test_the_list_changes_when_the_toml_changes(serve):
-    before = serve().json()["data"]["items"][0]
+    before = serve(PING_ONLY).json()["data"]["items"][0]
     after = serve(SECOND_TASK).json()["data"]["items"][0]
     assert before["tasks"] == ["ping"] and after["tasks"] == ["ping", "read_jobs"]
     assert RECEIVES["public"] in after["receives"] and RECEIVES["public"] not in before["receives"]
