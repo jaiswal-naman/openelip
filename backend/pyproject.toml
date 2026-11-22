@@ -18,6 +18,8 @@ dependencies = [
   "prometheus-client==0.26.0",  # ARCHITECTURE 3.6
   "opentelemetry-api>=1.30",
   "opentelemetry-sdk>=1.30",
+  "fastembed==0.9.1",  # ARCHITECTURE 3.6: local embeddings (ONNX Runtime, no PyTorch)
+  "geonamescache==3.0.2",  # offline place-name gazetteer for the location parser (plan 02-04)
 ]
 
 [dependency-groups]
