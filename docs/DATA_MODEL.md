@@ -377,7 +377,7 @@ CREATE TYPE queue_status        AS ENUM ('queued', 'running', 'succeeded', 'dead
 CREATE TYPE eval_suite          AS ENUM ('resume_extraction', 'requirement_extraction', 'evidence_faithfulness',
                                          'tailoring_integrity', 'matching_benchmark', 'injection',
                                          'constraint_property', 'wind_tunnel', 'record_proposals', 'chat',
-                                         'dossier', 'twin', 'guardian', 'agent_drafts');
+                                         'dossier', 'twin', 'guardian', 'agent_drafts', 'harness_smoke');
 CREATE TYPE eval_status         AS ENUM ('running', 'passed', 'failed', 'error');
 CREATE TYPE sim_persona         AS ENUM ('silent', 'lowball', 'scam', 'hidden_instruction', 'cooperative');
 CREATE TYPE sim_run_status      AS ENUM ('running', 'passed', 'failed', 'error');
