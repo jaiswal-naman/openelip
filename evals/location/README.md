@@ -16,6 +16,8 @@ a report must say "labels drafted by an agent, review pending". The review is al
 | `GUIDELINE.md` | The labelling rules with worked examples, and the decisions made while labelling. |
 | `sample.jsonl` | 400 rows: `id, split, ats, board, external_id, location_raw, country_hint, remote_hint, label_country, label_city, labeller`. |
 | `build_sample.py` | Draws the sample from the live boards (build) or validates the committed file (`--check`). |
+| `score.py` | The `location_accuracy` suite: runs `parse_location` over a split, scores it, and records the run. |
+| `baseline.json` | The one recorded run on the test split, written by `score.py --record --report`. |
 
 `location_raw`, `country_hint` and `remote_hint` are what the board published. `label_country` is an ISO 3166-1 alpha-2
 code or null. `label_city` is a city name or null. Null means the inputs do not say.
@@ -74,10 +76,51 @@ or rules against the test split is not allowed (AI_SYSTEM 12.1, rule 3), and a f
 patched around. If review finds a wrong label, correct the label, say so in the commit message, and re-run; never change
 the code to fit a label.
 
+## Pre-registered bars
+
+Written on 2026-11-23, before any run of `score.py` on the test split (AI_SYSTEM 12.1: fix the metric and the bar
+before the run; a changed bar is a new, dated pre-registration).
+
+On the 300 test rows, both must hold:
+
+- `location_accuracy >= 0.95`. A row is correct when the predicted country equals `label_country` and the predicted
+  city equals `label_city`. Cities are compared through GeoNames' names and alternate names (the suite's own reading of
+  GeoNames, apart from the parser's tables), so "Bengaluru" matches the label "Bangalore" and "New York City" matches
+  "New York". A null equals a null and nothing else.
+- `location_guessed == 0`. A row is guessed when a label is null and the parser returned a value for it. Rows are
+  counted, not fields.
+
+Reported with counts and a 95% Wilson interval, always beside the words "labels drafted by an agent, review pending":
+no figure from this sample is final until the maintainer has reviewed 60 of the 300 test rows. One recorded run, read
+once; a miss is reported as a miss and the code is not tuned against these rows.
+
+**What the guessed bar can and cannot show.** Only 6 of the 300 test rows are labelled null for both country and city,
+so `location_guessed = 0` on them is weak evidence: with zero guesses in 6 attempts the 95% upper bound on the guess rate
+is about 3/6 (AI_SYSTEM 12.1, rule 2). Rows with a country but a null city ("Remote - United States") are further
+chances to guess a city, and the report counts them, but no row names an ambiguous city with nothing to settle it, so
+that branch of the parser is covered by `backend/tests/ingest/test_location.py` and not by this data. Read the guessed
+bar as "no guess on the strings the sample holds", not as a rate.
+
+The harness gate reads `metrics.score`, so for this suite `score` is the accuracy, or 0 when any row was guessed; the
+honest numbers are `location_accuracy` and `location_guessed`. The floor is in `evals/thresholds.toml`.
+
 ## Commands
 
 ```
 uv run --project backend python evals/location/build_sample.py --check   # offline, validates sample.jsonl
+uv run --project backend python evals/location/score.py --split dev      # development rows, with every miss
 ```
+
+The test split, recorded (needs a migrated database; never the live one):
+
+```
+DATABASE_URL_WORKER=postgresql://app_worker:...@127.0.0.1:5433/<name>_test \
+  uv run --project backend python evals/location/score.py --record --report evals/location/baseline.json
+cd backend && python -m app.evals gate location_accuracy --run <the run id it printed>
+```
+
+`score.py` is not in the `SUITES` table of `backend/app/evals/runner.py`: that table is for suites replayed through a
+model, and this one calls none, so `python -m app.evals run` does not know it. `score.py --record` writes the same
+tables, and `gate` judges the run from them.
 
 Building needs the internet and a read-only `DATABASE_URL`, and refuses to run while `sample.jsonl` exists.

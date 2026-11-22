@@ -1223,6 +1223,7 @@ Used in `eval_runs.metrics`, `eval_items` and on the scoreboard.
 |---|---|
 | `resume_field_f1`, `resume_lines_resolved` | Resume extraction |
 | `hidden_text_recall`, `visible_text_removed_rate` | Hidden text |
+| `location_accuracy`, `location_guessed` | Location parsing (IDX-06) |
 | `req_item_f1`, `req_importance_accuracy`, `req_run_agreement` | Requirement extraction |
 | `evidence_faithful_rate`, `false_met_required_rate`, `citation_reject_rate` | Evidence faithfulness, production |
 | `tailor_unsupported_passed`, `tailor_discard_rate` | Tailoring integrity |
