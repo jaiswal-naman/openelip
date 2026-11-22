@@ -1,1 +1,88 @@
-"""Queue handlers for ingest.fetch and ingest.discover (plan 01-02 implements them; ARCHITECTURE 12 step 4)."""
+"""Queue handlers for the job index: ingest.fetch (one source), ingest.dedupe, ingest.discover (ARCHITECTURE 12.4).
+
+Each source is its own job, so a slow or failing board delays only itself and a repeat of the same slot is a no-op
+(unique key ingest.fetch:{source_id}:{slot}). A fetch that fails or comes back empty is not a failed job: it is a
+fetch_runs row with its status, and the jobs already stored stay open (the foundation rule, unchanged). The scheduled
+six-hour refresh is Phase 2 (IDX-07) and is not registered here.
+"""
+
+import asyncio
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+import httpx
+from sqlalchemy import Connection, text
+
+from app.platform import log
+from app.platform.queue import enqueue, handler
+
+from . import discover
+from .adapters import URLS, fetch_postings
+from .fetch import mark_duplicates, store
+
+# The first fetch of a slot queues the slot's one dedupe job, this long after, so most of the batch is in by then.
+# ponytail: a fixed wait. Enqueue it from the last fetch of the slot once the slot's job count is tracked.
+DEDUPE_DELAY = timedelta(minutes=10)
+
+
+async def fetch_feed(ats: str, token: str) -> tuple[str, int | None, list[dict[str, Any]] | None, str | None]:
+    """The existing adapter call. It refuses any ats or token outside the three fixed hosts before it touches the
+    network, and it never follows a redirect."""
+    async with httpx.AsyncClient(follow_redirects=False) as client:
+        return await fetch_postings(client, ats, token)
+
+
+@handler("ingest.fetch")
+def fetch_source(conn: Connection, payload: dict[str, Any]) -> None:
+    source_id = payload["source_id"]
+    source = conn.execute(
+        text("SELECT ats, token, company_name FROM job_sources WHERE id = :id AND is_active"), {"id": source_id}
+    ).one_or_none()
+    if source is None:
+        return  # deactivated after the job was queued: nothing to fetch
+    status, http_status, postings, error = asyncio.run(fetch_feed(source.ats, source.token))
+    counts: dict[str, Any] = {"seen": 0, "new": 0, "changed": 0, "closed": 0}
+    if status == "ok":
+        counts = store(conn, source_id, source.company_name, postings or [])
+        status = counts.pop("status")
+    conn.execute(
+        text(
+            """INSERT INTO fetch_runs (source_id, finished_at, status, http_status, jobs_seen, jobs_new, jobs_changed,
+                                       jobs_closed, error)
+               VALUES (:source_id, now(), :status, :http_status, :seen, :new, :changed, :closed, :error)"""
+        ),
+        {"source_id": source_id, "status": status, "http_status": http_status, "error": error, **counts},
+    )
+    conn.execute(
+        text("UPDATE job_sources SET last_fetched_at = now(), last_status = :status WHERE id = :id"),
+        {"status": status, "id": source_id},
+    )
+    log.event("ingest.fetch", source_id=source_id, status=status, http_status=http_status, error_code=error, **counts)
+    slot = payload["slot"]
+    enqueue(
+        conn,
+        "ingest.dedupe",
+        {"slot": slot},
+        unique_key=f"ingest.dedupe:{slot}",
+        queue="ingest",
+        run_at=datetime.now(timezone.utc) + DEDUPE_DELAY,
+    )
+
+
+@handler("ingest.dedupe")
+def dedupe(conn: Connection, payload: dict[str, Any]) -> None:
+    log.event("ingest.dedupe", folded=mark_duplicates(conn))
+
+
+@handler("ingest.discover")
+def discover_sources(conn: Connection, payload: dict[str, Any]) -> None:
+    tokens = discover.candidate_tokens()
+    found = asyncio.run(discover.find_live_boards(tokens))
+    discover.register(conn, found)
+    log.event(
+        "ingest.discover",
+        candidates=len(tokens),
+        live_boards=len(found),
+        postings=sum(board[3] for board in found),
+        **{ats: sum(1 for board in found if board[0] == ats) for ats in URLS},
+    )
