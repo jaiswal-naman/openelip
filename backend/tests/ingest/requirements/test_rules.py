@@ -6,6 +6,7 @@ The postings in this file are invented for the tests. Acme Robotics is not a rea
 import pytest
 
 from app.ingest.requirements.rules import extract
+from app.ingest.requirements.validate import MAX_REQUIREMENTS
 
 POSTING = """\
 Acme Robotics builds robot arms.
@@ -58,6 +59,13 @@ def test_any_leading_bullet_mark_is_left_out_of_the_span(mark):
     description = f"Requirements\n{mark}Python"
     (row,) = extract(description)
     assert (row.text, description[row.start : row.end]) == ("Python", "Python")
+
+
+def test_the_rows_obey_the_same_cap_as_the_validators():
+    description = "Requirements\n" + "\n".join(f"Skill number {i}" for i in range(MAX_REQUIREMENTS + 5))
+    rows = extract(description)
+    assert [r.text for r in rows] == [f"Skill number {i}" for i in range(MAX_REQUIREMENTS)]
+    assert [r.ordinal for r in rows] == list(range(1, MAX_REQUIREMENTS + 1))
 
 
 def test_a_posting_with_no_recognised_heading_returns_nothing():

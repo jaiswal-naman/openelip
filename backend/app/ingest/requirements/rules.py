@@ -9,7 +9,7 @@ from typing import Literal
 
 from .schema import Importance, Kind
 from .segment import segments
-from .validate import MAX_YEARS, RequirementRow
+from .validate import MAX_REQUIREMENTS, MAX_YEARS, RequirementRow
 
 Heading = Literal["required", "preferred", "stop"]  # stop: duties, pay, company text; it ends a requirement list
 
@@ -100,4 +100,4 @@ def extract(description: str) -> list[RequirementRow]:
             years = _years(text)
             importance: Importance = "preferred" if section == "preferred" or _SOFT.search(text) else "required"
             rows.append(RequirementRow(len(rows) + 1, importance, _kind(text, years), text, start, segment.end, years))
-    return rows
+    return rows[:MAX_REQUIREMENTS]  # the same cap, by position, as the validator's
