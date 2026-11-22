@@ -7,10 +7,8 @@ carry the setting into the next request (ARCHITECTURE 7.2).
 
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any
 from uuid import UUID
 
-import psycopg
 from sqlalchemy import Connection, Engine, create_engine, text
 from sqlalchemy.engine import make_url
 
@@ -38,8 +36,3 @@ def transaction(user_id: UUID | None = None, role: Role = "api") -> Iterator[Con
         connection.execute(text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(user_id or "")})
         yield connection
         connection.commit()
-
-
-def connect(role: Role = "worker") -> "psycopg.Connection[Any]":
-    """A plain psycopg connection, for ingest code that has not moved to SQLAlchemy text() yet (plan 01-02)."""
-    return psycopg.connect(config.get().database_url(role))
