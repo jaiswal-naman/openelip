@@ -1,5 +1,6 @@
 """Queue handlers for the job index: ingest.fetch (one source), ingest.dedupe, ingest.discover (ARCHITECTURE 12.4),
-and ingest.fetch_sweep, which queues the refresh every six hours (IDX-07).
+ingest.fetch_sweep, which queues the refresh every six hours (IDX-07), and ingest.embed_sweep, which gives every new or
+changed job its vector every five minutes (IDX-04).
 
 Each source is its own job, so a slow or failing board delays only itself and a repeat of the same slot is a no-op
 (unique key ingest.fetch:{source_id}:{slot}). A fetch that fails or comes back empty is not a failed job: it is a
@@ -17,13 +18,17 @@ from app.platform import log
 from app.platform.queue import enqueue, handler
 from app.platform.scheduler import every
 
-from . import discover
+from . import discover, embedding
 from .adapters import URLS, fetch_postings
 from .fetch import mark_duplicates, store
 
 # How often every active source is fetched. ARCHITECTURE 5.3 (an assumption to tune after measuring).
 FETCH_EVERY_HOURS = 6
 FETCH_PERIOD_SECONDS = FETCH_EVERY_HOURS * 3600
+
+# How often the jobs that have no vector yet are embedded. An assumption to tune after measuring.
+EMBED_EVERY_MINUTES = 5
+every("ingest.embed_sweep", EMBED_EVERY_MINUTES * 60)(embedding.embed_sweep)
 
 # The first fetch of a slot queues the slot's one dedupe job, this long after, so most of the batch is in by then.
 # ponytail: a fixed wait. Enqueue it from the last fetch of the slot once the slot's job count is tracked.

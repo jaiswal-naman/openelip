@@ -40,14 +40,15 @@ class RecordingModel:
 
 @pytest.fixture
 def no_cached_model():
-    """Every test that swaps the model starts and ends with nothing remembered about loading it."""
+    """Every test that swaps the model starts and ends with nothing remembered about loading it. A test asks for it
+    before `monkeypatch`, so the patch is undone first and the real cached function is the one that is cleared."""
     embed._model.cache_clear()
     yield
     embed._model.cache_clear()
 
 
 @pytest.fixture
-def stand_in(monkeypatch, no_cached_model):
+def stand_in(no_cached_model, monkeypatch):
     model = RecordingModel()
     monkeypatch.setattr(embed, "_model", lambda: model)
     return model
@@ -106,7 +107,7 @@ class BrokenModel:
         raise RuntimeError("the runtime gave up")
 
 
-def test_a_model_that_fails_while_running_is_unavailable_too(monkeypatch, no_cached_model):
+def test_a_model_that_fails_while_running_is_unavailable_too(no_cached_model, monkeypatch):
     monkeypatch.setattr(embed, "_model", lambda: BrokenModel())
 
     with pytest.raises(embed.EmbeddingUnavailable):
@@ -115,7 +116,7 @@ def test_a_model_that_fails_while_running_is_unavailable_too(monkeypatch, no_cac
         embed.embed_passages(["anything"])
 
 
-def test_a_model_that_cannot_load_is_unavailable_and_is_not_tried_again(monkeypatch, no_cached_model):
+def test_a_model_that_cannot_load_is_unavailable_and_is_not_tried_again(no_cached_model, monkeypatch):
     import fastembed
 
     attempts = []
@@ -137,14 +138,19 @@ def test_a_model_that_cannot_load_is_unavailable_and_is_not_tried_again(monkeypa
     assert attempts == [embed.MODEL_ID]
 
 
-def test_a_model_with_the_wrong_number_of_dimensions_is_refused_at_load(monkeypatch, no_cached_model):
+def test_a_model_with_the_wrong_number_of_dimensions_is_refused_at_load(no_cached_model, monkeypatch):
     import fastembed
 
     class WrongSize:
+        """A model that works, but makes 768-dimension vectors."""
+
         embedding_size = 768
 
         def __init__(self, name):
             pass
+
+        def embed(self, texts, **options):
+            return iter([[0.0] * 768 for _ in texts])
 
     monkeypatch.setattr(fastembed, "TextEmbedding", WrongSize)
 

@@ -161,14 +161,17 @@ def test_requirements_come_required_first_and_only_for_the_current_version(conn,
         {"d": "Invented posting, rewritten. You need Java.", "id": stale},
     )
     add_job(conn, source, 3, title="Data Engineer", description="Invented posting with no requirements yet.")
+    unmarked = add_job(conn, source, 4, title="Site Engineer", description="Invented posting. You need Linux.")
+    add_requirement(conn, unmarked, 1, "required", "You need Linux")  # rows, but requirements_version is still NULL
 
-    assert embedding.embed_pending(conn) == 3
+    assert embedding.embed_pending(conn) == 4
 
     assert sorted(model.texts) == sorted(
         [
             "Backend Engineer\nYou need Python\nYou also need SQL\nWe prefer Rust",
             "Platform Engineer\nInvented posting, rewritten. You need Java.",  # the old version's rows are not used
             "Data Engineer\nInvented posting with no requirements yet.",
+            "Site Engineer\nInvented posting. You need Linux.",  # requirements count once the job says they are done
         ]
     )
 
@@ -194,6 +197,24 @@ def test_a_vector_is_not_written_over_a_job_that_changed_while_it_was_being_embe
     assert embedding.embed_pending(conn) == 1  # the next sweep picks the new version up
     assert row(conn, job).embedding_model == embed.MODEL_ID
     assert model.batches[-1] == ["Invented title 1\nInvented posting, rewritten by a fetch."]
+
+
+def test_a_vector_that_another_sweep_wrote_first_is_kept(conn, model):
+    source = add_source(conn)
+    job = add_job(conn, source, 1)
+
+    def another_worker_finishes_first():
+        literal = embedding.vector_literal(vector(0.5))
+        conn.execute(
+            text("UPDATE jobs SET embedding = CAST(:v AS vector), embedding_model = 'other-worker' WHERE id = :id"),
+            {"v": literal, "id": job},
+        )
+
+    model.during = another_worker_finishes_first
+    assert embedding.embed_pending(conn) == 0
+
+    assert row(conn, job).embedding_model == "other-worker"
+    assert stored_first_value(conn, job) == 0.5
 
 
 def test_a_sweep_after_everything_is_embedded_writes_nothing_and_does_not_call_the_model(conn, model):
