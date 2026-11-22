@@ -73,7 +73,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [harness_smoke] # later phases add their gold sets here
+        suite: [harness_smoke, resume_extraction] # later phases add their gold sets here
     services:
       db:
         image: pgvector/pgvector:pg17
