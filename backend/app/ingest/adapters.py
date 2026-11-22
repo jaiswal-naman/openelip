@@ -4,7 +4,9 @@ Only these three fixed hosts are ever contacted, so a source token can never
 point the fetcher at an internal address.
 """
 import re
+from collections.abc import Callable
 from datetime import datetime, timezone
+from typing import Any
 
 import httpx
 
@@ -100,7 +102,11 @@ def map_ashby(data: dict) -> list[dict]:
     return out
 
 
-MAPPERS = {"greenhouse": map_greenhouse, "lever": map_lever, "ashby": map_ashby}
+MAPPERS: dict[str, Callable[[Any], list[dict]]] = {
+    "greenhouse": map_greenhouse,
+    "lever": map_lever,
+    "ashby": map_ashby,
+}
 
 
 async def fetch_postings(client: httpx.AsyncClient, ats: str, token: str):

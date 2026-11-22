@@ -1,0 +1,139 @@
+"""Settings, read from the environment (ARCHITECTURE 10.1) and from nothing else.
+
+The defaults are the development values, so a checkout runs with no .env file. They are refused as soon as
+APP_BASE_URL is not a localhost address (ARCHITECTURE 7.4, threat T-01-04). That one check is also what makes a
+missing secret fail on a public deployment: a secret nobody set is the development default, and the development
+default is refused there. .env.example repeats the development values.
+"""
+
+import base64
+import os
+from collections.abc import Mapping
+from dataclasses import dataclass
+from functools import lru_cache
+from typing import Literal
+from urllib.parse import urlsplit
+
+from cryptography.fernet import Fernet
+
+Role = Literal["migrate", "api", "worker"]
+
+# Public, development-only. A Fernet key is 32 bytes, url-safe base64 encoded.
+DEV_DATA_KEY = base64.urlsafe_b64encode(b"openelip-development-only-key-00").decode()
+DEV_LOOKUP_KEY = "openelip-development-lookup-key"
+DEV_LINK_KEY = "openelip-development-link-key"
+DEV_DB_PASSWORDS = ("app_local_only", "app_api_local_only", "app_worker_local_only")
+DEFAULT_DATABASE_URLS: dict[Role, str] = {
+    "migrate": "postgresql://app:app_local_only@127.0.0.1:5433/app",
+    "api": "postgresql://app_api:app_api_local_only@127.0.0.1:5433/app",
+    "worker": "postgresql://app_worker:app_worker_local_only@127.0.0.1:5433/app",
+}
+LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+class ConfigError(RuntimeError):
+    """The environment is unusable; the process should not start."""
+
+
+@dataclass(frozen=True)
+class Settings:
+    app_env: str
+    app_base_url: str
+    product_name: str
+    database_url_migrate: str
+    database_url_api: str
+    database_url_worker: str
+    data_keys: tuple[str, ...]  # primary first; every one decrypts (ARCHITECTURE 7.3)
+    lookup_key: str
+    link_key: str
+    smtp_url: str
+    mail_from: str
+    llm_provider: str
+    anthropic_api_key: str | None
+    openai_api_key: str | None
+    llm_base_url: str | None
+    otel_endpoint: str | None
+    worker_queues: tuple[str, ...]  # empty means every queue
+
+    def database_url(self, role: Role) -> str:
+        return {
+            "migrate": self.database_url_migrate,
+            "api": self.database_url_api,
+            "worker": self.database_url_worker,
+        }[role]
+
+
+def _split(value: str | None) -> tuple[str, ...]:
+    return tuple(part.strip() for part in (value or "").split(",") if part.strip())
+
+
+def is_local(base_url: str) -> bool:
+    return (urlsplit(base_url).hostname or "") in LOCAL_HOSTS
+
+
+def load(environ: Mapping[str, str]) -> Settings:
+    """Build the settings from a mapping, so tests can try any environment without touching the real one."""
+
+    def get(name: str) -> str | None:
+        return environ.get(name) or None
+
+    settings = Settings(
+        app_env=get("APP_ENV") or "development",
+        app_base_url=get("APP_BASE_URL") or "http://localhost:8080",
+        product_name=get("APP_PRODUCT_NAME") or "Open career agent",
+        database_url_migrate=get("DATABASE_URL_MIGRATE") or DEFAULT_DATABASE_URLS["migrate"],
+        database_url_api=get("DATABASE_URL_API") or DEFAULT_DATABASE_URLS["api"],
+        database_url_worker=get("DATABASE_URL_WORKER") or DEFAULT_DATABASE_URLS["worker"],
+        data_keys=_split(get("APP_DATA_KEYS")) or (DEV_DATA_KEY,),
+        lookup_key=get("APP_LOOKUP_KEY") or DEV_LOOKUP_KEY,
+        link_key=get("APP_LINK_KEY") or DEV_LINK_KEY,
+        smtp_url=get("SMTP_URL") or "smtp://mail:1025",
+        mail_from=get("MAIL_FROM") or "no-reply@localhost",
+        llm_provider=get("LLM_PROVIDER") or "anthropic",
+        anthropic_api_key=get("ANTHROPIC_API_KEY"),
+        openai_api_key=get("OPENAI_API_KEY"),
+        llm_base_url=get("LLM_BASE_URL"),
+        otel_endpoint=get("OTEL_EXPORTER_OTLP_ENDPOINT"),
+        worker_queues=_split(get("WORKER_QUEUES")),
+    )
+    _check_keys_are_usable(settings)
+    _refuse_development_secrets_off_localhost(settings)
+    return settings
+
+
+def _check_keys_are_usable(settings: Settings) -> None:
+    for key in settings.data_keys:
+        try:
+            Fernet(key)
+        except ValueError as error:
+            # The key itself is never echoed.
+            raise ConfigError("APP_DATA_KEYS holds a value that is not a Fernet key") from error
+
+
+def _refuse_development_secrets_off_localhost(settings: Settings) -> None:
+    if is_local(settings.app_base_url):
+        return
+    in_use = []
+    if DEV_DATA_KEY in settings.data_keys:
+        in_use.append("APP_DATA_KEYS")
+    if settings.lookup_key == DEV_LOOKUP_KEY:
+        in_use.append("APP_LOOKUP_KEY")
+    if settings.link_key == DEV_LINK_KEY:
+        in_use.append("APP_LINK_KEY")
+    for name, url in (
+        ("DATABASE_URL_MIGRATE", settings.database_url_migrate),
+        ("DATABASE_URL_API", settings.database_url_api),
+        ("DATABASE_URL_WORKER", settings.database_url_worker),
+    ):
+        if urlsplit(url).password in DEV_DB_PASSWORDS:
+            in_use.append(name)
+    if in_use:
+        raise ConfigError(
+            "development secrets are in use while APP_BASE_URL is not a localhost address: " + ", ".join(in_use)
+        )
+
+
+@lru_cache(maxsize=1)
+def get() -> Settings:
+    """The process's settings, read once."""
+    return load(os.environ)

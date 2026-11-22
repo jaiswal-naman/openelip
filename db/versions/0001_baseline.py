@@ -3,6 +3,7 @@
 The statements are all IF NOT EXISTS, so on the live database this revision is stamped rather than run, and running
 it there would change nothing. On an empty database it builds the old shape; both paths then share one history.
 """
+
 from alembic import op
 
 revision = "0001_baseline"
@@ -82,4 +83,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    raise NotImplementedError("0001 is the baseline: going below it would drop the job index and its rows")
+    raise NotImplementedError(
+        "0001 is the baseline: going below it would drop the job index and its rows"
+    )

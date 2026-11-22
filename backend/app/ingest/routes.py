@@ -1,5 +1,7 @@
 """Read API over the job index: /v1/stats and /v1/jobs (API.md 2.4)."""
+
 from fastapi import APIRouter, Query
+from sqlalchemy import text
 
 from app.platform import db
 from app.platform.api import envelope
@@ -9,9 +11,10 @@ router = APIRouter()
 
 @router.get("/v1/stats")
 def stats():
-    with db.connect() as conn:
+    with db.transaction() as conn:
         row = conn.execute(
-            """SELECT count(*) FILTER (WHERE status='open'),
+            text(
+                """SELECT count(*) FILTER (WHERE status='open'),
                       count(*) FILTER (WHERE status='open' AND canonical_job_id IS NULL),
                       count(*) FILTER (WHERE status='open' AND canonical_job_id IS NULL AND country='IN'),
                       count(*) FILTER (WHERE status='open' AND canonical_job_id IS NULL AND is_remote),
@@ -19,9 +22,17 @@ def stats():
                       count(DISTINCT source_id) FILTER (WHERE status='open'),
                       max(last_verified_at)
                FROM jobs"""
-        ).fetchone()
-    keys = ["open_postings", "open_unique_jobs", "open_unique_jobs_india", "open_unique_jobs_remote",
-            "closed_postings", "employers_with_open_jobs", "last_verified_at"]
+            )
+        ).one()
+    keys = [
+        "open_postings",
+        "open_unique_jobs",
+        "open_unique_jobs_india",
+        "open_unique_jobs_remote",
+        "closed_postings",
+        "employers_with_open_jobs",
+        "last_verified_at",
+    ]
     return envelope(dict(zip(keys, row)))
 
 
@@ -34,22 +45,21 @@ def search_jobs(
 ):
     """Keyword search over open, de-duplicated jobs. Results carry no fit claims."""
     where = ["status = 'open'", "canonical_job_id IS NULL"]
-    params: dict = {"q": q, "limit": limit}
+    params: dict = {"limit": limit}
     if q.strip():
-        where.append("search @@ websearch_to_tsquery('english', %(q)s)")
+        where.append("search @@ websearch_to_tsquery('english', :q)")
+        params["q"] = q
     if country:
-        where.append("country = %(country)s")
+        where.append("country = :country")
         params["country"] = country.upper()
     if remote is not None:
-        where.append("is_remote IS NOT DISTINCT FROM %(remote)s")
+        where.append("is_remote IS NOT DISTINCT FROM :remote")
         params["remote"] = remote
-    order = "ts_rank_cd(search, websearch_to_tsquery('english', %(q)s)) DESC, " if q.strip() else ""
+    order = "ts_rank_cd(search, websearch_to_tsquery('english', :q)) DESC, " if q.strip() else ""
     sql = f"""SELECT id, title, company_name, location_raw, country, city, is_remote, apply_url, posted_at,
                      last_verified_at, content_version
-              FROM jobs WHERE {' AND '.join(where)}
-              ORDER BY {order}posted_at DESC NULLS LAST LIMIT %(limit)s"""
-    with db.connect() as conn:
-        cur = conn.execute(sql, params)
-        cols = [c.name for c in cur.description]
-        rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+              FROM jobs WHERE {" AND ".join(where)}
+              ORDER BY {order}posted_at DESC NULLS LAST LIMIT :limit"""
+    with db.transaction() as conn:
+        rows = [dict(row) for row in conn.execute(text(sql), params).mappings()]
     return envelope(rows, count=len(rows), limit=limit)

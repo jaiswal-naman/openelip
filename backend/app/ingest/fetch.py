@@ -4,6 +4,7 @@ Run:  python -m app.ingest.fetch
 """
 import asyncio
 import sys
+from typing import Any
 
 import httpx
 
@@ -29,7 +30,7 @@ def store(conn, source_id: int, company: str, postings: list[dict]) -> dict:
     open_before = conn.execute(
         "SELECT count(*) FROM jobs WHERE source_id = %s AND status = 'open'", (source_id,)
     ).fetchone()[0]
-    counts = {"seen": 0, "new": 0, "changed": 0, "closed": 0}
+    counts: dict[str, Any] = {"seen": 0, "new": 0, "changed": 0, "closed": 0}
     seen_ids = []
     for p in postings:
         if len(p["description"]) < MIN_DESCRIPTION_CHARS:

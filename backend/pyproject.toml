@@ -59,6 +59,7 @@ select = ["E", "F", "I"]
 python_version = "3.11"
 files = ["app"]
 warn_unused_configs = true
+warn_redundant_casts = true  # global-only: mypy refuses it in a per-module section
 
 # Strict on the platform layer. mypy has no per-module "strict" switch, so these are the flags it stands for.
 [[tool.mypy.overrides]]
@@ -73,6 +74,5 @@ disallow_untyped_defs = true
 extra_checks = true
 no_implicit_reexport = true
 strict_equality = true
-warn_redundant_casts = true
 warn_return_any = true
 warn_unused_ignores = true
