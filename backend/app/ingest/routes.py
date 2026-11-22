@@ -1,21 +1,13 @@
-"""Read API over the job index.  Run:  uvicorn app.api:app --port 8000"""
-from fastapi import FastAPI, Query
+"""Read API over the job index: /v1/stats and /v1/jobs (API.md 2.4)."""
+from fastapi import APIRouter, Query
 
-from . import db
+from app.platform import db
+from app.platform.api import envelope
 
-app = FastAPI(title="Open career agent", version="0.1.0")
-
-
-def envelope(data, **meta):
-    return {"success": True, "data": data, "error": None, "meta": meta}
+router = APIRouter()
 
 
-@app.get("/healthz")
-def healthz():
-    return {"ok": True}
-
-
-@app.get("/v1/stats")
+@router.get("/v1/stats")
 def stats():
     with db.connect() as conn:
         row = conn.execute(
@@ -33,7 +25,7 @@ def stats():
     return envelope(dict(zip(keys, row)))
 
 
-@app.get("/v1/jobs")
+@router.get("/v1/jobs")
 def search_jobs(
     q: str = Query("", max_length=200),
     country: str | None = Query(None, min_length=2, max_length=2),

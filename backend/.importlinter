@@ -1,0 +1,39 @@
+[importlinter]
+root_package = app
+include_external_packages = True
+
+# ARCHITECTURE 3.3: a module imports only from lower layers; siblings on one line may not import each other.
+# Layers in parentheses are optional so the contract holds while a module does not exist yet.
+# The composition roots (app.main, app.worker, app.cli) are outside the layers and may import anything.
+[importlinter:contract:layers]
+name = Module layers
+type = layers
+containers =
+    app
+layers =
+    (evals)
+    (chat) | (brief) | (agentnet)
+    (campaigns) | (twin)
+    (hiring) | (apply)
+    (guardian) | (tailor)
+    (match)
+    (ingest) | (profile)
+    (trust)
+    platform
+
+# ARCHITECTURE 3.3 rule 3: only app.platform.llm imports a model provider SDK.
+# The adapters arrive in plan 01-04, so an ignored import that does not exist yet is not an error.
+[importlinter:contract:model-sdks]
+name = Only app.platform.llm imports a model provider SDK
+type = forbidden
+source_modules =
+    app
+forbidden_modules =
+    anthropic
+    openai
+ignore_imports =
+    app.platform.llm -> anthropic
+    app.platform.llm -> openai
+    app.platform.llm.** -> anthropic
+    app.platform.llm.** -> openai
+unmatched_ignore_imports_alerting = none

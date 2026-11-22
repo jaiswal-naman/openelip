@@ -4,7 +4,7 @@ A candidate is registered only if its public endpoint answers 200 with at least 
 Company names are never invented: Greenhouse names come from its own board endpoint; for
 Lever and Ashby, which expose no name, the board name itself is used.
 
-Run:  python -m app.discover
+Run:  python -m app.ingest.discover
 """
 import asyncio
 import sys
@@ -12,10 +12,11 @@ from pathlib import Path
 
 import httpx
 
-from . import db
-from .ats import TOKEN_RE, URLS, USER_AGENT, fetch_postings
+from app.platform import db
 
-CANDIDATES = Path(__file__).resolve().parent.parent / "data" / "seed_candidates.txt"
+from .adapters import TOKEN_RE, URLS, USER_AGENT, fetch_postings
+
+CANDIDATES = Path(__file__).resolve().parents[3] / "data" / "seed_candidates.txt"
 CONCURRENCY = 6
 
 
@@ -29,7 +30,6 @@ async def greenhouse_name(client: httpx.AsyncClient, token: str) -> str | None:
 
 
 async def run() -> None:
-    db.apply_schema()
     tokens = sorted({
         line.strip().lower() for line in CANDIDATES.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.startswith("#") and TOKEN_RE.match(line.strip())

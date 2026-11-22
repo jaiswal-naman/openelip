@@ -1,14 +1,15 @@
 """Fetch every active source, upsert jobs, close jobs that left their feed.
 
-Run:  python -m app.ingest
+Run:  python -m app.ingest.fetch
 """
 import asyncio
 import sys
 
 import httpx
 
-from . import db
-from .ats import fetch_postings
+from app.platform import db
+
+from .adapters import fetch_postings
 from .normalize import content_hash, dedupe_key, parse_location
 
 CONCURRENCY = 6
@@ -92,7 +93,6 @@ def mark_duplicates(conn) -> int:
 
 
 async def run() -> None:
-    db.apply_schema()
     with db.connect() as conn:
         sources = conn.execute("SELECT id, ats, token, company_name FROM job_sources WHERE is_active ORDER BY id").fetchall()
     if not sources:

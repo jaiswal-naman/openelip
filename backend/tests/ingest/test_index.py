@@ -1,6 +1,6 @@
-from app.ats import map_ashby, map_greenhouse, map_lever
-from app.ingest import may_close
-from app.normalize import dedupe_key, html_to_text, parse_location, title_key
+from app.ingest.adapters import map_ashby, map_greenhouse, map_lever
+from app.ingest.fetch import may_close
+from app.ingest.normalize import dedupe_key, html_to_text, parse_location, title_key
 
 
 def test_location_recognises_indian_city_aliases():
