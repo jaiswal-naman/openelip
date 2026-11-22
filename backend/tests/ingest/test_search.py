@@ -190,6 +190,17 @@ def test_each_list_keeps_its_best_two_hundred_jobs(conn, query_vector):
     assert len(found) == search.LIST_DEPTH and len(set(found)) == search.LIST_DEPTH  # the last five are in neither list
 
 
+def test_the_keyword_list_keeps_the_two_hundred_best_matches_not_the_first_two_hundred(conn):
+    source = add_source(conn)
+    for n in range(search.LIST_DEPTH):
+        add_job(conn, source, n, title="Beta", description="Invented posting that mentions alpha once.")
+    strongest = [add_job(conn, source, 1000 + n, title="Alpha") for n in range(5)]  # the last ids, the title matches
+
+    found = pages(conn, 100, q="alpha", mode="keyword")
+
+    assert found[:5] == strongest and len(found) == search.LIST_DEPTH
+
+
 def test_the_constant_is_sixty_so_two_middling_ranks_beat_one_top_rank_but_two_poor_ones_do_not(conn, query_vector):
     """One list's rank 1 scores 1/61. A job at rank 60 in both lists scores 2/120, which is more; at rank 63 in both it
     scores 2/123, which is less. Another k would reverse one of the two."""
@@ -205,6 +216,14 @@ def test_the_constant_is_sixty_so_two_middling_ranks_beat_one_top_rank_but_two_p
     order = ids(run(conn, q="alpha", limit=100))
 
     assert order.index(middling) < order.index(top) < order.index(poor)
+
+
+def test_keyword_mode_puts_a_title_match_above_a_description_match(conn):
+    source = add_source(conn)
+    in_description = add_job(conn, source, 1, title="Beta", description="Invented posting that mentions alpha once.")
+    in_title = add_job(conn, source, 2, title="Alpha")  # a later id, but the title weighs more than the description
+
+    assert ids(run(conn, q="alpha", mode="keyword")) == [in_title, in_description]
 
 
 # --- filters --------------------------------------------------------------------------------------------------------
@@ -251,6 +270,10 @@ def test_the_filters_apply_before_the_ranking_not_after_it(conn, query_vector):
     for n in range(search.LIST_DEPTH + 10):
         add_job(conn, source, n, title="Gamma", country="US", **embedded(vec(0.001 * n)))
     indian = add_job(conn, source, 999, title="Delta", country="IN", **embedded(vec(9.0)))
+    # Give the planner every reason to use the approximate vector index. An index scan returns its few nearest rows
+    # first and filters afterwards, so it would find none of the Indian jobs; the exact scan over the filtered rows
+    # (the materialized eligible set) is what makes this pass.
+    conn.execute(text("SET LOCAL enable_seqscan = off"))
 
     assert ids(run(conn, q="unmatched words", country="IN")) == [indian]  # found by meaning alone, from the far end
 
@@ -316,13 +339,17 @@ def test_a_mode_that_is_neither_hybrid_nor_keyword_is_a_programming_error(conn):
 
 @pytest.fixture
 def six(conn, query_vector):
-    """Six jobs that all match "alpha". The keyword list ranks them 1 to 6 by id; the vector list ranks them 6 to 1, so
-    the fused scores tie in pairs and the order is [1, 6, 2, 5, 3, 4]: a page boundary can fall inside a tie."""
+    """Six jobs that all match "alpha", all in Austin and remote. The keyword list ranks them 1 to 6 by id; the vector
+    list ranks them 6 to 1, so the fused scores tie in pairs and the order is [1, 6, 2, 5, 3, 4]: a page boundary can
+    fall inside a tie."""
     source = add_source(conn)
     return [
-        add_job(conn, source, n, title="Alpha", posted_at=NOW - timedelta(days=n % 3), **embedded(vec(0.1 * (7 - n))))
+        add_job(
+            conn, source, n, title="Alpha", country="US", city="Austin", work_arrangements=["remote"],
+            posted_at=NOW - timedelta(days=n % 3), **embedded(vec(0.1 * (7 - n))),
+        )
         for n in range(1, 7)
-    ]
+    ]  # fmt: skip
 
 
 def pages(conn, limit, **request):
