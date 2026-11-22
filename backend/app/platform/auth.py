@@ -13,13 +13,13 @@ import time
 from collections import deque
 from datetime import datetime, timedelta
 from math import ceil
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import Connection, text
 
 from . import config, db, errors, log, outbox, sessions
@@ -63,6 +63,37 @@ class SessionRequest(BaseModel):
             except (KeyError, ValueError, OSError) as error:  # unknown name, malformed name, a directory
                 raise ValueError("not an IANA time zone name") from error
         return name
+
+
+# The consents a person gives in onboarding and settings (API.md 2.3). introduction and agent_access are recorded by the
+# action that needs them, so they are not here. The consent rules live in app.trust, which this layer may not import:
+# it fills in these types (see `hooks` below).
+ConsentPurpose = Literal["terms", "ai_processing", "brief_email", "open_to_introductions"]
+
+
+class ConsentState(BaseModel):
+    """One consent as GET /v1/me reports it. A purpose that was never granted, or was withdrawn, has granted false."""
+
+    purpose: ConsentPurpose
+    granted: bool
+    granted_at: datetime | None
+    text_version: str | None  # the wording the active grant was given under
+    providers: list[str] | None = None  # ai_processing only: the providers the wording names today
+    current_text_version: str | None = None  # ai_processing only: the version a new grant must carry
+
+
+class ConsentChange(BaseModel):
+    """One consent a person grants or withdraws in PATCH /v1/me. A grant carries the wording version they were shown."""
+
+    purpose: ConsentPurpose
+    granted: bool
+    text_version: str | None = Field(default=None, min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._:-]+$")
+
+    @model_validator(mode="after")
+    def _a_grant_names_its_wording(self) -> Self:
+        if self.granted and self.text_version is None:
+            raise ValueError("text_version is required to grant a consent")
+        return self
 
 
 class Me(BaseModel):
