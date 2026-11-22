@@ -1,0 +1,100 @@
+/*
+ * Ledger tables: hairline rules, no zebra stripes, mono uppercase headers (FRONTEND_UI 5.1).
+ * Under 40rem each row stacks and every cell names itself with its data-label, so nothing scrolls sideways (WCAG 1.4.10).
+ */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.table caption {
+  text-align: start;
+}
+
+.table th,
+.table td {
+  padding: var(--sp-12) var(--sp-16);
+  text-align: start;
+  vertical-align: top;
+  border-block-start: 1px solid var(--line);
+}
+
+.table thead th {
+  border-block-start: 0;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.table tbody th {
+  font-weight: 650;
+}
+
+.table .num {
+  text-align: end;
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.table thead th.num {
+  text-align: end;
+}
+
+@media (max-width: 39.99rem) {
+  .table,
+  .table tbody,
+  .table tr,
+  .table th,
+  .table td {
+    display: block;
+  }
+
+  .table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .table tr {
+    padding: var(--sp-8) 0;
+    border-block-start: 1px solid var(--line);
+  }
+
+  .table tbody tr:first-child {
+    border-block-start: 0;
+  }
+
+  .table th,
+  .table td {
+    padding: var(--sp-4) var(--sp-16);
+    border: 0;
+  }
+
+  .table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: var(--fs-label);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .table .num,
+  .table thead th.num {
+    text-align: start;
+  }
+}

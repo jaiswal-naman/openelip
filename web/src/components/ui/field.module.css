@@ -1,0 +1,68 @@
+/* Text fields: visible label always, hint and error in text beside the field (FRONTEND_UI 5.7 and 7.1). */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0 var(--sp-12);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--fs-body);
+  transition: border-color var(--dur-fast) var(--ease-in);
+}
+
+.input::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.input[data-hovered] {
+  border-color: var(--text);
+}
+
+.input[data-focused] {
+  border-color: var(--focus);
+}
+
+.input[data-invalid] {
+  border-color: var(--bad);
+}
+
+.input[data-disabled] {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--faint);
+}
+
+.hint {
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+.error {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--bad);
+}
+
+/* A mono, spaced field for the six-digit sign-in code */
+.code {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  letter-spacing: 0.3em;
+  font-variant-numeric: tabular-nums;
+}

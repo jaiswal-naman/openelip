@@ -1,0 +1,122 @@
+/*
+ * Design tokens, copied from FRONTEND_UI 5.2 to 5.5. Contrast ratios in the comments were computed for that document
+ * with the WCAG relative-luminance formula; values marked "changed" there failed 4.5:1 for small text and were corrected.
+ * Sizes are in rem so text can be resized to 200% without loss; the pixel value is for a 16px root.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Colour: light */
+  --bg: #f6f3ec;
+  --surface: #fffdf8;
+  --surface-2: #efeadf;
+  --line: #ddd5c4; /* decorative rules and card borders only (1.2 to 1.4:1) */
+  --line-strong: #857a65; /* input and control borders, 3.5:1 or more for non-text */
+  --text: #1b1f24;
+  --muted: #56616d;
+  --faint: #8a929b; /* disabled controls only */
+  --accent: #d9480f; /* brand mark, large accents; not small text (3.9:1) */
+  --accent-strong: #b93d0c; /* small accent text, primary fill with white text (5.62), focus ring */
+  --accent-soft: rgba(217, 72, 15, 0.1);
+  --on-accent: #ffffff;
+  --ok: #0b7550;
+  --warn: #8f5a00;
+  --bad: #b8283a;
+  --info: #1c64d1; /* links and citations */
+  --unk: #5f6873; /* no evidence, not stated, unknown */
+  --focus: var(--accent-strong);
+
+  /* Elevation 0 is a border and no shadow; shadows are only for things that float */
+  --shadow-1: 0 6px 18px -10px rgb(0 0 0 / 0.35);
+  --shadow-2: 0 18px 40px -18px rgb(0 0 0 / 0.5);
+
+  /* Type */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --fs-display: clamp(2rem, 5vw, 3.5rem);
+  --fs-page: 1.5rem;
+  --fs-section: 1.0625rem;
+  --fs-card: 0.90625rem;
+  --fs-body: 0.9375rem;
+  --fs-small: 0.8125rem;
+  --fs-label: 0.71875rem;
+  --fs-data: 0.78125rem;
+  --fs-pill: 0.6875rem;
+
+  /* Space: a 4px base */
+  --sp-2: 0.125rem;
+  --sp-4: 0.25rem;
+  --sp-8: 0.5rem;
+  --sp-12: 0.75rem;
+  --sp-16: 1rem;
+  --sp-20: 1.25rem;
+  --sp-24: 1.5rem;
+  --sp-32: 2rem;
+  --sp-44: 2.75rem;
+  --sp-64: 4rem;
+
+  /* Radius */
+  --r-sm: 0.375rem;
+  --r-md: 0.5rem;
+  --r-lg: 0.75rem;
+  --r-xl: 0.875rem;
+  --r-pill: 999px;
+
+  /* Motion: opacity and transform only, nothing animates layout */
+  --dur-fast: 120ms;
+  --dur-mid: 200ms;
+  --dur-slow: 280ms;
+  --ease-in: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Layout */
+  --header-h: 3.5rem;
+  --content-max: 80rem;
+  --measure: 42rem;
+}
+
+/* Dark follows the system unless the person chose light ... */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0d1015;
+    --surface: #151a21;
+    --surface-2: #1c232c;
+    --line: #29313c;
+    --line-strong: #6b7686;
+    --text: #e8ecf1;
+    --muted: #9ca8b6;
+    --faint: #69747f;
+    --accent: #ff7a45;
+    --accent-strong: #ff7a45;
+    --accent-soft: rgba(255, 122, 69, 0.14);
+    --on-accent: #0d1015; /* white on this orange is 2.59:1 and fails */
+    --ok: #3ddc97;
+    --warn: #f5b53d;
+    --bad: #ff5d6c;
+    --info: #6aa9ff;
+    --unk: #8b95a3;
+  }
+}
+
+/* ... and dark when the person chose it. The same values again: a media query cannot share a selector with an attribute. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d1015;
+  --surface: #151a21;
+  --surface-2: #1c232c;
+  --line: #29313c;
+  --line-strong: #6b7686;
+  --text: #e8ecf1;
+  --muted: #9ca8b6;
+  --faint: #69747f;
+  --accent: #ff7a45;
+  --accent-strong: #ff7a45;
+  --accent-soft: rgba(255, 122, 69, 0.14);
+  --on-accent: #0d1015;
+  --ok: #3ddc97;
+  --warn: #f5b53d;
+  --bad: #ff5d6c;
+  --info: #6aa9ff;
+  --unk: #8b95a3;
+}

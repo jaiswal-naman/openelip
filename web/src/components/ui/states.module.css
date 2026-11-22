@@ -1,0 +1,76 @@
+/* The states every screen shares (FRONTEND_UI 3.0): empty, error, "AI off", and the thin progress line. */
+
+.panel {
+  display: flex;
+  gap: var(--sp-12);
+  padding: var(--sp-16) var(--sp-20);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.icon {
+  flex: none;
+  margin-top: 0.15em;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-8);
+  min-width: 0;
+}
+
+.error {
+  border-color: var(--bad);
+}
+
+.error .icon {
+  color: var(--bad);
+}
+
+.notice .icon {
+  color: var(--warn);
+}
+
+.id {
+  color: var(--muted);
+}
+
+.line {
+  height: 2px;
+  background: transparent;
+  overflow: hidden;
+}
+
+.line[data-active] {
+  background: var(--accent-soft);
+}
+
+.line[data-active]::after {
+  content: "";
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: var(--accent-strong);
+  transform-origin: left;
+  animation: sweep 1.1s var(--ease-in) infinite;
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line[data-active]::after {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+}

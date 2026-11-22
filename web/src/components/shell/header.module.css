@@ -1,0 +1,102 @@
+/* The site header: brand, two links, theme, account. One row at every width down to 320px. */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: var(--header-h);
+  background: var(--bg);
+  border-block-end: 1px solid var(--line);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-16);
+  height: 100%;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  min-height: 2.5rem;
+  color: var(--text);
+  font-size: 1.0625rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  margin-inline-start: var(--sp-8);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 var(--sp-8);
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-block-end: 2px solid transparent;
+  transition: color var(--dur-fast) var(--ease-in);
+}
+
+@media (hover: hover) {
+  .link:hover {
+    color: var(--text);
+  }
+}
+
+/* The current page: ink text and one vermilion underline, the single accent in the header */
+.link[aria-current="page"] {
+  color: var(--text);
+  border-block-end-color: var(--accent-strong);
+}
+
+.tools {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  margin-inline-start: auto;
+}
+
+/* Under 380px the wordmark gives way to the mark; its text stays for screen readers */
+@media (max-width: 23.75rem) {
+  .wordmark {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .inner {
+    gap: var(--sp-8);
+  }
+}
+
+.skip {
+  position: absolute;
+  inset-inline-start: var(--sp-16);
+  top: 0;
+  z-index: 20;
+  padding: var(--sp-8) var(--sp-16);
+  border-radius: 0 0 var(--r-md) var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-block-start: 0;
+  color: var(--text);
+  font-weight: 600;
+  transform: translateY(-120%);
+}
+
+.skip:focus {
+  transform: translateY(0);
+}

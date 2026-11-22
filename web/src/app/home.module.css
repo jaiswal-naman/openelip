@@ -1,0 +1,89 @@
+.hero {
+  display: grid;
+  gap: var(--sp-44);
+  padding-block: var(--sp-44) var(--sp-64);
+}
+
+@media (min-width: 60rem) {
+  .hero {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    align-items: start;
+    gap: var(--sp-64);
+    padding-block: var(--sp-64) 5rem;
+  }
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-24);
+}
+
+.kicker {
+  color: var(--muted);
+}
+
+.title {
+  text-wrap: balance;
+}
+
+.lede {
+  max-width: var(--measure);
+  font-size: 1.125rem;
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-12);
+}
+
+/* "What works today": a ledger of shipped features only */
+.ledger {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.ledgerHead {
+  padding: var(--sp-12) var(--sp-20);
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.rows li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-4) var(--sp-16);
+  padding: var(--sp-16) var(--sp-20);
+  border-block-start: 1px solid var(--line);
+}
+
+.rows li:first-child {
+  border-block-start: 0;
+}
+
+.rowName {
+  font-weight: 650;
+}
+
+.rowText {
+  grid-column: 1;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.rows li > :nth-child(2) {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+}
+
+.note {
+  padding: var(--sp-12) var(--sp-20) var(--sp-16);
+  border-block-start: 1px solid var(--line);
+  color: var(--muted);
+}

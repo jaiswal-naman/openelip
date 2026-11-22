@@ -1,0 +1,118 @@
+/* Menus that float (theme, account): the only things in this app with a shadow (FRONTEND_UI 5.4, elevation 1). */
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-8);
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0 var(--sp-8);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-in);
+}
+
+@media (hover: hover) {
+  .trigger:hover {
+    background: var(--surface-2);
+  }
+}
+
+.trigger[data-pressed],
+.trigger[aria-expanded="true"] {
+  background: var(--surface-2);
+}
+
+.popover {
+  min-width: 12rem;
+  max-width: min(20rem, 100vw - var(--sp-16));
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--text);
+}
+
+.popover[data-entering] {
+  animation: pop var(--dur-mid) var(--ease-in);
+}
+
+.popover[data-exiting] {
+  animation: pop var(--dur-fast) linear reverse;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.menu {
+  padding: var(--sp-4);
+  outline: none;
+}
+
+.heading {
+  padding: var(--sp-8) var(--sp-12);
+  color: var(--muted);
+  font-size: var(--fs-small);
+  overflow-wrap: anywhere;
+}
+
+.heading strong {
+  display: block;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+  font-weight: 500;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  min-height: 2.25rem;
+  padding: 0 var(--sp-12);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-body);
+  cursor: pointer;
+  outline: none;
+}
+
+.item[data-focused] {
+  background: var(--surface-2);
+}
+
+.item[data-focus-visible] {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.item[data-selected] {
+  font-weight: 650;
+}
+
+.tick {
+  margin-inline-start: auto;
+  color: var(--accent-strong);
+}
+
+@media (max-width: 39.99rem) {
+  .item {
+    min-height: 2.5rem; /* 40px targets on a phone */
+  }
+}
+
+@media (forced-colors: active) {
+  .item[data-focused] {
+    background: Highlight;
+    color: HighlightText;
+  }
+}

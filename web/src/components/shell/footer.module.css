@@ -1,0 +1,4 @@
+.footer {
+  padding-block: var(--sp-24);
+  border-block-start: 1px solid var(--line);
+}

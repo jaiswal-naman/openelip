@@ -1,0 +1,187 @@
+/* Base styles and the few utilities every screen shares. Components carry their own CSS Modules. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  /* A focused element must never sit behind the sticky header (WCAG 2.4.11) */
+  scroll-padding-top: calc(var(--header-h) + var(--sp-16));
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+dl,
+dd,
+figure {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: var(--info);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* One focus ring everywhere: 2px, offset 2px, in the accent that passes on the current theme (WCAG 2.4.7, 1.4.11) */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Type roles, FRONTEND_UI 5.3. Mono is for the machine (labels, times, numbers), sans for the person. */
+.t-display {
+  font-size: var(--fs-display);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+}
+
+.t-page {
+  font-size: var(--fs-page);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-weight: 750;
+}
+
+.t-section {
+  font-size: var(--fs-section);
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.t-card {
+  font-size: var(--fs-card);
+  line-height: 1.35;
+  font-weight: 650;
+}
+
+.t-small {
+  font-size: var(--fs-small);
+  line-height: 1.45;
+}
+
+.t-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  line-height: 1.2;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.t-data {
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+  line-height: 1.4;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* Text for screen readers only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+/* The skip link lands here; it is a target, not a control, so it needs no ring */
+main:focus {
+  outline: none;
+}
+
+/* The page column: full width on a phone, capped on a wide screen */
+.container {
+  width: min(100% - 2 * var(--sp-16), var(--content-max));
+  margin-inline: auto;
+}
+
+@media (min-width: 40rem) {
+  .container {
+    width: min(100% - 2 * var(--sp-32), var(--content-max));
+  }
+}
+
+/* A screen: a column of regions with 24px between them */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+  padding-block: var(--sp-32) var(--sp-64);
+}
+
+/* Reduced motion: transforms and fades drop to nothing, scrolling is instant (FRONTEND_UI 5.5) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Forced colours: borders and marks use system colours so nothing disappears */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline-color: Highlight;
+  }
+}
