@@ -16,12 +16,12 @@ def test_location_is_never_guessed():
 def test_location_remote_and_hints():
     assert parse_location("Remote - India") == ("IN", None, True)
     assert parse_location("Anywhere", country_hint="in", remote_hint=False) == ("IN", None, False)
-    assert parse_location("London", country_hint="United Kingdom") == ("GB", None, None)
+    assert parse_location("London", country_hint="United Kingdom") == ("GB", "London", None)
 
 
 def test_country_name_must_be_a_whole_word():
-    # "ukraine" must not match "uk"
-    assert parse_location("Kyiv, Ukraine")[0] is None
+    # "ukraine" must not match "uk": it is UA, and never GB
+    assert parse_location("Kyiv, Ukraine")[0] == "UA"
 
 
 def test_title_key_drops_requisition_noise():
