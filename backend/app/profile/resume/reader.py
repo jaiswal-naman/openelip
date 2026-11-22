@@ -44,7 +44,7 @@ WORD_GAP_EM = 0.15  # a gap wider than this fraction of the font size is a space
 MIN_GUTTER_PT = 10
 MIN_COLUMN_SHARE = 0.15  # each side of a gutter holds at least this share of the characters ...
 MIN_COLUMN_ROWS = 3  # ... and this many rows, or it is a right-aligned date column, not a column
-FULL_WIDTH_SLACK = 0.1  # rows allowed to cross a gutter (a name banner) before it stops being one
+FULL_WIDTH_SLACK = 0.25  # share of rows that may run across a gutter (a banner, a footer) before it stops being one
 
 # Limits against a hostile file (T-3-06). The caller also caps the upload at 10 MB.
 MAX_PAGES = 20

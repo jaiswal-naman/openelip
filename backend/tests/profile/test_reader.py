@@ -306,6 +306,18 @@ def test_samples_are_at_most_three_and_forty_characters_and_chars_removed_counts
     assert result.hidden.chars_removed == sum(len(s.replace(" ", "")) for s in strings)
 
 
+def test_a_hidden_space_under_a_visible_letter_does_not_split_the_word():
+    def under_the_word(c):
+        c.setFont("Courier", 11)  # one cell per character: the hidden space sits under the visible "E"
+        c.drawString(50, 500, "golang redshif")
+        c.drawString(50, 500, "SeniorEngineer")
+
+    result = read_resume(hide(under_the_word), PDF_MIME)
+
+    assert "SeniorEngineer" in texts(result)
+    assert result.hidden.reasons == ["overlapped"]
+
+
 def test_reasons_use_the_fixed_vocabulary_in_its_order():
     def both(c):
         tiny(c)
@@ -416,6 +428,18 @@ def test_white_text_on_shaded_paragraphs_and_cells_is_legitimate_and_stays():
     assert {"white on a shaded paragraph", "white in a shaded cell"} <= set(texts(result))
 
 
+def test_text_coloured_like_its_cell_shading_is_hidden():
+    def dark_on_dark(document):
+        cell = document.add_table(rows=1, cols=1).cell(0, 0)
+        shade(cell._tc.get_or_add_tcPr(), "111111")
+        cell.paragraphs[0].add_run(HIDDEN).font.color.rgb = RGBColor(0, 0, 0)
+
+    result = read_resume(docx(dark_on_dark), DOCX_MIME)
+
+    assert result.hidden.reasons == ["text_colour_matches_background"]
+    assert HIDDEN not in result.text
+
+
 def test_white_text_in_an_unshaded_table_cell_is_kept_because_its_background_is_unknown():
     # A cell's fill can come from a table style or a drawing shape the reader does not resolve. Judging it as white on
     # white would delete a legitimate sidebar, so only plain-page text is judged. ponytail: a known gap.
@@ -513,11 +537,18 @@ def test_a_zip_that_is_not_a_word_document_is_corrupt():
 
 
 def test_a_zip_bomb_is_refused_before_it_is_expanded():
+    # A valid resume with one extra part that expands to 51 MB but compresses to a few kilobytes.
     out = io.BytesIO()
-    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("word/document.xml", bytes(51 * 1024 * 1024))  # a few kilobytes once compressed
+    with (
+        zipfile.ZipFile(io.BytesIO(docx(lambda d: None))) as original,
+        zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as bomb,
+    ):
+        for part in original.infolist():
+            bomb.writestr(part, original.read(part))
+        bomb.writestr("word/media/padding.bin", bytes(51 * 1024 * 1024))
 
     assert len(out.getvalue()) < 1024 * 1024
+    assert read_resume(docx(lambda d: None), DOCX_MIME).lines  # the same resume without the padding reads fine
     with pytest.raises(ResumeUnreadable) as caught:
         read_resume(out.getvalue(), DOCX_MIME)
 
