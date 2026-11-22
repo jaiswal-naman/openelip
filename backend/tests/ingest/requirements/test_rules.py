@@ -70,17 +70,64 @@ def test_headings_ignore_case_a_trailing_colon_and_a_curly_apostrophe():
     assert [(r.importance, r.text) for r in extract(description)] == [("required", "Python"), ("preferred", "Rust")]
 
 
-def test_a_requirement_that_starts_like_a_heading_is_still_a_requirement():
-    description = "Requirements\nAbout 3 years of Python\nRequirements gathering skills.\nSkills in SQL"
-    assert [(r.kind, r.text) for r in extract(description)] == [
-        ("experience", "About 3 years of Python"),  # a digit: not a heading
-        ("skill", "Requirements gathering skills."),  # a final period: not a heading
-        ("skill", "Skills in SQL"),  # "skills" is a heading only on a line of its own
-    ]
+@pytest.mark.parametrize(
+    ("heading", "importance"),
+    [
+        ("Requirements", "required"),
+        ("Minimum Qualifications", "required"),
+        ("Required skills", "required"),
+        ("What you need", "required"),
+        ("What you'll need to succeed", "required"),
+        ("Who you are", "required"),
+        ("Skills", "required"),
+        ("Experience", "required"),
+        ("You have", "required"),
+        ("Must have", "required"),
+        ("Preferred qualifications", "preferred"),
+        ("Nice to have", "preferred"),
+        ("Bonus points", "preferred"),
+        ("Desirable", "preferred"),
+        ("Plus", "preferred"),
+    ],
+)
+def test_a_requirement_heading_opens_a_section_of_its_importance(heading, importance):
+    (row,) = extract(f"{heading}\nPython")
+    assert (row.importance, row.text) == (importance, "Python")
 
 
-def test_skills_alone_on_a_line_is_a_heading():
-    assert [r.text for r in extract("Skills\nPython\nSQL")] == ["Python", "SQL"]
+@pytest.mark.parametrize(
+    "heading",
+    [
+        "Responsibilities",
+        "What you'll do",
+        "About us",
+        "Benefits & perks",
+        "We offer",
+        "Compensation",
+        "Salary range",
+        "How to apply",
+        "Equal opportunity employer",
+    ],
+)
+def test_a_stop_heading_ends_a_requirement_section(heading):
+    rows = extract(f"Requirements\nPython\n{heading}\nFree lunch")
+    assert [r.text for r in rows] == ["Python"]
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "Requirements analysis experience is essential here",  # more than five words
+        "Qualifications internationalization infrastructure instrumentation responsibilities",  # over 60 characters
+        "About 3 years of Python",  # a digit
+        "Requirements gathering skills.",  # a final period
+        "Skills in SQL",  # "skills" is a heading only on a line of its own
+        "You have strong SQL skills",  # so is "you have"
+    ],
+)
+def test_a_line_that_only_looks_like_a_heading_is_a_requirement(line):
+    (row,) = extract(f"Requirements\n{line}")
+    assert row.text == line
 
 
 def test_a_line_that_says_a_plus_or_preferred_is_preferred_under_requirements():
