@@ -12,6 +12,7 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
+from app import worker
 from app.platform import queue, scheduler
 
 RAN: list[str] = []
@@ -124,3 +125,31 @@ def test_the_queues_own_upkeep_is_scheduled_and_actually_runs(factory, monkeypat
     with factory() as conn:
         row = conn.execute(text("SELECT status, attempts FROM queue_jobs WHERE unique_key = 'stuck'")).one()
     assert tuple(row) == ("succeeded", 2)  # the reaper gave the dead worker's job back, and it then ran
+
+
+def test_the_worker_loop_ticks_runs_one_job_and_relays_each_pass_and_survives_a_failing_pass(monkeypatch):
+    @contextmanager
+    def no_database(user_id=None, role="api"):
+        yield None
+
+    steps = []
+    outcomes = iter(["fails", "idle", "ran", "stop"])
+
+    def run_once(factory, worker_id, queues):
+        steps.append(("run_once", queues))
+        outcome = next(outcomes)
+        if outcome == "fails":
+            raise RuntimeError("the database restarted")
+        if outcome == "stop":
+            raise KeyboardInterrupt  # what Ctrl+C does; the loop ends cleanly
+        return 1 if outcome == "ran" else 0
+
+    monkeypatch.setattr(worker.db, "transaction", no_database)
+    monkeypatch.setattr(worker.scheduler, "tick", lambda conn, now: steps.append("tick") or 0)
+    monkeypatch.setattr(worker.queue, "run_once", run_once)
+    monkeypatch.setattr(worker.relay, "relay_once", lambda conn: steps.append("relay") or 0)
+    monkeypatch.setattr(worker, "POLL_SECONDS", 0)
+    worker.main()
+    run = ("run_once", ())  # WORKER_QUEUES is unset: every queue
+    # pass 1 fails after run_once (no relay), pass 2 idle, pass 3 ran a job, pass 4 interrupted
+    assert steps == ["tick", run, "tick", run, "relay", "tick", run, "relay", "tick", run]
