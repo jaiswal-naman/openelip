@@ -1,0 +1,5 @@
+{"key": "smoke-01", "text": "Please send the report by Friday.", "expected": {"kind": "request"}}
+{"key": "smoke-02", "text": "Thank you, that was very helpful.", "expected": {"kind": "thanks"}}
+{"key": "smoke-03", "text": "Where is the nearest train station?", "expected": {"kind": "question"}}
+{"key": "smoke-04", "text": "The meeting starts at nine.", "expected": {"kind": "statement"}}
+{"key": "smoke-05", "text": "Good morning, everyone.", "expected": {"kind": "greeting"}}

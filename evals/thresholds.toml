@@ -1,0 +1,5 @@
+# The lowest score each suite may reach before its gate fails (AI_SYSTEM 12.1: fix the bar before the run).
+# A suite with no entry here fails its gate. Changing a floor is a reviewed change that states the reason.
+
+[harness_smoke]
+min_score = 1.0   # five invented items, exact match: anything below 1.0 means the runner or the gate is broken

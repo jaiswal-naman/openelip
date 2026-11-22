@@ -1,0 +1,189 @@
+"""Replay a gold set through the model gateway and record the run (AI_SYSTEM 12; requirement PLT-08).
+
+Replay only: the gateway's fake provider answers every item from a recorded file, in item order, so a pull request needs
+no model key and a run gives the same result every time. The run is one eval_runs row, one eval_items row per gold item,
+and a frozen verdict once it finishes. The regression gate (gate.py) reads those rows afterwards.
+"""
+
+import hashlib
+import json
+import os
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Literal, NamedTuple
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import text
+
+from app.platform import config, db, llm
+from app.platform.llm import fake, registry
+
+from . import EVALS, HARNESS_ONLY, gate
+
+
+class UnknownSuite(Exception):
+    """The suite name has no entry in SUITES."""
+
+
+class ReplayNeedsFake(Exception):
+    """A replay with a real provider configured would call the model and ignore the recording (and cost money)."""
+
+
+class SmokeLabel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["request", "thanks", "question", "statement", "greeting"]
+
+
+@dataclass(frozen=True)
+class Suite:
+    task: str  # the gateway task name; under the fake provider no models.toml entry is needed
+    instruction: str
+    schema: type[BaseModel]
+
+    @property
+    def prompt_version(self) -> str:
+        return hashlib.sha256(self.instruction.encode()).hexdigest()[:12]  # the template's content hash (AI_SYSTEM 2.2)
+
+
+SUITES = {
+    "harness_smoke": Suite(
+        task="eval.harness_smoke",
+        instruction=(
+            'Classify the message as request, thanks, question, statement or greeting. Reply with JSON: {"kind": "..."}'
+        ),
+        schema=SmokeLabel,
+    ),
+}
+
+
+class Finished(NamedTuple):
+    run_id: UUID
+    status: str
+    passed: int
+    n: int
+
+
+class Result(NamedTuple):
+    key: str
+    slice: str | None
+    expected: dict[str, Any]
+    actual: dict[str, Any] | None
+    is_passed: bool
+
+
+def load_gold(name: str) -> list[dict[str, Any]]:
+    lines = (EVALS / "gold" / f"{name}.jsonl").read_text(encoding="utf-8").splitlines()
+    items = [json.loads(line) for line in lines if line.strip()]
+    keys = [item["key"] for item in items]
+    if len(set(keys)) != len(keys):
+        raise ValueError(f"gold/{name}.jsonl has a repeated key")  # eval_items is unique on (run, key)
+    return items
+
+
+def git_sha() -> str:
+    """The commit under test: GIT_SHA (a build or CI sets it), else git, else "unknown" (never a guess)."""
+    if given := os.environ.get("GIT_SHA"):
+        return given
+    try:
+        done = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True, cwd=EVALS.parent
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+    return done.stdout.strip()
+
+
+def _score(suite: Suite, item: dict[str, Any]) -> Result:
+    messages = [{"role": "user", "content": f"{suite.instruction}\n\n{item['text']}"}]
+    try:
+        answer = llm.complete(suite.task, suite.schema, messages, principal=None, prompt_version=suite.prompt_version)
+        actual: dict[str, Any] | None = answer.model_dump(mode="json")
+    except llm.SchemaInvalid:
+        actual = None  # invalid twice: this item fails, the run goes on
+    return Result(item["key"], item.get("slice"), item["expected"], actual, actual == item["expected"])
+
+
+def _json(value: Any) -> str | None:
+    return None if value is None else json.dumps(value)
+
+
+def _finish(run_id: UUID, name: str, results: list[Result], error: str | None) -> Finished:
+    passed = sum(r.is_passed for r in results)
+    metrics: dict[str, Any] = {"n": len(results), "passed": passed, "score": passed / len(results) if results else 0.0}
+    if name in HARNESS_ONLY:
+        metrics["harness_check_only"] = True
+    if error:
+        status, gate_passed = "error", None
+        metrics["error_code"] = error
+    else:
+        bar = gate.floor(name)
+        gate_passed = bar is not None and metrics["score"] >= bar
+        status = "passed" if gate_passed else "failed"
+    with db.transaction(role="worker") as conn:
+        for r in results:
+            conn.execute(
+                text(
+                    "INSERT INTO eval_items (eval_run_id, item_key, slice, expected, actual, is_passed, score) "
+                    "VALUES (:run, :key, :slice, CAST(:expected AS jsonb), CAST(:actual AS jsonb), :passed, :score)"
+                ),
+                {
+                    "run": run_id,
+                    "key": r.key,
+                    "slice": r.slice,
+                    "expected": _json(r.expected),
+                    "actual": _json(r.actual),
+                    "passed": r.is_passed,
+                    "score": 1.0 if r.is_passed else 0.0,
+                },
+            )
+        conn.execute(
+            text(
+                "UPDATE eval_runs SET status = CAST(:status AS eval_status), metrics = CAST(:metrics AS jsonb), "
+                "is_gate_passed = :gate_passed, finished_at = now() WHERE id = :id"
+            ),
+            {"status": status, "metrics": json.dumps(metrics), "gate_passed": gate_passed, "id": run_id},
+        )
+    return Finished(run_id, status, passed, len(results))
+
+
+def run_suite(name: str, recorded: Path | None = None) -> Finished:
+    """Replay the suite's recording through the gateway and record the run. Raises UnknownSuite, ReplayNeedsFake or
+    AIDisabled before anything is written; a failure while scoring ends the run with status "error"."""
+    if name not in SUITES:
+        raise UnknownSuite(name)
+    suite = SUITES[name]
+    gold = load_gold(name)
+    recorded = recorded or EVALS / "recorded" / f"{name}.json"
+    settings = config.get()
+    if settings.llm_provider != "fake":
+        raise ReplayNeedsFake()
+    route = registry.route(suite.task, settings)
+    run_config = {
+        "mode": "replay",
+        "recorded": recorded.name,
+        "task": suite.task,
+        "provider": route.provider,
+        "model": route.model,
+        "prompt_version": suite.prompt_version,
+    }
+    with db.transaction(role="worker") as conn:
+        run_id: UUID = conn.execute(
+            text(
+                "INSERT INTO eval_runs (suite, git_sha, config) "
+                "VALUES (CAST(:suite AS eval_suite), :sha, CAST(:config AS jsonb)) RETURNING id"
+            ),
+            {"suite": name, "sha": git_sha(), "config": json.dumps(run_config)},
+        ).scalar_one()
+    fake.replay_from(recorded)
+    results: list[Result] = []
+    error: str | None = None
+    try:
+        for item in gold:
+            results.append(_score(suite, item))
+    except Exception as failure:  # the recording ran out, or the provider is not usable: the run ends in error
+        error = type(failure).__name__
+    finally:
+        fake.replay_from(None)
+    return _finish(run_id, name, results, error)
