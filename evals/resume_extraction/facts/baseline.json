@@ -1,0 +1,22 @@
+{
+  "note": "Replay of recordings.jsonl through the real gateway and checks, over invented resumes. It proves the code path and that injected faults are caught. It is not a model quality number.",
+  "n": 120,
+  "score": 0.9526852011742358,
+  "f1_overall": 0.9526852011742358,
+  "f1_employer_title_dates": 0.9625377643504531,
+  "f1_by_slice": {
+    "sidebar": 0.9511019283746557,
+    "single": 0.9535374868004224,
+    "two_column": 0.9526034712950601
+  },
+  "quote_exact_share": 1.0,
+  "kept": 2472,
+  "unverified": 221,
+  "protected_skipped": 6,
+  "failed_calls": 0,
+  "tp": 5517,
+  "fp": 30,
+  "fn": 518,
+  "replay_only": true,
+  "synthetic": true
+}
