@@ -5,3 +5,11 @@ __pycache__/
 .planning/
 node_modules/
 .next/
+backups/
+web/node_modules/
+web/.next/
+.env.deploy
+playwright-report/
+test-results/
+next-env.d.ts
+*.tsbuildinfo
