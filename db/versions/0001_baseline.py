@@ -1,4 +1,16 @@
--- Job index schema. Idempotent: safe to run on every start.
+"""Baseline: the job index exactly as db/schema.sql defined it before Alembic (DATA_MODEL 8, step 1).
+
+The statements are all IF NOT EXISTS, so on the live database this revision is stamped rather than run, and running
+it there would change nothing. On an empty database it builds the old shape; both paths then share one history.
+"""
+from alembic import op
+
+revision = "0001_baseline"
+down_revision = None
+branch_labels = None
+depends_on = None
+
+SCHEMA_SQL = """-- Job index schema. Idempotent: safe to run on every start.
 CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS job_sources (
@@ -62,3 +74,12 @@ CREATE TABLE IF NOT EXISTS fetch_runs (
   jobs_closed  int NOT NULL DEFAULT 0,
   error        text
 );
+"""
+
+
+def upgrade() -> None:
+    op.get_bind().exec_driver_sql(SCHEMA_SQL)
+
+
+def downgrade() -> None:
+    raise NotImplementedError("0001 is the baseline: going below it would drop the job index and its rows")
