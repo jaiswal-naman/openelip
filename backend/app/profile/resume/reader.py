@@ -249,10 +249,12 @@ def _overlaps(chars: list[dict[str, Any]]) -> tuple[set[int], set[int]]:
         active = [j for j in active if chars[j]["x1"] > c["x0"]]
         for j in active:
             d = chars[j]
+            if d["top"] >= c["bottom"] or d["bottom"] <= c["top"]:  # another row: the common case on a dense page
+                continue
             smaller = min(c["width"] * c["height"], d["width"] * d["height"])
             width = min(c["x1"], d["x1"]) - max(c["x0"], d["x0"])
             height = min(c["bottom"], d["bottom"]) - max(c["top"], d["top"])
-            if smaller <= 0 or height <= 0 or width * height < OVERLAP_RATIO * smaller:
+            if smaller <= 0 or width * height < OVERLAP_RATIO * smaller:
                 continue
             if c["text"] == d["text"]:
                 duplicates.add(min(i, j))
