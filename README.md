@@ -2,7 +2,7 @@
 
 An open-source, self-hosted agent hiring marketplace that runs on your own machine.
 
-> **Independent project.** OpenElip is inspired by the agent-marketplace idea that Elip describes publicly. It is not affiliated with, endorsed by, or built from any code or assets of Elip or Freshview Innovations, Inc.
+> **Independent project.** OpenElip is independent. It is not affiliated with, endorsed by, or built from any code or assets of Elip.
 
 ## What it is
 
@@ -16,14 +16,23 @@ Most job tools hand you a list. OpenElip is being built to do the work behind th
 
 ## Status
 
-This project is early. The table says exactly what runs today.
+Phase 1 (the platform) is built. The table says exactly what runs today and what does not.
 
 | Area | State |
 |---|---|
-| Job index from public Greenhouse, Lever and Ashby boards | **Working** |
-| Closed-job detection, fetch history, duplicate folding | **Working** |
+| One command starts the stack: database, API, worker, web app, one-origin proxy, local mail catcher | **Working.** A fresh clone was started and checked with `scripts/fresh-clone-check.ps1` on 22 November 2026 |
+| Sign-in with a six-digit code sent by email, server-side session, sign-out | **Working** (in development the email lands in the local mail catcher) |
+| Writes that are safe to repeat (idempotency keys), an outbox and an email relay that never sends a message twice | **Working** |
+| Background jobs in PostgreSQL: unique keys, leases, retries, dead letters, a scheduler | **Working** |
+| Model gateway: one entry point, schema-checked answers, one cost row per call, `503 ai_disabled` when no provider is set | **Working** with the built-in fake provider and recorded answers. The Anthropic, OpenAI and OpenAI-compatible adapters are written and tested against stub clients; **no live model call has been made yet** (see below) |
+| Web app: home, `/jobs` search, `/sign-in`, `/trust` (what this server sends data to), `/control/costs` (model cost), light and dark themes | **Working**, with automated accessibility checks on each screen in both themes |
+| Checks that no resume, chat, contact or query text reaches a log, a metric or a trace | **Working** (a test that fails when one does) |
+| Evaluation harness with a regression gate | **Working as a skeleton.** Its only suite proves the harness runs; there is **no quality gold set yet**, so no quality is claimed |
+| Continuous integration (`.github/workflows/`) | **Written and run on a developer machine** (`scripts/ci-local.ps1`); it has not yet run on GitHub |
+| Job index from public Greenhouse, Lever and Ashby boards, closed-job detection, fetch history, duplicate folding | **Working** (the index is empty until you fill it, see below) |
 | Keyword search API with country and remote filters | **Working** |
 | System design: overview, requirements, roadmap, architecture, data model, API, AI system, front end | **Published** in [`docs/`](docs/OVERVIEW.md); the data model's schema and integrity rules were executed and tested on PostgreSQL |
+| Hybrid and semantic search, scheduled refresh, requirement extraction | Planned (phase 2) |
 | Career record, matching with cited evidence, morning brief | Planned (phases 3 and 4) |
 | Chat agent, resume tailoring that cannot invent, application tracking | Planned (phase 5) |
 | Hiring desk: roles, consent-first introductions, answer clock | Planned (phase 6) |
@@ -46,21 +55,89 @@ Measured on a laptop, from 185 candidate board names:
 
 ## Run it locally
 
-Requirements: Docker, and [uv](https://docs.astral.sh/uv/) for Python.
+Requirements: Docker with Compose. Running the tests also needs [uv](https://docs.astral.sh/uv/) (Python 3.11) and Node 22 with pnpm.
 
 ```bash
-docker compose up -d            # PostgreSQL 17 with pgvector on 127.0.0.1:5433
-uv sync                         # install dependencies
-uv run python -m app.discover   # test candidate board names, register the live ones
-uv run python -m app.ingest     # fetch jobs, close missing ones, fold duplicates
-uv run uvicorn app.api:app --port 8000
+cp .env.example .env
+docker compose up
 ```
 
-Then open `http://127.0.0.1:8000/v1/jobs?q=backend%20engineer&country=IN` or `http://127.0.0.1:8000/docs`.
+The first start builds two images, so it takes a few minutes. When it settles:
 
-Run the tests with `uv run pytest -q`.
+| What | Where |
+|---|---|
+| The app | http://localhost:8080 |
+| Mail catcher (sign-in codes arrive here) | http://localhost:8025 |
+| PostgreSQL 17 with pgvector | 127.0.0.1:5433 |
 
-The database password in `docker-compose.yml` is a local development default and the port is bound to `127.0.0.1` only. Change it before exposing the database to anything else.
+Every port is published on `127.0.0.1` only, so nothing is reachable from another machine. `.env.example` holds development-only keys and passwords that are public in this repository; the server refuses them as soon as `APP_BASE_URL` is not a localhost address. Change a port in `.env` (`APP_HTTP_PORT`, `APP_MAIL_PORT`, `APP_DB_PORT`) if one is taken.
+
+### Sign in
+
+Open http://localhost:8080/sign-in, enter any email address and choose Send code. Open the mail catcher at http://localhost:8025, read the six-digit code and type it in. The session lasts until you sign out. The mail catcher keeps the email in memory; nothing is sent to the outside.
+
+### Fill the job index
+
+The index starts empty. Ask the worker to find the live boards, wait until the discovery job has finished, then fetch them:
+
+```bash
+docker compose exec worker python -m app.cli sources discover
+docker compose exec worker python -m app.cli queue list        # wait until ingest.discover shows succeeded
+docker compose exec worker python -m app.cli ingest run
+```
+
+Jobs appear at http://localhost:8080/jobs as the fetches finish. A worker runs one fetch at a time; a pass over the 71 boards took under two minutes when this was checked on 22 November 2026.
+
+### With no model key
+
+Sign-in, the job index and search need no key. Anything that needs a language model answers `503 ai_disabled`. `.env.example` sets `LLM_PROVIDER=fake`: a built-in provider that replays recorded answers, makes no network call and costs nothing, so the screens that show model use (`/trust`, `/control/costs`) can be seen without a key. Its cost rows read zero because nothing was paid.
+
+### Use a real model
+
+Set these in `.env`, then run `docker compose up -d`:
+
+| Provider | Settings |
+|---|---|
+| Anthropic | `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` |
+| OpenAI | `LLM_PROVIDER=openai` and `OPENAI_API_KEY` |
+| A local model through Ollama | `COMPOSE_PROFILES=dev,local-llm`, `LLM_PROVIDER=openai_compatible`, `LLM_BASE_URL=http://llm:11434/v1`; put the model's real name in `backend/config/models.toml` (it holds a placeholder) and pull it with `docker compose exec llm ollama pull <name>` |
+
+**Not checked against a live provider yet.** No provider key was available while this was built: the three adapters have only run against stub clients, and the local-model route has not run at all. The first check, once you have a key:
+
+```bash
+docker compose exec worker python -m app.platform.llm ping --email you@example.com
+```
+
+Then sign in as that address, open http://localhost:8080/control/costs and confirm a row for the task `ping` with a cost above zero.
+
+### Tests and checks
+
+```bash
+cd backend && uv run pytest                  # needs the database: docker compose up -d db
+cd web && pnpm install && pnpm test --run    # also pnpm typecheck and pnpm lint
+powershell -File scripts/ci-local.ps1        # every gate of the CI workflow, one PASS or FAIL line each
+powershell -File scripts/fresh-clone-check.ps1 -WithBrowserTests
+```
+
+The backend tests use a separate database named `app_test` on the same server and refuse any database whose name does not end in `_test`, so the data in `app` is never touched. `fresh-clone-check.ps1` clones the committed branch into a temporary folder, starts it as its own Compose project on other ports, checks it, runs the browser tests (Playwright: sign in with a code read from the mail catcher, reload, theme switch, search, a model cost row, sign out, and an accessibility scan of every screen in both themes) and deletes the copy; your own stack and database are not touched. The two scripts are PowerShell and were written on Windows. To point the browser tests at a stack you started yourself, set `BASE_URL` and `MAILPIT_URL` (see `web/playwright.config.ts`); they create accounts and write cost rows, so use a throwaway stack.
+
+### Stop
+
+`docker compose down` stops everything and keeps your data in the `pgdata` volume. `docker compose down -v` also deletes that volume, and the database with it.
+
+### Layout
+
+```
+backend/    Python package `app`: platform (config, database, queue, sign-in, model gateway, telemetry), ingest (job index), trust, evals; Dockerfile
+web/        Next.js app: screens, design tokens, typed API client; Dockerfile; browser tests in tests/e2e
+db/         Alembic migrations, the only source of the schema
+evals/      gold sets, recorded answers and floors for the evaluation harness
+data/       candidate board names that discovery starts from
+docs/       the design set
+scripts/    ci-local.ps1 and fresh-clone-check.ps1
+.github/    CI workflows: ci.yml on pull requests, e2e.yml nightly
+docker-compose.yml, Caddyfile, .env.example
+```
 
 ## Rules the project holds itself to
 
@@ -91,7 +168,7 @@ Unknown values stay unknown. Nothing is guessed to fill a gap.
 
 ## Stack
 
-Python, FastAPI, PostgreSQL 17 (full-text search and pgvector), Docker Compose today. Planned: Next.js for the web app, local embeddings, a provider-agnostic model gateway, and LangGraph for the campaign graph, approval pauses and agent loops, with its state checkpointed in PostgreSQL. No vector database product, no knowledge graph, no hosted agent platform: one database, and plain code wherever plain code is enough.
+Python, FastAPI, PostgreSQL 17 (full-text search and pgvector), Next.js 16 with React 19 for the web app, a provider-agnostic model gateway, Caddy as the one entry point, Docker Compose. Planned: local embeddings, and LangGraph for the campaign graph, approval pauses and agent loops, with its state checkpointed in PostgreSQL. No vector database product, no knowledge graph, no hosted agent platform: one database, and plain code wherever plain code is enough.
 
 Start with [`docs/OVERVIEW.md`](docs/OVERVIEW.md) for the design set.
 
