@@ -8,16 +8,25 @@ from app.platform.api import envelope
 
 router = APIRouter()
 
+# API.md 2.4: is_remote stays for existing clients and is read off work_arrangements. It is true when the array holds
+# remote, null when the array is empty (the posting does not say) and false otherwise. The remote filter and the
+# remote count below apply the same rule.
+IS_REMOTE = """(CASE WHEN 'remote' = ANY(work_arrangements) THEN true
+                    WHEN cardinality(work_arrangements) = 0 THEN NULL
+                    ELSE false END)"""
+STATED_REMOTE = "'remote' = ANY(work_arrangements)"
+STATED_NOT_REMOTE = "(cardinality(work_arrangements) > 0 AND NOT ('remote' = ANY(work_arrangements)))"
+
 
 @router.get("/v1/stats")
 def stats():
     with db.transaction() as conn:
         row = conn.execute(
             text(
-                """SELECT count(*) FILTER (WHERE status='open'),
+                f"""SELECT count(*) FILTER (WHERE status='open'),
                       count(*) FILTER (WHERE status='open' AND canonical_job_id IS NULL),
                       count(*) FILTER (WHERE status='open' AND canonical_job_id IS NULL AND country='IN'),
-                      count(*) FILTER (WHERE status='open' AND canonical_job_id IS NULL AND is_remote),
+                      count(*) FILTER (WHERE status='open' AND canonical_job_id IS NULL AND {STATED_REMOTE}),
                       count(*) FILTER (WHERE status='closed'),
                       count(DISTINCT source_id) FILTER (WHERE status='open'),
                       max(last_verified_at)
@@ -53,11 +62,10 @@ def search_jobs(
         where.append("country = :country")
         params["country"] = country.upper()
     if remote is not None:
-        where.append("is_remote IS NOT DISTINCT FROM :remote")
-        params["remote"] = remote
+        where.append(STATED_REMOTE if remote else STATED_NOT_REMOTE)
     order = "ts_rank_cd(search, websearch_to_tsquery('english', :q)) DESC, " if q.strip() else ""
-    sql = f"""SELECT id, title, company_name, location_raw, country, city, is_remote, apply_url, posted_at,
-                     last_verified_at, content_version
+    sql = f"""SELECT id, title, company_name, location_raw, country, city, {IS_REMOTE} AS is_remote, apply_url,
+                     posted_at, last_verified_at, content_version
               FROM jobs WHERE {" AND ".join(where)}
               ORDER BY {order}posted_at DESC NULLS LAST LIMIT :limit"""
     with db.transaction() as conn:

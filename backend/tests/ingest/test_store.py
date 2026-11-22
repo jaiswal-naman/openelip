@@ -76,8 +76,10 @@ def test_an_unknown_location_stays_null_and_a_posting_without_a_body_is_skipped(
     source_id = new_source(conn)
     result = store(conn, source_id, "Fixture Co", [posting(1, location="HQ"), posting(2, description="too short")])
     assert (result["seen"], result["new"]) == (1, 1)
-    row = conn.execute(text("SELECT country, city, is_remote FROM jobs WHERE source_id = :s"), {"s": source_id}).one()
-    assert tuple(row) == (None, None, None)
+    row = conn.execute(
+        text("SELECT country, city, work_arrangements::text[] FROM jobs WHERE source_id = :s"), {"s": source_id}
+    ).one()
+    assert tuple(row) == (None, None, [])  # is_remote became work_arrangements: "does not say" is the empty list
 
 
 def test_postings_with_the_same_company_title_and_place_fold_onto_the_oldest(conn):

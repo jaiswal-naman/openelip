@@ -125,3 +125,27 @@ def dedupe_key(company: str, title: str, country: str | None, city: str | None) 
 
 def content_hash(title: str, description: str, location_raw: str | None) -> str:
     return hashlib.sha1("\x1f".join([title, description, location_raw or ""]).encode()).hexdigest()
+
+
+def work_arrangements_from(is_remote: bool | None) -> list[str]:
+    """The work_arrangement values a posting permits (DATA_MODEL 8): remote is True, onsite or hybrid is False, and a
+    posting that does not say (None) permits nothing we can claim, so the list is empty."""
+    if is_remote is None:
+        return []
+    return ["remote"] if is_remote else ["onsite", "hybrid"]
+
+
+# The same case-insensitive prefixes the upgrade migration used (DATA_MODEL 8), so old rows and new rows agree.
+_EMPLOYMENT_PREFIXES = (
+    ("full", "full_time"),
+    ("part", "part_time"),
+    ("contract", "contract"),
+    ("intern", "internship"),
+    ("temp", "temporary"),
+)
+
+
+def employment_type_from(raw: str | None) -> str:
+    """The employment_type enum value for the board's own wording. Anything not plainly one of them is 'unknown'."""
+    low = (raw or "").lower()
+    return next((kind for prefix, kind in _EMPLOYMENT_PREFIXES if low.startswith(prefix)), "unknown")

@@ -1,9 +1,9 @@
-"""Queue handlers for the job index: ingest.fetch (one source), ingest.dedupe, ingest.discover (ARCHITECTURE 12.4).
+"""Queue handlers for the job index: ingest.fetch (one source), ingest.dedupe, ingest.discover (ARCHITECTURE 12.4),
+and ingest.fetch_sweep, which queues the refresh every six hours (IDX-07).
 
 Each source is its own job, so a slow or failing board delays only itself and a repeat of the same slot is a no-op
 (unique key ingest.fetch:{source_id}:{slot}). A fetch that fails or comes back empty is not a failed job: it is a
-fetch_runs row with its status, and the jobs already stored stay open (the foundation rule, unchanged). The scheduled
-six-hour refresh is Phase 2 (IDX-07) and is not registered here.
+fetch_runs row with its status, and the jobs already stored stay open (the foundation rule, unchanged).
 """
 
 import asyncio
@@ -15,14 +15,53 @@ from sqlalchemy import Connection, text
 
 from app.platform import log
 from app.platform.queue import enqueue, handler
+from app.platform.scheduler import every
 
 from . import discover
 from .adapters import URLS, fetch_postings
 from .fetch import mark_duplicates, store
 
+# How often every active source is fetched. ARCHITECTURE 5.3 (an assumption to tune after measuring).
+FETCH_EVERY_HOURS = 6
+FETCH_PERIOD_SECONDS = FETCH_EVERY_HOURS * 3600
+
 # The first fetch of a slot queues the slot's one dedupe job, this long after, so most of the batch is in by then.
 # ponytail: a fixed wait. Enqueue it from the last fetch of the slot once the slot's job count is tracked.
 DEDUPE_DELAY = timedelta(minutes=10)
+
+
+def queue_fetches(conn: Connection, now: datetime) -> int:
+    """Queue one ingest.fetch for every active source in the six-hour slot that holds `now`; returns how many were new.
+
+    The slot is the number of whole six-hour periods since 1970, so the key ingest.fetch:{source_id}:{slot} is the same
+    for every worker and every repeat in that period, and the queue's unique key discards the repeat. With no active
+    source there is nothing to fetch, so the slot's one discovery job is queued instead (it registers the boards that
+    exist, and the next slot fetches them).
+    """
+    slot = int(now.timestamp()) // FETCH_PERIOD_SECONDS
+    source_ids = conn.execute(text("SELECT id FROM job_sources WHERE is_active ORDER BY id")).scalars().all()
+    if not source_ids:
+        enqueue(conn, "ingest.discover", {}, unique_key=f"ingest.discover:{slot}", queue="ingest")
+        log.event("ingest.fetch_sweep", slot=slot, sources=0, queued=0)
+        return 0
+    queued = sum(
+        enqueue(
+            conn,
+            "ingest.fetch",
+            {"source_id": source_id, "slot": slot},
+            unique_key=f"ingest.fetch:{source_id}:{slot}",
+            queue="ingest",
+        )
+        is not None
+        for source_id in source_ids
+    )
+    log.event("ingest.fetch_sweep", slot=slot, sources=len(source_ids), queued=queued)
+    return queued
+
+
+@every("ingest.fetch_sweep", FETCH_PERIOD_SECONDS)
+def fetch_sweep(conn: Connection, payload: dict[str, Any]) -> None:
+    queue_fetches(conn, datetime.now(timezone.utc))
 
 
 async def fetch_feed(ats: str, token: str) -> tuple[str, int | None, list[dict[str, Any]] | None, str | None]:
@@ -49,13 +88,19 @@ def fetch_source(conn: Connection, payload: dict[str, Any]) -> None:
         text(
             """INSERT INTO fetch_runs (source_id, finished_at, status, http_status, jobs_seen, jobs_new, jobs_changed,
                                        jobs_closed, error)
-               VALUES (:source_id, now(), :status, :http_status, :seen, :new, :changed, :closed, :error)"""
+               VALUES (:source_id, now(), CAST(:status AS fetch_status), :http_status, :seen, :new, :changed, :closed,
+                       :error)"""
         ),
         {"source_id": source_id, "status": status, "http_status": http_status, "error": error, **counts},
     )
+    # A failed or suspicious fetch is one more failure in a row, and an ok one ends the run of them.
     conn.execute(
-        text("UPDATE job_sources SET last_fetched_at = now(), last_status = :status WHERE id = :id"),
-        {"status": status, "id": source_id},
+        text(
+            """UPDATE job_sources SET last_fetched_at = now(), last_status = CAST(:status AS fetch_status),
+                      consecutive_failures = CASE WHEN :is_ok THEN 0 ELSE consecutive_failures + 1 END
+                WHERE id = :id"""
+        ),
+        {"status": status, "is_ok": status == "ok", "id": source_id},
     )
     log.event("ingest.fetch", source_id=source_id, status=status, http_status=http_status, error_code=error, **counts)
     slot = payload["slot"]

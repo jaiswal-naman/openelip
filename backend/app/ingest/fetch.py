@@ -8,24 +8,40 @@ from typing import Any
 
 from sqlalchemy import Connection, text
 
-from .normalize import content_hash, dedupe_key, parse_location
+from .normalize import content_hash, dedupe_key, employment_type_from, parse_location, work_arrangements_from
 
 MIN_DESCRIPTION_CHARS = 40
 
+# The enum columns are bound through explicit casts, so the driver's idea of a parameter's type never matters.
 INSERT_JOB = text(
-    """INSERT INTO jobs (source_id, external_id, title, company_name, location_raw, country, city, is_remote,
-                        employment_type, department, description, apply_url, posted_at, content_hash, dedupe_key)
-       VALUES (:source_id, :external_id, :title, :company_name, :location_raw, :country, :city, :is_remote,
-               :employment_type, :department, :description, :apply_url, :posted_at, :content_hash, :dedupe_key)"""
+    """INSERT INTO jobs (source_id, external_id, title, company_name, location_raw, country, city, work_arrangements,
+                        employment_type, employment_type_raw, department, description, apply_url, posted_at,
+                        content_hash, dedupe_key)
+       VALUES (:source_id, :external_id, :title, :company_name, :location_raw, :country, :city,
+               CAST(:work_arrangements AS work_arrangement[]), CAST(:employment_type AS employment_type),
+               :employment_type_raw, :department, :description, :apply_url, :posted_at, :content_hash, :dedupe_key)"""
 )
+# New text is a new content version: everything computed from the old text (the embedding, the apply-link check)
+# is cleared with it, and the job counts as materially changed (the nightly run reads materially_changed_at).
 UPDATE_JOB = text(
     """UPDATE jobs SET title = :title, company_name = :company_name, location_raw = :location_raw, country = :country,
-                       city = :city, is_remote = :is_remote, employment_type = :employment_type,
-                       department = :department, description = :description, apply_url = :apply_url,
-                       posted_at = :posted_at, content_hash = :content_hash, dedupe_key = :dedupe_key,
-                       content_version = content_version + 1,
+                       city = :city, work_arrangements = CAST(:work_arrangements AS work_arrangement[]),
+                       employment_type = CAST(:employment_type AS employment_type),
+                       employment_type_raw = :employment_type_raw, department = :department,
+                       description = :description, apply_url = :apply_url, posted_at = :posted_at,
+                       content_hash = :content_hash, dedupe_key = :dedupe_key,
+                       content_version = content_version + 1, materially_changed_at = now(),
+                       embedding = NULL, embedding_model = NULL, apply_checked_at = NULL, apply_check_ok = NULL,
                        status = 'open', closed_at = NULL, last_verified_at = now()
         WHERE id = :id"""
+)
+# Same text, seen again. The place is read afresh, so a better parser heals old rows on the next fetch (dedupe_key
+# is built from country and city, so it follows). A job the apply-link check closed (apply_check_ok = false) is not
+# touched: the feed still lists it, but its apply link is dead, and only new text brings it back.
+REFRESH_JOB = text(
+    """UPDATE jobs SET country = :country, city = :city, work_arrangements = CAST(:work_arrangements AS work_arrangement[]),
+                       dedupe_key = :dedupe_key, status = 'open', closed_at = NULL, last_verified_at = now()
+        WHERE id = :id AND apply_check_ok IS NOT false"""
 )
 
 
@@ -60,8 +76,9 @@ def store(conn: Connection, source_id: int, company: str, postings: list[dict[st
             "location_raw": p["location_raw"],
             "country": country,
             "city": city,
-            "is_remote": is_remote,
-            "employment_type": p["employment_type"],
+            "work_arrangements": work_arrangements_from(is_remote),
+            "employment_type": employment_type_from(p["employment_type"]),
+            "employment_type_raw": p["employment_type"],
             "department": p["department"],
             "description": p["description"],
             "apply_url": p["apply_url"],
@@ -76,10 +93,7 @@ def store(conn: Connection, source_id: int, company: str, postings: list[dict[st
             conn.execute(UPDATE_JOB, {"id": existing[p["external_id"]][0], **fields})
             counts["changed"] += 1
         else:
-            conn.execute(
-                text("UPDATE jobs SET status = 'open', closed_at = NULL, last_verified_at = now() WHERE id = :id"),
-                {"id": existing[p["external_id"]][0]},
-            )
+            conn.execute(REFRESH_JOB, {"id": existing[p["external_id"]][0], **fields})
     if may_close(counts["seen"], open_before):
         counts["closed"] = conn.execute(
             text(
