@@ -1,0 +1,52 @@
+# One origin for the browser (ARCHITECTURE 2.2). The API's paths go to the API and everything else to the web app, so the
+# session cookie is first-party and there is no cross-origin setup anywhere.
+#
+# Phase 1 listens on plain HTTP and docker-compose.yml publishes the port on 127.0.0.1 only. Putting TLS in front for a public
+# server is a later step; nothing here claims it.
+{
+	admin off
+	auto_https off
+
+	# Caddy's own messages. Its error entries carry the whole request, including the URL with its query string (what someone
+	# typed into a search box), so the request is removed from every entry.
+	log {
+		output stderr
+		level WARN
+		format filter {
+			wrap console
+			fields {
+				request delete
+			}
+		}
+	}
+}
+
+:80 {
+	# There is no `log` directive in this site block, so Caddy writes no access log: it would record IP addresses and URLs.
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Cross-Origin-Opener-Policy same-origin
+		# Nothing loads from another origin. Scripts and styles may be inline because Next.js writes its start-up script
+		# and React Aria sets style attributes; a nonce-based policy is a later hardening.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		-Server
+	}
+
+	# /metrics is deliberately not in this list: it has no sign-in and stays on the internal network (ARCHITECTURE 9.1).
+	@api path /v1/* /mcp /mcp/* /healthz
+	handle @api {
+		# flush_interval -1: send every chunk as it arrives, so a text/event-stream response is not held back. The Host
+		# header passes through unchanged (Caddy's default), which the web app needs to build its redirects.
+		reverse_proxy api:8000 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

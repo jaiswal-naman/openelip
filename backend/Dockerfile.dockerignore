@@ -1,0 +1,18 @@
+# Read by the build of backend/Dockerfile, whose context is the repository root. Keeps local environments, caches, the
+# git history, secrets, database backups and the web app out of the build.
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/node_modules
+.git
+.env
+.env.*
+.planning
+backups
+docs
+web
+scripts
+.github
+backend/tests

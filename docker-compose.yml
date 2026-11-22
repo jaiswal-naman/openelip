@@ -1,3 +1,33 @@
+# The whole product with one command:   cp .env.example .env   then   docker compose up
+# What starts is listed in ARCHITECTURE 2.3. Only the proxy and, in development, Mailpit publish a port, and the database
+# keeps the one it always had; all three bind to 127.0.0.1. Images are pinned by digest: to move one, pull the new tag,
+# read its digest (docker buildx imagetools inspect <image>:<tag>) and change it here.
+
+# One backend image runs the migration step, the API and the worker. The build is repeated on each service so that a first
+# `docker compose up` on a clean machine builds it before any of them needs it. The image name carries the project name, so a
+# second copy of the project (the fresh-clone check) never overwrites the first copy's image.
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  image: ${COMPOSE_PROJECT_NAME:-openelip}-backend:dev
+
+# Settings the API and the worker share. They must agree on the three keys, because the API seals sign-in codes and the
+# worker opens them. An empty value means "use the application's default" (backend/app/platform/config.py).
+x-backend-env: &backend-env
+  APP_ENV: ${APP_ENV:-development}
+  APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+  APP_PRODUCT_NAME: ${APP_PRODUCT_NAME:-}
+  APP_DATA_KEYS: ${APP_DATA_KEYS:-}
+  APP_LOOKUP_KEY: ${APP_LOOKUP_KEY:-}
+  APP_LINK_KEY: ${APP_LINK_KEY:-}
+  SMTP_URL: ${SMTP_URL:-smtp://mail:1025}
+  MAIL_FROM: ${MAIL_FROM:-}
+  LLM_PROVIDER: ${LLM_PROVIDER:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+
 services:
   db:
     image: pgvector/pgvector:pg17
@@ -6,7 +36,7 @@ services:
       POSTGRES_PASSWORD: app_local_only
       POSTGRES_DB: app
     ports:
-      - "127.0.0.1:5433:5432"
+      - "127.0.0.1:${APP_DB_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -15,5 +45,119 @@ services:
       timeout: 3s
       retries: 20
 
+  # Runs once and exits: brings the schema to the newest version (alembic), then copies config/models.toml into the model
+  # registry. It signs in with the database's own superuser, the only login that may create roles. The API and the worker
+  # start only after it finished.
+  migrate:
+    <<: *backend
+    command: ["sh", "-c", "alembic upgrade head && python -m app.cli models sync"]
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      DATABASE_URL_MIGRATE: postgresql://app:app_local_only@db:5432/app
+      APP_DB_API_PASSWORD: ${APP_DB_API_PASSWORD:-app_api_local_only}
+      APP_DB_WORKER_PASSWORD: ${APP_DB_WORKER_PASSWORD:-app_worker_local_only}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  # --forwarded-allow-ips=*: the API has no published port, so only the proxy and the web server can reach it, and the proxy
+  # replaces any forwarding header a client sent. Without trusting it, every visitor would share the proxy's address and the
+  # per-address sign-in limit would apply to everybody at once.
+  api:
+    <<: *backend
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8000
+      - --no-access-log
+      - --proxy-headers
+      - --forwarded-allow-ips=*
+    environment:
+      <<: *backend-env
+      DATABASE_URL_API: postgresql://app_api:${APP_DB_API_PASSWORD:-app_api_local_only}@db:5432/app
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  # Also the place to run the operator commands, which use the worker's database login:
+  #   docker compose exec worker python -m app.cli ingest run
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.worker"]
+    environment:
+      <<: *backend-env
+      DATABASE_URL_WORKER: postgresql://app_worker:${APP_DB_WORKER_PASSWORD:-app_worker_local_only}@db:5432/app
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  web:
+    build:
+      context: web
+    image: ${COMPOSE_PROJECT_NAME:-openelip}-web:dev
+    environment:
+      API_INTERNAL_URL: http://api:8000
+    healthcheck:
+      # /sign-in answers 200 even when the API is down, so the web server's health does not depend on the API's.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/sign-in').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  proxy:
+    image: caddy:2.11.9-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
+    ports:
+      - "127.0.0.1:${APP_HTTP_PORT:-8080}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    healthcheck:
+      # Through the proxy to the API: the one-origin path itself is what is checked.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:80/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # Catches outgoing mail, so sign-in codes can be read at http://localhost:8025 without a mail account.
+  mail:
+    image: axllent/mailpit:v1.34.0@sha256:23a2ef85bc50853ab3093645d1d64679afd8887e89da5e48a88940c172591a4e
+    profiles: ["dev"]
+    ports:
+      - "127.0.0.1:${APP_MAIL_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # A local model server with an OpenAI-compatible API on port 11434, reachable from the api and the worker as
+  # http://llm:11434/v1 (set LLM_PROVIDER=openai_compatible and LLM_BASE_URL). Not published on the host.
+  llm:
+    image: ollama/ollama:0.40.17@sha256:ccc42bcd3d5fcf7ab0d532b300382154e1a4da56fc666bdb313b78ebdd912754
+    profiles: ["local-llm"]
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  ollama:
