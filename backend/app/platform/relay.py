@@ -14,7 +14,7 @@ import smtplib
 import ssl
 from collections.abc import Callable
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from email.message import EmailMessage
 from email.utils import formataddr, formatdate
@@ -35,14 +35,18 @@ MAX_PER_CALL = 50  # so one call returns to the worker loop promptly
 
 
 @dataclass(frozen=True)
-class _Outgoing:
+class Outgoing:
+    """What a resolver works out for one row: the message to send. `headers` are extra message headers (the brief's
+    List-Unsubscribe pair); they are set through the email library, which refuses a value with a line break."""
+
     to: str
     subject: str
     body: str
+    headers: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
-class _Refusal:
+class Refusal:
     """A row that must not be sent: the status it ends in, and a content-free reason."""
 
     status: str
@@ -115,9 +119,9 @@ def _deliver(conn: Connection, row: RowMapping) -> int:
     """Work out who gets what, send it, and record the outcome. Returns 1 when the message was sent."""
     outbox_id, kind = row["id"], row["template"]
     resolver = RESOLVERS.get(kind)
-    resolved = resolver(conn, row["payload"]) if resolver else _Refusal("failed", "unknown_template")
+    resolved = resolver(conn, row["payload"]) if resolver else Refusal("failed", "unknown_template")
     conn.commit()  # no transaction stays open while talking to the mail server
-    if isinstance(resolved, _Refusal):
+    if isinstance(resolved, Refusal):
         _settle(conn, outbox_id, resolved.status, resolved.code)
         log.event("outbox.refused", outbox_id=outbox_id, kind=kind, outcome=resolved.code)
         return 0
@@ -136,12 +140,12 @@ def _deliver(conn: Connection, row: RowMapping) -> int:
     return 1 if verdict == "sent" else 0
 
 
-def _resolve_signin(conn: Connection, payload: dict[str, Any]) -> _Outgoing | _Refusal:
+def _resolve_signin(conn: Connection, payload: dict[str, Any]) -> Outgoing | Refusal:
     try:
         login_code_id = UUID(str(payload["login_code_id"]))
         code = sessions.open_sealed(payload["code_sealed"])
     except (KeyError, TypeError, ValueError, InvalidToken):
-        return _Refusal("failed", "bad_payload")
+        return Refusal("failed", "bad_payload")
     login = conn.execute(
         text(
             """SELECT email, consumed_at IS NOT NULL AS is_used, expires_at <= now() AS is_expired,
@@ -151,19 +155,21 @@ def _resolve_signin(conn: Connection, payload: dict[str, Any]) -> _Outgoing | _R
         {"id": login_code_id},
     ).one_or_none()
     if login is None or login.is_used or login.is_expired:
-        return _Refusal("cancelled", "stale")  # replaced by a newer code, already used, or past its life
-    if _is_undeliverable(conn, login.email):
-        return _Refusal("cancelled", "undeliverable")
+        return Refusal("cancelled", "stale")  # replaced by a newer code, already used, or past its life
+    if is_undeliverable(conn, login.email):
+        return Refusal("cancelled", "undeliverable")
     subject, body = mail.signin(config.get().product_name, code, max(1, login.minutes_left))
-    return _Outgoing(login.email, subject, body)
+    return Outgoing(login.email, subject, body)
 
 
-# One resolver per outbox template. Later phases add theirs here (a brief, a follow-up).
-RESOLVERS: dict[str, Callable[[Connection, dict[str, Any]], _Outgoing | _Refusal]] = {"signin": _resolve_signin}
+# One resolver per outbox template. Later phases add theirs here (the brief registers brief_v1 when app.brief.jobs is
+# imported, because the platform may not import it).
+RESOLVERS: dict[str, Callable[[Connection, dict[str, Any]], Outgoing | Refusal]] = {"signin": _resolve_signin}
 
 
-def _is_undeliverable(conn: Connection, address: str) -> bool:
-    """ARCHITECTURE 5.5: never to an example.test address (reserved, it cannot exist) or to a synthetic account."""
+def is_undeliverable(conn: Connection, address: str) -> bool:
+    """ARCHITECTURE 5.5: never to an example.test address (reserved, it cannot exist) or to a synthetic account. Every
+    resolver asks this of its recipient."""
     domain = address.rpartition("@")[2].lower()
     if domain == "example.test" or domain.endswith(".example.test"):
         return True
@@ -175,13 +181,15 @@ def _is_undeliverable(conn: Connection, address: str) -> bool:
     )
 
 
-def _message(settings: config.Settings, message_id: str, outgoing: _Outgoing) -> EmailMessage:
+def _message(settings: config.Settings, message_id: str, outgoing: Outgoing) -> EmailMessage:
     message = EmailMessage()
     message["From"] = formataddr((settings.product_name, settings.mail_from))
     message["To"] = outgoing.to
     message["Subject"] = outgoing.subject
     message["Date"] = formatdate(usegmt=True)
     message["Message-ID"] = message_id
+    for name, value in outgoing.headers.items():
+        message[name] = value
     message.set_content(outgoing.body)
     return message
 

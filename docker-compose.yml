@@ -57,6 +57,7 @@ services:
       DATABASE_URL_MIGRATE: postgresql://app:app_local_only@db:5432/app
       APP_DB_API_PASSWORD: ${APP_DB_API_PASSWORD:-app_api_local_only}
       APP_DB_WORKER_PASSWORD: ${APP_DB_WORKER_PASSWORD:-app_worker_local_only}
+      APP_DB_MATCH_PASSWORD: ${APP_DB_MATCH_PASSWORD:-app_match_local_only}
     depends_on:
       db:
         condition: service_healthy
@@ -100,6 +101,7 @@ services:
     environment:
       <<: *backend-env
       DATABASE_URL_WORKER: postgresql://app_worker:${APP_DB_WORKER_PASSWORD:-app_worker_local_only}@db:5432/app
+      DATABASE_URL_MATCH: postgresql://app_match:${APP_DB_MATCH_PASSWORD:-app_match_local_only}@db:5432/app
       ERASURE_LEDGER_PATH: /srv/erasure/ledger.jsonl
     volumes:
       - erasure:/srv/erasure

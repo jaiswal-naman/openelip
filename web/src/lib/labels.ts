@@ -84,3 +84,87 @@ export const IMPORTANCE_LABELS: Record<Schemas["Requirement"]["importance"], str
   required: "Required",
   preferred: "Preferred",
 };
+
+// ---- Matches and the morning brief (MAT-02 to MAT-08, BRF-01 to BRF-03) ---------------------------------------------------
+// FRONTEND_UI 6.2 and 6.3 word these. Each map is typed from the generated schema, so a code the API adds without a label
+// fails the type check, and matchLabels.test.ts compares the keys with web/openapi.json.
+
+export const VERDICT_LABELS: Record<Schemas["EvidenceItem"]["verdict"], string> = {
+  met: "Met",
+  partly_met: "Partly met",
+  not_met: "Not met",
+  no_evidence: "No evidence",
+};
+
+export const OUTCOME_LABELS: Record<Schemas["DecisionView"]["outcome"], string> = {
+  shown: "Shown",
+  introduced: "Introduced",
+  withheld: "Withheld",
+  filtered: "Filtered",
+  not_evaluated: "Not checked yet",
+};
+
+export const MATCH_REASON_LABELS: Record<Schemas["MatchView"]["reason_codes"][number], string> = {
+  top_ranked: "Top ranked",
+  material_change: "Changed since you saw it",
+  selected_for_role: "Selected for a role",
+  weak_fit: "Weak fit",
+  required_not_met: "A required item is not met",
+  below_daily_cap: "Below today's five",
+  citation_unresolved: "Withheld: a citation did not resolve",
+  already_shown: "Already shown",
+  job_closed: "Job closed",
+  liveness_unverified: "Could not confirm it is still open",
+  not_scored: "Not scored",
+  not_retrieved: "Not found by search",
+  hard_constraint: "Filtered by your constraints",
+  injection_suspected: "Withheld: the posting tried to instruct the AI",
+};
+
+export const CONSTRAINT_KIND_LABELS: Record<Schemas["ConstraintCheck"]["kind"], string> = {
+  location: "Location",
+  remote_policy: "Remote policy",
+  work_authorization: "Work authorization",
+  salary_floor: "Salary floor",
+  employment_type: "Employment type",
+  seniority: "Seniority",
+  excluded_company: "Excluded companies",
+};
+
+/** "Satisfied", or "Not stated (unverified)": an unknown value passes a constraint and is shown that way (FRONTEND_UI 3.4). */
+export const CONSTRAINT_STATE_LABELS: Record<Schemas["ConstraintCheck"]["state"], string> = {
+  satisfied: "Satisfied",
+  not_stated: "Not stated (unverified)",
+};
+
+/** What the posting leaves unsaid about a field a hard constraint covers (the match's `unverified` flags). */
+export const UNVERIFIED_LABELS: Record<Schemas["MatchView"]["unverified"][number], string> = {
+  location_not_stated: "Location: not stated (unverified)",
+  arrangement_not_stated: "Work arrangement: not stated (unverified)",
+  arrangement_ambiguous: "Work arrangement: unclear in the posting (unverified)",
+  salary_not_stated: "Pay: not stated (unverified)",
+  salary_currency_differs: "Pay: in a different currency from your floor (unverified)",
+  employment_type_not_stated: "Employment type: not stated (unverified)",
+  seniority_not_stated: "Level: not stated (unverified)",
+};
+
+/** The reasons a person can give for dismissing a match (MAT-08). Some of them propose a change to the record. */
+export const DISMISS_REASON_LABELS: Record<NonNullable<Schemas["FeedbackBody"]["reason"]>, string> = {
+  not_interested_role: "Not my field",
+  not_interested_company: "Not this company",
+  seniority_mismatch: "Wrong level",
+  compensation: "Pay is too low",
+  location: "Wrong location",
+  skills_mismatch: "The skills do not fit",
+  already_applied: "I already applied",
+  explanation_wrong: "The explanation is wrong",
+  duplicate: "A duplicate of another job",
+  job_closed: "The job has closed",
+  other: "Other",
+};
+
+export const BRIEF_FREQUENCY_LABELS: Record<Schemas["BriefSettings"]["frequency"], string> = {
+  daily: "Daily",
+  weekly: "Weekly",
+  paused: "Paused",
+};

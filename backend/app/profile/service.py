@@ -729,6 +729,17 @@ def list_facts(
     return [view(fact_snapshot(row), row.created_at) for row in kept], next_cursor
 
 
+def facts_by_ids(conn: Connection, user_id: UUID, ids: Sequence[UUID]) -> list[dict[str, Any]]:
+    """The person's facts with these ids that were ever confirmed, whatever their state now. A verdict cites a fact
+    while it is confirmed, and must still show it after the person corrected or retired it. A fact waiting for review,
+    or rejected before it was confirmed, is never returned (REC-02)."""
+    sql = f"""SELECT {FACT_COLUMNS} FROM profile_facts f
+              WHERE f.user_id = :u AND f.id = ANY(:ids) AND f.confirmed_at IS NOT NULL ORDER BY {FACT_ORDER}"""
+    return [
+        view(fact_snapshot(row), row.created_at) for row in conn.execute(text(sql), {"u": user_id, "ids": list(ids)})
+    ]
+
+
 def list_constraints(conn: Connection, user_id: UUID) -> list[dict[str, Any]]:
     """The active hard constraints: at most one per kind, so there is no paging."""
     sql = f"""SELECT {CONSTRAINT_COLUMNS} FROM constraints c

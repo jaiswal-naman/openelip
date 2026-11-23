@@ -16,17 +16,18 @@ from urllib.parse import urlsplit
 
 from cryptography.fernet import Fernet
 
-Role = Literal["migrate", "api", "worker"]
+Role = Literal["migrate", "api", "worker", "match"]
 
 # Public, development-only. A Fernet key is 32 bytes, url-safe base64 encoded.
 DEV_DATA_KEY = base64.urlsafe_b64encode(b"openelip-development-only-key-00").decode()
 DEV_LOOKUP_KEY = "openelip-development-lookup-key"
 DEV_LINK_KEY = "openelip-development-link-key"
-DEV_DB_PASSWORDS = ("app_local_only", "app_api_local_only", "app_worker_local_only")
+DEV_DB_PASSWORDS = ("app_local_only", "app_api_local_only", "app_worker_local_only", "app_match_local_only")
 DEFAULT_DATABASE_URLS: dict[Role, str] = {
     "migrate": "postgresql://app:app_local_only@127.0.0.1:5433/app",
     "api": "postgresql://app_api:app_api_local_only@127.0.0.1:5433/app",
     "worker": "postgresql://app_worker:app_worker_local_only@127.0.0.1:5433/app",
+    "match": "postgresql://app_match:app_match_local_only@127.0.0.1:5433/app",
 }
 LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
@@ -43,6 +44,7 @@ class Settings:
     database_url_migrate: str
     database_url_api: str
     database_url_worker: str
+    database_url_match: str
     data_keys: tuple[str, ...]  # primary first; every one decrypts (ARCHITECTURE 7.3)
     lookup_key: str
     link_key: str
@@ -60,6 +62,7 @@ class Settings:
             "migrate": self.database_url_migrate,
             "api": self.database_url_api,
             "worker": self.database_url_worker,
+            "match": self.database_url_match,
         }[role]
 
 
@@ -84,6 +87,7 @@ def load(environ: Mapping[str, str]) -> Settings:
         database_url_migrate=get("DATABASE_URL_MIGRATE") or DEFAULT_DATABASE_URLS["migrate"],
         database_url_api=get("DATABASE_URL_API") or DEFAULT_DATABASE_URLS["api"],
         database_url_worker=get("DATABASE_URL_WORKER") or DEFAULT_DATABASE_URLS["worker"],
+        database_url_match=get("DATABASE_URL_MATCH") or DEFAULT_DATABASE_URLS["match"],
         data_keys=_split(get("APP_DATA_KEYS")) or (DEV_DATA_KEY,),
         lookup_key=get("APP_LOOKUP_KEY") or DEV_LOOKUP_KEY,
         link_key=get("APP_LINK_KEY") or DEV_LINK_KEY,
@@ -124,6 +128,7 @@ def _refuse_development_secrets_off_localhost(settings: Settings) -> None:
         ("DATABASE_URL_MIGRATE", settings.database_url_migrate),
         ("DATABASE_URL_API", settings.database_url_api),
         ("DATABASE_URL_WORKER", settings.database_url_worker),
+        ("DATABASE_URL_MATCH", settings.database_url_match),
     ):
         if urlsplit(url).password in DEV_DB_PASSWORDS:
             in_use.append(name)

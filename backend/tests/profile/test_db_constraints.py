@@ -477,7 +477,10 @@ def test_every_record_table_has_the_two_policies(conn):
         {"t": list(RECORD_TABLES)},
     ).all()
     assert {row.relname for row in rows} == set(RECORD_TABLES)
-    assert all(row.relrowsecurity and row.policies == ["candidate_own", "worker_all"] for row in rows)
+    expected = {table: ["candidate_own", "worker_all"] for table in RECORD_TABLES}
+    for table in ("profile_facts", "constraints", "preferences"):  # plan 04-01: the match role reads the usable rows
+        expected[table] = ["candidate_own", "match_read", "worker_all"]
+    assert all(row.relrowsecurity and row.policies == expected[row.relname] for row in rows)
 
 
 def test_a_signed_in_person_sees_only_their_own_record_rows(conn):

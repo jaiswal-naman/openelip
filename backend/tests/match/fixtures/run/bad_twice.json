@@ -1,0 +1,4 @@
+[
+  {"verdicts": [{"requirement": "r1", "verdict": "met", "facts": ["f9"]}, {"requirement": "r2", "verdict": "met", "facts": ["f2"]}]},
+  {"verdicts": [{"requirement": "r1", "verdict": "met", "facts": ["f9"]}, {"requirement": "r2", "verdict": "met", "facts": ["f2"]}]}
+]

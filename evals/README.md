@@ -23,8 +23,9 @@ python -m app.evals gate harness_smoke --run ID  # exit 0 if the run meets its f
 ```
 
 `run` replays: the gateway's fake provider answers from the recording, so no model key is needed and the result is the
-same every time. A live run (a real model, a real key) is for when a prompt or a model changes; it is added with the
-first real gold set and is never run by pull requests. `--recorded FILE` replays another recording of the same suite.
+same every time. A live run (a real model, a real key) is for when a prompt or a model changes; `run <suite> --live`
+makes it for a suite whose scorer declares one (today `evidence_faithfulness`, whose README has the command) and it is
+never run by pull requests. `--recorded FILE` replays another recording of the same suite.
 
 The gate reads only what a run recorded. It fails, rather than passes, when the suite has no floor, the run does not
 exist, did not finish, ended in an error, or belongs to another suite.

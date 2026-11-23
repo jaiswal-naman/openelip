@@ -20,7 +20,7 @@ from app.profile import documents
 from app.trust import api, export, jobs, privacy
 from app.trust.routes import API_STATUS
 
-FORMAT_MODULES = {"evals", "platform", "profile", "trust"}
+FORMAT_MODULES = {"brief", "evals", "match", "platform", "profile", "trust"}
 
 
 class Seeded:
@@ -335,7 +335,7 @@ def test_the_archive_is_stored_sealed_and_kept_for_seven_days(ada, api_client, e
     assert sessions.open_sealed_bytes(raw).startswith(b"PK")  # it is a ZIP once opened with the data keys
     assert (row.status, row.completed_at is not None) == ("completed", True)
     assert timedelta(days=6, hours=23) < row.export_expires_at - row.completed_at < timedelta(days=7, hours=1)
-    assert row.store_results == {"postgres": "exported", "modules": 4, "files": 1}
+    assert row.store_results == {"postgres": "exported", "modules": len(FORMAT_MODULES), "files": 1}
 
 
 def test_the_job_leaves_one_audit_row_of_ids_and_counts_and_nothing_else(ada, api_client, engine, run_jobs):
@@ -345,7 +345,7 @@ def test_the_job_leaves_one_audit_row_of_ids_and_counts_and_nothing_else(ada, ap
     (event,) = rows
     assert (event.actor_type, event.actor_user_id, event.subject_user_id) == ("system", None, ada.user)
     assert (event.entity_table, event.entity_id) == ("data_requests", str(request_id))
-    assert event.details == {"modules": 4, "files": 1}
+    assert event.details == {"modules": len(FORMAT_MODULES), "files": 1}
 
 
 def test_the_job_is_safe_to_run_twice(ada, api_client, engine, run_jobs):

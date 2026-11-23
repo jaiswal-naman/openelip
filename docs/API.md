@@ -160,6 +160,8 @@ A refusal is `429 rate_limited` with `Retry-After` in seconds. Default limits, a
 | Public routes (`/v1/jobs`, `/v1/stats`, subprocessors, unsubscribe) | 60 per minute per client address |
 | Agent tokens at `/mcp` | Section 5.8 |
 
+No generic rate limiter exists yet: the limits above are enforced where a route has a check of its own (sign-in codes, resume uploads), and the rest are the design, not the code. In particular `POST /v1/briefs/unsubscribe` has no rate limit yet. The exposure is small: the route verifies the token's HMAC signature, in constant time, before it opens a database connection, so a request without a valid token costs one hash and no query, and a valid token can only withdraw the `brief_email` consent of the one person it was issued to. The route gets its limit with the first generic limiter for public routes.
+
 Product quotas (interest signals per week) are not rate limits; exceeding one returns `422 quota_exhausted` (1.11).
 
 ### 1.9 Long-running work
@@ -777,7 +779,7 @@ The client then posts `details.suggested_preference` to `POST /v1/me/preferences
         "evidence": [
           {
             "requirement": {
-              "id": "c3d4e5f6-0a1b-4c2d-8e3f-4a5b6c7d8e01",
+              "id": 91021,
               "text": "Experience building and operating streaming data systems",
               "importance": "required",
               "job_citation": {"span": {"start": 1204, "end": 1260}, "quote": "Experience building and operating streaming data systems"}
@@ -787,13 +789,14 @@ The client then posts `details.suggested_preference` to `POST /v1/me/preferences
               {
                 "fact_id": "0f9b6c2a-3d41-4e8a-b5c7-1a2b3c4d5e09",
                 "quote": "Led migration of the order pipeline from a nightly batch to Kafka streams",
-                "source": {"document_id": "5b1e7d20-8c3a-4f61-9e2d-7a8b9c0d1e10", "span": {"start": 498, "end": 571}}
+                "source": {"document_id": "5b1e7d20-8c3a-4f61-9e2d-7a8b9c0d1e10", "span": {"start": 498, "end": 571}},
+                "is_current": true
               }
             ]
           },
           {
             "requirement": {
-              "id": "c3d4e5f6-0a1b-4c2d-8e3f-4a5b6c7d8e02",
+              "id": 91022,
               "text": "5+ years of backend engineering experience",
               "importance": "required",
               "job_citation": {"span": {"start": 1140, "end": 1182}, "quote": "5+ years of backend engineering experience"}
@@ -803,18 +806,20 @@ The client then posts `details.suggested_preference` to `POST /v1/me/preferences
               {
                 "fact_id": "0f9b6c2a-3d41-4e8a-b5c7-1a2b3c4d5e01",
                 "quote": "Senior Backend Engineer, Northwind Logistics (Mar 2021 - Present)",
-                "source": {"document_id": "5b1e7d20-8c3a-4f61-9e2d-7a8b9c0d1e10", "span": {"start": 412, "end": 477}}
+                "source": {"document_id": "5b1e7d20-8c3a-4f61-9e2d-7a8b9c0d1e10", "span": {"start": 412, "end": 477}},
+                "is_current": true
               },
               {
                 "fact_id": "0f9b6c2a-3d41-4e8a-b5c7-1a2b3c4d5e06",
                 "quote": "Backend Engineer, Corvid Pay (Jul 2018 - Feb 2021)",
-                "source": {"document_id": "5b1e7d20-8c3a-4f61-9e2d-7a8b9c0d1e10", "span": {"start": 702, "end": 752}}
+                "source": {"document_id": "5b1e7d20-8c3a-4f61-9e2d-7a8b9c0d1e10", "span": {"start": 702, "end": 752}},
+                "is_current": true
               }
             ]
           },
           {
             "requirement": {
-              "id": "c3d4e5f6-0a1b-4c2d-8e3f-4a5b6c7d8e03",
+              "id": 91023,
               "text": "Production experience with Go",
               "importance": "preferred",
               "job_citation": {"span": {"start": 1330, "end": 1359}, "quote": "Production experience with Go"}
@@ -833,7 +838,28 @@ The client then posts `details.suggested_preference` to `POST /v1/me/preferences
 }
 ```
 
-`matches` holds zero to five items; zero is a valid day. Every `quote` is the stored text at the stored span. A `met` or `partly_met` verdict always has at least one record citation; a verdict whose citation does not resolve is never stored and its job is withheld with `citation_unresolved` (MAT-05). `checker: "passed"` reports that the independent constraint checker ran on this run (MAT-01). A job that does not state a value a constraint needs passes that constraint and carries the matching `unverified` flag, shown as "not stated".
+`matches` holds zero to five items; zero is a valid day. Every `quote` is the stored text at the stored span. A `met` or `partly_met` verdict always has at least one record citation; a verdict whose citation does not resolve is never stored and its job is withheld with `citation_unresolved` (MAT-05). `checker: "passed"` reports that the independent constraint checker ran on this run (MAT-01). A job that does not state a value a constraint needs passes that constraint and carries the matching `unverified` flag, shown as "not stated". The flags, like the checks below, are worked out when the match is read, from the posting and the candidate's constraints as they are then, not from what the run stored.
+
+A match is checked against the candidate's hard constraints every time it is read (invariant 1), not only when a run makes it. A job that a constraint confirmed after the run now excludes (a company the candidate has just excluded, a changed location) is left out of `GET /v1/matches`, and `GET /v1/matches/{decision_id}` answers it `404 not_found`. `GET /v1/decisions/{decision_id}` then reads that decision as `filtered`, with `reason_codes: ["hard_constraint"]`, its `violated_kinds`, the constraint that does it and no evidence: the page the web shows behind the link ("This job no longer meets your constraints"). The decision ledger (3.4) reports it the same way everywhere, so no read calls such a job shown. The stored decision is not edited, and the run's counts are read the same way (below).
+
+`run` is the latest run that finished on the date, or `null` when none did; `shown`, `withheld` and `filtered` are that run's counts as the candidate's constraints read now: a match the run showed that a constraint confirmed since excludes counts as `filtered` and not as `shown`, so the summary never calls a violator shown and agrees with the list. `checker` is `"disagreed"` only when the checker and the SQL filter differed on some job of that run (the job was filed as filtered and an alert was raised). Requirement `id` is the job requirement's integer id, and `quote` is the stored text at the stored span (code points into the job's description, or into the resume's extracted text). A fact the candidate has corrected or retired since the verdict was made still shows what it said, with `"is_current": false`; `source` is `null` for a fact the candidate wrote themselves, and then `quote` is their own words. Only `GET /v1/matches/{decision_id}` adds the job's plain-text `description` (the text the spans point into) and `constraint_checks`, one entry for each hard constraint the candidate has now:
+
+```json
+"constraint_checks": [
+  {"kind": "location", "statement": "Only jobs in India.", "state": "satisfied"},
+  {"kind": "salary_floor", "statement": "Nothing below 30 lakh rupees a year in base pay.", "state": "not_stated"}
+]
+```
+
+`state` is `not_stated` when the posting does not state the field the constraint needs (the job passed it because the posting does not say, and the match carries the matching `unverified` flag), else `satisfied`. A job that breaks a constraint is not a match, so no check is ever `violated`. A decision that is not a shown match of the caller (withheld, filtered, one the constraints now exclude, someone else's) is `404 not_found`.
+
+`POST /v1/matches/{decision_id}/feedback` takes `{"kind": "save"}`, `{"kind": "unsave"}` or `{"kind": "dismiss", "reason": "not_interested_company", "comment": "optional, up to 500 characters"}`; a dismissal needs a `reason` and nothing else has one. It answers `201` with the state after the click and the proposal the reason made, if any (the id of a proposed change to the record, which `POST /v1/me/events/{id}/confirm` applies and nothing else does):
+
+```json
+{"success": true, "data": {"is_saved": false, "is_dismissed": true, "proposal_event_id": "9d0e1f2a-3b4c-4d5e-8f6a-7b8c9d0e1f60"}, "error": null, "meta": {"request_id": "req_01JG2C4N8D1F"}}
+```
+
+`not_interested_company` proposes adding the company to the excluded companies, `not_interested_role` a `target_title` preference at weight -2, and `seniority_mismatch` and `location` a preference at -2 only when the posting states the seniority or the place; every other reason proposes nothing.
 
 ### 3.4 The decision ledger and "why not"
 
@@ -913,6 +939,8 @@ The client then posts `details.suggested_preference` to `POST /v1/me/preferences
 
 An on-request check runs only the hard-constraint filter, so it costs nothing and stores nothing. A job that passes every constraint and has never been scored returns `outcome: "not_evaluated"`.
 
+Rows are newest first (local date, then the time the decision was recorded). `outcome` and `reason` filter the list (`outcome` takes a comma list), `from` and `to` are local dates and include both ends, and a value outside a vocabulary is `400 invalid_request`. A filtered row's `constraint` is the active constraint of the first kind the job broke, if it already existed when the decision was made; its `id` and `statement` are `null` when the candidate has removed that constraint since, or replaced it with another of the same kind after the decision (the ledger does not say that a rule filtered a job it may not have). A check made on request (`?job_id=`) is made now, so it always names the active constraint. A withheld row that was scored carries `gaps`: its required requirements that were not met or had no evidence. `?job_id=` returns one row, the newest stored decision for that job if it has any, else the on-request check; a job that is not in the index is `404 not_found`. `GET /v1/decisions/{decision_id}` adds `violated_kinds`, `unverified`, `rank_position`, `summary`, `change_note` and the `evidence` table in the shape of 3.3. Every read of the ledger reports a shown match whose job the candidate's constraints now exclude as `filtered` (`hard_constraint`, the constraint that does it, no summary, rank or evidence): the list, `?job_id=` and this page. The `outcome` and `reason` filters ask about what a decision reads as now, so such a match is in `outcome=filtered` (and so in the Why not view) and not in `outcome=shown`. The stored row is never edited; every other decision is as it was recorded.
+
 ### 3.5 The morning brief with its decision items
 
 `GET /v1/briefs/e5f6a7b8-9c0d-4e1f-8a2b-3c4d5e6f7a50`
@@ -977,7 +1005,7 @@ An on-request check runs only the hard-constraint filter, so it costs nothing an
 }
 ```
 
-Every decision item points at an ordinary endpoint; the brief adds no new way to act. Approvals and introductions are decided after opening them in the app (an email link opens the same page), because the decision must follow a look at the exact payload or preview. `delivery` values are brief statuses; `email` is `null` when the person has not given the `brief_email` consent. One brief is stored per person, date and channel, so a retry of the sender cannot produce a second one (BRF-01).
+Every decision item points at an ordinary endpoint; the brief adds no new way to act. Approvals and introductions are decided after opening them in the app (an email link opens the same page), because the decision must follow a look at the exact payload or preview. `delivery` values are brief statuses; `email` is `null` when the person has not given the `brief_email` consent. One brief is stored per person, date and channel, so a retry of the sender cannot produce a second one (BRF-01). A brief stores which matches it lists; whether each may still be listed is asked again whenever the brief is read and when its email is written: a job that has closed since, or that the candidate's hard constraints now exclude, is left out, so an email sent at 06:40 never carries what the candidate excluded at 06:00. Two figures are deliberately records of the past and are not re-checked: each `done_since_last_brief` line gives a run's counts as that run made them (so the brief reads the same however late it is opened, and can say "5 shown" above fewer items), and `item_count` in the brief list is the number of items the brief was composed with.
 
 ### 3.6 Approving, editing and rejecting an approval
 

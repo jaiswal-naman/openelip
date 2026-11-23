@@ -1,0 +1,28 @@
+# GitGuardian (ggshield and the GitHub check) configuration, format version 2.
+# https://docs.gitguardian.com/ggshield-docs/reference/configuration
+#
+# Every detector stays on. Only the exact strings below are ignored: the published development passwords of the Compose
+# database logins. They are in docker-compose.yml, docker-compose.demo.yml, .env.example and the CI workflow on purpose,
+# anyone can read them, and backend/app/platform/config.py refuses them (DEV_DB_PASSWORDS) unless every database address is
+# on localhost. The same values are allowed for gitleaks in .gitleaks.toml. A real password is a different string and is
+# still reported.
+version: 2
+
+secret:
+  ignored-matches:
+    - name: Development login of the database owner, published in the Compose files and the CI workflow
+      match: app_local_only
+    - name: Development login of the app_api role, published in the Compose files and .env.example
+      match: app_api_local_only
+    - name: Development login of the app_worker role, published in the Compose files and .env.example
+      match: app_worker_local_only
+    - name: Development login of the app_match role, published in the Compose files and .env.example
+      match: app_match_local_only
+    # The same three as the Compose files write them inside a database address (postgresql://app_api:<this>@db:5432/app),
+    # with the variable that overrides them.
+    - name: app_api development login as written in a Compose database address
+      match: "${APP_DB_API_PASSWORD:-app_api_local_only}"
+    - name: app_worker development login as written in a Compose database address
+      match: "${APP_DB_WORKER_PASSWORD:-app_worker_local_only}"
+    - name: app_match development login as written in a Compose database address
+      match: "${APP_DB_MATCH_PASSWORD:-app_match_local_only}"

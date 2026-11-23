@@ -9,12 +9,14 @@ by accident. The predicate is the one of the partial index profile_facts_usable_
   get_record(conn, user_id)           the record as one object, the consumer section of GET /v1/me/record
   usable_facts(conn, user_id)         the confirmed facts, with the source span and quote of a resume fact
   compiled_constraints(conn, user_id) the active hard constraints as plain typed values, by kind
+  facts_by_ids(conn, user_id, ids)    facts a verdict cited, by id, once confirmed and since corrected or retired too
   propose_change(conn, user_id, ...)  suggest a record change; it waits for the candidate (CHT-03)
   confirm(conn, user_id, event_id)    apply a proposal the candidate confirmed
 
 Each takes an open connection, as the caller owns the transaction.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
@@ -24,7 +26,7 @@ from sqlalchemy import Connection, text
 from . import events, service
 from .events import propose_change
 
-__all__ = ["compiled_constraints", "confirm", "get_record", "propose_change", "usable_facts"]
+__all__ = ["compiled_constraints", "confirm", "facts_by_ids", "get_record", "propose_change", "usable_facts"]
 
 PAGE = 100
 
@@ -50,6 +52,14 @@ def usable_facts(conn: Connection, user_id: UUID) -> list[dict[str, Any]]:
     sql = f"""SELECT {service.FACT_COLUMNS} FROM profile_facts f
               WHERE f.user_id = :u AND {service.USABLE_FACT} ORDER BY {service.FACT_ORDER}"""
     return [service.view(service.fact_snapshot(row), row.created_at) for row in conn.execute(text(sql), {"u": user_id})]
+
+
+def facts_by_ids(conn: Connection, user_id: UUID, ids: Sequence[UUID]) -> list[dict[str, Any]]:
+    """The person's facts with these ids, in the shape of usable_facts, if they were ever confirmed. Unlike every other
+    read here it also returns a fact that is no longer usable (corrected or retired since): its `status` says so, and
+    only `confirmed` is current. It exists so that a stored verdict can still show the fact it cited. A fact that was
+    never confirmed, and any fact of another person, is not returned."""
+    return service.facts_by_ids(conn, user_id, ids)
 
 
 def compiled_constraints(conn: Connection, user_id: UUID) -> dict[str, dict[str, Any]]:

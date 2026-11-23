@@ -1,0 +1,9 @@
+[
+  {
+    "verdicts": [
+      {"requirement": "r1", "verdict": "partly_met", "facts": ["f1"]},
+      {"requirement": "r2", "verdict": "met", "facts": ["f2"]},
+      {"requirement": "r3", "verdict": "no_evidence", "facts": []}
+    ]
+  }
+]

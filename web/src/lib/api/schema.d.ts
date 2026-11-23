@@ -147,7 +147,8 @@ export interface paths {
         head?: never;
         /**
          * Update Me
-         * @description Grant or withdraw consents. The person is the session's, never anything in the body (T-3-01).
+         * @description Grant or withdraw consents and change the time zone and the brief schedule. The person is the session's, never
+         *     anything in the body (T-3-01).
          */
         patch: operations["update_me_v1_me_patch"];
         trace?: never;
@@ -499,10 +500,335 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Todays Matches
+         * @description The matches shown on a date, ranked, each with the requirement evidence table. Zero is a valid day. A job the
+         *     caller's hard constraints exclude now, whatever they said when the run made the match, is not listed.
+         */
+        get: operations["todays_matches_v1_matches_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/matches/{decision_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One Match
+         * @description One shown match with the posting's text (for the highlights) and a check of each hard constraint. 404 when the
+         *     job is one the caller's hard constraints now exclude: GET /v1/decisions/{id} reads it as filtered.
+         */
+        get: operations["one_match_v1_matches__decision_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/matches/{decision_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Give Feedback
+         * @description Save, unsave or dismiss a match. A dismissal reason may propose a record change; it changes nothing until the
+         *     person confirms it through /v1/me/events.
+         */
+        post: operations["give_feedback_v1_matches__decision_id__feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Decision Ledger
+         * @description The decision ledger, newest first. ?job_id= returns the stored decision for one job, or checks that job against
+         *     the caller's hard constraints on the spot (no model call, nothing stored) and returns filtered or not_evaluated. A
+         *     shown match whose job the caller's hard constraints now exclude is reported as filtered, by the filters too.
+         */
+        get: operations["decision_ledger_v1_decisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/decisions/{decision_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One Decision
+         * @description One decision of any outcome, with its evidence, the constraint that filtered it or the gaps that withheld it. A
+         *     shown match whose job the caller's hard constraints now exclude reads as filtered.
+         */
+        get: operations["one_decision_v1_decisions__decision_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/briefs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List My Briefs
+         * @description Past briefs, newest first: the in-app inbox. A day with nothing to say is listed as suppressed.
+         */
+        get: operations["list_my_briefs_v1_briefs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/briefs/{brief_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Brief */
+        get: operations["read_brief_v1_briefs__brief_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/briefs/unsubscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unsubscribe One Click
+         * @description RFC 8058 one-click unsubscribe: withdraws the brief_email consent of the person the signed token names. No
+         *     session, no cookie, no redirect; asking again changes nothing. A GET to this path does nothing at all.
+         */
+        post: operations["unsubscribe_one_click_v1_briefs_unsubscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Body_unsubscribe_one_click_v1_briefs_unsubscribe_post */
+        Body_unsubscribe_one_click_v1_briefs_unsubscribe_post: {
+            /** List-Unsubscribe */
+            "List-Unsubscribe": string;
+        };
+        /**
+         * BriefAction
+         * @description An ordinary endpoint to call. A dismissal also needs a reason, which the person chooses when they dismiss.
+         */
+        BriefAction: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "open" | "save" | "dismiss" | "review";
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "GET" | "POST";
+            /** Path */
+            path: string;
+            /** Body */
+            body?: {
+                [key: string]: string;
+            } | null;
+        };
+        /**
+         * BriefDecision
+         * @description One thing waiting for the person: a match, or the record changes someone suggested. A match nobody assessed
+         *     (is_assessed false) has no requirement table and no verdict: the search ranked it, no model has read it.
+         */
+        BriefDecision: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "match" | "record_proposals";
+            /** Title */
+            title: string;
+            /** Why */
+            why: string;
+            /** Ref */
+            ref: {
+                [key: string]: unknown;
+            };
+            /** Actions */
+            actions: components["schemas"]["BriefAction"][];
+            /** Is Assessed */
+            is_assessed: boolean;
+            /** Change Note */
+            change_note: string | null;
+            /** Note */
+            note: string | null;
+        };
+        /**
+         * BriefDelivery
+         * @description in_app is the brief's own status. email is null when the person has not agreed to the email; otherwise what the
+         *     outbox row says: queued, sent, or failed (never sent: cancelled, expired or refused).
+         */
+        BriefDelivery: {
+            /**
+             * In App
+             * @enum {string}
+             */
+            in_app: "composed" | "suppressed" | "queued" | "sent" | "failed";
+            /** Email */
+            email: ("queued" | "sent" | "failed") | null;
+            /** Email Sent At */
+            email_sent_at: string | null;
+        };
+        /** BriefDetail */
+        BriefDetail: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Local Date
+             * Format: date
+             */
+            local_date: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "composed" | "suppressed" | "queued" | "sent" | "failed";
+            delivery: components["schemas"]["BriefDelivery"];
+            /** Decisions */
+            decisions: components["schemas"]["BriefDecision"][];
+            /** Done Since Last Brief */
+            done_since_last_brief: components["schemas"]["BriefDone"][];
+            /** Open Record Proposals */
+            open_record_proposals: number;
+        };
+        /** BriefDone */
+        BriefDone: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Text */
+            text: string;
+            /** Ref */
+            ref: {
+                [key: string]: string;
+            };
+        };
+        /** BriefListItem */
+        BriefListItem: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Local Date
+             * Format: date
+             */
+            local_date: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "composed" | "suppressed" | "queued" | "sent" | "failed";
+            /** Item Count */
+            item_count: number;
+            delivery: components["schemas"]["BriefDelivery"];
+        };
+        /**
+         * BriefSettings
+         * @description How often the morning brief comes (BRF-03). Whether it also comes by email is the brief_email consent.
+         */
+        BriefSettings: {
+            /**
+             * Frequency
+             * @enum {string}
+             */
+            frequency: "daily" | "weekly" | "paused";
+            /** Weekday */
+            weekday: number | null;
+        };
+        /** BriefSettingsChange */
+        BriefSettingsChange: {
+            /**
+             * Frequency
+             * @enum {string}
+             */
+            frequency: "daily" | "weekly" | "paused";
+            /** Weekday */
+            weekday?: number | null;
+        };
+        /** CharSpan */
+        CharSpan: {
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+        };
         /** CodeRequest */
         CodeRequest: {
             /** Email */
@@ -575,6 +901,37 @@ export interface components {
             /** Statement */
             statement?: string | null;
         };
+        /** ConstraintCheck */
+        ConstraintCheck: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "location" | "remote_policy" | "work_authorization" | "salary_floor" | "employment_type" | "seniority" | "excluded_company";
+            /** Statement */
+            statement: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "satisfied" | "not_stated";
+        };
+        /**
+         * ConstraintRef
+         * @description The constraint that removed a job. id and statement are null when the person has since removed it, or replaced it
+         *     with another of the same kind after the decision was made.
+         */
+        ConstraintRef: {
+            /** Id */
+            id: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "location" | "remote_policy" | "work_authorization" | "salary_floor" | "employment_type" | "seniority" | "excluded_company";
+            /** Statement */
+            statement: string | null;
+        };
         /** ConstraintWritten */
         ConstraintWritten: {
             constraint: components["schemas"]["RecordConstraint"];
@@ -620,6 +977,58 @@ export interface components {
             rows: components["schemas"]["CostRow"][];
             /** Label */
             label: string;
+        };
+        /** DecisionDetail */
+        DecisionDetail: {
+            /** Decision Id */
+            decision_id: string | null;
+            /**
+             * Local Date
+             * Format: date
+             */
+            local_date: string;
+            /** Outcome */
+            outcome: ("shown" | "introduced" | "withheld" | "filtered") | "not_evaluated";
+            /** Reason Codes */
+            reason_codes: ("top_ranked" | "material_change" | "selected_for_role" | "weak_fit" | "required_not_met" | "below_daily_cap" | "citation_unresolved" | "already_shown" | "job_closed" | "liveness_unverified" | "not_scored" | "not_retrieved" | "hard_constraint" | "injection_suspected")[];
+            constraint: components["schemas"]["ConstraintRef"] | null;
+            /** Gaps */
+            gaps: components["schemas"]["Gap"][];
+            /** Evaluated */
+            evaluated?: "on_request" | null;
+            job: components["schemas"]["JobBrief"];
+            /** Violated Kinds */
+            violated_kinds: ("location" | "remote_policy" | "work_authorization" | "salary_floor" | "employment_type" | "seniority" | "excluded_company")[];
+            /** Unverified */
+            unverified: ("location_not_stated" | "arrangement_not_stated" | "arrangement_ambiguous" | "salary_not_stated" | "salary_currency_differs" | "employment_type_not_stated" | "seniority_not_stated")[];
+            /** Rank Position */
+            rank_position: number | null;
+            /** Summary */
+            summary?: string | null;
+            /** Change Note */
+            change_note: string | null;
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceItem"][];
+        };
+        /** DecisionView */
+        DecisionView: {
+            /** Decision Id */
+            decision_id: string | null;
+            /**
+             * Local Date
+             * Format: date
+             */
+            local_date: string;
+            /** Outcome */
+            outcome: ("shown" | "introduced" | "withheld" | "filtered") | "not_evaluated";
+            /** Reason Codes */
+            reason_codes: ("top_ranked" | "material_change" | "selected_for_role" | "weak_fit" | "required_not_met" | "below_daily_cap" | "citation_unresolved" | "already_shown" | "job_closed" | "liveness_unverified" | "not_scored" | "not_retrieved" | "hard_constraint" | "injection_suspected")[];
+            constraint: components["schemas"]["ConstraintRef"] | null;
+            /** Gaps */
+            gaps: components["schemas"]["Gap"][];
+            /** Evaluated */
+            evaluated?: "on_request" | null;
+            job: components["schemas"]["JobBrief"];
         };
         /**
          * DocumentFacts
@@ -711,6 +1120,17 @@ export interface components {
             /** Lines */
             lines?: components["schemas"]["DocumentLine"][] | null;
         };
+        /** Envelope[BriefDetail] */
+        Envelope_BriefDetail_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["BriefDetail"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[CodeRequested] */
         Envelope_CodeRequested_: {
             /** Success */
@@ -738,6 +1158,17 @@ export interface components {
             /** Success */
             success: boolean;
             data: components["schemas"]["Costs"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[DecisionDetail] */
+        Envelope_DecisionDetail_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["DecisionDetail"] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -788,11 +1219,33 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[FeedbackRecorded] */
+        Envelope_FeedbackRecorded_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["FeedbackRecorded"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[JobDetail] */
         Envelope_JobDetail_: {
             /** Success */
             success: boolean;
             data: components["schemas"]["JobDetail"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[MatchDetail] */
+        Envelope_MatchDetail_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["MatchDetail"] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -887,11 +1340,57 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[TodayMatches] */
+        Envelope_TodayMatches_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["TodayMatches"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[Unsubscribed] */
+        Envelope_Unsubscribed_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["Unsubscribed"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[VersionOnly] */
         Envelope_VersionOnly_: {
             /** Success */
             success: boolean;
             data: components["schemas"]["VersionOnly"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[list[BriefListItem]] */
+        Envelope_list_BriefListItem__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: components["schemas"]["BriefListItem"][] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[list[DecisionView]] */
+        Envelope_list_DecisionView__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: components["schemas"]["DecisionView"][] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -969,6 +1468,17 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** EvidenceItem */
+        EvidenceItem: {
+            requirement: components["schemas"]["RequirementRef"];
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "met" | "partly_met" | "not_met" | "no_evidence";
+            /** Record Citations */
+            record_citations: components["schemas"]["RecordCitation"][];
+        };
         /** FactDecision */
         FactDecision: {
             /**
@@ -1027,6 +1537,42 @@ export interface components {
             /** Unconfirmed Remaining */
             unconfirmed_remaining: number;
         };
+        /** FeedbackBody */
+        FeedbackBody: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "save" | "unsave" | "dismiss";
+            /** Reason */
+            reason?: ("not_interested_role" | "not_interested_company" | "seniority_mismatch" | "compensation" | "location" | "skills_mismatch" | "already_applied" | "explanation_wrong" | "duplicate" | "job_closed" | "other") | null;
+            /** Comment */
+            comment?: string | null;
+        };
+        /** FeedbackRecorded */
+        FeedbackRecorded: {
+            /** Is Saved */
+            is_saved: boolean;
+            /** Is Dismissed */
+            is_dismissed: boolean;
+            /** Proposal Event Id */
+            proposal_event_id: string | null;
+        };
+        /** Gap */
+        Gap: {
+            /** Requirement */
+            requirement: string;
+            /**
+             * Importance
+             * @enum {string}
+             */
+            importance: "required" | "preferred";
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "met" | "partly_met" | "not_met" | "no_evidence";
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1073,6 +1619,48 @@ export interface components {
             last_verified_at: string;
             /** Content Version */
             content_version: number;
+        };
+        /** JobBoard */
+        JobBoard: {
+            /**
+             * Ats
+             * @enum {string}
+             */
+            ats: "greenhouse" | "lever" | "ashby" | "direct";
+            /** Board */
+            board: string;
+        };
+        /**
+         * JobBrief
+         * @description The job as a ledger row shows it.
+         */
+        JobBrief: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Company Name */
+            company_name: string;
+            pay: components["schemas"]["PayRange"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            /**
+             * Last Verified At
+             * Format: date-time
+             */
+            last_verified_at: string;
+        };
+        /**
+         * JobCitation
+         * @description Where in the posting the requirement is. The quote is the stored text at the stored span, never generated.
+         */
+        JobCitation: {
+            span: components["schemas"]["CharSpan"];
+            /** Quote */
+            quote: string;
         };
         /** JobDetail */
         JobDetail: {
@@ -1134,6 +1722,106 @@ export interface components {
             /** Board */
             board: string;
         };
+        /** MatchDetail */
+        MatchDetail: {
+            /**
+             * Decision Id
+             * Format: uuid
+             */
+            decision_id: string;
+            /** Rank Position */
+            rank_position: number;
+            /** Reason Codes */
+            reason_codes: ("top_ranked" | "material_change" | "selected_for_role" | "weak_fit" | "required_not_met" | "below_daily_cap" | "citation_unresolved" | "already_shown" | "job_closed" | "liveness_unverified" | "not_scored" | "not_retrieved" | "hard_constraint" | "injection_suspected")[];
+            /** Change Note */
+            change_note: string | null;
+            /** Summary */
+            summary: string;
+            /** Unverified */
+            unverified: ("location_not_stated" | "arrangement_not_stated" | "arrangement_ambiguous" | "salary_not_stated" | "salary_currency_differs" | "employment_type_not_stated" | "seniority_not_stated")[];
+            job: components["schemas"]["MatchJob"];
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceItem"][];
+            feedback: components["schemas"]["MatchFeedback"];
+            /** Description */
+            description: string;
+            /** Constraint Checks */
+            constraint_checks: components["schemas"]["ConstraintCheck"][];
+        };
+        /** MatchFeedback */
+        MatchFeedback: {
+            /** Is Saved */
+            is_saved: boolean;
+            /** Is Dismissed */
+            is_dismissed: boolean;
+        };
+        /**
+         * MatchJob
+         * @description The job as a match shows it: the same fields as GET /v1/jobs/{id}, without its text.
+         */
+        MatchJob: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Company Name */
+            company_name: string;
+            pay: components["schemas"]["PayRange"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            /**
+             * Last Verified At
+             * Format: date-time
+             */
+            last_verified_at: string;
+            /** Location Raw */
+            location_raw: string | null;
+            /** Country */
+            country: string | null;
+            /** City */
+            city: string | null;
+            /** Work Arrangements */
+            work_arrangements: ("onsite" | "hybrid" | "remote")[];
+            /** Is Remote */
+            is_remote: boolean | null;
+            /**
+             * Employment Type
+             * @enum {string}
+             */
+            employment_type: "full_time" | "part_time" | "contract" | "internship" | "temporary" | "unknown";
+            /** Apply Url */
+            apply_url: string;
+            source: components["schemas"]["JobBoard"];
+            /** Posted At */
+            posted_at: string | null;
+            /** Content Version */
+            content_version: number;
+        };
+        /** MatchView */
+        MatchView: {
+            /**
+             * Decision Id
+             * Format: uuid
+             */
+            decision_id: string;
+            /** Rank Position */
+            rank_position: number;
+            /** Reason Codes */
+            reason_codes: ("top_ranked" | "material_change" | "selected_for_role" | "weak_fit" | "required_not_met" | "below_daily_cap" | "citation_unresolved" | "already_shown" | "job_closed" | "liveness_unverified" | "not_scored" | "not_retrieved" | "hard_constraint" | "injection_suspected")[];
+            /** Change Note */
+            change_note: string | null;
+            /** Summary */
+            summary: string;
+            /** Unverified */
+            unverified: ("location_not_stated" | "arrangement_not_stated" | "arrangement_ambiguous" | "salary_not_stated" | "salary_currency_differs" | "employment_type_not_stated" | "seniority_not_stated")[];
+            job: components["schemas"]["MatchJob"];
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceItem"][];
+            feedback: components["schemas"]["MatchFeedback"];
+        };
         /** Me */
         Me: {
             /**
@@ -1152,14 +1840,20 @@ export interface components {
             created_at: string;
             /** Consents */
             consents: components["schemas"]["ConsentState"][];
+            brief: components["schemas"]["BriefSettings"];
+            /** Capabilities */
+            capabilities: string[];
         };
         /**
          * MePatch
-         * @description PATCH /v1/me. Consents only for now: the account settings of API.md 2.3 arrive with the brief settings.
+         * @description PATCH /v1/me: consents, the time zone and the brief schedule, any of them, at least one.
          */
         MePatch: {
             /** Consents */
-            consents: components["schemas"]["ConsentChange"][];
+            consents?: components["schemas"]["ConsentChange"][] | null;
+            /** Timezone */
+            timezone?: string | null;
+            brief?: components["schemas"]["BriefSettingsChange"] | null;
         };
         /**
          * NewConstraint
@@ -1215,6 +1909,15 @@ export interface components {
         };
         /** Pay */
         Pay: {
+            /** Min */
+            min: number | null;
+            /** Max */
+            max: number | null;
+            /** Currency */
+            currency: string;
+        };
+        /** PayRange */
+        PayRange: {
             /** Min */
             min: number | null;
             /** Max */
@@ -1346,6 +2049,23 @@ export interface components {
              * Format: uuid
              */
             event_id: string;
+        };
+        /**
+         * RecordCitation
+         * @description A fact of the Career Record a verdict rests on. A fact the person has corrected or retired since still shows what
+         *     it said when the verdict was made, with is_current false. source is null for a fact the person wrote herself.
+         */
+        RecordCitation: {
+            /**
+             * Fact Id
+             * Format: uuid
+             */
+            fact_id: string;
+            /** Quote */
+            quote: string;
+            source: components["schemas"]["RecordSource"] | null;
+            /** Is Current */
+            is_current: boolean;
         };
         /** RecordConstraint */
         RecordConstraint: {
@@ -1535,6 +2255,15 @@ export interface components {
             notice: "not_guaranteed" | null;
             suggested_constraint?: components["schemas"]["NewConstraint"] | null;
         };
+        /** RecordSource */
+        RecordSource: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            span: components["schemas"]["CharSpan"];
+        };
         /**
          * RecordView
          * @description The confirmed record on one page. Facts waiting for review are counted here; GET /v1/me/facts lists them.
@@ -1595,6 +2324,19 @@ export interface components {
             /** Min Years */
             min_years: number | null;
         };
+        /** RequirementRef */
+        RequirementRef: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /**
+             * Importance
+             * @enum {string}
+             */
+            importance: "required" | "preferred";
+            job_citation: components["schemas"]["JobCitation"];
+        };
         /** ReviewResult */
         ReviewResult: {
             /**
@@ -1608,6 +2350,27 @@ export interface components {
              */
             status: "confirmed" | "rejected" | "superseded";
             replaced_by?: components["schemas"]["ReplacedBy"] | null;
+        };
+        /** RunSummary */
+        RunSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Record Version */
+            record_version: number;
+            /** Shown */
+            shown: number;
+            /** Withheld */
+            withheld: number;
+            /** Filtered */
+            filtered: number;
+            /**
+             * Checker
+             * @enum {string}
+             */
+            checker: "passed" | "disagreed";
         };
         /** SalaryFloor */
         SalaryFloor: {
@@ -1651,6 +2414,24 @@ export interface components {
             items: components["schemas"]["Subprocessor"][];
             /** Outside Copies Statement */
             outside_copies_statement: string;
+        };
+        /** TodayMatches */
+        TodayMatches: {
+            /**
+             * Local Date
+             * Format: date
+             */
+            local_date: string;
+            /** Timezone */
+            timezone: string;
+            run: components["schemas"]["RunSummary"] | null;
+            /** Matches */
+            matches: components["schemas"]["MatchView"][];
+        };
+        /** Unsubscribed */
+        Unsubscribed: {
+            /** Is Brief Email On */
+            is_brief_email_on: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -2665,6 +3446,271 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_ProposalDeclined_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    todays_matches_v1_matches_get: {
+        parameters: {
+            query?: {
+                date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_TodayMatches_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    one_match_v1_matches__decision_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                decision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_MatchDetail_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    give_feedback_v1_matches__decision_id__feedback_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                decision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_FeedbackRecorded_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decision_ledger_v1_decisions_get: {
+        parameters: {
+            query?: {
+                outcome?: string | null;
+                reason?: string | null;
+                from?: string | null;
+                to?: string | null;
+                job_id?: number | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_DecisionView__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    one_decision_v1_decisions__decision_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                decision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_DecisionDetail_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_my_briefs_v1_briefs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_BriefListItem__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_brief_v1_briefs__brief_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brief_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_BriefDetail_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unsubscribe_one_click_v1_briefs_unsubscribe_post: {
+        parameters: {
+            query: {
+                t: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_unsubscribe_one_click_v1_briefs_unsubscribe_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Unsubscribed_"];
                 };
             };
             /** @description Validation Error */

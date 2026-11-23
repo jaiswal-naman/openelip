@@ -1,0 +1,20 @@
+[
+  {"verdicts": [
+    {"requirement": "r1", "verdict": "met", "facts": ["f2"]},
+    {"requirement": "r2", "verdict": "met", "facts": ["f1"]},
+    {"requirement": "r3", "verdict": "no_evidence", "facts": []},
+    {"requirement": "r4", "verdict": "partly_met", "facts": ["f3"]}
+  ]},
+  {"verdicts": [
+    {"requirement": "r1", "verdict": "met", "facts": ["f2"]},
+    {"requirement": "r2", "verdict": "met", "facts": ["f1"]},
+    {"requirement": "r3", "verdict": "no_evidence", "facts": []},
+    {"requirement": "r4", "verdict": "partly_met", "facts": ["f3"]}
+  ]},
+  {"verdicts": [
+    {"requirement": "r1", "verdict": "met", "facts": ["f2"]},
+    {"requirement": "r2", "verdict": "met", "facts": ["f1"]},
+    {"requirement": "r3", "verdict": "no_evidence", "facts": []},
+    {"requirement": "r4", "verdict": "partly_met", "facts": ["f3"]}
+  ]}
+]

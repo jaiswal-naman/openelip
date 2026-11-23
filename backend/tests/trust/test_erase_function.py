@@ -232,7 +232,7 @@ def test_purge_expired_clears_only_archives_past_their_expiry(conn):
     stale = one(conn, insert, u=ada.user, a=b"old", offset=timedelta(days=-1))
     fresh = one(conn, insert, u=ada.user, a=b"new", offset=timedelta(days=1))
     act_as(conn, "app_worker")
-    assert one(conn, "SELECT purge_expired()") == {"export_links": 1}
+    assert one(conn, "SELECT purge_expired()")["export_links"] == 1  # it also counts what other modules' steps removed
     conn.execute(text("RESET ROLE"))
     archives = dict(conn.execute(text("SELECT id, export_archive FROM data_requests")).all())
     assert archives[stale] is None and bytes(archives[fresh]) == b"new"
