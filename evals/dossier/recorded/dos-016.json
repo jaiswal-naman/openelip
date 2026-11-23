@@ -1,0 +1,46 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Pelmar Robotics builds language lessons for small clinics."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include small clinics and independent shops."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 183 employees across 2 offices."
+   },
+   {
+    "topic": "product",
+    "quote": "Pelmar Robotics makes tools for its customers."
+   }
+  ],
+  "links": [
+   "https://pelmar-robotics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://pelmar-robotics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Go for our language lessons."
+   }
+  ],
+  "links": [
+   "https://pelmar-robotics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://pelmar-robotics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

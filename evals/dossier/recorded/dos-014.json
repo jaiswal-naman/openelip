@@ -1,0 +1,66 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Nordane Analytics builds inventory sensors for city schools."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include city schools and regional trucking companies."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 120 employees across 2 offices."
+   }
+  ],
+  "links": [
+   "https://nordane-analytics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://nordane-analytics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2019 we raised a Series A of 45 million dollars."
+   },
+   {
+    "topic": "values",
+    "quote": "We value rigour, curiosity and candour."
+   },
+   {
+    "topic": "news",
+    "quote": "In March 2024 we opened an office in Turin."
+   }
+  ],
+  "links": [
+   "https://nordane-analytics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://nordane-analytics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Python for our inventory sensors."
+   }
+  ],
+  "links": [
+   "https://nordane-analytics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://nordane-analytics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": true
+ }
+]

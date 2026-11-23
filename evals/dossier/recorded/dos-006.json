@@ -1,0 +1,82 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Fennick Robotics builds language lessons for food co-operatives."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include food co-operatives and independent shops."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 285 employees across 2 offices."
+   }
+  ],
+  "links": [
+   "https://fennick-robotics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://fennick-robotics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2019 we raised a Series A of 21 million dollars."
+   },
+   {
+    "topic": "news",
+    "quote": "In May 2024 we opened an office in Gdansk."
+   }
+  ],
+  "links": [
+   "https://fennick-robotics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://fennick-robotics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "hiring_process",
+    "quote": "Our hiring process has 2 interviews and a pairing session."
+   },
+   {
+    "topic": "engineering",
+    "quote": "Our engineers work in TypeScript and Python and ship every two weeks."
+   }
+  ],
+  "links": [
+   "https://fennick-robotics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://fennick-robotics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in TypeScript for our language lessons."
+   }
+  ],
+  "links": [
+   "https://fennick-robotics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://fennick-robotics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

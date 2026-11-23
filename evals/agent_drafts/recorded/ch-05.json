@@ -1,0 +1,55 @@
+[
+ {
+  "sentences": [
+   {
+    "text": "My expected salary is flexible.",
+    "facts": [],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I applied for the Learning Designer role on 10 November 2026.",
+    "facts": [],
+    "dossier_claims": [],
+    "events": [
+     "e1",
+     "e2"
+    ]
+   },
+   {
+    "text": "I also have deep SCORM authoring experience.",
+    "facts": [],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I designed online courses for adult learners at my last school.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I admire your new office.",
+    "facts": [
+     "f9"
+    ],
+    "dossier_claims": [],
+    "events": []
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   },
+   {
+    "edit": "e2",
+    "entailed": true
+   }
+  ]
+ }
+]

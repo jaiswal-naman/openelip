@@ -1,0 +1,42 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Garrow Energy builds solar monitoring systems for regional trucking companies."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include regional trucking companies and city schools."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 23 employees across 3 offices."
+   }
+  ],
+  "links": [
+   "https://garrow-energy.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://garrow-energy.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Java for our solar monitoring systems."
+   }
+  ],
+  "links": [
+   "https://garrow-energy.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://garrow-energy.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

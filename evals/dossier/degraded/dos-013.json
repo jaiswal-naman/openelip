@@ -1,0 +1,24 @@
+[
+ {
+  "claims": [],
+  "links": [
+   "https://mervik-labs.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://mervik-labs.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://mervik-labs.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://mervik-labs.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

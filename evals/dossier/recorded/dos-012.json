@@ -1,0 +1,86 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "customers",
+    "quote": "Our customers include small clinics and food co-operatives."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 119 employees across 5 offices."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 9999 employees across 5 offices."
+   }
+  ],
+  "links": [
+   "https://lomarr-health.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://lomarr-health.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2019 we raised a Series A of 26 million dollars."
+   },
+   {
+    "topic": "values",
+    "quote": "We value ownership, candour and curiosity."
+   },
+   {
+    "topic": "news",
+    "quote": "In November 2023 we opened an office in Cork."
+   }
+  ],
+  "links": [
+   "https://lomarr-health.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://lomarr-health.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "hiring_process",
+    "quote": "Our hiring process has 4 interviews and a short case study."
+   },
+   {
+    "topic": "engineering",
+    "quote": "Our engineers work in Java and Kotlin and ship every week."
+   }
+  ],
+  "links": [
+   "https://lomarr-health.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://lomarr-health.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Java for our scheduling tools."
+   }
+  ],
+  "links": [
+   "https://lomarr-health.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://lomarr-health.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

@@ -1,0 +1,66 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Dorvik Learning builds warehouse robots for small clinics."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include small clinics and independent shops."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 116 employees across 5 offices."
+   }
+  ],
+  "links": [
+   "https://dorvik-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://dorvik-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2023 we raised a Series A of 28 million dollars."
+   },
+   {
+    "topic": "values",
+    "quote": "We value curiosity, rigour and ownership."
+   },
+   {
+    "topic": "news",
+    "quote": "In May 2023 we opened an office in Cork."
+   }
+  ],
+  "links": [
+   "https://dorvik-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://dorvik-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in TypeScript for our warehouse robots."
+   }
+  ],
+  "links": [
+   "https://dorvik-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://dorvik-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

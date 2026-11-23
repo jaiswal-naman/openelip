@@ -1,0 +1,66 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Kestrin Freight builds route planning software for food co-operatives."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include food co-operatives and independent shops."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 244 employees across 4 offices."
+   }
+  ],
+  "links": [
+   "https://kestrin-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://kestrin-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2019 we raised a Series A of 55 million dollars."
+   },
+   {
+    "topic": "values",
+    "quote": "We value patience, curiosity and kindness."
+   },
+   {
+    "topic": "news",
+    "quote": "In May 2025 we opened an office in Porto."
+   }
+  ],
+  "links": [
+   "https://kestrin-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://kestrin-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Python for our route planning software."
+   }
+  ],
+  "links": [
+   "https://kestrin-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://kestrin-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

@@ -1,0 +1,70 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Brevo Health builds scheduling tools for independent shops."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include independent shops and food co-operatives."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 375 employees across 3 offices."
+   },
+   {
+    "topic": "product",
+    "quote": "Brevo Health makes tools for its customers."
+   }
+  ],
+  "links": [
+   "https://brevo-health.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://brevo-health.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2024 we raised a Series B of 50 million dollars."
+   },
+   {
+    "topic": "values",
+    "quote": "We value curiosity, craft and candour."
+   },
+   {
+    "topic": "news",
+    "quote": "In November 2026 we opened an office in Porto."
+   }
+  ],
+  "links": [
+   "https://brevo-health.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://brevo-health.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Python for our scheduling tools."
+   }
+  ],
+  "links": [
+   "https://brevo-health.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://brevo-health.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

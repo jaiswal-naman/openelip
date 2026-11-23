@@ -1,0 +1,70 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Tarnok Payments builds meal planning apps for independent shops."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include independent shops and food co-operatives."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 283 employees across 2 offices."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 9999 employees across 2 offices."
+   }
+  ],
+  "links": [
+   "https://tarnok-payments.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://tarnok-payments.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2020 we raised a Series B of 28 million dollars."
+   },
+   {
+    "topic": "values",
+    "quote": "We value craft, candour and rigour."
+   },
+   {
+    "topic": "news",
+    "quote": "In March 2023 we opened an office in Porto."
+   }
+  ],
+  "links": [
+   "https://tarnok-payments.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://tarnok-payments.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Python for our meal planning apps."
+   }
+  ],
+  "links": [
+   "https://tarnok-payments.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://tarnok-payments.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

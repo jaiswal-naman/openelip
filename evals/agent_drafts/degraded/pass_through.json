@@ -1,0 +1,1 @@
+{"validators": "pass_through", "note": "the scorer replays the recorded drafts with every validator switched to pass-through; the gate must fail"}

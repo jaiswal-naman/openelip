@@ -1,0 +1,42 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Zephren Logistics builds lab testing kits for city schools."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include city schools and small clinics."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 73 employees across 2 offices."
+   }
+  ],
+  "links": [
+   "https://zephren-logistics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://zephren-logistics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in C++ for our lab testing kits."
+   }
+  ],
+  "links": [
+   "https://zephren-logistics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://zephren-logistics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

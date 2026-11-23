@@ -1,0 +1,35 @@
+[
+ {
+  "claims": [],
+  "links": [
+   "https://dorvik-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://dorvik-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://dorvik-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://dorvik-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://dorvik-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://dorvik-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

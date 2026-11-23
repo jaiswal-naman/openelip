@@ -1,0 +1,82 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Ostrel Logistics builds lab testing kits for regional trucking companies."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include regional trucking companies and small clinics."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 155 employees across 4 offices."
+   }
+  ],
+  "links": [
+   "https://ostrel-logistics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ostrel-logistics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2023 we raised a Series A of 7 million dollars."
+   },
+   {
+    "topic": "news",
+    "quote": "In November 2024 we opened an office in Gdansk."
+   }
+  ],
+  "links": [
+   "https://ostrel-logistics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ostrel-logistics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "hiring_process",
+    "quote": "Our hiring process has 2 interviews and a short case study."
+   },
+   {
+    "topic": "engineering",
+    "quote": "Our engineers work in Python and SQL and ship every week."
+   }
+  ],
+  "links": [
+   "https://ostrel-logistics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ostrel-logistics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Python for our lab testing kits."
+   }
+  ],
+  "links": [
+   "https://ostrel-logistics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ostrel-logistics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

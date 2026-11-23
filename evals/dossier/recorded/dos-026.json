@@ -1,0 +1,66 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Ambrel Robotics builds language lessons for small clinics."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include small clinics and food co-operatives."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 65 employees across 2 offices."
+   },
+   {
+    "topic": "product",
+    "quote": "Ambrel Robotics makes tools for its customers."
+   }
+  ],
+  "links": [
+   "https://ambrel-robotics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ambrel-robotics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "values",
+    "quote": "We value candour, rigour and patience."
+   },
+   {
+    "topic": "news",
+    "quote": "In March 2023 we opened an office in Porto."
+   }
+  ],
+  "links": [
+   "https://ambrel-robotics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ambrel-robotics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in C++ for our language lessons."
+   }
+  ],
+  "links": [
+   "https://ambrel-robotics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ambrel-robotics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

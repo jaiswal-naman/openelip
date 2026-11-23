@@ -1,0 +1,42 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Verrick Health builds scheduling tools for independent shops."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include independent shops and regional trucking companies."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 383 employees across 4 offices."
+   }
+  ],
+  "links": [
+   "https://verrick-health.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://verrick-health.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in TypeScript for our scheduling tools."
+   }
+  ],
+  "links": [
+   "https://verrick-health.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://verrick-health.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

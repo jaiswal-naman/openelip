@@ -1,0 +1,86 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Rastow Foods builds payment terminals for small clinics."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include small clinics and city schools."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 316 employees across 5 offices."
+   }
+  ],
+  "links": [
+   "https://rastow-foods.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://rastow-foods.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2022 we raised a Series B of 12 million dollars."
+   },
+   {
+    "topic": "values",
+    "quote": "We value candour, craft and kindness."
+   },
+   {
+    "topic": "news",
+    "quote": "In May 2023 we opened an office in Cork."
+   }
+  ],
+  "links": [
+   "https://rastow-foods.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://rastow-foods.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "hiring_process",
+    "quote": "Our hiring process has 4 interviews and a short case study."
+   },
+   {
+    "topic": "engineering",
+    "quote": "Our engineers work in TypeScript and Python and ship every week."
+   }
+  ],
+  "links": [
+   "https://rastow-foods.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://rastow-foods.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in TypeScript for our payment terminals."
+   }
+  ],
+  "links": [
+   "https://rastow-foods.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://rastow-foods.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

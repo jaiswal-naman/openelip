@@ -1,0 +1,120 @@
+[
+ {
+  "answers": [
+   {
+    "question_id": "why_role",
+    "status": "drafted",
+    "sentences": [
+     {
+      "text": "I like that Brevo Learning builds language lessons for city schools.",
+      "facts": [],
+      "dossier_claims": [
+       "d1"
+      ]
+     },
+     {
+      "text": "I also know the Rust language.",
+      "facts": [
+       "f99"
+      ],
+      "dossier_claims": []
+     },
+     {
+      "text": "I designed twelve online courses for adult learners.",
+      "facts": [
+       "f2"
+      ],
+      "dossier_claims": []
+     }
+    ]
+   },
+   {
+    "question_id": "relevant_experience",
+    "status": "drafted",
+    "sentences": [
+     {
+      "text": "I trained forty teachers to use a new grading tool.",
+      "facts": [
+       "f3"
+      ],
+      "dossier_claims": []
+     },
+     {
+      "text": "I also know Articulate Storyline.",
+      "facts": [
+       "f4"
+      ],
+      "dossier_claims": []
+     },
+     {
+      "text": "I like that Brevo Learning builds lessons for 40 city schools.",
+      "facts": [],
+      "dossier_claims": [
+       "d1"
+      ]
+     }
+    ]
+   },
+   {
+    "question_id": "work_authorization",
+    "status": "drafted",
+    "sentences": [
+     {
+      "text": "My answer is 100 thousand.",
+      "facts": [
+       "f2"
+      ],
+      "dossier_claims": []
+     }
+    ]
+   }
+  ],
+  "note": [
+   {
+    "text": "I designed twelve online courses for adult learners.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": []
+   },
+   {
+    "text": "I admire the work of Zenith Corp.",
+    "facts": [],
+    "dossier_claims": [
+     "d9"
+    ]
+   },
+   {
+    "text": "I like that Brevo Learning builds language lessons for city schools.",
+    "facts": [],
+    "dossier_claims": [
+     "d1"
+    ]
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   },
+   {
+    "edit": "e2",
+    "entailed": true
+   },
+   {
+    "edit": "e3",
+    "entailed": true
+   },
+   {
+    "edit": "e4",
+    "entailed": true
+   },
+   {
+    "edit": "e5",
+    "entailed": true
+   }
+  ]
+ }
+]
