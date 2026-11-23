@@ -279,3 +279,19 @@ def test_text_fields_reads_the_words_of_each_payload_type():
         "answers": [{"question_id": "why", "answer": "Because"}, {"question_id": "pay", "answer": ""}],
     }
     assert checks.text_fields("submit_application", payload) == {"cover_note": "Note", "answers.why": "Because"}
+
+
+@pytest.mark.parametrize("written", ["2026-11-03", "03/11/2026", "2026.11.03", "3.11.2026"])
+def test_a_date_written_with_digits_is_not_a_phone_number(written):
+    inp = follow_up(
+        texts={"subject": "s", "body": f"I applied on {written} and remain interested."},
+        sources={"subject": "code", "body": "candidate"},
+    )
+    assert result(inp, "scope").passed
+
+
+def test_a_number_that_is_a_phone_number_still_is():
+    inp = follow_up(
+        texts={"subject": "s", "body": "Call 020 7946 0958."}, sources={"subject": "code", "body": "candidate"}
+    )
+    assert result(inp, "scope").reason_code == "restricted_data"

@@ -274,9 +274,14 @@ def check_consent(inp: CheckInput) -> CheckResult:
     return CheckResult("consent", False, "consent_missing", {"purpose": "ai_processing"})
 
 
+_DATE = re.compile(r"\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}")
+
+
 def _phones(value: str) -> list[str]:
+    """Digit runs that look like a phone number; a date written with digits is not one."""
     low, high = _PHONE_DIGITS
-    return [m.group() for m in _PHONE.finditer(value) if low <= sum(c.isdigit() for c in m.group()) <= high]
+    found = [m.group() for m in _PHONE.finditer(value)]
+    return [p for p in found if low <= sum(c.isdigit() for c in p) <= high and not _DATE.fullmatch(p.strip(" .-"))]
 
 
 def _restricted(inp: CheckInput) -> list[str]:
