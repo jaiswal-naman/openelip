@@ -27,7 +27,6 @@ from sqlalchemy import Connection, text
 
 from app import demo
 from app.demo import SeedRefused
-from app.platform import db
 from app.platform.sessions import seal_bytes
 from app.trust import api as trust
 
@@ -219,7 +218,7 @@ def seed_hiring(employer_email: str, candidate_email: str) -> HiringSeeded:
     demo._refuse_unless_scratch_and_fake()
     if employer_email.strip().lower() == candidate_email.strip().lower():
         raise SeedRefused("the employer and the candidate must be two different accounts.")
-    with db.transaction(role="migrate") as conn:
+    with demo._scratch(role="migrate") as conn:  # the server's own answer to current_database(), not only the URL's
         employer = demo._person(conn, employer_email)
         candidate = demo._person(conn, candidate_email)
         org_id, created = _organization(conn, employer)
