@@ -12,7 +12,7 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy import text
 
-from app.chat import hub
+from app.chat import hub, service
 from app.trust import api as trust
 from tests.chat.fixtures.service import world as chat_world
 from tests.chat.fixtures.service.world import count, ok, open_session, post, refused, say, stored, transcript
@@ -319,6 +319,17 @@ def test_the_transcript_lists_user_tool_and_assistant_in_order_with_citations_an
 
 def test_an_empty_session_has_an_empty_transcript(w):
     assert ok(transcript(w, open_session(w)))["data"] == []
+
+
+def test_the_session_list_and_the_transcript_are_capped_and_keep_the_newest_in_order(w, monkeypatch):
+    monkeypatch.setattr(service, "LIST_LIMIT", 2)
+    monkeypatch.setattr(service, "TRANSCRIPT_LIMIT", 2)
+    first, second, third = open_session(w), open_session(w), open_session(w)
+    assert [s["id"] for s in ok(w.client.get("/v1/chat/sessions"))["data"]] == [third, second]
+
+    messages_of(w, w.ada, first, 3, minutes_ago=50)
+    newest_two = [str(row.id) for row in stored(w.engine, first)[-2:]]
+    assert [m["id"] for m in ok(transcript(w, first))["data"]] == newest_two
 
 
 def test_a_reply_left_running_by_a_process_that_is_gone_is_returned_and_stored_as_interrupted(w):

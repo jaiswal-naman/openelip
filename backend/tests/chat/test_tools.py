@@ -36,6 +36,7 @@ from app.profile import api as profile
 from tests.chat.fixtures import harness
 from tests.chat.fixtures.service import world as chat_world
 from tests.match.factories import RESUME_FACTS, make_job
+from tests.p5_factories import make_application
 
 MESSAGE = "I would also take jobs in Pune."
 SEVEN = {
@@ -370,6 +371,22 @@ def test_get_applications_returns_statuses_with_their_dates_and_the_job_by_alias
     assert [h["status"] for h in row["history"]] == ["applied"] and "occurred_at" in row["history"][0]
     assert output.refs == {"job": [str(w.ok.id)]}
     assert call(w.bob, GetApplications(tool="get_applications"))[0].data["applications"] == []
+
+
+def test_a_long_record_and_long_lists_are_cut_to_their_caps_and_say_how_much_was_left_out(w, monkeypatch):
+    monkeypatch.setattr(tools, "FACTS_MAX", 2)
+    monkeypatch.setattr(tools, "LIST_LIMIT", 1)
+    with w.engine.begin() as c:
+        make_application(c, w.ada, w.fine)  # a second application: Ada now has two
+
+    record, _ = call(w.ada, GetRecord(tool="get_record"))
+    assert len(record.data["facts"]) == 2 and record.data["facts_omitted"] == len(w.record.fact_ids) - 2
+
+    applications, _ = call(w.ada, GetApplications(tool="get_applications"))
+    assert len(applications.data["applications"]) == 1 and applications.data["omitted"] == 1
+
+    decisions, _ = call(w.ada, ListMatches(tool="list_matches"))
+    assert [d["outcome"] for d in decisions.data["decisions"]] == ["shown"]  # the newest date first, one of two
 
 
 # ---- what the model is shown ---------------------------------------------------------------------------------------
