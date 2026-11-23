@@ -14,6 +14,7 @@ from app.platform.llm import embed
 
 DIMENSIONS = embed.DIMENSIONS
 DOCKERFILE = Path(__file__).resolve().parents[3] / "Dockerfile"
+CI_WORKFLOW = Path(__file__).resolve().parents[4] / ".github" / "workflows" / "ci.yml"
 
 
 def length(vector):
@@ -168,3 +169,15 @@ def test_the_image_downloads_the_model_this_code_asks_for():
 
     assert named is not None, "backend/Dockerfile must declare ARG EMBEDDING_MODEL"
     assert named.group(1) == embed.DEFAULT_MODEL
+
+
+def test_ci_keeps_the_downloaded_model_between_runs_under_the_id_of_the_model_this_code_asks_for():
+    """The retrieval tests run the real model, which fastembed downloads from Hugging Face unless it is in the folder
+    FASTEMBED_CACHE_PATH names. ci.yml names the model once more, to key that folder's cache, so it must not drift."""
+    backend_job = CI_WORKFLOW.read_text(encoding="utf-8").split("\n  eval-gate:")[0]
+
+    assert re.search(rf"^\s+EMBEDDING_MODEL: {re.escape(embed.DEFAULT_MODEL)}(\s|$)", backend_job, re.MULTILINE)
+    assert re.search(r"^\s+FASTEMBED_CACHE_PATH: /", backend_job, re.MULTILINE)
+    assert re.search(r"uses: actions/cache@[0-9a-f]{40}\b", backend_job)  # pinned to a commit, like every action
+    assert "path: ${{ env.FASTEMBED_CACHE_PATH }}" in backend_job
+    assert "key: fastembed-${{ env.EMBEDDING_MODEL }}" in backend_job
