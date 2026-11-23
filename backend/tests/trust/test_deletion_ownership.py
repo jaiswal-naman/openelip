@@ -21,9 +21,9 @@ from app.trust import privacy
 importlib.import_module("app.main")  # the API's registrations ...
 importlib.import_module("app.worker")  # ... and the worker's, which is where the export job runs
 
-# Tables that hold nothing about a person and so need no deleter. Phase 2's ingest tables are here because that phase
-# registers nothing; if it adds more, whoever merges second adds them here or has Phase 2 register them. model_registry
-# and eval_runs are registered by the platform already and are listed again so a deleted registration cannot hide them.
+# Tables that hold nothing about a person and so need no deleter. The five ingest tables are registered by
+# app.ingest.privacy, and model_registry and eval_runs by the platform; all are listed again here so a deleted
+# registration cannot hide them. alembic_version is Alembic's own bookkeeping.
 NO_PERSONAL_DATA = {
     "alembic_version",
     "job_sources",
@@ -36,11 +36,9 @@ NO_PERSONAL_DATA = {
 }
 # A table with a foreign key to users that erasure keeps on purpose: the bare id, so a restore can be erased again.
 KEPT_WITH_USER_KEY = {"data_requests"}
-MERGE_NOTE = (
+HOW_TO_FIX = (
     "Register it with trust.privacy.register in the module that owns it (tables, with what erasure does to each, and "
-    "an exporter). If it holds nothing about a person, list it in NO_PERSONAL_DATA in this test with the reason. "
-    "Phase 2 merge: if Phase 2 added tables beyond the ingest tables listed here, whoever merges second adds them "
-    "to NO_PERSONAL_DATA or has Phase 2 register them."
+    "an exporter). If it holds nothing about a person, list it in NO_PERSONAL_DATA in this test with the reason."
 )
 
 SCHEMA_TABLES = "SELECT schemaname, tablename FROM pg_tables WHERE schemaname IN ('public', 'langgraph')"
@@ -94,7 +92,7 @@ def ownership_problems(
         for table in tables:
             owners.setdefault(table, []).append(module)
     for table in sorted(schema.tables - set(owners) - no_personal_data):
-        problems.append(f"{table}: no module registered it. {MERGE_NOTE}")
+        problems.append(f"{table}: no module registered it. {HOW_TO_FIX}")
     for table, modules in sorted(owners.items()):
         if len(modules) > 1:
             problems.append(
@@ -152,7 +150,8 @@ def test_every_table_is_owned_by_exactly_one_module_and_the_registry_agrees_with
 def test_the_registry_the_roots_build_holds_the_tables_every_module_owns(conn):
     owned = {table for tables in privacy.registry().values() for table in tables}
     assert {"users", "consents", "audit_log", "data_requests", "documents", "profile_facts", "eval_items"} <= owned
-    assert set(privacy.registry()) >= {"platform", "evals", "trust", "profile"}
+    assert {"job_sources", "jobs", "fetch_runs", "skills", "job_requirements"} <= owned  # registered, not only listed
+    assert set(privacy.registry()) >= {"platform", "evals", "trust", "profile", "ingest"}
     assert {"platform", "evals", "trust", "profile"} <= set(privacy.exporters())
 
 
@@ -169,9 +168,7 @@ def test_a_table_nobody_registered_is_reported_by_name(conn):
     make_probe(conn)  # orphan_probe(user_id uuid REFERENCES users(id))
     problems = live_problems(conn)
     assert [p for p in problems if p.startswith("orphan_probe: no module registered it")]
-    assert (
-        "NO_PERSONAL_DATA" in problems[0] and "Phase 2" in problems[0]
-    )  # the message says what to do and about the merge
+    assert "NO_PERSONAL_DATA" in problems[0]  # the message says what to do about it
 
 
 def test_a_table_with_no_user_column_at_all_is_reported_too(conn):

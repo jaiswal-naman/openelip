@@ -5,6 +5,7 @@ Run:  uvicorn app.main:app --port 8000
 
 from fastapi import FastAPI
 
+from app.ingest import privacy as ingest_privacy  # noqa: F401  (importing it registers the ingest tables)
 from app.ingest import routes as ingest_routes
 from app.platform import api, auth, control_routes, errors, telemetry
 from app.profile import privacy as profile_privacy  # noqa: F401  (importing it registers the profile tables and exporter)

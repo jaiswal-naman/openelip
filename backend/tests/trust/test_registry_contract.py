@@ -13,7 +13,7 @@ from sqlalchemy import text
 from app.trust import api, privacy
 
 # What plan 03-01 registers, by table: (owning module, effect). Only tables that exist at the Phase 1 head plus the
-# three this plan adds. The ingest tables belong to Phase 2.
+# three this plan adds. The ingest tables are registered by app.ingest.privacy (tested below).
 EXPECTED = {
     "users": ("platform", "cascade"),
     "sessions": ("platform", "cascade"),
@@ -106,9 +106,16 @@ def test_every_table_this_plan_registered_exists_in_the_schema(conn):
     assert set(EXPECTED) <= existing
 
 
-def test_the_ingest_tables_are_left_to_phase_2():
-    registered = {table for tables in privacy.registry().values() for table in tables}
-    assert {"job_sources", "jobs", "fetch_runs"}.isdisjoint(registered)
+def test_the_ingest_tables_are_registered_by_the_ingest_module_as_holding_no_personal_data():
+    from app.ingest import privacy as ingest_privacy  # importing it registers them (both roots do)
+
+    by_table = {
+        table: (module, effect) for module, tables in privacy.registry().items() for table, effect in tables.items()
+    }
+    assert {table: by_table.get(table) for table in ingest_privacy.TABLES} == dict.fromkeys(
+        ("job_sources", "jobs", "fetch_runs", "skills", "job_requirements"), ("ingest", "no_personal_data")
+    )
+    assert "ingest" not in privacy.exporters()  # nothing in them to export
 
 
 def test_the_trust_exporter_returns_the_persons_own_rows_as_json_and_never_the_archive(conn):
