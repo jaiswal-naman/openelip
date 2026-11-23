@@ -503,6 +503,59 @@ def test_a_broken_recording_is_exit_status_two_and_names_the_remedy(engine, monk
     assert "record_fixture.py" in capsys.readouterr().err
 
 
+# ---- baseline.json, as committed ----------------------------------------
+
+
+def stored_run(key):
+    return json.loads((SUITE_DIR / "baseline.json").read_text(encoding="utf-8"))["runs"][key]
+
+
+def numbers(metrics):
+    return {name: value for name, value in metrics.items() if name not in VOLATILE}
+
+
+def test_the_replay_of_the_committed_recordings_reproduces_the_stored_replay_exactly(engine):
+    """What the CI gate replays. Deterministic, so the same recordings through the same code give the same numbers."""
+    replayed = score.run("model", "test")["metrics"]
+    assert numbers(replayed) == numbers(stored_run("replay")["metrics"])
+
+
+def test_the_rules_run_reproduces_the_stored_rules_baseline_exactly():
+    assert numbers(score.run("rules", "test")["metrics"]) == numbers(stored_run("rules")["metrics"])
+
+
+def test_a_replay_that_equals_the_stored_baseline_meets_the_bars_the_gate_applies(engine):
+    held = score.run("model", "test", baseline=stored_run("replay")["metrics"])["metrics"]
+    assert held["bars"] == {
+        "req_spans_resolved": True,
+        "req_item_f1_not_below_baseline": True,
+        "req_importance_accuracy_not_below_baseline": True,
+    }
+    assert (held["bars_met"], held["score"]) == (True, 1.0)
+
+
+def test_the_stored_runs_are_on_the_clean_test_split_and_say_they_are_baselines_and_not_model_quality():
+    stored = json.loads((SUITE_DIR / "baseline.json").read_text(encoding="utf-8"))
+    assert set(stored["runs"]) == {"replay", "rules"}
+    assert "rules baseline, not a model quality number" in stored["note"]
+    assert "labels drafted by an agent, review pending" in stored["note"]
+    for key, method in (("replay", "model"), ("rules", "rules")):
+        run = stored["runs"][key]
+        assert run["suite"] == "requirement_extraction" and run["status"] == "passed" and run["git_sha"]
+        assert run["note"].startswith("rules baseline, not a model quality number")
+        assert run["labels"] == "labels drafted by an agent, review pending"
+        assert run["config"]["method"] == method and run["config"]["split"] == "test"
+        assert run["config"]["labels"] == "agent-drafted, maintainer review pending"
+        assert set(run["config"]["excluded"]) == {"req-049"}
+        metrics = run["metrics"]
+        assert (metrics["n"], metrics["gold_items"]) == (39, 390)  # the clean test split
+        assert metrics["req_spans_resolved"] == 1.0 and run["unclean_items"] == []
+    replay = stored["runs"]["replay"]
+    assert replay["config"]["recording_source"] == "rules_fixture" and replay["metrics"]["harness_check_only"] is True
+    assert "proves the code path, not model quality" in replay["note"]
+    assert "harness_check_only" not in stored["runs"]["rules"]["metrics"]  # a real measurement, of the baseline
+
+
 # ---- the documentation of the bars ----------------------------------------
 
 

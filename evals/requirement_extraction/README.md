@@ -135,3 +135,57 @@ The CI gate reads one number, `metrics.score` (floor 1.0 in `evals/thresholds.to
 that applies to the run holds and 0.0 otherwise; the honest numbers are the other metrics, always reported with the
 words "labels drafted by an agent, review pending". The maintainer's review of at least 10 of the 50 postings comes
 before any figure from this set is published.
+
+## How the suite runs
+
+| File | What it is |
+|---|---|
+| `score.py` | The `requirement_extraction` suite. `--method model` (the default) replays `recordings.jsonl` through the real task path; `--method rules` scores the heading rules on the posting text; `--split dev\|test` (default test); `--record` writes the run to the eval tables, and `--report FILE` stores it in a baseline file. |
+| `record_fixture.py` | Builds `recordings.jsonl`: for every gold posting the answer the heading rules give, in the fake provider's format. |
+| `recordings.jsonl` | One line per gold posting: `posting_id, split, source, request_sha256, answers`. `source` is `rules_fixture`, which says these are not model output. |
+| `baseline.json` | The two recorded runs on the test split, as the database holds them: `runs.replay` and `runs.rules`. |
+
+A replay goes through the code a live extraction goes through: the gateway's fake provider hands the recorded answer to
+`job.requirements.extract`, the validator computes every span, and the rows are scored. `request_sha256` is a hash of the
+exact messages the task sends for that posting, so a replay stops, and says to run `record_fixture.py`, when the prompt or
+the segmenter has changed since the recording was made. A replay needs `DATABASE_URL_WORKER` pointing at a migrated
+database (the gateway writes its ledger there); the rules method needs none unless `--record` is given.
+
+The suite is scored by code (span overlap), not by exact match, so it is not in the `SUITES` table of
+`backend/app/evals/runner.py`: that table replays answers and compares them whole. `score.py --record` writes the same
+tables, and `python -m app.evals gate requirement_extraction --run ID` judges the run from them.
+
+A live recording needs a model key and is a manual check: `score.py` refuses any recording that is not a `rules_fixture`
+one, and applying the live bars of the section above in code belongs with the first live run.
+
+## Recorded runs on the test split (2026-11-23)
+
+**Labels drafted by an agent, review pending.** Two runs of `score.py --record --report baseline.json` on the 39 clean test
+postings, at commit `6efe3af`, in a scratch database whose name ends in `_test` (not the live one). The rules run is
+`641a3723-6e6c-45b0-8c31-a008fcff7e36` and the replay `34ece495-f9a9-4556-ae59-a3eb5ff69623`. The two give the same
+numbers, because the replay's answers are the rules' rows.
+
+| | |
+|---|---|
+| Items | 390 in the gold set, 445 predicted, 246 matched at IoU 0.5 or more |
+| Precision | 0.5528 (95% Wilson interval 0.5064 to 0.5984) |
+| Recall | 0.6308 (0.5818 to 0.6772) |
+| `req_item_f1` | 0.5892 |
+| `req_importance_accuracy` | 0.8780 (0.8312 to 0.9132), over the 246 matched items |
+| `req_spans_resolved` | 1.0 (every one of the 445 rows is the posting's own text at its span) |
+| Turned away by the validator | nothing |
+| Bars | `req_spans_resolved = 1.0` met. No other bar applies to these two runs. |
+
+What these numbers do and do not show:
+
+- **The rules run is a baseline, not a model quality number.** It is a real measurement of the heading rules, which were
+  written before the gold set was read and were not changed after this run. `req_item_f1` is 0.26 below the 0.85 that a
+  live model must reach; AI_SYSTEM 4.3's rule that rules within three points of the model replace it can only be
+  applied once a live run exists.
+- **The replay is not a model quality number either.** Its answers are the rules' rows written as a model would write
+  them, so it shows that the path from a recorded answer to scored rows works and is exact, and it is what CI replays.
+- The labels were drafted by one agent and are not yet reviewed, so these figures are provisional until 10 postings have
+  been checked. If review corrects a label, correct `labels.jsonl`, run `resolve.py` and `record_fixture.py`, run the two
+  commands again, and say so in the commit message; never change code to fit a label.
+- 39 postings from three ATS products on one day: the intervals describe this sample, not job postings in general.
+  `req-032` and `req-043` are near-identical (97.6%) and both count.
