@@ -1,0 +1,2969 @@
+{
+  "run": {
+    "date": "2026-11-23T12:34:26+05:30",
+    "database": "app_p4_07_bench_test",
+    "label_status": "agent-drafted, maintainer review pending",
+    "snapshot": {
+      "exported_at": "2026-11-23T06:26:04+00:00",
+      "postings": 758
+    },
+    "profiles": 20,
+    "pairs": 366,
+    "grades": {
+      "0": 114,
+      "1": 86,
+      "2": 90,
+      "3": 76
+    },
+    "config": {
+      "mode": "benchmark",
+      "methods_run": [
+        "M1",
+        "M2",
+        "M3",
+        "M4"
+      ],
+      "ranker_version": "rules-2026-11-a",
+      "embedding_model": "BAAI/bge-small-en-v1.5",
+      "evidence_prompt_version": "b2c9c732d464",
+      "snapshot_exported_at": "2026-11-23T06:26:04+00:00",
+      "labels": "agent-drafted, maintainer review pending",
+      "report_only": true
+    },
+    "eval_run_id": "fe21b577-ae7a-4497-9257-188047c2a6b9"
+  },
+  "methods": {
+    "M1": {
+      "name": "Keyword",
+      "status": "run",
+      "slices": {
+        "all": {
+          "profiles": 20,
+          "ndcg_at_5": {
+            "mean": 0.5978122956507183,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.5011154699439793,
+              0.6889103678271724
+            ]
+          },
+          "precision_at_5": {
+            "mean": 0.6000000000000001,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.5100000000000001,
+              0.68
+            ]
+          },
+          "recall_at_40": {
+            "mean": 0.9310443722943722,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.8780573593073593,
+              0.9735119047619047
+            ]
+          },
+          "recall_at_300": {
+            "mean": 1.0,
+            "profiles_with_a_value": 20,
+            "ci": [
+              1.0,
+              1.0
+            ]
+          },
+          "unjudged_at_5_rate": 0.0,
+          "constraint_violations": 0,
+          "latency_p50_seconds": 0.03534060000674799,
+          "latency_p95_seconds": 0.07050900004105642,
+          "cpu_seconds_mean": 0.0015625,
+          "embed_cpu_seconds_mean": 0.0,
+          "cost_per_candidate_day_usd": 0.0,
+          "versus_m3": {
+            "ndcg_at_5": {
+              "mean_difference": -0.17874742562754298,
+              "ci": [
+                -0.25635670093378676,
+                -0.1094801504943654
+              ],
+              "detected": true
+            },
+            "precision_at_5": {
+              "mean_difference": -0.17999999999999994,
+              "ci": [
+                -0.2600000000000001,
+                -0.08999999999999998
+              ],
+              "detected": true
+            },
+            "recall_at_40": {
+              "mean_difference": -0.05556277056277056,
+              "ci": [
+                -0.11277056277056277,
+                -0.009285714285714276
+              ],
+              "detected": true
+            },
+            "recall_at_300": {
+              "mean_difference": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "detected": false
+            }
+          }
+        },
+        "with_constraints": {
+          "profiles": 12,
+          "ndcg_at_5": {
+            "mean": 0.6160860556240032,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.49305597367600723,
+              0.7347550728664994
+            ]
+          },
+          "precision_at_5": {
+            "mean": 0.5833333333333334,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.48333333333333334,
+              0.6833333333333332
+            ]
+          },
+          "recall_at_40": {
+            "mean": 0.9431547619047619,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.8848214285714283,
+              0.9895833333333334
+            ]
+          },
+          "recall_at_300": {
+            "mean": 1.0,
+            "profiles_with_a_value": 12,
+            "ci": [
+              1.0,
+              1.0
+            ]
+          },
+          "unjudged_at_5_rate": 0.0,
+          "constraint_violations": 0,
+          "latency_p50_seconds": 0.020685199997387826,
+          "latency_p95_seconds": 0.05095279996749014,
+          "cpu_seconds_mean": 0.0013020833333333333,
+          "embed_cpu_seconds_mean": 0.0,
+          "cost_per_candidate_day_usd": 0.0,
+          "versus_m3": {
+            "ndcg_at_5": {
+              "mean_difference": -0.19034181898956856,
+              "ci": [
+                -0.28596015683818726,
+                -0.10639515606086807
+              ],
+              "detected": true
+            },
+            "precision_at_5": {
+              "mean_difference": -0.18333333333333335,
+              "ci": [
+                -0.3,
+                -0.06666666666666664
+              ],
+              "detected": true
+            },
+            "recall_at_40": {
+              "mean_difference": -0.03452380952380951,
+              "ci": [
+                -0.09880952380952379,
+                0.019047619047619063
+              ],
+              "detected": false
+            },
+            "recall_at_300": {
+              "mean_difference": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "detected": false
+            }
+          }
+        },
+        "without_constraints": {
+          "profiles": 8,
+          "ndcg_at_5": {
+            "mean": 0.5704016556907906,
+            "profiles_with_a_value": 8,
+            "ci": [
+              0.4188369317262281,
+              0.7215836783814118
+            ]
+          },
+          "precision_at_5": {
+            "mean": 0.625,
+            "profiles_with_a_value": 8,
+            "ci": [
+              0.49999999999999994,
+              0.75
+            ]
+          },
+          "recall_at_40": {
+            "mean": 0.912878787878788,
+            "profiles_with_a_value": 8,
+            "ci": [
+              0.8143939393939394,
+              0.9886363636363636
+            ]
+          },
+          "recall_at_300": {
+            "mean": 1.0,
+            "profiles_with_a_value": 8,
+            "ci": [
+              1.0,
+              1.0
+            ]
+          },
+          "unjudged_at_5_rate": 0.0,
+          "constraint_violations": 0,
+          "latency_p50_seconds": 0.045576500007882714,
+          "latency_p95_seconds": 0.075704799965024,
+          "cpu_seconds_mean": 0.001953125,
+          "embed_cpu_seconds_mean": 0.0,
+          "cost_per_candidate_day_usd": 0.0,
+          "versus_m3": {
+            "ndcg_at_5": {
+              "mean_difference": -0.16135583558450464,
+              "ci": [
+                -0.2878627795199944,
+                -0.05102561456529475
+              ],
+              "detected": true
+            },
+            "precision_at_5": {
+              "mean_difference": -0.17499999999999996,
+              "ci": [
+                -0.27499999999999997,
+                -0.04999999999999999
+              ],
+              "detected": true
+            },
+            "recall_at_40": {
+              "mean_difference": -0.08712121212121213,
+              "ci": [
+                -0.1856060606060606,
+                -0.011363636363636367
+              ],
+              "detected": true
+            },
+            "recall_at_300": {
+              "mean_difference": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "detected": false
+            }
+          }
+        }
+      }
+    },
+    "M2": {
+      "name": "Vector",
+      "status": "run",
+      "slices": {
+        "all": {
+          "profiles": 20,
+          "ndcg_at_5": {
+            "mean": 0.6837627390945504,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.6056746374554034,
+              0.7523537321930086
+            ]
+          },
+          "precision_at_5": {
+            "mean": 0.6799999999999999,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.5899999999999999,
+              0.7600000000000002
+            ]
+          },
+          "recall_at_40": {
+            "mean": 0.8549152236652237,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.7875126262626261,
+              0.913961038961039
+            ]
+          },
+          "recall_at_300": {
+            "mean": 0.9866071428571429,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.9660714285714287,
+              1.0
+            ]
+          },
+          "unjudged_at_5_rate": 0.0,
+          "constraint_violations": 0,
+          "latency_p50_seconds": 0.03166340000461787,
+          "latency_p95_seconds": 0.0387281000148505,
+          "cpu_seconds_mean": 0.26796875,
+          "embed_cpu_seconds_mean": 0.1546875,
+          "cost_per_candidate_day_usd": 0.0,
+          "versus_m3": {
+            "ndcg_at_5": {
+              "mean_difference": -0.09279698218371085,
+              "ci": [
+                -0.1590363263178685,
+                -0.02986154076143307
+              ],
+              "detected": true
+            },
+            "precision_at_5": {
+              "mean_difference": -0.09999999999999999,
+              "ci": [
+                -0.17000000000000004,
+                -0.03
+              ],
+              "detected": true
+            },
+            "recall_at_40": {
+              "mean_difference": -0.1316919191919192,
+              "ci": [
+                -0.19620851370851367,
+                -0.07581529581529581
+              ],
+              "detected": true
+            },
+            "recall_at_300": {
+              "mean_difference": -0.013392857142857146,
+              "ci": [
+                -0.03392857142857143,
+                0.0
+              ],
+              "detected": false
+            }
+          }
+        },
+        "with_constraints": {
+          "profiles": 12,
+          "ndcg_at_5": {
+            "mean": 0.6998639723920331,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.6209247411052845,
+              0.7738390640132128
+            ]
+          },
+          "precision_at_5": {
+            "mean": 0.6666666666666666,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.5499999999999999,
+              0.7666666666666666
+            ]
+          },
+          "recall_at_40": {
+            "mean": 0.8431547619047618,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.7407738095238096,
+              0.9324404761904762
+            ]
+          },
+          "recall_at_300": {
+            "mean": 0.9776785714285715,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.9449404761904763,
+              1.0
+            ]
+          },
+          "unjudged_at_5_rate": 0.0,
+          "constraint_violations": 0,
+          "latency_p50_seconds": 0.03195350000169128,
+          "latency_p95_seconds": 0.04154389997711405,
+          "cpu_seconds_mean": 0.2721354166666667,
+          "embed_cpu_seconds_mean": 0.15494791666666666,
+          "cost_per_candidate_day_usd": 0.0,
+          "versus_m3": {
+            "ndcg_at_5": {
+              "mean_difference": -0.10656390222153872,
+              "ci": [
+                -0.18947632809633644,
+                -0.03330041423605277
+              ],
+              "detected": true
+            },
+            "precision_at_5": {
+              "mean_difference": -0.09999999999999999,
+              "ci": [
+                -0.21666666666666667,
+                0.0
+              ],
+              "detected": false
+            },
+            "recall_at_40": {
+              "mean_difference": -0.13452380952380952,
+              "ci": [
+                -0.22738095238095235,
+                -0.047619047619047616
+              ],
+              "detected": true
+            },
+            "recall_at_300": {
+              "mean_difference": -0.022321428571428575,
+              "ci": [
+                -0.055059523809523815,
+                0.0
+              ],
+              "detected": false
+            }
+          }
+        },
+        "without_constraints": {
+          "profiles": 8,
+          "ndcg_at_5": {
+            "mean": 0.6596108891483262,
+            "profiles_with_a_value": 8,
+            "ci": [
+              0.5124752014522906,
+              0.7918009391233836
+            ]
+          },
+          "precision_at_5": {
+            "mean": 0.7,
+            "profiles_with_a_value": 8,
+            "ci": [
+              0.5499999999999999,
+              0.85
+            ]
+          },
+          "recall_at_40": {
+            "mean": 0.8725559163059162,
+            "profiles_with_a_value": 8,
+            "ci": [
+              0.8012175324675326,
+              0.939033189033189
+            ]
+          },
+          "recall_at_300": {
+            "mean": 1.0,
+            "profiles_with_a_value": 8,
+            "ci": [
+              1.0,
+              1.0
+            ]
+          },
+          "unjudged_at_5_rate": 0.0,
+          "constraint_violations": 0,
+          "latency_p50_seconds": 0.028991500032134354,
+          "latency_p95_seconds": 0.0387281000148505,
+          "cpu_seconds_mean": 0.26171875,
+          "embed_cpu_seconds_mean": 0.154296875,
+          "cost_per_candidate_day_usd": 0.0,
+          "versus_m3": {
+            "ndcg_at_5": {
+              "mean_difference": -0.07214660212696908,
+              "ci": [
+                -0.1783290110828071,
+                0.032791541283434616
+              ],
+              "detected": false
+            },
+            "precision_at_5": {
+              "mean_difference": -0.09999999999999999,
+              "ci": [
+                -0.17499999999999996,
+                -0.024999999999999994
+              ],
+              "detected": true
+            },
+            "recall_at_40": {
+              "mean_difference": -0.1274440836940837,
+              "ci": [
+                -0.19878246753246753,
+                -0.060966810966810975
+              ],
+              "detected": true
+            },
+            "recall_at_300": {
+              "mean_difference": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "detected": false
+            }
+          }
+        }
+      }
+    },
+    "M3": {
+      "name": "Hybrid",
+      "status": "run",
+      "slices": {
+        "all": {
+          "profiles": 20,
+          "ndcg_at_5": {
+            "mean": 0.7765597212782612,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.709504587178358,
+              0.837101016902969
+            ]
+          },
+          "precision_at_5": {
+            "mean": 0.78,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.6900000000000001,
+              0.8600000000000001
+            ]
+          },
+          "recall_at_40": {
+            "mean": 0.9866071428571429,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.9660714285714287,
+              1.0
+            ]
+          },
+          "recall_at_300": {
+            "mean": 1.0,
+            "profiles_with_a_value": 20,
+            "ci": [
+              1.0,
+              1.0
+            ]
+          },
+          "unjudged_at_5_rate": 0.0,
+          "constraint_violations": 0,
+          "latency_p50_seconds": 0.05251700000371784,
+          "latency_p95_seconds": 0.08075449999887496,
+          "cpu_seconds_mean": 0.43828125,
+          "embed_cpu_seconds_mean": 0.140625,
+          "cost_per_candidate_day_usd": 0.0
+        },
+        "with_constraints": {
+          "profiles": 12,
+          "ndcg_at_5": {
+            "mean": 0.8064278746135719,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.7240924493719905,
+              0.8831936429625551
+            ]
+          },
+          "precision_at_5": {
+            "mean": 0.7666666666666666,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.6666666666666666,
+              0.8666666666666667
+            ]
+          },
+          "recall_at_40": {
+            "mean": 0.9776785714285715,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.9449404761904763,
+              1.0
+            ]
+          },
+          "recall_at_300": {
+            "mean": 1.0,
+            "profiles_with_a_value": 12,
+            "ci": [
+              1.0,
+              1.0
+            ]
+          },
+          "unjudged_at_5_rate": 0.0,
+          "constraint_violations": 0,
+          "latency_p50_seconds": 0.03599289996782318,
+          "latency_p95_seconds": 0.0656085999798961,
+          "cpu_seconds_mean": 0.3450520833333333,
+          "embed_cpu_seconds_mean": 0.14192708333333334,
+          "cost_per_candidate_day_usd": 0.0
+        },
+        "without_constraints": {
+          "profiles": 8,
+          "ndcg_at_5": {
+            "mean": 0.7317574912752952,
+            "profiles_with_a_value": 8,
+            "ci": [
+              0.6308232074835783,
+              0.8257280168771062
+            ]
+          },
+          "precision_at_5": {
+            "mean": 0.7999999999999999,
+            "profiles_with_a_value": 8,
+            "ci": [
+              0.6250000000000001,
+              0.95
+            ]
+          },
+          "recall_at_40": {
+            "mean": 1.0,
+            "profiles_with_a_value": 8,
+            "ci": [
+              1.0,
+              1.0
+            ]
+          },
+          "recall_at_300": {
+            "mean": 1.0,
+            "profiles_with_a_value": 8,
+            "ci": [
+              1.0,
+              1.0
+            ]
+          },
+          "unjudged_at_5_rate": 0.0,
+          "constraint_violations": 0,
+          "latency_p50_seconds": 0.06626130000222474,
+          "latency_p95_seconds": 0.09805109997978434,
+          "cpu_seconds_mean": 0.578125,
+          "embed_cpu_seconds_mean": 0.138671875,
+          "cost_per_candidate_day_usd": 0.0
+        }
+      }
+    },
+    "M4": {
+      "name": "Hybrid plus rules",
+      "status": "run",
+      "slices": {
+        "all": {
+          "profiles": 20,
+          "ndcg_at_5": {
+            "mean": 0.7948984462620738,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.7327723137446559,
+              0.8504867711686164
+            ]
+          },
+          "precision_at_5": {
+            "mean": 0.8100000000000002,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.7300000000000001,
+              0.8800000000000002
+            ]
+          },
+          "recall_at_40": {
+            "mean": 0.9866071428571429,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.9660714285714287,
+              1.0
+            ]
+          },
+          "recall_at_300": {
+            "mean": 0.99375,
+            "profiles_with_a_value": 20,
+            "ci": [
+              0.98125,
+              1.0
+            ]
+          },
+          "unjudged_at_5_rate": 0.0,
+          "constraint_violations": 0,
+          "latency_p50_seconds": 0.0546191000030376,
+          "latency_p95_seconds": 0.10676699999021366,
+          "cpu_seconds_mean": 0.49140625,
+          "embed_cpu_seconds_mean": 0.1203125,
+          "cost_per_candidate_day_usd": 0.0,
+          "versus_m3": {
+            "ndcg_at_5": {
+              "mean_difference": 0.01833872498381276,
+              "ci": [
+                -0.006996762233372122,
+                0.04458548195155096
+              ],
+              "detected": false
+            },
+            "precision_at_5": {
+              "mean_difference": 0.030000000000000006,
+              "ci": [
+                -0.009999999999999998,
+                0.07
+              ],
+              "detected": false
+            },
+            "recall_at_40": {
+              "mean_difference": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "detected": false
+            },
+            "recall_at_300": {
+              "mean_difference": -0.00625,
+              "ci": [
+                -0.01875,
+                0.0
+              ],
+              "detected": false
+            }
+          }
+        },
+        "with_constraints": {
+          "profiles": 12,
+          "ndcg_at_5": {
+            "mean": 0.8405320184254329,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.7676797727821033,
+              0.9061912406875666
+            ]
+          },
+          "precision_at_5": {
+            "mean": 0.8333333333333334,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.75,
+              0.9000000000000002
+            ]
+          },
+          "recall_at_40": {
+            "mean": 0.9776785714285715,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.9449404761904763,
+              1.0
+            ]
+          },
+          "recall_at_300": {
+            "mean": 0.9895833333333334,
+            "profiles_with_a_value": 12,
+            "ci": [
+              0.96875,
+              1.0
+            ]
+          },
+          "unjudged_at_5_rate": 0.0,
+          "constraint_violations": 0,
+          "latency_p50_seconds": 0.03573649999452755,
+          "latency_p95_seconds": 0.0965552999987267,
+          "cpu_seconds_mean": 0.3854166666666667,
+          "embed_cpu_seconds_mean": 0.13541666666666666,
+          "cost_per_candidate_day_usd": 0.0,
+          "versus_m3": {
+            "ndcg_at_5": {
+              "mean_difference": 0.03410414381186116,
+              "ci": [
+                0.006918571741113248,
+                0.06651006508598377
+              ],
+              "detected": true
+            },
+            "precision_at_5": {
+              "mean_difference": 0.06666666666666667,
+              "ci": [
+                0.016666666666666663,
+                0.1166666666666667
+              ],
+              "detected": true
+            },
+            "recall_at_40": {
+              "mean_difference": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "detected": false
+            },
+            "recall_at_300": {
+              "mean_difference": -0.010416666666666666,
+              "ci": [
+                -0.03125,
+                0.0
+              ],
+              "detected": false
+            }
+          }
+        },
+        "without_constraints": {
+          "profiles": 8,
+          "ndcg_at_5": {
+            "mean": 0.7264480880170354,
+            "profiles_with_a_value": 8,
+            "ci": [
+              0.6384516262709837,
+              0.8143844944347398
+            ]
+          },
+          "precision_at_5": {
+            "mean": 0.775,
+            "profiles_with_a_value": 8,
+            "ci": [
+              0.625,
+              0.9249999999999999
+            ]
+          },
+          "recall_at_40": {
+            "mean": 1.0,
+            "profiles_with_a_value": 8,
+            "ci": [
+              1.0,
+              1.0
+            ]
+          },
+          "recall_at_300": {
+            "mean": 1.0,
+            "profiles_with_a_value": 8,
+            "ci": [
+              1.0,
+              1.0
+            ]
+          },
+          "unjudged_at_5_rate": 0.0,
+          "constraint_violations": 0,
+          "latency_p50_seconds": 0.05675749998772517,
+          "latency_p95_seconds": 0.11391329998150468,
+          "cpu_seconds_mean": 0.650390625,
+          "embed_cpu_seconds_mean": 0.09765625,
+          "cost_per_candidate_day_usd": 0.0,
+          "versus_m3": {
+            "ndcg_at_5": {
+              "mean_difference": -0.005309403258259834,
+              "ci": [
+                -0.046205969573537314,
+                0.03553233387085718
+              ],
+              "detected": false
+            },
+            "precision_at_5": {
+              "mean_difference": -0.024999999999999994,
+              "ci": [
+                -0.07499999999999998,
+                0.0
+              ],
+              "detected": false
+            },
+            "recall_at_40": {
+              "mean_difference": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "detected": false
+            },
+            "recall_at_300": {
+              "mean_difference": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "detected": false
+            }
+          }
+        }
+      }
+    }
+  },
+  "not_run": {
+    "M5": "not run: needs a model key",
+    "M6": "not run: needs a model key"
+  },
+  "profiles": {
+    "p01": {
+      "headline": "Backend engineer, eight years, Python and Go",
+      "hard_constraints": false,
+      "M1": {
+        "ndcg_at_5": 0.25193075452265423,
+        "precision_at_5": 0.4,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.7272727272727273,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.075704799965024,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j1819abdc8f",
+          "j8a001df2c6",
+          "j0f75a4efe3",
+          "j0cbef9dc1c",
+          "j001f468a81",
+          "j2f4dd5b01d",
+          "j0b8424783b",
+          "j004488ccf8",
+          "j04ca62f222",
+          "j0731541cce"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.38076949114597936,
+        "precision_at_5": 0.4,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.8181818181818182,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.030580999969970435,
+        "cpu_seconds": 0.3125,
+        "top": [
+          "j235278bcfb",
+          "j0e30c68fec",
+          "j1ca1937150",
+          "j10eba1ff83",
+          "j1b993a8426",
+          "j0b8424783b",
+          "j461535c870",
+          "j18e6c15bcc",
+          "j07da5bf0bc",
+          "j01b7976402"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.6361717598126787,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.048545299971010536,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j0b8424783b",
+          "j18e6c15bcc",
+          "j6a6655e029",
+          "j1b993a8426",
+          "j235278bcfb",
+          "j1ca1937150",
+          "jfcb1470c4d",
+          "j2f4dd5b01d",
+          "j0731541cce",
+          "j1269c5edac"
+        ],
+        "embed_cpu_seconds": 0.046875,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.6498875682454971,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.11391329998150468,
+        "cpu_seconds": 1.0,
+        "top": [
+          "j0b8424783b",
+          "j6a6655e029",
+          "j18e6c15bcc",
+          "j1b993a8426",
+          "j235278bcfb",
+          "j1ca1937150",
+          "j0731541cce",
+          "j1269c5edac",
+          "jfcb1470c4d",
+          "j1d648f145d"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      }
+    },
+    "p02": {
+      "headline": "Site reliability engineer, eight years, Kubernetes and Terraform",
+      "hard_constraints": true,
+      "M1": {
+        "ndcg_at_5": 0.6765473050556959,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 194,
+        "violations": 0,
+        "wall_seconds": 0.020685199997387826,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j23ce9415d1",
+          "j0b0d3eec1c",
+          "j01b7976402",
+          "j0cbef9dc1c",
+          "j8a2e55f431",
+          "j004488ccf8",
+          "j13f137cc93",
+          "j01f527cf59",
+          "j0f75a4efe3",
+          "j3bc70c6a42"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.7225288392693664,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.7142857142857143,
+        "unjudged_at_5": 0,
+        "listed": 206,
+        "violations": 0,
+        "wall_seconds": 0.03195350000169128,
+        "cpu_seconds": 0.28125,
+        "top": [
+          "j01b7976402",
+          "j028ecdcea5",
+          "j0cbef9dc1c",
+          "j0b0d3eec1c",
+          "j19e39fd593",
+          "j01ed208d03",
+          "j25133f5903",
+          "j07014f85e4",
+          "j18e6c15bcc",
+          "j1d648f145d"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.7644846879987715,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 206,
+        "violations": 0,
+        "wall_seconds": 0.03801059996476397,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j01b7976402",
+          "j0b0d3eec1c",
+          "j0cbef9dc1c",
+          "j028ecdcea5",
+          "j19e39fd593",
+          "j01ed208d03",
+          "j07014f85e4",
+          "j01f527cf59",
+          "j004488ccf8",
+          "j04688132b1"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.8409449237134675,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.0493142000050284,
+        "cpu_seconds": 0.390625,
+        "top": [
+          "j01b7976402",
+          "j0b0d3eec1c",
+          "j0cbef9dc1c",
+          "j19e39fd593",
+          "j01ed208d03",
+          "j028ecdcea5",
+          "j07014f85e4",
+          "j01f527cf59",
+          "j04688132b1",
+          "j004488ccf8"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      }
+    },
+    "p03": {
+      "headline": "Machine learning engineer, six years, PyTorch and language models",
+      "hard_constraints": false,
+      "M1": {
+        "ndcg_at_5": 0.6454174924602563,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.04104750003898516,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j0888ad9280",
+          "j1819abdc8f",
+          "j8a001df2c6",
+          "j070c6e1bae",
+          "j1f0fb9cb84",
+          "j093989ef74",
+          "j04f41c1cc3",
+          "j07afa9b165",
+          "j086d78874f",
+          "j0c126ab1d5"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.3582630566534479,
+        "precision_at_5": 0.4,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.7142857142857143,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.03258520003873855,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j07d95ca166",
+          "j750f2b7257",
+          "j10462d2feb",
+          "j0888ad9280",
+          "j0383f69858",
+          "j3830219caf",
+          "j176fb6a0a9",
+          "j0020a8b6d9",
+          "j015d1c9b93",
+          "j1ede4b18cc"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.6267944269950171,
+        "precision_at_5": 0.4,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.08075449999887496,
+        "cpu_seconds": 0.734375,
+        "top": [
+          "j0888ad9280",
+          "j750f2b7257",
+          "j0383f69858",
+          "j07d95ca166",
+          "j07afa9b165",
+          "j070c6e1bae",
+          "j086d78874f",
+          "j1ede4b18cc",
+          "j1819abdc8f",
+          "j8a001df2c6"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.6795610335833968,
+        "precision_at_5": 0.4,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.08938219997799024,
+        "cpu_seconds": 0.6875,
+        "top": [
+          "j0888ad9280",
+          "j0383f69858",
+          "j750f2b7257",
+          "j07d95ca166",
+          "j070c6e1bae",
+          "j07afa9b165",
+          "j086d78874f",
+          "j1819abdc8f",
+          "j8a001df2c6",
+          "j39264bc51e"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      }
+    },
+    "p04": {
+      "headline": "Full-stack engineer, seven years, React and TypeScript",
+      "hard_constraints": true,
+      "M1": {
+        "ndcg_at_5": 0.2694679340440724,
+        "precision_at_5": 0.2,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.875,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.04066549998242408,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j1819abdc8f",
+          "j8a001df2c6",
+          "j5a7f9fe44d",
+          "j010fef868a",
+          "j004488ccf8",
+          "j56d0b6359c",
+          "jdcd6b227a3",
+          "j2037b82977",
+          "j04ca62f222",
+          "j5d1f1e234c"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.8040708765078748,
+        "precision_at_5": 0.8,
+        "recall_at_300": 0.875,
+        "recall_at_40": 0.875,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.03166340000461787,
+        "cpu_seconds": 0.3125,
+        "top": [
+          "j5a7f9fe44d",
+          "j6670c407d3",
+          "j73528a0b3d",
+          "j18e6c15bcc",
+          "j76d2735c6f",
+          "j10eba1ff83",
+          "j21cddeaa72",
+          "j1a4d3773bf",
+          "j07ac7232f3",
+          "j13aef4a3ad"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.8687949224876581,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.875,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.061195500020403415,
+        "cpu_seconds": 0.59375,
+        "top": [
+          "j5a7f9fe44d",
+          "j6670c407d3",
+          "j73528a0b3d",
+          "j21cddeaa72",
+          "j0032c95a0f",
+          "j0e30c68fec",
+          "j18e6c15bcc",
+          "j0791f9726e",
+          "j0b8424783b",
+          "j102db88282"
+        ],
+        "embed_cpu_seconds": 0.171875,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.9250256699929476,
+        "precision_at_5": 1.0,
+        "recall_at_300": 0.875,
+        "recall_at_40": 0.875,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.0965552999987267,
+        "cpu_seconds": 0.859375,
+        "top": [
+          "j5a7f9fe44d",
+          "j6670c407d3",
+          "j73528a0b3d",
+          "j21cddeaa72",
+          "j18e6c15bcc",
+          "j0e30c68fec",
+          "j0032c95a0f",
+          "j0791f9726e",
+          "j0b8424783b",
+          "j102db88282"
+        ],
+        "embed_cpu_seconds": 0.140625,
+        "model": null
+      }
+    },
+    "p05": {
+      "headline": "Security engineer, eight years, application and cloud security",
+      "hard_constraints": false,
+      "M1": {
+        "ndcg_at_5": 0.8539316501572934,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.045576500007882714,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j0bc07eacad",
+          "j29c4f9a489",
+          "j0ad39afa32",
+          "j19a792773d",
+          "j1a5b920637",
+          "j04557f326d",
+          "j001f468a81",
+          "j174eef6e4b",
+          "jb24a4a23c6",
+          "j284d9edd48"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.8687949224876581,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.9,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.028991500032134354,
+        "cpu_seconds": 0.15625,
+        "top": [
+          "j26700ac034",
+          "j0ad39afa32",
+          "j0886e170fd",
+          "j1a5b920637",
+          "j6697a17889",
+          "j0bc07eacad",
+          "j001f468a81",
+          "j04557f326d",
+          "j0db8c4ff80",
+          "j77c093040a"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.8415580415114009,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.07154340000124648,
+        "cpu_seconds": 0.71875,
+        "top": [
+          "j0ad39afa32",
+          "j0bc07eacad",
+          "j1a5b920637",
+          "j04557f326d",
+          "j001f468a81",
+          "j0886e170fd",
+          "j26700ac034",
+          "jb24a4a23c6",
+          "j0db8c4ff80",
+          "j29c4f9a489"
+        ],
+        "embed_cpu_seconds": 0.296875,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.9250256699929476,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.0546191000030376,
+        "cpu_seconds": 0.578125,
+        "top": [
+          "j0bc07eacad",
+          "j1a5b920637",
+          "j0ad39afa32",
+          "j0886e170fd",
+          "j001f468a81",
+          "j04557f326d",
+          "j29c4f9a489",
+          "j26700ac034",
+          "j0db8c4ff80",
+          "jb24a4a23c6"
+        ],
+        "embed_cpu_seconds": 0.140625,
+        "model": null
+      }
+    },
+    "p06": {
+      "headline": "Engineering manager, eleven years, distributed systems",
+      "hard_constraints": true,
+      "M1": {
+        "ndcg_at_5": 0.35088525249387525,
+        "precision_at_5": 0.4,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.7142857142857143,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.05095279996749014,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j1101451f83",
+          "j13f137cc93",
+          "j004488ccf8",
+          "j1819abdc8f",
+          "j8a001df2c6",
+          "j2624e74f41",
+          "j04ca62f222",
+          "j01e8b51a74",
+          "j1cd5b4a541",
+          "j0bf4abf55d"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.6952145186068718,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.7142857142857143,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.03276529995491728,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j004488ccf8",
+          "j0065c90edf",
+          "j0e36a3c8ef",
+          "j002c46ffa8",
+          "j30a229aead",
+          "j0aaac0e8b0",
+          "j1af4f3cc47",
+          "j02250e621b",
+          "j01e8b51a74",
+          "j588fba5362"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.6325788126191553,
+        "precision_at_5": 0.4,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.0656085999798961,
+        "cpu_seconds": 0.578125,
+        "top": [
+          "j004488ccf8",
+          "j01e8b51a74",
+          "j0e36a3c8ef",
+          "j0aaac0e8b0",
+          "j121b25e356",
+          "j0bf4abf55d",
+          "j0065c90edf",
+          "j02250e621b",
+          "j2624e74f41",
+          "j13f137cc93"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.7033472869281177,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.05813249998027459,
+        "cpu_seconds": 0.4375,
+        "top": [
+          "j004488ccf8",
+          "j01e8b51a74",
+          "j121b25e356",
+          "j0065c90edf",
+          "j0e36a3c8ef",
+          "j02250e621b",
+          "j0aaac0e8b0",
+          "j2624e74f41",
+          "j0bf4abf55d",
+          "j13f137cc93"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      }
+    },
+    "p07": {
+      "headline": "Solutions engineer, seven years, integrations and customer workshops",
+      "hard_constraints": true,
+      "M1": {
+        "ndcg_at_5": 0.35819138488978836,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.9285714285714286,
+        "unjudged_at_5": 0,
+        "listed": 223,
+        "violations": 0,
+        "wall_seconds": 0.0248468000208959,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j1101451f83",
+          "j1819abdc8f",
+          "j8a001df2c6",
+          "j1ad3280ac7",
+          "j293cb51930",
+          "j0c126ab1d5",
+          "j0bf4abf55d",
+          "j3b8f9f1a6b",
+          "j1cd5b4a541",
+          "j0ca9973d1e"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.45319726743438765,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.6428571428571429,
+        "unjudged_at_5": 0,
+        "listed": 226,
+        "violations": 0,
+        "wall_seconds": 0.03668399999151006,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j588fba5362",
+          "j69eac4e597",
+          "j10eba1ff83",
+          "j0fee9933e3",
+          "j23f7ba4c5a",
+          "j176fb6a0a9",
+          "j25133f5903",
+          "j0539ef098d",
+          "j102db88282",
+          "jd2ef76d91a"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.5639368789339221,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 226,
+        "violations": 0,
+        "wall_seconds": 0.03280830004950985,
+        "cpu_seconds": 0.25,
+        "top": [
+          "j3b8f9f1a6b",
+          "jd2ef76d91a",
+          "j1cd5b4a541",
+          "j0fee9933e3",
+          "j23f7ba4c5a",
+          "j0bf4abf55d",
+          "j38ef3f9014",
+          "j588fba5362",
+          "j1fa1a39b9f",
+          "j0db8c4ff80"
+        ],
+        "embed_cpu_seconds": 0.09375,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.7331155731745727,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.03573649999452755,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j38ef3f9014",
+          "j3b8f9f1a6b",
+          "j0fee9933e3",
+          "j0db8c4ff80",
+          "j23f7ba4c5a",
+          "jd2ef76d91a",
+          "j588fba5362",
+          "j1cd5b4a541",
+          "j1fa1a39b9f",
+          "j69eac4e597"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      }
+    },
+    "p08": {
+      "headline": "Computer science student graduating in 2027, looking for internships and new-graduate roles",
+      "hard_constraints": true,
+      "M1": {
+        "ndcg_at_5": 0.7324909301818052,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.8,
+        "unjudged_at_5": 0,
+        "listed": 226,
+        "violations": 0,
+        "wall_seconds": 0.01858659996651113,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j2f4dd5b01d",
+          "j1819abdc8f",
+          "j8a001df2c6",
+          "j176fb6a0a9",
+          "j8934de9590",
+          "j81dd7b138b",
+          "j1101451f83",
+          "j6bb9180bab",
+          "j121b25e356",
+          "j02234c42d5"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.8180355296436479,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 226,
+        "violations": 0,
+        "wall_seconds": 0.04154389997711405,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j176fb6a0a9",
+          "j8934de9590",
+          "j07d95ca166",
+          "j3830219caf",
+          "j10eba1ff83",
+          "j062d812991",
+          "j69eac4e597",
+          "j5a7f9fe44d",
+          "j76d2735c6f",
+          "j588fba5362"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.925613304997084,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 226,
+        "violations": 0,
+        "wall_seconds": 0.03599289996782318,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j176fb6a0a9",
+          "j8934de9590",
+          "j2f4dd5b01d",
+          "j10eba1ff83",
+          "j3830219caf",
+          "j5a7f9fe44d",
+          "j02234c42d5",
+          "j102db88282",
+          "jfcb1470c4d",
+          "jcab51bbc7a"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.9331825676523733,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.029755500028841197,
+        "cpu_seconds": 0.3125,
+        "top": [
+          "j176fb6a0a9",
+          "j8934de9590",
+          "j2f4dd5b01d",
+          "j3830219caf",
+          "j10eba1ff83",
+          "j5a7f9fe44d",
+          "j02234c42d5",
+          "j102db88282",
+          "jfcb1470c4d",
+          "jcab51bbc7a"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      }
+    },
+    "p09": {
+      "headline": "Data scientist, six years, experimentation and forecasting",
+      "hard_constraints": false,
+      "M1": {
+        "ndcg_at_5": 0.3257840403397678,
+        "precision_at_5": 0.4,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.04179770004702732,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j0422dd89cb",
+          "j0cd4a22f17",
+          "j00d0195c73",
+          "j10dbf74c43",
+          "j08d850ddd0",
+          "j1d5cc70bb8",
+          "j0c0c9d3669",
+          "j02d211a712",
+          "j02bfbf1040",
+          "j0198eaa16e"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.49767235973108526,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.75,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.02619040000718087,
+        "cpu_seconds": 0.28125,
+        "top": [
+          "j0c0c9d3669",
+          "j090a6f62c9",
+          "j0cd4a22f17",
+          "j02d211a712",
+          "j00465f9aad",
+          "j0422dd89cb",
+          "j36e33d8875",
+          "j163a1e9ba7",
+          "j037a7e80b4",
+          "j176fb6a0a9"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.4897861698102466,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.05851270002312958,
+        "cpu_seconds": 0.546875,
+        "top": [
+          "j0cd4a22f17",
+          "j0422dd89cb",
+          "j0c0c9d3669",
+          "j02d211a712",
+          "j090a6f62c9",
+          "j037a7e80b4",
+          "j00d0195c73",
+          "j1d13ba404b",
+          "j06ca78c7a2",
+          "j56d0b6359c"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.5101716750291798,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.050250800035428256,
+        "cpu_seconds": 0.453125,
+        "top": [
+          "j0c0c9d3669",
+          "j0cd4a22f17",
+          "j0422dd89cb",
+          "j02d211a712",
+          "j090a6f62c9",
+          "j037a7e80b4",
+          "j00d0195c73",
+          "j1d13ba404b",
+          "j06ca78c7a2",
+          "j56d0b6359c"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      }
+    },
+    "p10": {
+      "headline": "Solutions architect, twelve years, cloud and data platforms",
+      "hard_constraints": true,
+      "M1": {
+        "ndcg_at_5": 0.6506959916764471,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 139,
+        "violations": 0,
+        "wall_seconds": 0.020819300028961152,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j0db8c4ff80",
+          "j1101451f83",
+          "j588fba5362",
+          "j81dd7b138b",
+          "j0ad39afa32",
+          "j8cbb8b4b1d",
+          "j1819abdc8f",
+          "j4a669af7be",
+          "ja1ed63ff31",
+          "j2fd968f9ce"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.7598938432525068,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 139,
+        "violations": 0,
+        "wall_seconds": 0.024518400023225695,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j0db8c4ff80",
+          "j588fba5362",
+          "j05922ecd5b",
+          "j1af4f3cc47",
+          "j4cb90b6ca9",
+          "j76d2735c6f",
+          "j4a669af7be",
+          "j0fee9933e3",
+          "j01ed208d03",
+          "j2fd968f9ce"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.90976723004651,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 139,
+        "violations": 0,
+        "wall_seconds": 0.033068599994294345,
+        "cpu_seconds": 0.171875,
+        "top": [
+          "j0db8c4ff80",
+          "j588fba5362",
+          "j4a669af7be",
+          "j81dd7b138b",
+          "j2fd968f9ce",
+          "j1af4f3cc47",
+          "j8cbb8b4b1d",
+          "j0fee9933e3",
+          "j4cb90b6ca9",
+          "j00465f9aad"
+        ],
+        "embed_cpu_seconds": 0.171875,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.8952429981827418,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.04843530000653118,
+        "cpu_seconds": 0.3125,
+        "top": [
+          "j0db8c4ff80",
+          "j588fba5362",
+          "j2fd968f9ce",
+          "j4a669af7be",
+          "j81dd7b138b",
+          "j8cbb8b4b1d",
+          "j1af4f3cc47",
+          "j4cb90b6ca9",
+          "j0fee9933e3",
+          "j00465f9aad"
+        ],
+        "embed_cpu_seconds": 0.171875,
+        "model": null
+      }
+    },
+    "p11": {
+      "headline": "Enterprise account executive, twelve years, software and security sales",
+      "hard_constraints": true,
+      "M1": {
+        "ndcg_at_5": 0.6141364894659582,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 54,
+        "violations": 0,
+        "wall_seconds": 0.013579600024968386,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j13b2df587e",
+          "j3439367ebb",
+          "j23e4a6ba09",
+          "j0cb2f627c3",
+          "j38592cad9b",
+          "j392071e135",
+          "j12ff7f0a34",
+          "j1c71183996",
+          "j3ca1968f94",
+          "j3da82d93f2"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.5374140068231005,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 54,
+        "violations": 0,
+        "wall_seconds": 0.033821400022134185,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j0bc0103336",
+          "j12ff7f0a34",
+          "j23e4a6ba09",
+          "j0b4cfb5415",
+          "j3da82d93f2",
+          "j0cb2f627c3",
+          "j3ca1968f94",
+          "j13b2df587e",
+          "j0ad8fcd898",
+          "j749700aa3d"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.731219838408024,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 54,
+        "violations": 0,
+        "wall_seconds": 0.034415500005707145,
+        "cpu_seconds": 0.171875,
+        "top": [
+          "j23e4a6ba09",
+          "j13b2df587e",
+          "j12ff7f0a34",
+          "j0cb2f627c3",
+          "j3da82d93f2",
+          "j3ca1968f94",
+          "j0b4cfb5415",
+          "j0bc0103336",
+          "j38592cad9b",
+          "j0ad8fcd898"
+        ],
+        "embed_cpu_seconds": 0.171875,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.731219838408024,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.055397899996023625,
+        "cpu_seconds": 0.40625,
+        "top": [
+          "j23e4a6ba09",
+          "j13b2df587e",
+          "j0cb2f627c3",
+          "j12ff7f0a34",
+          "j3da82d93f2",
+          "j3ca1968f94",
+          "j0b4cfb5415",
+          "j0bc0103336",
+          "j1c71183996",
+          "j0ad8fcd898"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      }
+    },
+    "p12": {
+      "headline": "Sales development representative, two years, outbound prospecting",
+      "hard_constraints": false,
+      "M1": {
+        "ndcg_at_5": 0.8165832016561192,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.04914169997209683,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j0543125e02",
+          "j26d7164049",
+          "j03c60ac026",
+          "j087ccb959f",
+          "j076c5fb797",
+          "j7af2d115e3",
+          "j9a11038c51",
+          "jc02b6d2c0f",
+          "j1101451f83",
+          "j22f7ff220d"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.72272653993353,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.0387281000148505,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j2d712d431d",
+          "j0543125e02",
+          "j383c2638ca",
+          "j7af2d115e3",
+          "j03c60ac026",
+          "jc02b6d2c0f",
+          "j9a11038c51",
+          "j59faedd978",
+          "j087ccb959f",
+          "j22ecfa601a"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.9030970842075382,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.06626130000222474,
+        "cpu_seconds": 0.515625,
+        "top": [
+          "j0543125e02",
+          "j03c60ac026",
+          "j7af2d115e3",
+          "j087ccb959f",
+          "jc02b6d2c0f",
+          "j9a11038c51",
+          "j076c5fb797",
+          "j383c2638ca",
+          "j2d712d431d",
+          "jaff611f297"
+        ],
+        "embed_cpu_seconds": 0.140625,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.8777221344374128,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.055944800027646124,
+        "cpu_seconds": 0.4375,
+        "top": [
+          "j0543125e02",
+          "j7af2d115e3",
+          "j03c60ac026",
+          "j087ccb959f",
+          "jc02b6d2c0f",
+          "j9a11038c51",
+          "j383c2638ca",
+          "j076c5fb797",
+          "j2d712d431d",
+          "jaff611f297"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      }
+    },
+    "p13": {
+      "headline": "Customer success manager, eight years, onboarding and renewals",
+      "hard_constraints": true,
+      "M1": {
+        "ndcg_at_5": 0.8033774097761917,
+        "precision_at_5": 0.4,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.03534060000674799,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j751a4b0555",
+          "j40f74afd0d",
+          "j3439367ebb",
+          "j0b87416106",
+          "j1101451f83",
+          "j74c43284df",
+          "j20e4073fab",
+          "j0bc8910a09",
+          "j518501bdd4",
+          "j2aefc47858"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.48799225530193563,
+        "precision_at_5": 0.2,
+        "recall_at_300": 0.8571428571428571,
+        "recall_at_40": 0.5714285714285714,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.03691849997267127,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j40f74afd0d",
+          "j0e2ff021cf",
+          "j269e4d15fa",
+          "j0e259367b5",
+          "j10e2804a8e",
+          "jf1ed174dd9",
+          "j33bf04df01",
+          "j751a4b0555",
+          "j06b419d367",
+          "j0030c42c80"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.9439555133653573,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.8571428571428571,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.059421899961307645,
+        "cpu_seconds": 0.59375,
+        "top": [
+          "j40f74afd0d",
+          "j751a4b0555",
+          "j0bc8910a09",
+          "j269e4d15fa",
+          "j11ab6e347c",
+          "j518501bdd4",
+          "jca10a69386",
+          "j0b87416106",
+          "ja04fb38073",
+          "j0c697668fa"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.9496583536340616,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.8571428571428571,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.07055870001204312,
+        "cpu_seconds": 0.59375,
+        "top": [
+          "j40f74afd0d",
+          "j751a4b0555",
+          "j0bc8910a09",
+          "j11ab6e347c",
+          "j269e4d15fa",
+          "jca10a69386",
+          "j518501bdd4",
+          "j0b87416106",
+          "ja04fb38073",
+          "j0c697668fa"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      }
+    },
+    "p14": {
+      "headline": "Partner manager, nine years, channel and alliances",
+      "hard_constraints": true,
+      "M1": {
+        "ndcg_at_5": 0.9766891414060814,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 105,
+        "violations": 0,
+        "wall_seconds": 0.025798299990128726,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j218b9a8e99",
+          "j007bbfd69a",
+          "j0883ab63ae",
+          "j4b88489349",
+          "j1cd5b4a541",
+          "j181e57e480",
+          "j2db7cce712",
+          "j1421e6352a",
+          "j0876e58efb",
+          "j0ca9973d1e"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.9696549384929988,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 106,
+        "violations": 0,
+        "wall_seconds": 0.026555400050710887,
+        "cpu_seconds": 0.15625,
+        "top": [
+          "j007bbfd69a",
+          "j218b9a8e99",
+          "j181e57e480",
+          "j0883ab63ae",
+          "j4b88489349",
+          "j0876e58efb",
+          "j1421e6352a",
+          "j6ec8b260a9",
+          "j00ceede29e",
+          "j2cc48c251e"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.9947185635479169,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 106,
+        "violations": 0,
+        "wall_seconds": 0.027061900007538497,
+        "cpu_seconds": 0.15625,
+        "top": [
+          "j218b9a8e99",
+          "j007bbfd69a",
+          "j0883ab63ae",
+          "j181e57e480",
+          "j4b88489349",
+          "j0876e58efb",
+          "j1421e6352a",
+          "j1cd5b4a541",
+          "j2db7cce712",
+          "j2cc48c251e"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.9590920655888326,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.03036099998280406,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j218b9a8e99",
+          "j007bbfd69a",
+          "j181e57e480",
+          "j4b88489349",
+          "j0883ab63ae",
+          "j0876e58efb",
+          "j1421e6352a",
+          "j1cd5b4a541",
+          "j2db7cce712",
+          "j2cc48c251e"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      }
+    },
+    "p15": {
+      "headline": "Senior product manager, ten years, business-to-business payments",
+      "hard_constraints": false,
+      "M1": {
+        "ndcg_at_5": 0.3868376143306553,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.9090909090909091,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.04391790000954643,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j08d850ddd0",
+          "j1d5cc70bb8",
+          "j0029cad600",
+          "j16b7d51abb",
+          "j0198eaa16e",
+          "j04184ebc0e",
+          "j1a9c63b57b",
+          "j00d6d42d17",
+          "j1ac72089c0",
+          "j0640e093ee"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.7323677607487201,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.9090909090909091,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.03358049999224022,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j04184ebc0e",
+          "j0198eaa16e",
+          "j46b4fa3d35",
+          "j0045413a3a",
+          "j0640e093ee",
+          "j00d6d42d17",
+          "j049d80a737",
+          "j0c5a68ebd5",
+          "j269e4d15fa",
+          "j709ce04d44"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.8777221344374128,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.07651139999506995,
+        "cpu_seconds": 0.5625,
+        "top": [
+          "j04184ebc0e",
+          "j0198eaa16e",
+          "j00d6d42d17",
+          "j0640e093ee",
+          "j0045413a3a",
+          "j08d850ddd0",
+          "j049d80a737",
+          "j1ac72089c0",
+          "j1d5cc70bb8",
+          "j17c87987bd"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.7652606394268341,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.08129410003311932,
+        "cpu_seconds": 0.6875,
+        "top": [
+          "j04184ebc0e",
+          "j0198eaa16e",
+          "j00d6d42d17",
+          "j0640e093ee",
+          "j1ac72089c0",
+          "j0045413a3a",
+          "j08d850ddd0",
+          "j049d80a737",
+          "j1d5cc70bb8",
+          "j17c87987bd"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      }
+    },
+    "p16": {
+      "headline": "Finance manager, ten years, month-end close, audit and budgeting",
+      "hard_constraints": true,
+      "M1": {
+        "ndcg_at_5": 0.4814820743073296,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 99,
+        "violations": 0,
+        "wall_seconds": 0.011856900004204363,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j52397c1ba8",
+          "j03f6fa0850",
+          "j0092e00ec8",
+          "j2c8114c772",
+          "j0029cad600",
+          "j6913915aad",
+          "j19a792773d",
+          "j28f207f1bc",
+          "j07a6667b13",
+          "j392071e135"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.7437187259805226,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 99,
+        "violations": 0,
+        "wall_seconds": 0.02667490002932027,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j2c8114c772",
+          "j03f6fa0850",
+          "j6913915aad",
+          "j04310377fe",
+          "j52397c1ba8",
+          "j01bae2896c",
+          "j2321b1d01b",
+          "j3121ee2d7c",
+          "j012d3ef915",
+          "j032f5d5f01"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.8227149188007639,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 99,
+        "violations": 0,
+        "wall_seconds": 0.05251700000371784,
+        "cpu_seconds": 0.4375,
+        "top": [
+          "j03f6fa0850",
+          "j2c8114c772",
+          "j52397c1ba8",
+          "j6913915aad",
+          "j01bae2896c",
+          "j28f207f1bc",
+          "j012d3ef915",
+          "j0092e00ec8",
+          "j07a6667b13",
+          "j12c8407543"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.8443019660324382,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.03252140001859516,
+        "cpu_seconds": 0.25,
+        "top": [
+          "j03f6fa0850",
+          "j2c8114c772",
+          "j6913915aad",
+          "j52397c1ba8",
+          "j01bae2896c",
+          "j28f207f1bc",
+          "j012d3ef915",
+          "j0092e00ec8",
+          "j07a6667b13",
+          "j12c8407543"
+        ],
+        "embed_cpu_seconds": 0.078125,
+        "model": null
+      }
+    },
+    "p17": {
+      "headline": "Commercial counsel, ten years, contracts, privacy and compliance",
+      "hard_constraints": true,
+      "M1": {
+        "ndcg_at_5": 0.5309719078307141,
+        "precision_at_5": 0.4,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 189,
+        "violations": 0,
+        "wall_seconds": 0.014696600032038987,
+        "cpu_seconds": 0.015625,
+        "top": [
+          "j531b8c9b7e",
+          "j0bf4abf55d",
+          "j3b8f9f1a6b",
+          "j1cd5b4a541",
+          "j1fe5d29d2c",
+          "j607d9fa7cb",
+          "j5a29315f78",
+          "j09a7a514b0",
+          "j0667ec089b",
+          "j47b8f0a68e"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.6866602582038153,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.6,
+        "unjudged_at_5": 0,
+        "listed": 189,
+        "violations": 0,
+        "wall_seconds": 0.03332740004407242,
+        "cpu_seconds": 0.28125,
+        "top": [
+          "jc64be9567b",
+          "j607d9fa7cb",
+          "j17ed27d2cf",
+          "j09526068fc",
+          "j1fe5d29d2c",
+          "j14ab94ba6d",
+          "j47b8f0a68e",
+          "j4b463d8fd3",
+          "j5ed4e56177",
+          "j2c219a3b6f"
+        ],
+        "embed_cpu_seconds": 0.140625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.5712529777976187,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 189,
+        "violations": 0,
+        "wall_seconds": 0.03333999996539205,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j607d9fa7cb",
+          "j1fe5d29d2c",
+          "jc64be9567b",
+          "j47b8f0a68e",
+          "j14ab94ba6d",
+          "j4b463d8fd3",
+          "j09526068fc",
+          "j09a7a514b0",
+          "j1cd5b4a541",
+          "j2c219a3b6f"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.5712529777976187,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.0343270999728702,
+        "cpu_seconds": 0.3125,
+        "top": [
+          "j1fe5d29d2c",
+          "j607d9fa7cb",
+          "jc64be9567b",
+          "j47b8f0a68e",
+          "j14ab94ba6d",
+          "j4b463d8fd3",
+          "j531b8c9b7e",
+          "j09526068fc",
+          "j09a7a514b0",
+          "j1cd5b4a541"
+        ],
+        "embed_cpu_seconds": 0.140625,
+        "model": null
+      }
+    },
+    "p18": {
+      "headline": "Technical recruiter, six years, engineering and data hiring",
+      "hard_constraints": false,
+      "M1": {
+        "ndcg_at_5": 0.525699757694747,
+        "precision_at_5": 0.4,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.6666666666666666,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.07050900004105642,
+        "cpu_seconds": 0.015625,
+        "top": [
+          "j0f00725f16",
+          "j0500ed67c9",
+          "j1b5e43451e",
+          "j3af4a9e556",
+          "j1101451f83",
+          "j1cd5b4a541",
+          "j99178aa18b",
+          "j8e9e8e21b0",
+          "j0aaac0e8b0",
+          "j5d1f1e234c"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.8131958982786505,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 0.8888888888888888,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.027467800013255328,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j5133a1e82b",
+          "j143b9131bf",
+          "j69eac4e597",
+          "j588fba5362",
+          "j0f00725f16",
+          "j8e9e8e21b0",
+          "j1eceb463e0",
+          "j05a70f30c4",
+          "j0b97188219",
+          "j1b5e43451e"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.6727361450129913,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.05706979997921735,
+        "cpu_seconds": 0.4375,
+        "top": [
+          "j0f00725f16",
+          "j1b5e43451e",
+          "j8e9e8e21b0",
+          "j99178aa18b",
+          "j01e8b51a74",
+          "j0b97188219",
+          "j0bf4abf55d",
+          "j5133a1e82b",
+          "j081b66a5b5",
+          "j269e4d15fa"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.6727361450129913,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.05675749998772517,
+        "cpu_seconds": 0.4375,
+        "top": [
+          "j0f00725f16",
+          "j8e9e8e21b0",
+          "j1b5e43451e",
+          "j99178aa18b",
+          "j01e8b51a74",
+          "j0b97188219",
+          "j081b66a5b5",
+          "j5133a1e82b",
+          "j0bf4abf55d",
+          "j05018d0d1a"
+        ],
+        "embed_cpu_seconds": 0.015625,
+        "model": null
+      }
+    },
+    "p19": {
+      "headline": "Field marketing manager, eight years, events and account-based marketing",
+      "hard_constraints": true,
+      "M1": {
+        "ndcg_at_5": 0.9480968463600801,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 139,
+        "violations": 0,
+        "wall_seconds": 0.013876300014089793,
+        "cpu_seconds": 0.0,
+        "top": [
+          "ja7a145de65",
+          "j2cc48c251e",
+          "j181e57e480",
+          "j218b9a8e99",
+          "j007bbfd69a",
+          "j36ac2118aa",
+          "j3076a5ca38",
+          "j046c091590",
+          "j7e92ceeab8",
+          "j0c68c97636"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.7199866091873692,
+        "precision_at_5": 0.4,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 139,
+        "violations": 0,
+        "wall_seconds": 0.02233950002118945,
+        "cpu_seconds": 0.15625,
+        "top": [
+          "j2cc48c251e",
+          "j0876e58efb",
+          "j181e57e480",
+          "j00fe7ea5a8",
+          "j45a45c4339",
+          "j91d841067a",
+          "ja7a145de65",
+          "j00ceede29e",
+          "j2c219a3b6f",
+          "j8cabec3c86"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.9480968463600801,
+        "precision_at_5": 0.6,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 139,
+        "violations": 0,
+        "wall_seconds": 0.03941780002787709,
+        "cpu_seconds": 0.296875,
+        "top": [
+          "j2cc48c251e",
+          "j181e57e480",
+          "ja7a145de65",
+          "j007bbfd69a",
+          "j45a45c4339",
+          "j91d841067a",
+          "j0876e58efb",
+          "j00fe7ea5a8",
+          "j218b9a8e99",
+          "j08f8b697b3"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 1.0,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.02776379999704659,
+        "cpu_seconds": 0.15625,
+        "top": [
+          "j2cc48c251e",
+          "j181e57e480",
+          "ja7a145de65",
+          "j91d841067a",
+          "j007bbfd69a",
+          "j45a45c4339",
+          "j0876e58efb",
+          "j00fe7ea5a8",
+          "j218b9a8e99",
+          "j08f8b697b3"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      }
+    },
+    "p20": {
+      "headline": "Freight operations associate, five years, ocean and air freight and customs",
+      "hard_constraints": false,
+      "M1": {
+        "ndcg_at_5": 0.7570287343648318,
+        "precision_at_5": 0.8,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.06900259997928515,
+        "cpu_seconds": 0.0,
+        "top": [
+          "j2647a0b183",
+          "j7f28f231a1",
+          "j4826b39791",
+          "j1dac5ce59f",
+          "jf3ea147a11",
+          "j51f0edd08e",
+          "j5a5b154149",
+          "jcc930844a4",
+          "j1420a4f42d",
+          "j58a1d55f93"
+        ],
+        "embed_cpu_seconds": 0.0,
+        "model": null
+      },
+      "M2": {
+        "ndcg_at_5": 0.9030970842075382,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.0274216000107117,
+        "cpu_seconds": 0.15625,
+        "top": [
+          "j06843b86eb",
+          "j5a5b154149",
+          "j4826b39791",
+          "jf3ea147a11",
+          "j1420a4f42d",
+          "j51f0edd08e",
+          "j071bb420e6",
+          "jcc930844a4",
+          "j7f28f231a1",
+          "j2647a0b183"
+        ],
+        "embed_cpu_seconds": 0.140625,
+        "model": null
+      },
+      "M3": {
+        "ndcg_at_5": 0.8061941684150765,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 300,
+        "violations": 0,
+        "wall_seconds": 0.09805109997978434,
+        "cpu_seconds": 0.8125,
+        "top": [
+          "j4826b39791",
+          "j5a5b154149",
+          "jf3ea147a11",
+          "j2647a0b183",
+          "j7f28f231a1",
+          "j06843b86eb",
+          "j51f0edd08e",
+          "j1420a4f42d",
+          "jcc930844a4",
+          "j1dac5ce59f"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      },
+      "M4": {
+        "ndcg_at_5": 0.731219838408024,
+        "precision_at_5": 1.0,
+        "recall_at_300": 1.0,
+        "recall_at_40": 1.0,
+        "unjudged_at_5": 0,
+        "listed": 50,
+        "violations": 0,
+        "wall_seconds": 0.10676699999021366,
+        "cpu_seconds": 0.921875,
+        "top": [
+          "j4826b39791",
+          "jf3ea147a11",
+          "j2647a0b183",
+          "j06843b86eb",
+          "j51f0edd08e",
+          "j5a5b154149",
+          "j1420a4f42d",
+          "j7f28f231a1",
+          "jcc930844a4",
+          "j1dac5ce59f"
+        ],
+        "embed_cpu_seconds": 0.15625,
+        "model": null
+      }
+    }
+  },
+  "bars": {
+    "constraint_violations_zero": true,
+    "m1_m4_lists_complete": true,
+    "m1_m4_unjudged_at_5_zero": true,
+    "pool_labelled": true,
+    "score": 1.0
+  },
+  "expectations": {
+    "E1_m3_not_worse_than_m1": "supported",
+    "E1_m3_not_worse_than_m2": "supported",
+    "E2_m4_not_worse_than_m3": "undetermined"
+  }
+}

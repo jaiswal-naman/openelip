@@ -179,6 +179,20 @@ boilerplate, so most grades rest on the title, the place and the arrangement.
 **Database name.** Load the benchmark into a database of its own (for example `app_bench_test`), not the test suite's
 database: the suite empties the tables it shares with the benchmark.
 
+**A dry run came before the recorded run.** After the labels were written, the runner was run once without recording, to
+see that it worked end to end, and its numbers were seen. Nothing that decides M1 to M4's lists or the quality metrics was
+changed afterwards (the recorded run reproduces the dry run's quality numbers exactly); three things were:
+
+- *CPU seconds.* The dry run showed CPU seconds about ten times the wall-clock seconds for every method, M1 included. A
+  probe showed why: the embedding runtime's worker threads keep spinning for about half a second after each call (3.9 CPU
+  seconds in 0.5 s of idleness), and that spin was counted against whichever method ran next. Each timed call now starts
+  after a 0.6 s pause. CPU seconds are the whole process's during the call, the embedding's threads included.
+- *M5 and M6 without requirements.* The first version "ran" them with an empty list when no job had extracted
+  requirements, which would have reported an ndcg of 0 for a method that was never run. They now check that the gateway
+  has a route before asking anything (`not run: needs a model key`) and report `not run` again when no job has
+  requirements (extraction is a model-backed step that a benchmark database has not had).
+- *Report wording only* (the names of the methods that did not run and a note on unadjusted intervals).
+
 ## Commands
 
 All of these refuse any database whose name does not end in `_test`. Run them from `backend/`, with

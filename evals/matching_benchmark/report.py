@@ -14,6 +14,7 @@ HERE = Path(__file__).resolve().parent
 RESULTS = HERE / "results.json"
 REPORT = HERE / "REPORT.md"
 ORDER = ("M1", "M2", "M3", "M4", "M5", "M6")
+NAMES = {"M5": "Full cascade", "M6": "Score only what is shown"}  # the methods that may not have run carry no name
 QUALITY = ("ndcg_at_5", "precision_at_5", "recall_at_40", "recall_at_300")
 SLICES = ("with_constraints", "without_constraints")
 MARKER = "agent-drafted, maintainer review pending"
@@ -53,7 +54,7 @@ def headline(results: dict[str, Any]) -> list[str]:
                 f"| {a['cpu_seconds_mean']:.3f} ({a['embed_cpu_seconds_mean']:.3f}) |"
             )
         else:
-            lines.append(f"| {m} | {results['not_run'][m]} | | | | | | | | |")
+            lines.append(f"| {m} {NAMES[m]} | {results['not_run'][m]} | | | | | | | | |")
     return lines
 
 
@@ -156,6 +157,10 @@ def render(results: dict[str, Any]) -> str:
         *differences(results),
         "",
         "## Slices",
+        "",
+        "Profiles with at least one hard constraint, and profiles with none. These are secondary comparisons on 12 "
+        "and 8 profiles, and none of the intervals in this report is adjusted for how many were computed: one "
+        "interval that excludes 0 among several is weak evidence.",
         "",
         *slices(results),
         "",
