@@ -20,6 +20,13 @@ def test_the_worker_loop_holds_every_hook_it_runs():
     assert worker.jobs.__name__ == "app.ingest.jobs"  # importing it is how ingest registers its handlers
 
 
+def test_both_roots_import_the_ingest_registration_so_the_registry_is_filled_in_each_process():
+    from app import main, worker
+    from app.ingest import privacy as ingest_privacy
+
+    assert main.ingest_privacy is ingest_privacy and worker.ingest_privacy is ingest_privacy
+
+
 @pytest.mark.parametrize(
     "argv",
     [

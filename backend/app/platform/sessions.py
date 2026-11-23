@@ -113,3 +113,12 @@ def seal(plaintext: str) -> str:
 
 def open_sealed(token: str) -> str:
     return _fernet().decrypt(token.encode()).decode()
+
+
+def seal_bytes(data: bytes) -> bytes:
+    """seal() for files (uploaded documents, export archives): same keys, same rotation."""
+    return _fernet().encrypt(data)
+
+
+def open_sealed_bytes(token: bytes) -> bytes:
+    return _fernet().decrypt(token)

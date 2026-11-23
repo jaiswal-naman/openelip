@@ -153,7 +153,7 @@ A refusal is `429 rate_limited` with `Retry-After` in seconds. Default limits, a
 | Writes | 120 per minute per person |
 | Sign-in codes | 5 per hour per email address (counted from `login_codes`), 20 per hour per client address (counted in the API process's memory; ceiling: one API process) |
 | Chat messages | 30 per hour per person |
-| Resume uploads | 10 per day per person |
+| Resume uploads | 10 per day per person (any 24 hours, counted from the person's `documents`; the 11th is `429 rate_limited` with `Retry-After` set to the seconds until the oldest of the ten is a day old) |
 | Tailored resumes | 10 per day per person |
 | Twin questions | 40 per Twin session and $0.50 of model cost per session, charged to the organization (fixed by the design review) |
 | Exports | 2 per day per person |
@@ -221,6 +221,7 @@ Text written by someone other than the caller or the system is data, never instr
 | 409 | `request_in_progress` | Same idempotency key, first request still running |
 | 409 | `budget_exhausted` | Resuming a campaign the Guardian paused at its model budget without raising the budget |
 | 410 | `job_closed` | An action on a job that has left its board; `details.closed_at` |
+| 410 | `not_found` | An export archive whose seven days are over; `details.state` is `expired` (3.18). The code stays `not_found`: the catalogue has no code for a resource that existed and is gone |
 | 412 | `version_conflict` | `If-Match` is stale; `details.current_version` |
 | 413 | `payload_too_large` | Upload over 10 MB |
 | 415 | `unsupported_media_type` | Upload that is not PDF or DOCX |
@@ -235,7 +236,7 @@ Text written by someone other than the caller or the system is data, never instr
 | 422 | `quota_exhausted` | A weekly product quota is used up (interest signals); `details.resets_at` |
 | 429 | `rate_limited` | Section 1.8; `Retry-After` is set |
 | 500 | `internal_error` | Unexpected; `request_id` is the only detail |
-| 503 | `ai_disabled` | The feature needs a model and no provider is configured for that task. Search, the record and the ledger still work |
+| 503 | `ai_disabled` | The feature needs a model and no provider is configured for that task, or the provider is the fake and has no recording for it, or a real model's route has no passed gold-set run yet (AI_SYSTEM.md 2.2). Search, the record and the ledger still work |
 | 503 | `dependency_unavailable` | A model provider or the database is failing; `details.retry_after_seconds` |
 
 **Database refusals.** The database enforces several invariants with `CHECK` constraints and triggers that raise SQLSTATE 23514 with a message prefix. The API maps them, so a refusal from the last line of defence still reads correctly:
@@ -343,7 +344,7 @@ Columns: **Caller** uses the codes in 1.2. **Req** lists the requirement ids ser
 | PATCH | `/v1/me/constraints/{constraint_id}` | Change a constraint (a new version; the change is logged) | C | REC-03, REC-05 | 2 |
 | DELETE | `/v1/me/constraints/{constraint_id}` | Remove a constraint | C | REC-05 | 2 |
 | GET | `/v1/me/preferences` | Active soft preferences | C | REC-04 | 2 |
-| POST | `/v1/me/preferences` | Add a soft preference; a dealbreaker that could not be typed is stored as `untyped_dealbreaker` with a notice that it is not guaranteed | C | REC-04 | 2 |
+| POST | `/v1/me/preferences` | Add a soft preference; a dealbreaker that could not be typed is stored as `untyped_dealbreaker` with a notice that it is not guaranteed. When it fits a hard-constraint kind, the preference in the response also carries `suggested_constraint` (the body `POST /v1/me/constraints` takes); nothing becomes a hard constraint until the candidate posts it | C | REC-04 | 2 |
 | PATCH | `/v1/me/preferences/{preference_id}` | Change a preference | C | REC-04, REC-05 | 2 |
 | DELETE | `/v1/me/preferences/{preference_id}` | Remove a preference | C | REC-05 | 2 |
 | GET | `/v1/me/events` | The change log (before, after, source, time); `?status=proposed` lists open proposals from onboarding, chat, feedback or Twin replies | C | REC-05, CHT-03, MAT-08 | 2 |
@@ -1795,6 +1796,8 @@ Every figure is a sum over the cost ledger of recorded model calls (PLT-04). Twi
 }
 ```
 
+A download is kept for seven days. After `available_until` the status route still answers `succeeded`, with `download: null`, and the download route answers `410 not_found` with `details.state: "expired"` (1.11); a person asks for a new export. While the archive is not ready the download route answers `409 conflict` with `details.state` `queued`, `running` or `failed`.
+
 **Deletion.** The client first requests a fresh code with `POST /v1/auth/codes` for the account's email, then:
 
 `POST /v1/privacy/deletion`
@@ -2322,7 +2325,7 @@ Resend's exact signed-content format and event names were not confirmed on its o
 | REC-04 | `POST /v1/me/preferences` (`untyped_dealbreaker`); `422 constraint_not_enforceable` with `suggested_preference` |
 | REC-05 | `GET /v1/me/record`, `GET /v1/me/events`, field-level `POST`, `PATCH` and `DELETE` routes |
 | REC-06 | `hidden_text_flags` on `GET /v1/me/documents/{id}` |
-| REC-07 | No field for protected characteristics in any `/v1/me` schema; chat proposals never carry them (AI_SYSTEM.md). Scope over raw chat and resume text is owner decision G4 |
+| REC-07 | No field for protected characteristics in any `/v1/me` schema; chat proposals never carry them (AI_SYSTEM.md). Typed text that states one is refused with `422 validation_failed` and the field issue `protected_characteristic`, by a pattern screen that does not catch every wording (AI_SYSTEM.md 4.9). Scope over raw chat and resume text is owner decision G4 |
 | MAT-01 | `GET /v1/matches` (`run.checker`); `POST /v1/campaigns` refusal |
 | MAT-02 | `GET /v1/matches` (zero to five) |
 | MAT-03 | `evidence` in `GET /v1/matches`, `GET /v1/matches/{id}` |

@@ -11,15 +11,16 @@ import secrets
 import threading
 import time
 from collections import deque
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from math import ceil
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import Connection, text
 
 from . import config, db, errors, log, outbox, sessions
@@ -65,11 +66,56 @@ class SessionRequest(BaseModel):
         return name
 
 
+# The consents a person gives in onboarding and settings (API.md 2.3). introduction and agent_access are recorded by the
+# action that needs them, so they are not here. The consent rules live in app.trust, which this layer may not import:
+# it fills in these types (see `hooks` below).
+ConsentPurpose = Literal["terms", "ai_processing", "brief_email", "open_to_introductions"]
+
+
+class ConsentState(BaseModel):
+    """One consent as GET /v1/me reports it. A purpose that was never granted, or was withdrawn, has granted false."""
+
+    purpose: ConsentPurpose
+    granted: bool
+    granted_at: datetime | None
+    text_version: str | None  # the wording the active grant was given under
+    providers: list[str] | None = None  # ai_processing only: the providers the wording names today
+    current_text_version: str | None = None  # ai_processing only: the version a new grant must carry
+
+
+class ConsentChange(BaseModel):
+    """One consent a person grants or withdraws in PATCH /v1/me. A grant carries the wording version they were shown."""
+
+    purpose: ConsentPurpose
+    granted: bool
+    text_version: str | None = Field(default=None, min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._:-]+$")
+
+    @model_validator(mode="after")
+    def _a_grant_names_its_wording(self) -> Self:
+        if self.granted and self.text_version is None:
+            raise ValueError("text_version is required to grant a consent")
+        return self
+
+
 class Me(BaseModel):
     id: UUID
     email: str
     timezone: str
     created_at: datetime
+    consents: list[ConsentState]
+
+
+class MePatch(BaseModel):
+    """PATCH /v1/me. Consents only for now: the account settings of API.md 2.3 arrive with the brief settings."""
+
+    consents: list[ConsentChange] = Field(min_length=1, max_length=4)  # at most one change per purpose
+
+
+# Filled in by app.main when it builds the app. The consent rules live in app.trust, which this layer may not import
+# (ARCHITECTURE 3.3), so the account endpoints call them through these two hooks:
+#   "consents":        (conn, user_id) -> list[ConsentState], one per purpose
+#   "change_consents": (conn, user_id, changes: Sequence[ConsentChange]) -> None; raises ApiError to refuse a change
+hooks: dict[str, Callable[..., Any]] = {}
 
 
 # Codes requested per client address in the last hour: a window of timestamps per address, in this process's memory.
@@ -217,7 +263,8 @@ def _exchange(email: str, code: str, timezone: str | None) -> tuple[Me, str] | i
             conn.execute(text("UPDATE users SET timezone = :zone WHERE id = :id"), {"zone": timezone, "id": user_id})
             zone = timezone
         token = sessions.start(conn, user_id)
-    me = Me(id=account.id, email=account.email, timezone=zone, created_at=account.created_at)
+        consents = hooks["consents"](conn, user_id)
+    me = Me(id=account.id, email=account.email, timezone=zone, created_at=account.created_at, consents=consents)
     log.event("auth.signed_in", outcome="new_account" if account.is_new else "existing_account")
     return me, token
 
@@ -258,12 +305,35 @@ def end_session(request: Request, write: Annotated[Write, Depends(idempotent)]) 
     return response
 
 
+def _account(conn: Connection, user_id: UUID) -> Me | None:
+    """The person's account as GET /v1/me reports it, or None when their row is gone."""
+    row = conn.execute(
+        text("SELECT id, email, timezone, created_at FROM users WHERE id = :id"), {"id": user_id}
+    ).one_or_none()
+    if row is None:
+        return None
+    consents: list[ConsentState] = hooks["consents"](conn, user_id)
+    return Me(id=row.id, email=row.email, timezone=row.timezone, created_at=row.created_at, consents=consents)
+
+
 @router.get("/me", response_model=Envelope[Me])
 def me(principal: Annotated[Principal, Depends(current_user)]) -> dict[str, Any]:
     with db.transaction(principal.user_id) as conn:
-        row = conn.execute(
-            text("SELECT id, email, timezone, created_at FROM users WHERE id = :id"), {"id": principal.user_id}
-        ).one_or_none()
-    if row is None:
+        account = _account(conn, principal.user_id)
+    if account is None:
         raise ApiError(401, "unauthenticated", "Sign in to continue.")
-    return envelope(Me(id=row.id, email=row.email, timezone=row.timezone, created_at=row.created_at))
+    return envelope(account)
+
+
+@router.patch("/me", response_model=Envelope[Me])
+def update_me(body: MePatch, write: Annotated[Write, Depends(idempotent)]) -> Response:
+    """Grant or withdraw consents. The person is the session's, never anything in the body (T-3-01)."""
+
+    def effect(conn: Connection) -> Me:
+        hooks["change_consents"](conn, write.user_id, body.consents)
+        account = _account(conn, write.user_id)
+        if account is None:
+            raise ApiError(401, "unauthenticated", "Sign in to continue.")
+        return account
+
+    return write.run(effect)

@@ -6,9 +6,11 @@ and a frozen verdict once it finishes. The regression gate (gate.py) reads those
 """
 
 import hashlib
+import importlib.util
 import json
 import os
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, NamedTuple
@@ -47,7 +49,16 @@ class Suite:
         return hashlib.sha256(self.instruction.encode()).hexdigest()[:12]  # the template's content hash (AI_SYSTEM 2.2)
 
 
-SUITES = {
+@dataclass(frozen=True)
+class OwnScorer:
+    """A suite that scores itself, because an item needs several gateway calls or a score that is not an exact match.
+    Its script (a path under evals/) defines TASK (a task of its route), CONFIG (facts for the run record), RECORDED
+    (its default recording) and run(recorded) -> Scored, and brings its own gold set and recording format."""
+
+    script: str
+
+
+SUITES: dict[str, Suite | OwnScorer] = {
     "harness_smoke": Suite(
         task="eval.harness_smoke",
         instruction=(
@@ -55,6 +66,7 @@ SUITES = {
         ),
         schema=SmokeLabel,
     ),
+    "resume_extraction": OwnScorer("resume_extraction/facts/score.py"),
 }
 
 
@@ -71,6 +83,14 @@ class Result(NamedTuple):
     expected: dict[str, Any]
     actual: dict[str, Any] | None
     is_passed: bool
+
+
+class Scored(NamedTuple):
+    """What an OwnScorer hands back: a Result per item, and the run's metrics. The gate reads metrics["score"]; the
+    other keys are recorded beside the usual n and passed, and a key of the same name replaces it."""
+
+    results: list[Result]
+    metrics: dict[str, Any]
 
 
 def load_gold(name: str) -> list[dict[str, Any]]:
@@ -109,9 +129,12 @@ def _json(value: Any) -> str | None:
     return None if value is None else json.dumps(value)
 
 
-def _finish(run_id: UUID, name: str, results: list[Result], error: str | None) -> Finished:
+def _finish(
+    run_id: UUID, name: str, results: list[Result], error: str | None, extra: dict[str, Any] | None = None
+) -> Finished:
     passed = sum(r.is_passed for r in results)
     metrics: dict[str, Any] = {"n": len(results), "passed": passed, "score": passed / len(results) if results else 0.0}
+    metrics.update(extra or {})  # an OwnScorer's metrics, its own "score" included
     if name in HARNESS_ONLY:
         metrics["harness_check_only"] = True
     if error:
@@ -148,12 +171,60 @@ def _finish(run_id: UUID, name: str, results: list[Result], error: str | None) -
     return Finished(run_id, status, passed, len(results))
 
 
+def _start(name: str, run_config: dict[str, Any]) -> UUID:
+    with db.transaction(role="worker") as conn:
+        run_id: UUID = conn.execute(
+            text(
+                "INSERT INTO eval_runs (suite, git_sha, config) "
+                "VALUES (CAST(:suite AS eval_suite), :sha, CAST(:config AS jsonb)) RETURNING id"
+            ),
+            {"suite": name, "sha": git_sha(), "config": json.dumps(run_config)},
+        ).scalar_one()
+    return run_id
+
+
+def _run_own(name: str, own: OwnScorer, recorded: Path | None) -> Finished:
+    """The same refusals, run record and floor as any suite, with the items and metrics of the suite's own script."""
+    spec = importlib.util.spec_from_file_location(f"evals_{name}", EVALS / own.script)
+    assert spec is not None and spec.loader is not None
+    scorer = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = scorer
+    spec.loader.exec_module(scorer)
+    settings = config.get()
+    if settings.llm_provider != "fake":
+        raise ReplayNeedsFake()
+    route = registry.route(scorer.TASK, settings)
+    recorded = recorded or scorer.RECORDED
+    run_id = _start(
+        name,
+        {
+            "mode": "replay",
+            "recorded": recorded.name,
+            "task": scorer.TASK,
+            "provider": route.provider,
+            "model": route.model,
+            **scorer.CONFIG,
+        },
+    )
+    results: list[Result] = []
+    metrics: dict[str, Any] = {}
+    error: str | None = None
+    try:
+        scored: Scored = scorer.run(recorded)
+        results, metrics = scored.results, scored.metrics
+    except Exception as failure:  # a stale recording, a quote that does not match: the run ends in error
+        error = type(failure).__name__
+    return _finish(run_id, name, results, error, metrics)
+
+
 def run_suite(name: str, recorded: Path | None = None) -> Finished:
     """Replay the suite's recording through the gateway and record the run. Raises UnknownSuite, ReplayNeedsFake or
     AIDisabled before anything is written; a failure while scoring ends the run with status "error"."""
     if name not in SUITES:
         raise UnknownSuite(name)
     suite = SUITES[name]
+    if isinstance(suite, OwnScorer):
+        return _run_own(name, suite, recorded)
     gold = load_gold(name)
     recorded = recorded or EVALS / "recorded" / f"{name}.json"
     settings = config.get()
@@ -168,14 +239,7 @@ def run_suite(name: str, recorded: Path | None = None) -> Finished:
         "model": route.model,
         "prompt_version": suite.prompt_version,
     }
-    with db.transaction(role="worker") as conn:
-        run_id: UUID = conn.execute(
-            text(
-                "INSERT INTO eval_runs (suite, git_sha, config) "
-                "VALUES (CAST(:suite AS eval_suite), :sha, CAST(:config AS jsonb)) RETURNING id"
-            ),
-            {"suite": name, "sha": git_sha(), "config": json.dumps(run_config)},
-        ).scalar_one()
+    run_id = _start(name, run_config)
     fake.replay_from(recorded)
     results: list[Result] = []
     error: str | None = None

@@ -92,15 +92,23 @@ def _sources_import(args: argparse.Namespace) -> int:
     """Register the live boards named in a file (one name per line). A file that cannot be read exits 2."""
     from app.ingest import discover
     from app.platform import db
+    from app.trust.api import audit_log
 
     try:
         names = Path(args.path).read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError) as error:
         print(f"cannot read {args.path}: {type(error).__name__}", file=sys.stderr)
         return 2
-    # Operator actions are meant to leave a trust.audit row (Phase 3); the merge of the two phases adds it here.
     with db.transaction(role="worker") as conn:
         result = discover.import_boards(conn, names, dry_run=args.dry_run)
+        if not args.dry_run:  # a dry run writes nothing, so it leaves no row either; the row holds counts, not names
+            counts = {
+                "probed": result.probed,
+                "registered": result.registered,
+                "already_known": result.already_known,
+                "rejected": len(result.rejected),
+            }
+            audit_log(conn, "ingest.sources_imported", "operator", None, counts)
     prefix = "dry run, nothing written: " if args.dry_run else ""
     print(
         f"{prefix}probed {result.probed}, registered {result.registered}, already known {result.already_known}, "

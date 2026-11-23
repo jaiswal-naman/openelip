@@ -2628,6 +2628,11 @@ BEGIN
 END;
 $$;
 
+-- data_requests names two people (user_id and subject_user_id), and erase_user trusts subject_user_id, so an insert must
+-- name the caller as both. Without this a caller could open a deletion request about someone else (plan 03-01).
+ALTER POLICY candidate_own ON data_requests
+  WITH CHECK (user_id = app_user_id() AND subject_user_id = app_user_id() AND app_agent_token_id() IS NULL);
+
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY self ON users TO app_api
   USING (id = app_user_id() AND app_agent_token_id() IS NULL) WITH CHECK (id = app_user_id());
@@ -2636,7 +2641,11 @@ ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 CREATE POLICY subject_read ON audit_log FOR SELECT TO app_api
   USING (subject_user_id = app_user_id() AND app_agent_token_id() IS NULL);
 CREATE POLICY actor_insert ON audit_log FOR INSERT TO app_api      -- NET-03: refusals are logged against the token
-  WITH CHECK (actor_user_id = app_user_id() AND agent_token_id IS NOT DISTINCT FROM app_agent_token_id());
+  WITH CHECK (actor_user_id = app_user_id() AND agent_token_id IS NOT DISTINCT FROM app_agent_token_id()
+              AND (subject_user_id IS NULL OR subject_user_id = app_user_id()));
+-- The subject condition (Phase 3 verification, W4): without it a request acting for A could write a row about B, which
+-- B's audit log (TRU-03) would then show. The phase that adds organization tokens relaxes it for their case, where the
+-- actor and the subject differ (NET-03).
 
 -- 5.5 Agent-token scopes: what an outside agent may read on a candidate's behalf.
 CREATE POLICY agent_matches ON match_runs FOR SELECT TO app_api

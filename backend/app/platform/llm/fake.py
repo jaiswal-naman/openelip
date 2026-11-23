@@ -1,13 +1,15 @@
 """A provider that replays recorded answers: what CI, the tests and the eval replay use (AI_SYSTEM 2.10).
 
 recorded/<task>.json is a JSON list, consumed in order. A string is the model's text verbatim (script invalid output
-with one); anything else is dumped to JSON text (a valid answer). The gateway refuses this provider in production.
+with one); anything else is dumped to JSON text (a valid answer). The gateway refuses this provider in production. A
+task with no recording raises AIDisabled("no_recording"): the same 503 ai_disabled as no provider at all.
 """
 
 import json
 from pathlib import Path
 
 from .adapters import Reply
+from .failures import AIDisabled
 
 INPUT_TOKENS, OUTPUT_TOKENS = 100, 20  # fixed, so a replay always costs the same
 
@@ -26,6 +28,11 @@ def replay_from(path: Path | None) -> None:
 
 def call(task: str) -> Reply:
     path = _source or _RECORDED / f"{task}.json"
+    if _source is None and not path.exists():
+        # A fresh install runs this provider and holds one recording (ping). A task with none has no answer to give,
+        # which is what "no provider" means: AIDisabled at once, not a missing-file error the queue would retry for
+        # minutes before the person is told anything.
+        raise AIDisabled("no_recording")
     answers = json.loads(path.read_text(encoding="utf-8"))
     taken = _given.get(path, 0)
     if taken >= len(answers):

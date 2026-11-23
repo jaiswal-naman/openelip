@@ -8,7 +8,8 @@ RETRY_AFTER_SECONDS = 30  # a fixed hint for API.md 1.11's dependency_unavailabl
 class AIDisabled(ApiError):
     """No usable provider for the task, so no call was made. The API answers it as 503 ai_disabled.
 
-    reason is a short code for the log (no_route, no_key, unpriced, fake_in_production); callers never see it."""
+    reason is a short code for the log (no_route, no_key, unpriced, fake_in_production, no_recording, unproven); callers
+    never see it."""
 
     def __init__(self, reason: str = "no_route") -> None:
         super().__init__(503, "ai_disabled", "This feature needs an AI model and none is configured.")

@@ -1,0 +1,185 @@
+/* Hard constraints: one card per kind, with the editor that opens inside a card (FRONTEND_UI 3.2 step 4 and 3.8). Tokens only. */
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+/* The card being worked on stands out by a stronger border, not by colour alone: it also holds the form */
+.card[data-open] {
+  border-color: var(--line-strong);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-8) var(--sp-16);
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.value {
+  overflow-wrap: anywhere;
+}
+
+.unset {
+  color: var(--muted);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+}
+
+/* The editor */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  max-width: var(--measure);
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-12);
+}
+
+@media (min-width: 40rem) {
+  .pair {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.restated {
+  padding: var(--sp-8) var(--sp-12);
+  border-inline-start: 3px solid var(--line-strong);
+  background: var(--surface-2);
+  font-weight: 600;
+}
+
+.effect {
+  color: var(--muted);
+}
+
+.alert {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-8);
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+/* Form pieces */
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.group legend {
+  padding: 0;
+}
+
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8) var(--sp-16);
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  min-height: 2rem;
+  cursor: pointer;
+}
+
+.option input {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--accent-strong);
+}
+
+.selectWrap {
+  position: relative;
+}
+
+.select {
+  appearance: none;
+  padding-inline-end: 2.25rem;
+  cursor: pointer;
+}
+
+.selectIcon {
+  position: absolute;
+  inset-inline-end: var(--sp-12);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--muted);
+}
+
+.textarea {
+  padding-block: var(--sp-8);
+  resize: vertical;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding-inline-start: var(--sp-12);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+}
+
+@media (max-width: 39.99rem) {
+  .option {
+    min-height: 2.5rem; /* 40px targets on a phone */
+  }
+}
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}

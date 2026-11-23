@@ -91,12 +91,18 @@ services:
 
   # Also the place to run the operator commands, which use the worker's database login:
   #   docker compose exec worker python -m app.cli ingest run
+  # The `erasure` volume holds the erasure ledger: one line per deleted account (the bare id and the time), so that a
+  # backup restored from before a deletion can be erased again (ARCHITECTURE 8.2). Only the worker writes it. Keep it out
+  # of the database backups: the volume must outlive a restore.
   worker:
     <<: *backend
     command: ["python", "-m", "app.worker"]
     environment:
       <<: *backend-env
       DATABASE_URL_WORKER: postgresql://app_worker:${APP_DB_WORKER_PASSWORD:-app_worker_local_only}@db:5432/app
+      ERASURE_LEDGER_PATH: /srv/erasure/ledger.jsonl
+    volumes:
+      - erasure:/srv/erasure
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -161,3 +167,4 @@ services:
 volumes:
   pgdata:
   ollama:
+  erasure:

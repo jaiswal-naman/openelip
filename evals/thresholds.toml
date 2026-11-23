@@ -4,6 +4,12 @@
 [harness_smoke]
 min_score = 1.0   # five invented items, exact match: anything below 1.0 means the runner or the gate is broken
 
+[resume_extraction]
+# The replay baseline in evals/resume_extraction/facts/baseline.json, minus 0.0: a replay is deterministic, so any drop
+# is a code change. It proves the code path over invented resumes; it is not a model quality number. The floor for a
+# live run is set after the first live run (AI_SYSTEM 4.2: 0.90 overall, 0.95 on employer, title and dates).
+min_score = 0.9526852011742358
+
 # Scored by code, not replayed: run evals/location/score.py --record, then gate that run (see evals/location/README.md).
 # The bars were written before the first run: accuracy 0.95 and no guessed row. A guessed row zeroes the run's score.
 [location_accuracy]

@@ -102,6 +102,16 @@ def test_no_usable_provider_raises_ai_disabled_and_writes_nothing(harness, env):
     assert harness.ledger() == []
 
 
+def test_the_fake_provider_with_no_recording_for_a_task_is_ai_disabled_at_once_and_writes_nothing(harness):
+    """A fresh install runs LLM_PROVIDER=fake and holds one recording, for ping. A task with none has no answer to give,
+    which is the same as no provider: not a missing-file error that the queue would retry for minutes."""
+    assert ask() == PingResult(reply="pong")  # the committed recording for ping still answers
+    with pytest.raises(AIDisabled) as refused:
+        complete("resume.facts.roles", PingResult, MESSAGES, principal=None, prompt_version="v1")
+    assert (refused.value.status, refused.value.code, refused.value.reason) == (503, "ai_disabled", "no_recording")
+    assert [row["task"] for row in harness.ledger()] == ["ping"]  # nothing for the task that had no recording
+
+
 def test_the_api_answers_ai_disabled_as_503(harness):
     harness.configure(LLM_PROVIDER="anthropic")
     app = create_app()

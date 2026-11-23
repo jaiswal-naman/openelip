@@ -47,3 +47,9 @@ the gate to fail.
 4. Record the answers in `recorded/<suite>.json`, in item order. An answer that fails the schema is asked for again, so
    it uses two entries.
 5. Set its floor in `thresholds.toml` before the first run.
+
+A suite whose items need several gateway calls, or a score that is not an exact match, registers as
+`OwnScorer("<script path under evals/>")` instead of a `Suite`. Its script defines `TASK`, `CONFIG`, `RECORDED` and
+`run(recorded) -> Scored`, and brings its own gold set and recording format. The runner still refuses a real provider,
+writes the run record and finishes it, and the gate still compares `metrics.score` with the floor. The one example is
+`resume_extraction/facts/` (see its README).

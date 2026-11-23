@@ -5,8 +5,10 @@ from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import make_url
 
 # What information_schema must show after `alembic upgrade head`, as "column udt_name" ("?" marks a nullable column).
-# Transcribed by hand from DATA_MODEL 3.3, 3.7 and 3.13 (the Phase 1 tables) and 3.5 (the job index, converted in
-# place by revision p2_0201_job_index), so a change to either side that the other does not follow fails here.
+# Transcribed by hand from DATA_MODEL 3.3, 3.7 and 3.13 (the Phase 1 tables), 3.3 again for the trust tables that plan
+# 03-01 added (consents, audit_log, data_requests), 3.4 for the record tables of plan 03-04 and 3.5 (the job index,
+# converted in place by revision p2_0201_job_index), so a change to either side that the other does not follow fails
+# here.
 # Not autogenerate.
 EXPECTED = {
     "users": """
@@ -67,6 +69,40 @@ EXPECTED = {
         id int8; job_id int8; content_version int4; ordinal int2; importance requirement_importance
         kind requirement_kind; text text; span int4range; skill_ids _int4; min_years int2?; prompt_version text
         llm_call_id int8?; created_at timestamptz""",
+    "consents": """
+        id uuid; user_id uuid; purpose consent_purpose; action consent_action; withdraws_id uuid?
+        organization_id uuid?; role_id uuid?; text_version text; created_at timestamptz""",
+    "audit_log": """
+        id int8; created_at timestamptz; event_type text; actor_type actor_type; actor_user_id uuid?
+        subject_user_id uuid?; organization_id uuid?; agent_token_id uuid?; entity_table text?; entity_id text?
+        details jsonb""",
+    "data_requests": """
+        id uuid; user_id uuid?; subject_user_id uuid; kind data_request_kind; status data_request_status
+        due_at timestamptz; export_archive bytea?; export_expires_at timestamptz?; store_results jsonb
+        created_at timestamptz; completed_at timestamptz?""",
+    # DATA_MODEL 3.4, the Career Record tables that plan 03-04 added.
+    "documents": """
+        id uuid; user_id uuid; content bytea; original_filename text?; mime_type text; byte_size int4; sha256 bytea
+        status document_status; extracted_text text?; hidden_text_chars int4; parse_error_code text?
+        created_at timestamptz; parsed_at timestamptz?""",
+    "profile_events": """
+        id uuid; user_id uuid; event_type profile_event_type; entity profile_entity; operation profile_operation
+        entity_id uuid?; before jsonb?; after jsonb?; source record_source?; origin proposal_origin?; origin_ref text?
+        proposal_event_id uuid?; reason text?; record_version_after int8?; created_at timestamptz""",
+    "profile_facts": """
+        id uuid; user_id uuid; kind fact_kind; statement text; attributes jsonb; skill_id int4?; parent_fact_id uuid?
+        source record_source; document_id uuid?; source_span int4range?; source_quote text?; profile_event_id uuid?
+        created_at timestamptz; confirmed_at timestamptz?; rejected_at timestamptz?; superseded_at timestamptz?
+        superseded_by uuid?""",
+    "constraints": """
+        id uuid; user_id uuid; kind constraint_kind; statement text; country_codes _bpchar?; cities _text?
+        arrangements _work_arrangement?; employment_types _employment_type?; seniorities _seniority?
+        salary_floor int4?; salary_currency bpchar?; company_names _text?; source record_source
+        profile_event_id uuid; created_at timestamptz; superseded_at timestamptz?; superseded_by uuid?""",
+    "preferences": """
+        id uuid; user_id uuid; kind preference_kind; value text; skill_id int4?; weight int2; statement text
+        source record_source; profile_event_id uuid; created_at timestamptz; superseded_at timestamptz?
+        superseded_by uuid?""",
 }
 
 

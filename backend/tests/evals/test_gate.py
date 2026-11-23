@@ -92,8 +92,10 @@ def insert_run(engine, suite, status="passed", metrics='{"n": 1, "passed": 1, "s
         ).scalar_one()
 
 
-def test_a_suite_with_no_floor_in_thresholds_fails_the_gate(engine, capsys):
-    run_id = insert_run(engine, "resume_extraction")  # a valid suite value that thresholds.toml does not list
+def test_a_suite_with_no_floor_in_thresholds_fails_the_gate(engine, capsys, monkeypatch, tmp_path):
+    (tmp_path / "thresholds.toml").write_text("", encoding="utf-8")  # a floor file that lists no suite at all
+    monkeypatch.setattr(gate, "EVALS", tmp_path)  # so this holds however many suites are registered in the real one
+    run_id = insert_run(engine, "resume_extraction")
     assert gate.main("resume_extraction", run_id) == 1
     assert "no floor" in capsys.readouterr().out
 

@@ -355,6 +355,61 @@
             }
           }
         }
+      },
+      "patch": {
+        "summary": "Update Me",
+        "description": "Grant or withdraw consents. The person is the session's, never anything in the body (T-3-01).",
+        "operationId": "update_me_v1_me_patch",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MePatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Me_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/control/costs": {
@@ -418,6 +473,1148 @@
           }
         }
       }
+    },
+    "/v1/privacy/exports": {
+      "post": {
+        "summary": "Create Export",
+        "description": "Ask for an archive of everything held about the caller. Asking again while one is being made returns that one.",
+        "operationId": "create_export_v1_privacy_exports_post",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PrivacyRequest_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/privacy/requests/{request_id}": {
+      "get": {
+        "summary": "Get Request",
+        "operationId": "get_request_v1_privacy_requests__request_id__get",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PrivacyRequest_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/privacy/requests/{request_id}/download": {
+      "get": {
+        "summary": "Download Export",
+        "description": "The archive, opened from its seal for this one response. 409 while it is not ready, 410 once it has expired.",
+        "operationId": "download_export_v1_privacy_requests__request_id__download_get",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/privacy/deletion": {
+      "post": {
+        "summary": "Delete Account",
+        "description": "Close the caller's account at once and queue the erasure of everything about them. Needs a fresh emailed code.\n\nThe Idempotency-Key is required (API.md 1.6) but not used to replay: the single-use code plays that part, and once\nthis has worked the session is gone, so a retry cannot get here. Nothing runs inside write.run for the same reason:\na wrong code must be counted, and an error raised inside the transaction would roll the count back.",
+        "operationId": "delete_account_v1_privacy_deletion_post",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacyDeletionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PrivacyDeletion_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/documents": {
+      "post": {
+        "summary": "Upload Document",
+        "description": "Keep a resume and queue its parse: 202 with the document's id, and a Location to poll. The same key with the\nsame file answers with the first answer and stores nothing more. The parameters are checked in the order written.",
+        "operationId": "upload_document_v1_me_documents_post",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DocumentQueued_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "A PDF or DOCX, at most 10 MB."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/documents/{document_id}": {
+      "get": {
+        "summary": "Get Document",
+        "description": "How a parse is going and what it made. Poll this until status is succeeded or failed (Retry-After says how long\nto wait). ?include=text adds the cleaned text the facts' spans point into, and its lines. Another person's document\nis a 404, like one that does not exist.",
+        "operationId": "get_document_v1_me_documents__document_id__get",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": "text",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Include"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DocumentView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/record": {
+      "get": {
+        "summary": "Get Record",
+        "operationId": "get_record_v1_me_record_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_RecordView_"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/facts": {
+      "get": {
+        "summary": "List Facts",
+        "operationId": "list_facts_v1_me_facts_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "unconfirmed",
+                    "confirmed",
+                    "rejected",
+                    "superseded"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_RecordFact__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add Fact",
+        "operationId": "add_fact_v1_me_facts_post",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewFact"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_FactWritten_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/facts/review": {
+      "post": {
+        "summary": "Review Facts",
+        "description": "Confirm, correct or reject one or many facts in one write: all of them happen, or none does.",
+        "operationId": "review_facts_v1_me_facts_review_post",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FactReview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_FactsReviewed_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/constraints": {
+      "get": {
+        "summary": "List Constraints",
+        "operationId": "list_constraints_v1_me_constraints_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_RecordConstraint__"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add Constraint",
+        "description": "Make this the person's hard constraint of its kind. There is one active constraint per kind, so this replaces\nthe one there is (the change log keeps it): to keep part of it, PATCH it.",
+        "operationId": "add_constraint_v1_me_constraints_post",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewConstraint"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ConstraintWritten_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/constraints/{constraint_id}": {
+      "patch": {
+        "summary": "Change Constraint",
+        "operationId": "change_constraint_v1_me_constraints__constraint_id__patch",
+        "parameters": [
+          {
+            "name": "constraint_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Constraint Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConstraintChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ConstraintWritten_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove Constraint",
+        "operationId": "remove_constraint_v1_me_constraints__constraint_id__delete",
+        "parameters": [
+          {
+            "name": "constraint_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Constraint Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_VersionOnly_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/preferences": {
+      "get": {
+        "summary": "List Preferences",
+        "operationId": "list_preferences_v1_me_preferences_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_RecordPreference__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add Preference",
+        "description": "A soft preference. A dealbreaker is stored as untyped_dealbreaker with notice not_guaranteed; when it fits a hard\nconstraint kind the answer also carries suggested_constraint, which the candidate may post to /constraints.",
+        "operationId": "add_preference_v1_me_preferences_post",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewPreference"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PreferenceWritten_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/preferences/{preference_id}": {
+      "patch": {
+        "summary": "Change Preference",
+        "operationId": "change_preference_v1_me_preferences__preference_id__patch",
+        "parameters": [
+          {
+            "name": "preference_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Preference Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferenceChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PreferenceWritten_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove Preference",
+        "operationId": "remove_preference_v1_me_preferences__preference_id__delete",
+        "parameters": [
+          {
+            "name": "preference_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Preference Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_VersionOnly_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/events": {
+      "get": {
+        "summary": "List Events",
+        "description": "The change log, newest first: applied, declined and expired. ?status=proposed lists proposals still waiting.",
+        "operationId": "list_events_v1_me_events_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "proposed",
+                    "applied",
+                    "declined",
+                    "expired"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_RecordEvent__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/events/{event_id}/confirm": {
+      "post": {
+        "summary": "Confirm Proposal",
+        "operationId": "confirm_proposal_v1_me_events__event_id__confirm_post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ProposalConfirmed_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/events/{event_id}/decline": {
+      "post": {
+        "summary": "Decline Proposal",
+        "operationId": "decline_proposal_v1_me_events__event_id__decline_post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ProposalDeclined_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -451,6 +1648,291 @@
         ],
         "title": "CodeRequested",
         "description": "The same for every address, so the endpoint does not reveal whether an account exists."
+      },
+      "ConsentChange": {
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "terms",
+              "ai_processing",
+              "brief_email",
+              "open_to_introductions"
+            ],
+            "title": "Purpose"
+          },
+          "granted": {
+            "type": "boolean",
+            "title": "Granted"
+          },
+          "text_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._:-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "purpose",
+          "granted"
+        ],
+        "title": "ConsentChange",
+        "description": "One consent a person grants or withdraws in PATCH /v1/me. A grant carries the wording version they were shown."
+      },
+      "ConsentState": {
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "terms",
+              "ai_processing",
+              "brief_email",
+              "open_to_introductions"
+            ],
+            "title": "Purpose"
+          },
+          "granted": {
+            "type": "boolean",
+            "title": "Granted"
+          },
+          "granted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Granted At"
+          },
+          "text_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Version"
+          },
+          "providers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Providers"
+          },
+          "current_text_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Text Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "purpose",
+          "granted",
+          "granted_at",
+          "text_version"
+        ],
+        "title": "ConsentState",
+        "description": "One consent as GET /v1/me reports it. A purpose that was never granted, or was withdrawn, has granted false."
+      },
+      "ConstraintChange": {
+        "properties": {
+          "country_codes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Codes"
+          },
+          "cities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cities"
+          },
+          "arrangements": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "onsite",
+                    "hybrid",
+                    "remote"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrangements"
+          },
+          "employment_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "full_time",
+                    "part_time",
+                    "contract",
+                    "internship",
+                    "temporary"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employment Types"
+          },
+          "seniorities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "intern",
+                    "entry",
+                    "mid",
+                    "senior",
+                    "staff",
+                    "principal",
+                    "manager",
+                    "director",
+                    "executive"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seniorities"
+          },
+          "salary_floor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalaryFloor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "company_names": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Names"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "statement": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Statement"
+          }
+        },
+        "type": "object",
+        "title": "ConstraintChange",
+        "description": "PATCH: what is not named stays. A constraint's kind never changes; naming another one is refused."
+      },
+      "ConstraintWritten": {
+        "properties": {
+          "constraint": {
+            "$ref": "#/components/schemas/RecordConstraint"
+          },
+          "record_version": {
+            "type": "integer",
+            "title": "Record Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "constraint",
+          "record_version"
+        ],
+        "title": "ConstraintWritten"
       },
       "CostRow": {
         "properties": {
@@ -563,6 +2045,243 @@
         ],
         "title": "Costs"
       },
+      "DocumentFacts": {
+        "properties": {
+          "kept": {
+            "type": "integer",
+            "title": "Kept"
+          },
+          "unverified": {
+            "type": "integer",
+            "title": "Unverified"
+          },
+          "to_review": {
+            "type": "integer",
+            "title": "To Review"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kept",
+          "unverified",
+          "to_review"
+        ],
+        "title": "DocumentFacts",
+        "description": "What the parse produced from this file: facts the code could confirm, items it could not (kept as unconfirmed\nfacts of kind other, with the reason), and how many of all of them the candidate has not looked at yet."
+      },
+      "DocumentHiddenText": {
+        "properties": {
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "samples": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Samples",
+            "x-untrusted-text": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "reasons",
+          "samples"
+        ],
+        "title": "DocumentHiddenText",
+        "description": "What was removed from the file as hidden or off-page text (REC-06): why, and a few samples to show the candidate.\nRecomputed from the stored file, because the table keeps only the count."
+      },
+      "DocumentLine": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "start": {
+            "type": "integer",
+            "title": "Start"
+          },
+          "end": {
+            "type": "integer",
+            "title": "End"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "x-untrusted-text": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "start",
+          "end",
+          "text"
+        ],
+        "title": "DocumentLine"
+      },
+      "DocumentQueued": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "queued",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "DocumentQueued"
+      },
+      "DocumentView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "original_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Filename",
+            "x-untrusted-text": true
+          },
+          "mime_type": {
+            "type": "string",
+            "title": "Mime Type"
+          },
+          "byte_size": {
+            "type": "integer",
+            "title": "Byte Size"
+          },
+          "parse_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parse Error Code"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "facts": {
+            "$ref": "#/components/schemas/DocumentFacts"
+          },
+          "hidden_text_chars": {
+            "type": "integer",
+            "title": "Hidden Text Chars"
+          },
+          "hidden_text_flags": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentHiddenText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "parsed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parsed At"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text",
+            "x-untrusted-text": true
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DocumentLine"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "original_filename",
+          "mime_type",
+          "byte_size",
+          "parse_error_code",
+          "message",
+          "facts",
+          "hidden_text_chars",
+          "hidden_text_flags",
+          "created_at",
+          "parsed_at"
+        ],
+        "title": "DocumentView",
+        "description": "parse_error_code says why a document failed (or, on a succeeded one, that part of it could not be read:\npartial_extraction); message is the same in words. hidden_text_flags is null until the document is parsed."
+      },
       "Envelope_CodeRequested_": {
         "properties": {
           "success": {
@@ -604,6 +2323,47 @@
         ],
         "title": "Envelope[CodeRequested]"
       },
+      "Envelope_ConstraintWritten_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConstraintWritten"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[ConstraintWritten]"
+      },
       "Envelope_Costs_": {
         "properties": {
           "success": {
@@ -644,6 +2404,170 @@
           "meta"
         ],
         "title": "Envelope[Costs]"
+      },
+      "Envelope_DocumentQueued_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentQueued"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[DocumentQueued]"
+      },
+      "Envelope_DocumentView_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[DocumentView]"
+      },
+      "Envelope_FactWritten_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FactWritten"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[FactWritten]"
+      },
+      "Envelope_FactsReviewed_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FactsReviewed"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[FactsReviewed]"
       },
       "Envelope_JobDetail_": {
         "properties": {
@@ -727,6 +2651,252 @@
         ],
         "title": "Envelope[Me]"
       },
+      "Envelope_PreferenceWritten_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreferenceWritten"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[PreferenceWritten]"
+      },
+      "Envelope_PrivacyDeletion_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrivacyDeletion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[PrivacyDeletion]"
+      },
+      "Envelope_PrivacyRequest_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrivacyRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[PrivacyRequest]"
+      },
+      "Envelope_ProposalConfirmed_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProposalConfirmed"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[ProposalConfirmed]"
+      },
+      "Envelope_ProposalDeclined_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProposalDeclined"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[ProposalDeclined]"
+      },
+      "Envelope_RecordView_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[RecordView]"
+      },
       "Envelope_Subprocessors_": {
         "properties": {
           "success": {
@@ -767,6 +2937,47 @@
           "meta"
         ],
         "title": "Envelope[Subprocessors]"
+      },
+      "Envelope_VersionOnly_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionOnly"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[VersionOnly]"
       },
       "Envelope_list_Job__": {
         "properties": {
@@ -813,6 +3024,186 @@
         ],
         "title": "Envelope[list[Job]]"
       },
+      "Envelope_list_RecordConstraint__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RecordConstraint"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[list[RecordConstraint]]"
+      },
+      "Envelope_list_RecordEvent__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RecordEvent"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[list[RecordEvent]]"
+      },
+      "Envelope_list_RecordFact__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RecordFact"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[list[RecordFact]]"
+      },
+      "Envelope_list_RecordPreference__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RecordPreference"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[list[RecordPreference]]"
+      },
       "ErrorBody": {
         "properties": {
           "code": {
@@ -836,6 +3227,158 @@
           "details"
         ],
         "title": "ErrorBody"
+      },
+      "FactDecision": {
+        "properties": {
+          "fact_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Fact Id"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "confirm",
+              "correct",
+              "reject"
+            ],
+            "title": "Action"
+          },
+          "statement": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Statement"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fact_id",
+          "action"
+        ],
+        "title": "FactDecision"
+      },
+      "FactProvenance": {
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Document Id"
+          },
+          "span": {
+            "$ref": "#/components/schemas/FactSpan"
+          },
+          "quote": {
+            "type": "string",
+            "title": "Quote",
+            "x-untrusted-text": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "document_id",
+          "span",
+          "quote"
+        ],
+        "title": "FactProvenance",
+        "description": "Where a resume fact came from: the document, the character span in its text and the text at that span."
+      },
+      "FactReview": {
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/FactDecision"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Decisions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decisions"
+        ],
+        "title": "FactReview"
+      },
+      "FactSpan": {
+        "properties": {
+          "start": {
+            "type": "integer",
+            "title": "Start"
+          },
+          "end": {
+            "type": "integer",
+            "title": "End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "FactSpan"
+      },
+      "FactWritten": {
+        "properties": {
+          "fact": {
+            "$ref": "#/components/schemas/RecordFact"
+          },
+          "record_version": {
+            "type": "integer",
+            "title": "Record Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fact",
+          "record_version"
+        ],
+        "title": "FactWritten"
+      },
+      "FactsReviewed": {
+        "properties": {
+          "record_version": {
+            "type": "integer",
+            "title": "Record Version"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewResult"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "unconfirmed_remaining": {
+            "type": "integer",
+            "title": "Unconfirmed Remaining"
+          }
+        },
+        "type": "object",
+        "required": [
+          "record_version",
+          "results",
+          "unconfirmed_remaining"
+        ],
+        "title": "FactsReviewed"
       },
       "HTTPValidationError": {
         "properties": {
@@ -1232,6 +3775,13 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "consents": {
+            "items": {
+              "$ref": "#/components/schemas/ConsentState"
+            },
+            "type": "array",
+            "title": "Consents"
           }
         },
         "type": "object",
@@ -1239,9 +3789,258 @@
           "id",
           "email",
           "timezone",
-          "created_at"
+          "created_at",
+          "consents"
         ],
         "title": "Me"
+      },
+      "MePatch": {
+        "properties": {
+          "consents": {
+            "items": {
+              "$ref": "#/components/schemas/ConsentChange"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Consents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "consents"
+        ],
+        "title": "MePatch",
+        "description": "PATCH /v1/me. Consents only for now: the account settings of API.md 2.3 arrive with the brief settings."
+      },
+      "NewConstraint": {
+        "properties": {
+          "country_codes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Codes"
+          },
+          "cities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cities"
+          },
+          "arrangements": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "onsite",
+                    "hybrid",
+                    "remote"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrangements"
+          },
+          "employment_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "full_time",
+                    "part_time",
+                    "contract",
+                    "internship",
+                    "temporary"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employment Types"
+          },
+          "seniorities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "intern",
+                    "entry",
+                    "mid",
+                    "senior",
+                    "staff",
+                    "principal",
+                    "manager",
+                    "director",
+                    "executive"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seniorities"
+          },
+          "salary_floor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalaryFloor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "company_names": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Names"
+          },
+          "kind": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Kind"
+          },
+          "statement": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Statement"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "statement"
+        ],
+        "title": "NewConstraint",
+        "description": "kind is a plain string, not the enum: a kind the matcher cannot enforce is 422 constraint_not_enforceable with a\nsuggestion (API.md 3.2), not a field error."
+      },
+      "NewFact": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "role",
+              "achievement",
+              "education",
+              "skill",
+              "certification",
+              "project",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "statement": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Statement"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "statement"
+        ],
+        "title": "NewFact"
+      },
+      "NewPreference": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "target_title",
+              "target_skill",
+              "industry",
+              "company_size",
+              "location",
+              "remote_policy",
+              "salary_target",
+              "seniority",
+              "untyped_dealbreaker",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "statement": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Statement"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 3.0,
+                "minimum": -3.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "statement"
+        ],
+        "title": "NewPreference",
+        "description": "value defaults to the statement for kind other and untyped_dealbreaker and is required for the others; weight is\nrequired (-3 to 3, never 0) except for a dealbreaker, which is always -3 (REC-04)."
       },
       "Pay": {
         "properties": {
@@ -1279,6 +4078,1023 @@
           "currency"
         ],
         "title": "Pay"
+      },
+      "PreferenceChange": {
+        "properties": {
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "target_title",
+                  "target_skill",
+                  "industry",
+                  "company_size",
+                  "location",
+                  "remote_policy",
+                  "salary_target",
+                  "seniority",
+                  "untyped_dealbreaker",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "statement": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Statement"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 3.0,
+                "minimum": -3.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          }
+        },
+        "type": "object",
+        "title": "PreferenceChange"
+      },
+      "PreferenceWritten": {
+        "properties": {
+          "preference": {
+            "$ref": "#/components/schemas/RecordPreference"
+          },
+          "record_version": {
+            "type": "integer",
+            "title": "Record Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "preference",
+          "record_version"
+        ],
+        "title": "PreferenceWritten"
+      },
+      "PrivacyDeletion": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "export",
+              "deletion"
+            ],
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "requested_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Requested At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "download": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrivacyDownload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "revoked": {
+            "$ref": "#/components/schemas/PrivacyRevoked"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "requested_at",
+          "completed_at",
+          "download",
+          "format",
+          "revoked"
+        ],
+        "title": "PrivacyDeletion"
+      },
+      "PrivacyDeletionBody": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "PrivacyDeletionBody"
+      },
+      "PrivacyDownload": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "const": "GET",
+            "title": "Method"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "available_until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Available Until"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "path",
+          "available_until"
+        ],
+        "title": "PrivacyDownload"
+      },
+      "PrivacyRequest": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "export",
+              "deletion"
+            ],
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "requested_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Requested At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "download": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrivacyDownload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "requested_at",
+          "completed_at",
+          "download",
+          "format"
+        ],
+        "title": "PrivacyRequest",
+        "description": "An export or a deletion, with the API's shared status words (API.md 1.9)."
+      },
+      "PrivacyRevoked": {
+        "properties": {
+          "sessions": {
+            "type": "integer",
+            "title": "Sessions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sessions"
+        ],
+        "title": "PrivacyRevoked"
+      },
+      "ProposalConfirmed": {
+        "properties": {
+          "entity": {
+            "type": "string",
+            "enum": [
+              "fact",
+              "constraint",
+              "preference"
+            ],
+            "title": "Entity"
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entity Id"
+          },
+          "record_version": {
+            "type": "integer",
+            "title": "Record Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity",
+          "entity_id",
+          "record_version"
+        ],
+        "title": "ProposalConfirmed"
+      },
+      "ProposalDeclined": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Event Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id"
+        ],
+        "title": "ProposalDeclined"
+      },
+      "RecordConstraint": {
+        "properties": {
+          "country_codes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Codes"
+          },
+          "cities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cities"
+          },
+          "arrangements": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "onsite",
+                    "hybrid",
+                    "remote"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrangements"
+          },
+          "employment_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "full_time",
+                    "part_time",
+                    "contract",
+                    "internship",
+                    "temporary"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employment Types"
+          },
+          "seniorities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "intern",
+                    "entry",
+                    "mid",
+                    "senior",
+                    "staff",
+                    "principal",
+                    "manager",
+                    "director",
+                    "executive"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seniorities"
+          },
+          "salary_floor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalaryFloor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "company_names": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Names"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "location",
+              "remote_policy",
+              "work_authorization",
+              "salary_floor",
+              "employment_type",
+              "seniority",
+              "excluded_company"
+            ],
+            "title": "Kind"
+          },
+          "statement": {
+            "type": "string",
+            "title": "Statement"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "resume",
+              "candidate_edit",
+              "confirmed_proposal"
+            ],
+            "title": "Source"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "statement",
+          "source",
+          "created_at"
+        ],
+        "title": "RecordConstraint"
+      },
+      "RecordDocument": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "original_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Filename"
+          },
+          "mime_type": {
+            "type": "string",
+            "title": "Mime Type"
+          },
+          "byte_size": {
+            "type": "integer",
+            "title": "Byte Size"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "parse_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parse Error Code"
+          },
+          "hidden_text_chars": {
+            "type": "integer",
+            "title": "Hidden Text Chars"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "parsed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parsed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "original_filename",
+          "mime_type",
+          "byte_size",
+          "status",
+          "parse_error_code",
+          "hidden_text_chars",
+          "created_at",
+          "parsed_at"
+        ],
+        "title": "RecordDocument"
+      },
+      "RecordEvent": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "proposed",
+              "applied",
+              "declined",
+              "expired"
+            ],
+            "title": "Status"
+          },
+          "entity": {
+            "type": "string",
+            "enum": [
+              "fact",
+              "constraint",
+              "preference"
+            ],
+            "title": "Entity"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "create",
+              "update",
+              "remove",
+              "confirm",
+              "reject"
+            ],
+            "title": "Operation"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "resume",
+                  "candidate_edit",
+                  "confirmed_proposal"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "onboarding",
+                  "chat",
+                  "feedback",
+                  "agent"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin"
+          },
+          "proposal_event_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Event Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "record_version_after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Version After"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "entity",
+          "operation",
+          "entity_id",
+          "before",
+          "after",
+          "source",
+          "origin",
+          "proposal_event_id",
+          "reason",
+          "record_version_after",
+          "created_at"
+        ],
+        "title": "RecordEvent",
+        "description": "One row of the change log or the proposal queue. before and after are the row as it was and as it became."
+      },
+      "RecordFact": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "role",
+              "achievement",
+              "education",
+              "skill",
+              "certification",
+              "project",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unconfirmed",
+              "confirmed",
+              "rejected",
+              "superseded"
+            ],
+            "title": "Status"
+          },
+          "statement": {
+            "type": "string",
+            "title": "Statement",
+            "x-untrusted-text": true
+          },
+          "attributes": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Attributes"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "resume",
+              "candidate_edit",
+              "confirmed_proposal"
+            ],
+            "title": "Source"
+          },
+          "parent_fact_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Fact Id"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FactProvenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "statement",
+          "attributes",
+          "source",
+          "parent_fact_id",
+          "provenance",
+          "created_at"
+        ],
+        "title": "RecordFact"
+      },
+      "RecordPreference": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "target_title",
+              "target_skill",
+              "industry",
+              "company_size",
+              "location",
+              "remote_policy",
+              "salary_target",
+              "seniority",
+              "untyped_dealbreaker",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "weight": {
+            "type": "integer",
+            "title": "Weight"
+          },
+          "statement": {
+            "type": "string",
+            "title": "Statement"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "resume",
+              "candidate_edit",
+              "confirmed_proposal"
+            ],
+            "title": "Source"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "not_guaranteed"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice"
+          },
+          "suggested_constraint": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewConstraint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "value",
+          "weight",
+          "statement",
+          "source",
+          "created_at",
+          "notice"
+        ],
+        "title": "RecordPreference"
+      },
+      "RecordView": {
+        "properties": {
+          "record_version": {
+            "type": "integer",
+            "title": "Record Version"
+          },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/RecordFact"
+            },
+            "type": "array",
+            "title": "Facts"
+          },
+          "constraints": {
+            "items": {
+              "$ref": "#/components/schemas/RecordConstraint"
+            },
+            "type": "array",
+            "title": "Constraints"
+          },
+          "preferences": {
+            "items": {
+              "$ref": "#/components/schemas/RecordPreference"
+            },
+            "type": "array",
+            "title": "Preferences"
+          },
+          "unconfirmed_facts": {
+            "type": "integer",
+            "title": "Unconfirmed Facts"
+          },
+          "open_proposals": {
+            "type": "integer",
+            "title": "Open Proposals"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/RecordDocument"
+            },
+            "type": "array",
+            "title": "Documents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "record_version",
+          "facts",
+          "constraints",
+          "preferences",
+          "unconfirmed_facts",
+          "open_proposals",
+          "documents"
+        ],
+        "title": "RecordView",
+        "description": "The confirmed record on one page. Facts waiting for review are counted here; GET /v1/me/facts lists them."
+      },
+      "ReplacedBy": {
+        "properties": {
+          "fact_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Fact Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "confirmed",
+            "title": "Status"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "resume",
+              "candidate_edit",
+              "confirmed_proposal"
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fact_id",
+          "status",
+          "source"
+        ],
+        "title": "ReplacedBy"
       },
       "Requirement": {
         "properties": {
@@ -1342,6 +5158,61 @@
           "min_years"
         ],
         "title": "Requirement"
+      },
+      "ReviewResult": {
+        "properties": {
+          "fact_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Fact Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "confirmed",
+              "rejected",
+              "superseded"
+            ],
+            "title": "Status"
+          },
+          "replaced_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReplacedBy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "fact_id",
+          "status"
+        ],
+        "title": "ReviewResult"
+      },
+      "SalaryFloor": {
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amount"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "title": "SalaryFloor"
       },
       "SessionRequest": {
         "properties": {
@@ -1490,6 +5361,19 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VersionOnly": {
+        "properties": {
+          "record_version": {
+            "type": "integer",
+            "title": "Record Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "record_version"
+        ],
+        "title": "VersionOnly"
       }
     }
   }

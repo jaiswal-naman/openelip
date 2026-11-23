@@ -145,7 +145,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Me
+         * @description Grant or withdraw consents. The person is the session's, never anything in the body (T-3-01).
+         */
+        patch: operations["update_me_v1_me_patch"];
         trace?: never;
     };
     "/v1/control/costs": {
@@ -182,6 +186,319 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/privacy/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Export
+         * @description Ask for an archive of everything held about the caller. Asking again while one is being made returns that one.
+         */
+        post: operations["create_export_v1_privacy_exports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/privacy/requests/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Request */
+        get: operations["get_request_v1_privacy_requests__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/privacy/requests/{request_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Export
+         * @description The archive, opened from its seal for this one response. 409 while it is not ready, 410 once it has expired.
+         */
+        get: operations["download_export_v1_privacy_requests__request_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/privacy/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete Account
+         * @description Close the caller's account at once and queue the erasure of everything about them. Needs a fresh emailed code.
+         *
+         *     The Idempotency-Key is required (API.md 1.6) but not used to replay: the single-use code plays that part, and once
+         *     this has worked the session is gone, so a retry cannot get here. Nothing runs inside write.run for the same reason:
+         *     a wrong code must be counted, and an error raised inside the transaction would roll the count back.
+         */
+        post: operations["delete_account_v1_privacy_deletion_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Document
+         * @description Keep a resume and queue its parse: 202 with the document's id, and a Location to poll. The same key with the
+         *     same file answers with the first answer and stores nothing more. The parameters are checked in the order written.
+         */
+        post: operations["upload_document_v1_me_documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Document
+         * @description How a parse is going and what it made. Poll this until status is succeeded or failed (Retry-After says how long
+         *     to wait). ?include=text adds the cleaned text the facts' spans point into, and its lines. Another person's document
+         *     is a 404, like one that does not exist.
+         */
+        get: operations["get_document_v1_me_documents__document_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Record */
+        get: operations["get_record_v1_me_record_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/facts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Facts */
+        get: operations["list_facts_v1_me_facts_get"];
+        put?: never;
+        /** Add Fact */
+        post: operations["add_fact_v1_me_facts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/facts/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review Facts
+         * @description Confirm, correct or reject one or many facts in one write: all of them happen, or none does.
+         */
+        post: operations["review_facts_v1_me_facts_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/constraints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Constraints */
+        get: operations["list_constraints_v1_me_constraints_get"];
+        put?: never;
+        /**
+         * Add Constraint
+         * @description Make this the person's hard constraint of its kind. There is one active constraint per kind, so this replaces
+         *     the one there is (the change log keeps it): to keep part of it, PATCH it.
+         */
+        post: operations["add_constraint_v1_me_constraints_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/constraints/{constraint_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Constraint */
+        delete: operations["remove_constraint_v1_me_constraints__constraint_id__delete"];
+        options?: never;
+        head?: never;
+        /** Change Constraint */
+        patch: operations["change_constraint_v1_me_constraints__constraint_id__patch"];
+        trace?: never;
+    };
+    "/v1/me/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Preferences */
+        get: operations["list_preferences_v1_me_preferences_get"];
+        put?: never;
+        /**
+         * Add Preference
+         * @description A soft preference. A dealbreaker is stored as untyped_dealbreaker with notice not_guaranteed; when it fits a hard
+         *     constraint kind the answer also carries suggested_constraint, which the candidate may post to /constraints.
+         */
+        post: operations["add_preference_v1_me_preferences_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/preferences/{preference_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Preference */
+        delete: operations["remove_preference_v1_me_preferences__preference_id__delete"];
+        options?: never;
+        head?: never;
+        /** Change Preference */
+        patch: operations["change_preference_v1_me_preferences__preference_id__patch"];
+        trace?: never;
+    };
+    "/v1/me/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Events
+         * @description The change log, newest first: applied, declined and expired. ?status=proposed lists proposals still waiting.
+         */
+        get: operations["list_events_v1_me_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/events/{event_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm Proposal */
+        post: operations["confirm_proposal_v1_me_events__event_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/events/{event_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline Proposal */
+        post: operations["decline_proposal_v1_me_events__event_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -198,6 +515,71 @@ export interface components {
         CodeRequested: {
             /** Expires In Seconds */
             expires_in_seconds: number;
+        };
+        /**
+         * ConsentChange
+         * @description One consent a person grants or withdraws in PATCH /v1/me. A grant carries the wording version they were shown.
+         */
+        ConsentChange: {
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "terms" | "ai_processing" | "brief_email" | "open_to_introductions";
+            /** Granted */
+            granted: boolean;
+            /** Text Version */
+            text_version?: string | null;
+        };
+        /**
+         * ConsentState
+         * @description One consent as GET /v1/me reports it. A purpose that was never granted, or was withdrawn, has granted false.
+         */
+        ConsentState: {
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "terms" | "ai_processing" | "brief_email" | "open_to_introductions";
+            /** Granted */
+            granted: boolean;
+            /** Granted At */
+            granted_at: string | null;
+            /** Text Version */
+            text_version: string | null;
+            /** Providers */
+            providers?: string[] | null;
+            /** Current Text Version */
+            current_text_version?: string | null;
+        };
+        /**
+         * ConstraintChange
+         * @description PATCH: what is not named stays. A constraint's kind never changes; naming another one is refused.
+         */
+        ConstraintChange: {
+            /** Country Codes */
+            country_codes?: string[] | null;
+            /** Cities */
+            cities?: string[] | null;
+            /** Arrangements */
+            arrangements?: ("onsite" | "hybrid" | "remote")[] | null;
+            /** Employment Types */
+            employment_types?: ("full_time" | "part_time" | "contract" | "internship" | "temporary")[] | null;
+            /** Seniorities */
+            seniorities?: ("intern" | "entry" | "mid" | "senior" | "staff" | "principal" | "manager" | "director" | "executive")[] | null;
+            salary_floor?: components["schemas"]["SalaryFloor"] | null;
+            /** Company Names */
+            company_names?: string[] | null;
+            /** Kind */
+            kind?: string | null;
+            /** Statement */
+            statement?: string | null;
+        };
+        /** ConstraintWritten */
+        ConstraintWritten: {
+            constraint: components["schemas"]["RecordConstraint"];
+            /** Record Version */
+            record_version: number;
         };
         /** CostRow */
         CostRow: {
@@ -239,6 +621,96 @@ export interface components {
             /** Label */
             label: string;
         };
+        /**
+         * DocumentFacts
+         * @description What the parse produced from this file: facts the code could confirm, items it could not (kept as unconfirmed
+         *     facts of kind other, with the reason), and how many of all of them the candidate has not looked at yet.
+         */
+        DocumentFacts: {
+            /** Kept */
+            kept: number;
+            /** Unverified */
+            unverified: number;
+            /** To Review */
+            to_review: number;
+        };
+        /**
+         * DocumentHiddenText
+         * @description What was removed from the file as hidden or off-page text (REC-06): why, and a few samples to show the candidate.
+         *     Recomputed from the stored file, because the table keeps only the count.
+         */
+        DocumentHiddenText: {
+            /** Reasons */
+            reasons: string[];
+            /** Samples */
+            samples: string[];
+        };
+        /** DocumentLine */
+        DocumentLine: {
+            /** N */
+            n: number;
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+            /** Text */
+            text: string;
+        };
+        /** DocumentQueued */
+        DocumentQueued: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "queued";
+        };
+        /**
+         * DocumentView
+         * @description parse_error_code says why a document failed (or, on a succeeded one, that part of it could not be read:
+         *     partial_extraction); message is the same in words. hidden_text_flags is null until the document is parsed.
+         */
+        DocumentView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed";
+            /** Original Filename */
+            original_filename: string | null;
+            /** Mime Type */
+            mime_type: string;
+            /** Byte Size */
+            byte_size: number;
+            /** Parse Error Code */
+            parse_error_code: string | null;
+            /** Message */
+            message: string | null;
+            facts: components["schemas"]["DocumentFacts"];
+            /** Hidden Text Chars */
+            hidden_text_chars: number;
+            hidden_text_flags: components["schemas"]["DocumentHiddenText"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Parsed At */
+            parsed_at: string | null;
+            /** Text */
+            text?: string | null;
+            /** Lines */
+            lines?: components["schemas"]["DocumentLine"][] | null;
+        };
         /** Envelope[CodeRequested] */
         Envelope_CodeRequested_: {
             /** Success */
@@ -250,11 +722,66 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[ConstraintWritten] */
+        Envelope_ConstraintWritten_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["ConstraintWritten"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[Costs] */
         Envelope_Costs_: {
             /** Success */
             success: boolean;
             data: components["schemas"]["Costs"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[DocumentQueued] */
+        Envelope_DocumentQueued_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["DocumentQueued"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[DocumentView] */
+        Envelope_DocumentView_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["DocumentView"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[FactWritten] */
+        Envelope_FactWritten_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["FactWritten"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[FactsReviewed] */
+        Envelope_FactsReviewed_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["FactsReviewed"] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -283,11 +810,88 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[PreferenceWritten] */
+        Envelope_PreferenceWritten_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["PreferenceWritten"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[PrivacyDeletion] */
+        Envelope_PrivacyDeletion_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["PrivacyDeletion"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[PrivacyRequest] */
+        Envelope_PrivacyRequest_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["PrivacyRequest"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[ProposalConfirmed] */
+        Envelope_ProposalConfirmed_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["ProposalConfirmed"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[ProposalDeclined] */
+        Envelope_ProposalDeclined_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["ProposalDeclined"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[RecordView] */
+        Envelope_RecordView_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["RecordView"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[Subprocessors] */
         Envelope_Subprocessors_: {
             /** Success */
             success: boolean;
             data: components["schemas"]["Subprocessors"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[VersionOnly] */
+        Envelope_VersionOnly_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["VersionOnly"] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -306,6 +910,54 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[list[RecordConstraint]] */
+        Envelope_list_RecordConstraint__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: components["schemas"]["RecordConstraint"][] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[list[RecordEvent]] */
+        Envelope_list_RecordEvent__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: components["schemas"]["RecordEvent"][] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[list[RecordFact]] */
+        Envelope_list_RecordFact__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: components["schemas"]["RecordFact"][] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[list[RecordPreference]] */
+        Envelope_list_RecordPreference__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: components["schemas"]["RecordPreference"][] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** ErrorBody */
         ErrorBody: {
             /** Code */
@@ -316,6 +968,64 @@ export interface components {
             details: {
                 [key: string]: unknown;
             };
+        };
+        /** FactDecision */
+        FactDecision: {
+            /**
+             * Fact Id
+             * Format: uuid
+             */
+            fact_id: string;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "confirm" | "correct" | "reject";
+            /** Statement */
+            statement?: string | null;
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * FactProvenance
+         * @description Where a resume fact came from: the document, the character span in its text and the text at that span.
+         */
+        FactProvenance: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            span: components["schemas"]["FactSpan"];
+            /** Quote */
+            quote: string;
+        };
+        /** FactReview */
+        FactReview: {
+            /** Decisions */
+            decisions: components["schemas"]["FactDecision"][];
+        };
+        /** FactSpan */
+        FactSpan: {
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+        };
+        /** FactWritten */
+        FactWritten: {
+            fact: components["schemas"]["RecordFact"];
+            /** Record Version */
+            record_version: number;
+        };
+        /** FactsReviewed */
+        FactsReviewed: {
+            /** Record Version */
+            record_version: number;
+            /** Results */
+            results: components["schemas"]["ReviewResult"][];
+            /** Unconfirmed Remaining */
+            unconfirmed_remaining: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -440,6 +1150,68 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Consents */
+            consents: components["schemas"]["ConsentState"][];
+        };
+        /**
+         * MePatch
+         * @description PATCH /v1/me. Consents only for now: the account settings of API.md 2.3 arrive with the brief settings.
+         */
+        MePatch: {
+            /** Consents */
+            consents: components["schemas"]["ConsentChange"][];
+        };
+        /**
+         * NewConstraint
+         * @description kind is a plain string, not the enum: a kind the matcher cannot enforce is 422 constraint_not_enforceable with a
+         *     suggestion (API.md 3.2), not a field error.
+         */
+        NewConstraint: {
+            /** Country Codes */
+            country_codes?: string[] | null;
+            /** Cities */
+            cities?: string[] | null;
+            /** Arrangements */
+            arrangements?: ("onsite" | "hybrid" | "remote")[] | null;
+            /** Employment Types */
+            employment_types?: ("full_time" | "part_time" | "contract" | "internship" | "temporary")[] | null;
+            /** Seniorities */
+            seniorities?: ("intern" | "entry" | "mid" | "senior" | "staff" | "principal" | "manager" | "director" | "executive")[] | null;
+            salary_floor?: components["schemas"]["SalaryFloor"] | null;
+            /** Company Names */
+            company_names?: string[] | null;
+            /** Kind */
+            kind: string;
+            /** Statement */
+            statement: string;
+        };
+        /** NewFact */
+        NewFact: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "role" | "achievement" | "education" | "skill" | "certification" | "project" | "other";
+            /** Statement */
+            statement: string;
+        };
+        /**
+         * NewPreference
+         * @description value defaults to the statement for kind other and untyped_dealbreaker and is required for the others; weight is
+         *     required (-3 to 3, never 0) except for a dealbreaker, which is always -3 (REC-04).
+         */
+        NewPreference: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "target_title" | "target_skill" | "industry" | "company_size" | "location" | "remote_policy" | "salary_target" | "seniority" | "untyped_dealbreaker" | "other";
+            /** Statement */
+            statement: string;
+            /** Value */
+            value?: string | null;
+            /** Weight */
+            weight?: number | null;
         };
         /** Pay */
         Pay: {
@@ -449,6 +1221,357 @@ export interface components {
             max: number | null;
             /** Currency */
             currency: string;
+        };
+        /** PreferenceChange */
+        PreferenceChange: {
+            /** Kind */
+            kind?: ("target_title" | "target_skill" | "industry" | "company_size" | "location" | "remote_policy" | "salary_target" | "seniority" | "untyped_dealbreaker" | "other") | null;
+            /** Statement */
+            statement?: string | null;
+            /** Value */
+            value?: string | null;
+            /** Weight */
+            weight?: number | null;
+        };
+        /** PreferenceWritten */
+        PreferenceWritten: {
+            preference: components["schemas"]["RecordPreference"];
+            /** Record Version */
+            record_version: number;
+        };
+        /** PrivacyDeletion */
+        PrivacyDeletion: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "export" | "deletion";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed";
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
+            /** Completed At */
+            completed_at: string | null;
+            download: components["schemas"]["PrivacyDownload"] | null;
+            /** Format */
+            format: string | null;
+            revoked: components["schemas"]["PrivacyRevoked"];
+        };
+        /** PrivacyDeletionBody */
+        PrivacyDeletionBody: {
+            /** Code */
+            code: string;
+        };
+        /** PrivacyDownload */
+        PrivacyDownload: {
+            /**
+             * Method
+             * @constant
+             */
+            method: "GET";
+            /** Path */
+            path: string;
+            /**
+             * Available Until
+             * Format: date-time
+             */
+            available_until: string;
+        };
+        /**
+         * PrivacyRequest
+         * @description An export or a deletion, with the API's shared status words (API.md 1.9).
+         */
+        PrivacyRequest: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "export" | "deletion";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed";
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
+            /** Completed At */
+            completed_at: string | null;
+            download: components["schemas"]["PrivacyDownload"] | null;
+            /** Format */
+            format: string | null;
+        };
+        /** PrivacyRevoked */
+        PrivacyRevoked: {
+            /** Sessions */
+            sessions: number;
+        };
+        /** ProposalConfirmed */
+        ProposalConfirmed: {
+            /**
+             * Entity
+             * @enum {string}
+             */
+            entity: "fact" | "constraint" | "preference";
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Record Version */
+            record_version: number;
+        };
+        /** ProposalDeclined */
+        ProposalDeclined: {
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+        };
+        /** RecordConstraint */
+        RecordConstraint: {
+            /** Country Codes */
+            country_codes?: string[] | null;
+            /** Cities */
+            cities?: string[] | null;
+            /** Arrangements */
+            arrangements?: ("onsite" | "hybrid" | "remote")[] | null;
+            /** Employment Types */
+            employment_types?: ("full_time" | "part_time" | "contract" | "internship" | "temporary")[] | null;
+            /** Seniorities */
+            seniorities?: ("intern" | "entry" | "mid" | "senior" | "staff" | "principal" | "manager" | "director" | "executive")[] | null;
+            salary_floor?: components["schemas"]["SalaryFloor"] | null;
+            /** Company Names */
+            company_names?: string[] | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "location" | "remote_policy" | "work_authorization" | "salary_floor" | "employment_type" | "seniority" | "excluded_company";
+            /** Statement */
+            statement: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "resume" | "candidate_edit" | "confirmed_proposal";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** RecordDocument */
+        RecordDocument: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Original Filename */
+            original_filename: string | null;
+            /** Mime Type */
+            mime_type: string;
+            /** Byte Size */
+            byte_size: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed";
+            /** Parse Error Code */
+            parse_error_code: string | null;
+            /** Hidden Text Chars */
+            hidden_text_chars: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Parsed At */
+            parsed_at: string | null;
+        };
+        /**
+         * RecordEvent
+         * @description One row of the change log or the proposal queue. before and after are the row as it was and as it became.
+         */
+        RecordEvent: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "proposed" | "applied" | "declined" | "expired";
+            /**
+             * Entity
+             * @enum {string}
+             */
+            entity: "fact" | "constraint" | "preference";
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "create" | "update" | "remove" | "confirm" | "reject";
+            /** Entity Id */
+            entity_id: string | null;
+            /** Before */
+            before: {
+                [key: string]: unknown;
+            } | null;
+            /** After */
+            after: {
+                [key: string]: unknown;
+            } | null;
+            /** Source */
+            source: ("resume" | "candidate_edit" | "confirmed_proposal") | null;
+            /** Origin */
+            origin: ("onboarding" | "chat" | "feedback" | "agent") | null;
+            /** Proposal Event Id */
+            proposal_event_id: string | null;
+            /** Reason */
+            reason: string | null;
+            /** Record Version After */
+            record_version_after: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** RecordFact */
+        RecordFact: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "role" | "achievement" | "education" | "skill" | "certification" | "project" | "other";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "unconfirmed" | "confirmed" | "rejected" | "superseded";
+            /** Statement */
+            statement: string;
+            /** Attributes */
+            attributes: {
+                [key: string]: unknown;
+            };
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "resume" | "candidate_edit" | "confirmed_proposal";
+            /** Parent Fact Id */
+            parent_fact_id: string | null;
+            provenance: components["schemas"]["FactProvenance"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** RecordPreference */
+        RecordPreference: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "target_title" | "target_skill" | "industry" | "company_size" | "location" | "remote_policy" | "salary_target" | "seniority" | "untyped_dealbreaker" | "other";
+            /** Value */
+            value: string;
+            /** Weight */
+            weight: number;
+            /** Statement */
+            statement: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "resume" | "candidate_edit" | "confirmed_proposal";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Notice */
+            notice: "not_guaranteed" | null;
+            suggested_constraint?: components["schemas"]["NewConstraint"] | null;
+        };
+        /**
+         * RecordView
+         * @description The confirmed record on one page. Facts waiting for review are counted here; GET /v1/me/facts lists them.
+         */
+        RecordView: {
+            /** Record Version */
+            record_version: number;
+            /** Facts */
+            facts: components["schemas"]["RecordFact"][];
+            /** Constraints */
+            constraints: components["schemas"]["RecordConstraint"][];
+            /** Preferences */
+            preferences: components["schemas"]["RecordPreference"][];
+            /** Unconfirmed Facts */
+            unconfirmed_facts: number;
+            /** Open Proposals */
+            open_proposals: number;
+            /** Documents */
+            documents: components["schemas"]["RecordDocument"][];
+        };
+        /** ReplacedBy */
+        ReplacedBy: {
+            /**
+             * Fact Id
+             * Format: uuid
+             */
+            fact_id: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "confirmed";
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "resume" | "candidate_edit" | "confirmed_proposal";
         };
         /** Requirement */
         Requirement: {
@@ -471,6 +1594,27 @@ export interface components {
             span: components["schemas"]["Span"];
             /** Min Years */
             min_years: number | null;
+        };
+        /** ReviewResult */
+        ReviewResult: {
+            /**
+             * Fact Id
+             * Format: uuid
+             */
+            fact_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "confirmed" | "rejected" | "superseded";
+            replaced_by?: components["schemas"]["ReplacedBy"] | null;
+        };
+        /** SalaryFloor */
+        SalaryFloor: {
+            /** Amount */
+            amount: number;
+            /** Currency */
+            currency: string;
         };
         /** SessionRequest */
         SessionRequest: {
@@ -520,6 +1664,11 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** VersionOnly */
+        VersionOnly: {
+            /** Record Version */
+            record_version: number;
         };
     };
     responses: never;
@@ -757,6 +1906,41 @@ export interface operations {
             };
         };
     };
+    update_me_v1_me_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Me_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     costs_v1_control_costs_get: {
         parameters: {
             query?: {
@@ -804,6 +1988,692 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_Subprocessors_"];
+                };
+            };
+        };
+    };
+    create_export_v1_privacy_exports_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PrivacyRequest_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_request_v1_privacy_requests__request_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PrivacyRequest_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_export_v1_privacy_requests__request_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_account_v1_privacy_deletion_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrivacyDeletionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PrivacyDeletion_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_document_v1_me_documents_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description A PDF or DOCX, at most 10 MB.
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_DocumentQueued_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_document_v1_me_documents__document_id__get: {
+        parameters: {
+            query?: {
+                include?: "text" | null;
+            };
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_DocumentView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_record_v1_me_record_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_RecordView_"];
+                };
+            };
+        };
+    };
+    list_facts_v1_me_facts_get: {
+        parameters: {
+            query?: {
+                status?: ("unconfirmed" | "confirmed" | "rejected" | "superseded") | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_RecordFact__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_fact_v1_me_facts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewFact"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_FactWritten_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_facts_v1_me_facts_review_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FactReview"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_FactsReviewed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_constraints_v1_me_constraints_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_RecordConstraint__"];
+                };
+            };
+        };
+    };
+    add_constraint_v1_me_constraints_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewConstraint"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ConstraintWritten_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_constraint_v1_me_constraints__constraint_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                constraint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_VersionOnly_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_constraint_v1_me_constraints__constraint_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                constraint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConstraintChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ConstraintWritten_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_preferences_v1_me_preferences_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_RecordPreference__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_preference_v1_me_preferences_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewPreference"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PreferenceWritten_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_preference_v1_me_preferences__preference_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                preference_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_VersionOnly_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_preference_v1_me_preferences__preference_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                preference_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreferenceChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PreferenceWritten_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_events_v1_me_events_get: {
+        parameters: {
+            query?: {
+                status?: ("proposed" | "applied" | "declined" | "expired") | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_RecordEvent__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_proposal_v1_me_events__event_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ProposalConfirmed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_proposal_v1_me_events__event_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ProposalDeclined_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
