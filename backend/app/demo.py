@@ -557,8 +557,10 @@ def _seed_resume_two(conn: Connection, user_id: UUID) -> None:
 
 def _say_in_chat(user_id: UUID, skill: str) -> None:
     """A skill the candidate stated in chat and confirmed: a proposal from origin `chat`, then its confirmation, through
-    the profile module, so the fact is a confirmed_proposal the base resume does not show until an edit adds it."""
-    with db.transaction(user_id) as conn:
+    the profile module, so the fact is a confirmed_proposal the base resume does not show until an edit adds it. On the
+    owner's login, like the rest of the seed: the worker container that runs it holds no API login, and the scratch
+    check above covers only the logins the seed uses."""
+    with db.transaction(user_id, role="migrate") as conn:
         proposal = profile.propose_change(
             conn,
             user_id,
