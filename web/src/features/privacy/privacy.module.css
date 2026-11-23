@@ -1,0 +1,143 @@
+/* Settings: the section list, the Privacy cards and the delete-account dialog (FRONTEND_UI 3.10). Tokens only. */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-24);
+  align-items: start;
+}
+
+@media (min-width: 48rem) {
+  .layout {
+    grid-template-columns: 12rem minmax(0, 1fr);
+  }
+}
+
+.nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+}
+
+@media (min-width: 48rem) {
+  .nav ul {
+    flex-direction: column;
+  }
+}
+
+.nav a {
+  display: block;
+  padding: var(--sp-8) var(--sp-12);
+  border-radius: var(--r-md);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.nav a[aria-current="page"] {
+  background: var(--surface-2);
+  box-shadow: inset 3px 0 0 var(--accent-strong); /* the current section is marked by more than colour: a bar and the aria-current state */
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-20);
+  max-width: 48rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding: var(--sp-16) var(--sp-20);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.lead {
+  max-width: var(--measure);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-12);
+}
+
+.problem {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8) var(--sp-12);
+}
+
+/* Delete is the one destructive control here: red text on the secondary button, a red fill only for the final confirmation */
+button.danger {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+button.dangerFill {
+  background: var(--bad);
+  color: var(--on-accent);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-16);
+  background: rgb(0 0 0 / 0.55);
+}
+
+.modal {
+  width: min(100%, 34rem);
+  max-height: 100%;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding: var(--sp-24);
+  outline: none;
+}
+
+.removed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding-inline-start: var(--sp-20);
+  list-style: disc;
+}
+
+/* The page a person lands on after deleting their account */
+.farewell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-16);
+  width: min(100%, 36rem);
+  padding: var(--sp-24);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
