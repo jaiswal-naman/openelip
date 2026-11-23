@@ -2,6 +2,10 @@
 
 import logging
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
@@ -18,10 +22,38 @@ MTOK = 1_000_000
 ATTEMPTS = 2  # one fresh call after invalid output, then failure (AI_SYSTEM 2.4)
 
 _INSERT_CALL = text(
-    "INSERT INTO llm_calls (task, prompt_version, model_id, outcome, user_id, input_tokens, output_tokens, "
-    "cost_microusd, latency_ms, attempt) VALUES (:task, :prompt_version, :model_id, :outcome, :user_id, "
-    ":input_tokens, :output_tokens, :cost, :latency_ms, :attempt)"
+    "INSERT INTO llm_calls (task, prompt_version, model_id, outcome, user_id, campaign_id, agent_run_id, input_tokens, "
+    "output_tokens, cost_microusd, latency_ms, attempt) VALUES (:task, :prompt_version, :model_id, :outcome, :user_id, "
+    ":campaign_id, :agent_run_id, :input_tokens, :output_tokens, :cost, :latency_ms, :attempt) RETURNING id"
 )
+
+
+@dataclass
+class Attribution:
+    """Whose work the model calls inside `attributed` are: the campaign and the agent run they are charged to, and the
+    ledger ids of the calls made so far (a `model_call` recorder row stores them, and its cost is their sum)."""
+
+    campaign_id: UUID
+    agent_run_id: UUID
+    call_ids: list[int] = field(default_factory=list)
+
+
+# The attribution of the calls being made right now, per thread of execution (a context variable does not cross to a
+# thread that was started inside the block, so one worker's campaign can never be charged to another's calls).
+_ATTRIBUTION: ContextVar[Attribution | None] = ContextVar("llm_attribution", default=None)
+
+
+@contextmanager
+def attributed(*, campaign_id: UUID, agent_run_id: UUID) -> Iterator[Attribution]:
+    """Charge every model call made inside the block, however deep (match, tailor and apply included), to a campaign and
+    an agent run: `llm_calls.campaign_id` and `agent_run_id` are written for each, and the new ids are appended to the
+    yielded Attribution's `call_ids`. Outside a block both columns stay NULL."""
+    attribution = Attribution(campaign_id, agent_run_id)
+    token = _ATTRIBUTION.set(attribution)
+    try:
+        yield attribution
+    finally:
+        _ATTRIBUTION.reset(token)
 
 
 def cost_microusd(input_tokens: int, output_tokens: int, input_price: int | None, output_price: int | None) -> int:
@@ -59,9 +91,10 @@ def _record(
     tokens_in, tokens_out = (reply.input_tokens, reply.output_tokens) if reply else (0, 0)
     cost = cost_microusd(tokens_in, tokens_out, route.input_microusd_per_mtok, route.output_microusd_per_mtok)
     latency_ms = int((time.monotonic() - started) * 1000)
+    attribution = _ATTRIBUTION.get()
     # on the API login the row must be the signed-in person's own (the candidate_own policy of llm_calls)
     with db.transaction(principal, role=registry.LEDGER.get()) as conn:
-        conn.execute(
+        call_id = conn.execute(
             _INSERT_CALL,
             {
                 "task": route.task,
@@ -69,13 +102,17 @@ def _record(
                 "model_id": model_id,
                 "outcome": outcome,
                 "user_id": principal,
+                "campaign_id": attribution.campaign_id if attribution else None,
+                "agent_run_id": attribution.agent_run_id if attribution else None,
                 "input_tokens": tokens_in,
                 "output_tokens": tokens_out,
                 "cost": cost,
                 "latency_ms": latency_ms,
                 "attempt": attempt,
             },
-        )
+        ).scalar_one()
+    if attribution is not None:
+        attribution.call_ids.append(int(call_id))
     level = logging.INFO if outcome == "ok" else logging.WARNING
     log.event(
         "llm.call",

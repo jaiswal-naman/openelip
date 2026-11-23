@@ -141,6 +141,9 @@ def _one(conn: Connection, user_id: UUID, application_id: UUID) -> ApplicationVi
     return _views(conn, user_id, [conn.execute(ONE_APPLICATION, {"u": user_id, "id": application_id}).one()])[0]
 
 
+view_one = _one  # the same read, named for apply.api, which campaigns reach through
+
+
 def create_application(
     conn: Connection, user_id: UUID, job_id: int, packet_id: UUID | None, occurred_at: datetime | None
 ) -> ApplicationView:

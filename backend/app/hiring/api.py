@@ -4,6 +4,7 @@ package is a public interface.
   my_organizations(conn, user_id)         the organizations a person belongs to and the invitations waiting for them
   asks_for_brief(conn, user_id)           the person's open asks, newest first (the worker side: the brief's compose)
   brief_asks(conn, introduction_ids)      organization, role and expiry of the caller's own introductions
+  introduction_ref(conn, introduction_id) who an introduction is between and where it stands, for campaigns (Phase 7)
 
 Membership, Invitation and BriefAsk are what they return.
 """
@@ -17,7 +18,16 @@ from sqlalchemy import Connection, text
 
 from .queries import Invitation, Membership, my_organizations
 
-__all__ = ["BriefAsk", "Invitation", "Membership", "asks_for_brief", "brief_asks", "my_organizations"]
+__all__ = [
+    "BriefAsk",
+    "IntroductionRef",
+    "Invitation",
+    "Membership",
+    "asks_for_brief",
+    "brief_asks",
+    "introduction_ref",
+    "my_organizations",
+]
 
 
 @dataclass(frozen=True)
@@ -64,3 +74,43 @@ def brief_asks(conn: Connection, introduction_ids: Sequence[UUID]) -> dict[UUID,
         {"ids": list(introduction_ids)},
     )
     return {r.id: BriefAsk(r.id, r.organization_name, r.role_title, r.expires_at) for r in rows}
+
+
+@dataclass(frozen=True)
+class IntroductionRef:
+    """One introduction as a campaign needs it: the candidate, the employer, the role, its job and where it stands."""
+
+    user_id: UUID
+    organization_id: UUID
+    role_id: UUID
+    job_id: int | None  # the posting the role is published as; None only for a role that is not open
+    status: str  # asked, accepted, declined, expired or withdrawn
+    employer_answer: str | None  # yes or no once the employer answered an accepted introduction
+    answer_due_at: datetime | None
+
+
+def introduction_ref(conn: Connection, introduction_id: UUID) -> IntroductionRef | None:
+    """The introduction, or None when this connection cannot see it. The job id comes from introduction_role() when the
+    transaction acts for the candidate (the API, and the worker with the person's id set), and from the role itself on
+    a worker connection that sees every row."""
+    row = conn.execute(
+        text(
+            """SELECT i.user_id, i.organization_id, i.role_id, i.status::text AS status,
+                      i.employer_answer::text AS employer_answer, i.answer_due_at,
+                      COALESCE((SELECT ir.job_id FROM introduction_role(i.id) ir),
+                               (SELECT r.job_id FROM roles r WHERE r.id = i.role_id)) AS job_id
+                 FROM introductions i WHERE i.id = :i"""
+        ),
+        {"i": introduction_id},
+    ).one_or_none()
+    if row is None:
+        return None
+    return IntroductionRef(
+        user_id=row.user_id,
+        organization_id=row.organization_id,
+        role_id=row.role_id,
+        job_id=row.job_id,
+        status=row.status,
+        employer_answer=row.employer_answer,
+        answer_due_at=row.answer_due_at,
+    )
