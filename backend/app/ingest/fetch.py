@@ -23,6 +23,9 @@ INSERT_JOB = text(
 )
 # New text is a new content version: everything computed from the old text (the embedding, the apply-link check)
 # is cleared with it, and the job counts as materially changed (the nightly run reads materially_changed_at).
+# change_note names, in short sentences and this order, which of the fields that make up content_hash differ from the
+# stored ones (the right-hand sides of a SET read the old row), so a match shown again can say what is different
+# (MAT-07). Ingest stores no pay or seniority, so nothing else is ever named.
 UPDATE_JOB = text(
     """UPDATE jobs SET title = :title, company_name = :company_name, location_raw = :location_raw, country = :country,
                        city = :city, work_arrangements = CAST(:work_arrangements AS work_arrangement[]),
@@ -31,6 +34,11 @@ UPDATE_JOB = text(
                        description = :description, apply_url = :apply_url, posted_at = :posted_at,
                        content_hash = :content_hash, dedupe_key = :dedupe_key,
                        content_version = content_version + 1, materially_changed_at = now(),
+                       change_note = NULLIF(concat_ws(' ',
+                           CASE WHEN jobs.title IS DISTINCT FROM :title THEN 'Title changed.' END,
+                           CASE WHEN jobs.location_raw IS DISTINCT FROM :location_raw THEN 'Location changed.' END,
+                           CASE WHEN jobs.description IS DISTINCT FROM :description THEN 'The posting text changed.' END
+                       ), ''),
                        embedding = NULL, embedding_model = NULL, apply_checked_at = NULL, apply_check_ok = NULL,
                        status = 'open', closed_at = NULL, last_verified_at = now()
         WHERE id = :id"""
