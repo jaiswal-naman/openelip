@@ -1,0 +1,161 @@
+/* One job's own page: its facts, its requirements and the posting text (FRONTEND_UI 3.23 and 4.2). */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-8);
+}
+
+.title {
+  overflow-wrap: anywhere;
+}
+
+.company {
+  font-size: var(--fs-section);
+  overflow-wrap: anywhere;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4) var(--sp-16);
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.facts li {
+  overflow-wrap: anywhere;
+}
+
+/* The word Closed is the signal; the bar and the border are extra, so it is not colour alone. */
+.closed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-4) var(--sp-8);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line-strong);
+  border-inline-start: 4px solid var(--warn);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.closedLabel {
+  color: var(--warn);
+}
+
+/* Requirements beside the text on a wide screen, and above it on a narrow one. */
+.body {
+  display: grid;
+  gap: var(--sp-24);
+  align-items: start;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  min-width: 0;
+  padding: var(--sp-16) var(--sp-20);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+@media (min-width: 64rem) {
+  .split {
+    grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+  }
+
+  /* The list stays in view while the text scrolls to the passage a requirement quotes. */
+  .split .requirements {
+    position: sticky;
+    top: calc(var(--header-h) + var(--sp-16));
+    max-height: calc(100dvh - var(--header-h) - var(--sp-32));
+    overflow-y: auto;
+  }
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+}
+
+.groupTitle {
+  margin-bottom: var(--sp-8);
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  width: 100%;
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+}
+
+button.item {
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  button.item:hover {
+    background: var(--surface-2);
+  }
+}
+
+/* The selected requirement: the fill and a bar down its edge, so it is not shown by colour alone. */
+button.item[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent-strong);
+  box-shadow: inset 4px 0 0 var(--accent-strong);
+}
+
+.withheld {
+  border-style: dashed;
+  color: var(--muted);
+}
+
+.reason {
+  color: var(--muted);
+}
+
+.badge {
+  padding: 0 var(--sp-8);
+  border: 1px solid currentColor;
+  border-radius: var(--r-pill);
+}
+
+.required {
+  color: var(--text);
+}
+
+.preferred {
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.words {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

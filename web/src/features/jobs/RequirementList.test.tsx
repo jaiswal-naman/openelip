@@ -20,8 +20,8 @@ function renderList(props: Partial<ComponentProps<typeof RequirementList>> = {})
 describe("RequirementList", () => {
   it("groups the items under Required and Preferred headings with their counts", () => {
     renderList();
-    const required = screen.getByRole("region", { name: "Required (1)" });
-    const preferred = screen.getByRole("region", { name: "Preferred (2)" });
+    const required = screen.getByRole("list", { name: "Required (1)" });
+    const preferred = screen.getByRole("list", { name: "Preferred (2)" });
     expect(within(required).getByRole("button", { name: /5 years of Python/ })).toBeInTheDocument();
     expect(within(preferred).getByRole("button", { name: /Experience with Kubernetes/ })).toBeInTheDocument();
     expect(within(preferred).getByRole("button", { name: /Knowing Go/ })).toBeInTheDocument();
