@@ -19,18 +19,24 @@ import io
 import json
 import zipfile
 from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta, timezone
 from uuid import UUID, uuid4
 
 import pytest
 from cryptography.fernet import InvalidToken
 from sqlalchemy import text
 
+from app.brief import jobs as brief_jobs
+from app.match import jobs as match_jobs
 from app.platform import sessions
 from app.profile import documents
 from app.trust import api, privacy
 
 CANARY = f"CANARY-{uuid4()}"
 ADDRESS = "canary.person@mail.test"
+# The morning the schedules below are asked about: noon UTC today, for a person in UTC with a record confirmed days ago.
+MORNING = datetime.combine(date.today(), time(12, 0), tzinfo=timezone.utc)
+SCHEDULED_KINDS = ("match.nightly", "brief.compose")  # the jobs the match and brief schedules queue for a person
 SCANNED_TYPES = ["text", "character varying", "character", "jsonb", "json", "uuid", "ARRAY", "bytea"]
 NOT_SCANNED = {("data_requests", "subject_user_id")}  # the bare id, kept on purpose so a restore can be erased again
 
@@ -47,6 +53,8 @@ PLANTED = {
     ("llm_calls", "user_id"),
     ("outbox", "payload"),
     ("queue_jobs", "user_id"),  # the parse job of an upload: made by the real upload path, so it names the person
+    ("queue_jobs", "payload"),  # the nightly run and the brief, made by the real schedules, carry the id here
+    ("queue_jobs", "unique_key"),  # and in their key
     ("idempotency_keys", "response_body"),
     ("consents", "text_version"),
     ("audit_log", "details"),
@@ -304,6 +312,18 @@ def seed_person(engine) -> Person:
             u=user,
             d=decision,
         )
+        # The nightly run and the morning brief of this person, queued by the match and brief schedules themselves (as
+        # the parse job above is made by the upload): a job planted by hand with a user id would pass whatever the
+        # schedules do. Their payload and key carry the person's id, so only a job that names the person in user_id is
+        # in the export and goes with them. Deferred a day, so the worker leaves them alone.
+        run(
+            "UPDATE users SET record_confirmed_at = :t, record_version = 2 WHERE id = :u",
+            t=MORNING - timedelta(days=3),
+            u=user,
+        )
+        match_jobs.plan_zone(c, "UTC", date.today() + timedelta(days=2), MORNING)
+        brief_jobs.queue_composes(c, MORNING)
+        run("UPDATE queue_jobs SET run_at = now() + interval '1 day' WHERE kind IN ('match.nightly', 'brief.compose')")
     return Person(user, ADDRESS)
 
 
@@ -434,6 +454,11 @@ def test_the_planted_person_has_what_the_erasure_must_remove(world, engine):
             text("SELECT record_embedding IS NOT NULL FROM users WHERE id = :u"), {"u": world.user}
         ).scalar_one()
         assert c.execute(text("SELECT count(*) FROM documents WHERE user_id = :u"), {"u": world.user}).scalar_one() == 2
+        scheduled = c.execute(
+            text("SELECT kind FROM queue_jobs WHERE user_id = :u AND kind = ANY(:kinds) ORDER BY kind"),
+            {"u": world.user, "kinds": list(SCHEDULED_KINDS)},
+        ).scalars()
+        assert list(scheduled) == sorted(SCHEDULED_KINDS), "the schedules' jobs must name the person in user_id"
         archive = c.execute(text("SELECT export_archive FROM data_requests WHERE kind = 'export'")).scalar_one()
     assert zipfile.is_zipfile(io.BytesIO(sessions.open_sealed_bytes(bytes(archive))))
 
