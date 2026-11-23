@@ -68,6 +68,7 @@ SUITES: dict[str, Suite | OwnScorer] = {
     ),
     "resume_extraction": OwnScorer("resume_extraction/facts/score.py"),
     "evidence_faithfulness": OwnScorer("evidence_faithfulness/score.py"),
+    "constraint_property": OwnScorer("constraint_property/score.py"),
 }
 
 

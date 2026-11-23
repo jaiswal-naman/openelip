@@ -114,8 +114,12 @@ def test_fewer_than_ten_thousand_pairs_fail_the_gate_even_when_nothing_disagrees
     assert done.status == "failed" and gate.main(SUITE, done.run_id) == 1
 
 
-def test_a_database_that_is_not_a_scratch_one_ends_the_run_in_error_before_any_row_is_written(engine, monkeypatch, capsys):
-    monkeypatch.setattr(score.scratch, "SCRATCH_NAME", re.compile("never-matches"))  # the module the runner's copy uses too
+def test_a_database_that_is_not_a_scratch_one_ends_the_run_in_error_before_any_row_is_written(
+    engine, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        score.scratch, "SCRATCH_NAME", re.compile("never-matches")
+    )  # the module the runner's copy uses too
     done = runner.run_suite(SUITE)
     assert done.status == "error" and run_row(engine, done.run_id)["metrics"]["error_code"] == "RuntimeError"
     assert [count(engine, t) for t in ("users", "jobs")] == [0, 0]

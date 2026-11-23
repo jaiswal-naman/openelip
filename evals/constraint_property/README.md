@@ -77,8 +77,11 @@ uv run pytest tests/match/test_constraint_property.py tests/evals/test_constrain
 ```
 
 The run writes its invented rows through `DATABASE_URL_MIGRATE` (it bypasses row-level security, like the test fixtures)
-and rolls them back, so it leaves only the `eval_runs` row. It refuses any database whose name is not `..._test` or
-`evals`, and a recorded run is frozen and cannot be deleted.
+and rolls them back, so it leaves only its `eval_runs` and `eval_items` rows (one item per constraint set, named
+`cs-000` to `cs-059`; a failing item holds the first disagreements with their inputs). It refuses any database whose
+name is not `..._test` or `evals`, and a recorded run is frozen and cannot be deleted. The run record says
+`provider: fake`, `model: recorded` and `recorded: cases.py` because the runner records those for every suite; no model
+is called (`config.model_calls` is 0) and nothing is replayed: the "recording" is the seeded generator.
 
 ## Limits
 

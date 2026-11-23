@@ -17,7 +17,15 @@ from app.evals import EVALS
 from app.match import checker
 
 SUITE_DIR = EVALS / "constraint_property"
-KINDS = ("location", "remote_policy", "work_authorization", "salary_floor", "employment_type", "seniority", "excluded_company")
+KINDS = (
+    "location",
+    "remote_policy",
+    "work_authorization",
+    "salary_floor",
+    "employment_type",
+    "seniority",
+    "excluded_company",
+)
 FLAGS = (
     "location_not_stated",
     "arrangement_not_stated",
@@ -66,7 +74,11 @@ def test_company_names_include_case_punctuation_and_legal_suffix_variants_near_m
     by_key = {checker.company_key(name): name for name in cases.EMPLOYERS}
     names = [job["company_name"] for job in jobs]
     variants = [n for n in names if checker.company_key(n) in by_key and n != by_key[checker.company_key(n)]]
-    near = [n for n in names if checker.company_key(n) not in by_key and any(e.split()[0].lower() in n.lower() for e in by_key.values())]
+    near = [
+        n
+        for n in names
+        if checker.company_key(n) not in by_key and any(e.split()[0].lower() in n.lower() for e in by_key.values())
+    ]
     assert len(variants) >= 20 and len(near) >= 5
     assert any(n.isupper() for n in variants) and any(n.islower() for n in variants)
     assert any(suffix in n for n in variants for suffix in cases.LEGAL_SUFFIXES)
@@ -90,7 +102,10 @@ def test_every_kind_is_violated_satisfied_and_left_unstated_at_least_a_hundred_t
         seen = evaluation.coverage[kind]
         assert seen["violated"] >= MIN_PER_CLASS and seen["passed"] >= MIN_PER_CLASS, (kind, seen)
         # a posting always states its company, so the exclusion has no unstated case
-        assert (seen["unstated"] == 0) if kind == "excluded_company" else seen["unstated"] >= MIN_PER_CLASS, (kind, seen)
+        assert (seen["unstated"] == 0) if kind == "excluded_company" else seen["unstated"] >= MIN_PER_CLASS, (
+            kind,
+            seen,
+        )
     for flag in FLAGS:  # including a salary in another currency than the floor's
         assert evaluation.flag_counts[flag] >= MIN_PER_CLASS, flag
 
@@ -131,6 +146,8 @@ def test_a_checker_that_counts_a_salary_equal_to_the_floor_as_below_it_is_caught
 
 def test_a_checker_that_forgets_a_currency_flag_is_caught_on_the_unverified_flags_alone(conn, monkeypatch):
     real = checker.unverified
-    monkeypatch.setattr(checker, "unverified", lambda job, c: [f for f in real(job, c) if f != "salary_currency_differs"])
+    monkeypatch.setattr(
+        checker, "unverified", lambda job, c: [f for f in real(job, c) if f != "salary_currency_differs"]
+    )
     evaluation = score.evaluate(conn, cases.generate(score.SEED))
     assert evaluation.disagreements and {d.field for d in evaluation.disagreements} == {"unverified"}
