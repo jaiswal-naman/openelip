@@ -238,6 +238,17 @@ describe("Today: why not", () => {
     expect(await screen.findByText("No match run has finished for this day yet.")).toBeInTheDocument();
   });
 
+  it("says what failed, with Retry, when the ledger or the day it belongs to cannot be loaded, instead of loading for ever", async () => {
+    const first = renderWithApi(<TodayView />, routes({ "GET /v1/decisions": fail(503, "dependency_unavailable") }));
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByText("Could not load what was held back.")).toBeInTheDocument();
+    first.unmount();
+
+    renderWithApi(<TodayView />, routes({ "GET /v1/matches": fail(500, "internal_error") }));
+    expect(await screen.findByText("Could not load what was held back.")).toBeInTheDocument();
+    expect(screen.queryByText("Loading what was held back.")).not.toBeInTheDocument();
+  });
+
   it("asks only for the withheld and filtered decisions of the day shown", async () => {
     const { calls } = renderWithApi(<TodayView />, routes());
     await screen.findByRole("region", { name: /Filtered by your constraints/ });

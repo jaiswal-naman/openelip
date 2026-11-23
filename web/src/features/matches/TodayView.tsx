@@ -189,8 +189,15 @@ export function TodayView() {
         </TabPanel>
 
         <TabPanel id="why-not" className={styles.panel}>
-          {held.isError ? (
-            <ErrorState what="Could not load what was held back." error={held.error} onRetry={() => void held.refetch()} />
+          {held.isError || day.isError ? (
+            <ErrorState
+              what="Could not load what was held back."
+              error={held.error ?? day.error}
+              onRetry={() => {
+                void day.refetch();
+                void held.refetch();
+              }}
+            />
           ) : day.data === undefined || held.data === undefined ? (
             <p role="status" className="muted">
               Loading what was held back.
