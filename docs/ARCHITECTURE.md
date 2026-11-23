@@ -927,7 +927,7 @@ Twin topics are settings (`twin_scopes`), not consents. When the operator change
 | Email provider | Addresses and message content | The provider's policy; disclosed |
 | Browser | The session cookie | Sign-out or expiry |
 
-Not stored: protected characteristics in the Career Record (REC-07). Raw chat and resume text stay as written, visible only to the person, exported and deleted with the account (owner decision G4, default applied).
+Not stored: protected characteristics in the Career Record (REC-07). No column holds one, and a rule-based screen refuses typed text that states one in the common wordings (labels and plain sentences: AI_SYSTEM 4.9). The screen is not complete, and 4.9 lists what it misses. Raw chat and resume text stay as written, visible only to the person, exported and deleted with the account (owner decision G4, default applied).
 
 ### 8.3 Export
 

@@ -2325,7 +2325,7 @@ Resend's exact signed-content format and event names were not confirmed on its o
 | REC-04 | `POST /v1/me/preferences` (`untyped_dealbreaker`); `422 constraint_not_enforceable` with `suggested_preference` |
 | REC-05 | `GET /v1/me/record`, `GET /v1/me/events`, field-level `POST`, `PATCH` and `DELETE` routes |
 | REC-06 | `hidden_text_flags` on `GET /v1/me/documents/{id}` |
-| REC-07 | No field for protected characteristics in any `/v1/me` schema; chat proposals never carry them (AI_SYSTEM.md). Scope over raw chat and resume text is owner decision G4 |
+| REC-07 | No field for protected characteristics in any `/v1/me` schema; chat proposals never carry them (AI_SYSTEM.md). Typed text that states one is refused with `422 validation_failed` and the field issue `protected_characteristic`, by a pattern screen that does not catch every wording (AI_SYSTEM.md 4.9). Scope over raw chat and resume text is owner decision G4 |
 | MAT-01 | `GET /v1/matches` (`run.checker`); `POST /v1/campaigns` refusal |
 | MAT-02 | `GET /v1/matches` (zero to five) |
 | MAT-03 | `evidence` in `GET /v1/matches`, `GET /v1/matches/{id}` |
