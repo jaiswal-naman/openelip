@@ -43,7 +43,7 @@ EXPECT_KEYS = (
 
 
 class ScenarioInvalid(Exception):
-    """The file is not in the agreed format. The message names the key or value; it is the author's text, not a person's."""
+    """The file is not in the agreed format. The message names the key or value (the author's own text)."""
 
 
 class ScenarioChanged(Exception):
@@ -105,7 +105,9 @@ def _need(key: str, table: Mapping[str, Any], name: str, kind: type | tuple[type
 
 
 def _host_ok(host: str) -> bool:
-    return any(host == suffix or host.endswith(suffix if suffix.startswith(".") else "." + suffix) for suffix in HOST_SUFFIXES)
+    return any(
+        host == suffix or host.endswith(suffix if suffix.startswith(".") else "." + suffix) for suffix in HOST_SUFFIXES
+    )
 
 
 def _address_host(address: str) -> str:
@@ -266,5 +268,3 @@ def ensure_rows(conn: Connection, scenarios: Iterable[Scenario]) -> dict[str, UU
         else:
             ids[scenario.key] = stored.id
     return ids
-
-

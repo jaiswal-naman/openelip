@@ -35,7 +35,11 @@ def test_it_loads_a_valid_file(tmp_path):
         ('do = "reply interview"', 'do = "reply maybe"', "unknown employer action"),
         ('goal = "stage:interview"', 'goal = "stage:interview"\nmood = "happy"', "unknown expectation"),
         ("[expect]\ngoal", "[expect]\nstage_in = []\nx", "unknown expectation"),
-        ('apply_url = "https://careers.lumen.example/apply/1"', 'apply_url = "https://careers.lumen.com/apply/1"', "company host"),
+        (
+            'apply_url = "https://careers.lumen.example/apply/1"',
+            'apply_url = "https://careers.lumen.com/apply/1"',
+            "company host",
+        ),
         ('contact = "talent@lumen.example"', 'contact = "talent@lumen.com"', "contact host"),
         ("max_virtual_days = 20", "max_virtual_days = 0", "max_virtual_days"),
         ("version = 1", "", "missing or empty 'version'"),

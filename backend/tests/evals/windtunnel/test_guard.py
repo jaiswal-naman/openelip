@@ -101,7 +101,8 @@ def test_an_old_reap_job_is_not_a_worker(engine):
         conn.execute(
             text(
                 """INSERT INTO queue_jobs (queue, kind, unique_key, status, created_at, finished_at)
-                   VALUES ('default', 'queue.reap', 'queue.reap:1', 'succeeded', now() - interval '10 minutes', now())"""
+                   VALUES ('default', 'queue.reap', 'queue.reap:1', 'succeeded', now() - interval '10 minutes',
+                           now())"""
             )
         )
         guard.require_no_other_worker(conn, "windtunnel:me:1")

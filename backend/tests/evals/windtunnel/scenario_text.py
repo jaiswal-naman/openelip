@@ -1,8 +1,9 @@
+# ruff: noqa: E501  (TOML lines of the sample scenario)
 """A minimal valid scenario file for the loader, world and driver tests, written into a temporary folder."""
 
 from pathlib import Path
 
-MATCH = '''
+MATCH = """
 key = "{key}"
 version = 1
 persona = "cooperative"
@@ -72,10 +73,12 @@ do = "reply interview"
 
 [expect]
 goal = "stage:interview"
-'''
+"""
 
 
-def write(directory: Path, key: str = "unit-a", *, start: str = "match", host: str = "lumen.example", extra: str = "") -> Path:
+def write(
+    directory: Path, key: str = "unit-a", *, start: str = "match", host: str = "lumen.example", extra: str = ""
+) -> Path:
     """<directory>/<key>.toml and its recorded/ folder; `extra` is appended to the file."""
     directory.mkdir(parents=True, exist_ok=True)
     (directory / key / "recorded").mkdir(parents=True, exist_ok=True)

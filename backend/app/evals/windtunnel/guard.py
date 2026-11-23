@@ -27,7 +27,7 @@ class WorkerAttached(Exception):
 
 
 class DatabaseBusy(Exception):
-    """A real person has queued jobs or pending mail here; the tunnel's queue drain and capturing relay would take them."""
+    """A real person has queued jobs or pending mail here; the tunnel would drain and relay them."""
 
 
 def require_test_database() -> str:
