@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Checkbox, CheckboxGroup, Group, Input, Label, NumberField } from "react-aria-components";
+import { Group, Input, Label, NumberField } from "react-aria-components";
 import { Button } from "@/components/ui/Button";
 import field from "@/components/ui/field.module.css";
 import { TextField } from "@/components/ui/TextField";
@@ -77,13 +77,24 @@ export function PayRange({ role }: { role: RoleView }) {
         <TextField label="Country (two letters)" value={country} onChange={setCountry} maxLength={2} />
         <TextField label="City" value={city} onChange={setCity} maxLength={120} />
       </div>
-      <CheckboxGroup value={arrangements} onChange={setArrangements} aria-label="Work arrangements" className={styles.row}>
-        {ARRANGEMENTS.map((value) => (
-          <Checkbox key={value} value={value}>
-            {WORK_ARRANGEMENT_LABELS[value]}
-          </Checkbox>
-        ))}
-      </CheckboxGroup>
+      {/* Native checkboxes, as on the record screens: they show their state and are a full-size target. */}
+      <fieldset className={styles.choices}>
+        <legend className={field.label}>Work arrangements</legend>
+        <div className={styles.row}>
+          {ARRANGEMENTS.map((value) => (
+            <label key={value} className={styles.choice}>
+              <input
+                type="checkbox"
+                checked={arrangements.includes(value)}
+                onChange={(event) =>
+                  setArrangements(event.target.checked ? [...arrangements, value] : arrangements.filter((item) => item !== value))
+                }
+              />
+              <span>{WORK_ARRANGEMENT_LABELS[value]}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
       {(problem ?? (patch.isError ? describeFailure(patch.error) : null)) && (
         <p role="alert" className={styles.problem}>
           {problem ?? describeFailure(patch.error)}

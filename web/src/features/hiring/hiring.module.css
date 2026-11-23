@@ -95,6 +95,28 @@
   gap: var(--sp-8) var(--sp-12);
 }
 
+.choices {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* The same sizes as the record screens' option checkboxes (features/record/constraints.module.css). */
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  min-height: 2rem;
+  cursor: pointer;
+}
+
+.choice input {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--accent-strong);
+}
+
 .problem {
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
