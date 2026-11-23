@@ -137,9 +137,18 @@ def test_one_name_for_several_places_of_one_country_is_one_answer():
     assert read("Springfield") == ("US", "Springfield")
 
 
-def test_two_cities_that_cannot_share_a_country_leave_the_string_unreadable():
-    assert read("London, Paris") == (None, None)
+def test_a_larger_place_in_another_country_after_a_smaller_one_leaves_the_string_unreadable():
+    assert read("Springfield, London") == (None, None)  # a town and the big city it may be in: nothing says which
+    assert read("London, Springfield") == ("GB", "London")  # a smaller place after a larger one is a list item
+    assert read("London, Paris") == ("GB", "London")
     assert read("Berlin, Munich") == ("DE", "Berlin")
+
+
+def test_an_indian_state_is_the_country_and_not_the_town_that_shares_its_name():
+    assert read("Goa") == ("IN", None)  # not the town in the Philippines
+    assert read("Goa", "IN") == ("IN", None)
+    assert read("Ahmedabad, Gujarat") == ("IN", "Ahmedabad")
+    assert read("Mumbai, Maharashtra, India") == ("IN", "Mumbai")
 
 
 # ---- codes ----------------------------------------
@@ -149,6 +158,8 @@ def test_a_two_letter_code_after_a_city_is_the_state_when_the_city_is_there_and_
     assert read("Wilmington, DE") == ("US", "Wilmington")  # Delaware
     assert read("Berlin, DE") == ("DE", "Berlin")  # Germany
     assert read("Boulder, CO") == ("US", "Boulder")  # Colorado, not Colombia
+    assert read("Paris TX 75460") == ("US", "Paris")  # no comma: still a code, because it follows a city
+    assert read("TX Germany") == (None, None)  # a code that is neither the whole part nor after a city is not a code
 
 
 def test_a_code_that_fits_no_city_is_something_else_and_is_ignored():

@@ -123,6 +123,13 @@ CANADA = {
     "NT": ("Northwest Territories", "13"),
     "NU": ("Nunavut", "14"),
 }
+# India's states and territories that are not also cities. Without them "Goa" would be the town in the Philippines.
+# Punjab is left out: it is a state in India and a province in Pakistan.
+INDIA_STATES = frozenset(
+    "andhra pradesh|arunachal pradesh|assam|bihar|chhattisgarh|goa|gujarat|haryana|himachal pradesh|jharkhand|"
+    "karnataka|kerala|madhya pradesh|maharashtra|manipur|meghalaya|mizoram|nagaland|odisha|orissa|rajasthan|sikkim|"
+    "tamil nadu|telangana|tripura|uttar pradesh|uttarakhand|west bengal|jammu and kashmir|ladakh".split("|")
+)
 # Codes in GeoNames' country table that are not (or no longer) ISO 3166-1 alpha-2 codes. Never reported as a country.
 NOT_ISO = frozenset({"XK", "CS", "AN"})
 MAX_WORDS = 4  # the longest place name scanned for: "san francisco bay area"
@@ -187,7 +194,7 @@ class _Gazetteer:
     countries: dict[str, str]  # folded name -> ISO 3166-1 alpha-2
     iso2: frozenset[str]
     iso3: dict[str, str]
-    subdivisions: dict[str, tuple[str, str]]  # folded US state or Canadian province name -> (country, admin1)
+    subdivisions: dict[str, tuple[str, str | None]]  # folded state or province name -> (country, admin1 or None)
     codes: dict[str, tuple[tuple[str, str], ...]]  # upper-case state or province code -> ((country, admin1), ...)
 
 
@@ -217,8 +224,11 @@ def _gazetteer() -> _Gazetteer:
     countries = {_fold(row["name"]): iso for iso, row in country_rows.items()}
     countries.update({_fold(name): iso for name, iso in COUNTRY_NAMES.items()})
     us_states = cache.get_us_states()
-    subdivisions = {_fold(row["name"]): ("US", code) for code, row in us_states.items()}
+    subdivisions: dict[str, tuple[str, str | None]] = {
+        _fold(row["name"]): ("US", code) for code, row in us_states.items()
+    }
     subdivisions.update({_fold(name): ("CA", admin1) for name, admin1 in CANADA.values()})
+    subdivisions.update({_fold(name): ("IN", None) for name in INDIA_STATES})
     codes: dict[str, tuple[tuple[str, str], ...]] = {code: (("US", code),) for code in us_states}
     codes.update({code: (("CA", admin1),) for code, (_, admin1) in CANADA.items()})
     return _Gazetteer(
@@ -281,13 +291,13 @@ def _code_readings(word: str, g: _Gazetteer) -> list[_Reading]:
     return [_Reading("alpha3", g.iso3[word])] if word in g.iso3 else []
 
 
-def _token(words: list[str], g: _Gazetteer, lone: bool) -> _Token | None:
+def _token(words: list[str], g: _Gazetteer, code_ok: bool) -> _Token | None:
     key = _fold(" ".join(words))
     if len(words) == 1 and key in QUALIFIERS:
         return None
     if found := _readings(key, g):
         return _Token(tuple(found), key, False)
-    if len(words) == 1 and lone:
+    if len(words) == 1 and code_ok:
         word = words[0].replace(".", "").upper() if _INITIALS.fullmatch(words[0]) else words[0]
         if word.isalpha() and word.isupper() and (codes := _code_readings(word, g)):
             return _Token(tuple(codes), key, True)
@@ -301,12 +311,14 @@ def _skippable(word: str) -> bool:
 def _scan(words: list[str], g: _Gazetteer) -> list[_Token]:
     """Greedy, longest name first, so "Mexico City" is one place and "Dallas Warehouse" is Dallas. Every word must be a
     name or a qualifier: a part with a word nothing explains is not read at all (a sentence is not a place)."""
-    lone = sum(not _skippable(word) for word in words) == 1  # a code counts only when it is the whole part
+    lone = sum(not _skippable(word) for word in words) == 1
     found: list[_Token] = []
     i = 0
     while i < len(words):
+        after_city = bool(found) and any(r.kind == "city" for r in found[-1].readings)
         for size in range(min(MAX_WORDS, len(words) - i), 0, -1):
-            if token := _token(words[i : i + size], g, lone):
+            # An upper-case code ("TX") counts when it is the whole part ("Remote - TX") or follows a city ("Austin TX").
+            if token := _token(words[i : i + size], g, lone or after_city):
                 found.append(token)
                 i += size
                 break
@@ -347,7 +359,7 @@ def _fit(reading: _Reading, places: tuple[int, ...], g: _Gazetteer) -> int:
     same_country = [g.places[i] for i in places if g.places[i].country == reading.country]
     if not same_country:
         return 0
-    if reading.kind == "sub" and not any(p.admin1 == reading.admin1 for p in same_country):
+    if reading.kind == "sub" and reading.admin1 and not any(p.admin1 == reading.admin1 for p in same_country):
         return 1
     return 2
 
@@ -424,9 +436,7 @@ def _resolve(tokens: list[_Token], hint: str | None, g: _Gazetteer) -> tuple[str
     if cues:  # the text states a country, and perhaps a state: that decides, and the city must fit it
         country = cues[0].country
         state = next((c.admin1 for c in cues if c.kind == "sub" and c.country == country), None)
-        pool = [i for i in places if g.places[i].country == country]
-        pool = [i for i in pool if g.places[i].admin1 == state] or pool
-        index = _most_populous(pool, g)
+        index = _most_populous([i for i in places if g.places[i].country == country], g)
         return country, None if index is None else _city_name(index, city.key, g, state)
     index = _dominant(places, g)
     if index is None and hint:
@@ -435,12 +445,18 @@ def _resolve(tokens: list[_Token], hint: str | None, g: _Gazetteer) -> tuple[str
         index = _most_populous([i for i in places if g.places[i].country == "IN"], g)
     if index is None or g.places[index].country not in g.iso2:
         return None, None
-    country = g.places[index].country
-    for other in tokens:  # two cities that cannot be in one country ("London, Paris") leave the chunk unreadable
+    chosen = g.places[index]
+    for other in tokens:
         if other is not city and all(r.kind == "city" for r in other.readings):
-            if country not in {g.places[i].country for r in other.readings for i in r.places}:
+            elsewhere = [g.places[i] for r in other.readings for i in r.places]
+            # A larger place in another country after a smaller one ("Debar, Prishtina") reads as the region the first
+            # is in, and nothing says which: unreadable. A smaller one is a list item ("London, Springfield").
+            if (
+                all(p.country != chosen.country for p in elsewhere)
+                and max(p.population for p in elsewhere) > chosen.population
+            ):
                 return None, None
-    return country, _city_name(index, city.key, g)
+    return chosen.country, _city_name(index, city.key, g)
 
 
 def _hint_country(hint: str | None, g: _Gazetteer) -> str | None:
