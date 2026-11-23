@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { buttonClass } from "@/components/ui/buttonStyles";
 import { AiOffNotice, EmptyState, ErrorState } from "@/components/ui/States";
+import { type TitleCell, TitleBlock } from "@/components/ui/TitleBlock";
 import { useApi } from "@/lib/api/context";
 import { isFailure } from "@/lib/api/errors";
 import { describeFailure } from "@/lib/api/problems";
@@ -16,8 +17,42 @@ import styles from "./tailor.module.css";
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
+/** The title block's cells, counted from the edits the page holds: what needs a decision stays in redline, never a guess. */
+function editCounts(view: TailoredView): TitleCell[] {
+  const undecided = view.edits.filter((edit) => edit.decision === "pending").length;
+  const approved = view.edits.filter((edit) => edit.decision === "approved").length;
+  return [
+    { label: "Edits proposed", value: view.edits.length },
+    { label: "Undecided", value: undecided, tone: undecided > 0 ? "redline" : "muted" },
+    { label: "Approved edits", value: approved, tone: approved > 0 ? "ok" : "muted" },
+    { label: "Discarded", value: view.discarded_count, tone: "muted" },
+  ];
+}
+
+/**
+ * The tailoring sheet for one job: the title block (when the page names the job) over the body. The body and the block read
+ * the same query, so one request serves both.
+ */
+export function TailorView({ jobId, header }: { jobId: number; header?: { title: string; company: string } }) {
+  const api = useApi();
+  const tailored = useQuery(tailoredForJobQuery(api, jobId));
+  const ready = tailored.data?.status === "ready" ? tailored.data : null;
+  return (
+    <div className={styles.sheet}>
+      {header && (
+        <TitleBlock
+          title={`Tailor your resume: ${header.title}`}
+          lines={<p>{header.company.trim() === "" ? "Company not stated" : header.company}</p>}
+          cells={ready === null ? [] : editCounts(ready)}
+        />
+      )}
+      <TailorBody jobId={jobId} />
+    </div>
+  );
+}
+
 /** The tailoring page for one job (TLR-01 to TLR-03): request, review every verified edit, decide, export, then the packet. */
-export function TailorView({ jobId }: { jobId: number }) {
+function TailorBody({ jobId }: { jobId: number }) {
   const api = useApi();
   const tailored = useQuery(tailoredForJobQuery(api, jobId));
   const request = useRequestTailoring(jobId);

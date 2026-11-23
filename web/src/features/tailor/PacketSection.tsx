@@ -18,7 +18,7 @@ const YOU_ANSWER = "You answer this";
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   return (
-    <>
+    <div className={styles.row}>
       <Button
         size="sm"
         aria-label={label}
@@ -34,7 +34,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
       <span role="status" className="t-small">
         {state === "copied" ? "Copied" : state === "failed" ? "Could not copy. Select the text and copy it." : ""}
       </span>
-    </>
+    </div>
   );
 }
 
@@ -85,7 +85,7 @@ function ReadyPacket({ jobId, packet }: { jobId: number; packet: PacketView }) {
   return (
     <div className={styles.packet}>
       {packet.cover_note !== null && packet.cover_note !== "" && (
-        <div>
+        <div className={styles.note}>
           <h3 className="t-card">Short note</h3>
           <p className={styles.answer}>{packet.cover_note}</p>
           <CopyButton text={packet.cover_note} label="Copy the short note" />

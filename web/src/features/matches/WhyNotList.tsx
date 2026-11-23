@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CONSTRAINT_KIND_LABELS, IMPORTANCE_LABELS, MATCH_REASON_LABELS, VERDICT_LABELS } from "@/lib/labels";
 import type { DecisionView, TodayMatches } from "./queries";
+import mine from "./match.module.css";
 import styles from "./today.module.css";
 
 type Reason = DecisionView["reason_codes"][number];
@@ -39,10 +40,10 @@ export function WhyNotList({ rows, run }: { rows: DecisionView[]; run: TodayMatc
   const order = [...groups.keys()].sort((a, b) => rank(a) - rank(b));
 
   if (order.length === 0) {
-    return <p>{run === null ? "No match run has finished for this day yet." : "Nothing was held back on this day."}</p>;
+    return <p className={mine.held}>{run === null ? "No match run has finished for this day yet." : "Nothing was held back on this day."}</p>;
   }
   return (
-    <div className={styles.groups}>
+    <div className={`${styles.groups} ${mine.held}`}>
       {order.map((reason) => {
         const listed = groups.get(reason) ?? [];
         // Only the filtered group has a larger true count than it lists: the run counts every violator, the ledger keeps the best few.
@@ -56,14 +57,10 @@ export function WhyNotList({ rows, run }: { rows: DecisionView[]; run: TodayMatc
             <ul className={styles.rows}>
               {listed.map((decision) => (
                 <li key={decision.decision_id ?? decision.job.id} className={styles.row}>
-                  <p className="t-card">
-                    {decision.decision_id === null ? (
-                      decision.job.title
-                    ) : (
-                      <Link href={`/app/matches/${decision.decision_id}`}>{decision.job.title}</Link>
-                    )}{" "}
-                    <span className="muted">{decision.job.company_name}</span>
+                  <p className={`t-card ${styles.cardTitle}`}>
+                    {decision.decision_id === null ? decision.job.title : <Link href={`/app/matches/${decision.decision_id}`}>{decision.job.title}</Link>}
                   </p>
+                  <p className={styles.company}>{decision.job.company_name}</p>
                   <Detail decision={decision} />
                 </li>
               ))}

@@ -19,8 +19,32 @@
   box-decoration-break: clone;
 }
 
+/* The balloon of the requirement the mark answers to, in the margin of the line the way a drawing numbers a part */
+.callout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  margin-inline-end: var(--sp-4);
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-pill);
+  background: var(--info);
+  color: var(--bg);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: 0.1em;
+  white-space: nowrap;
+}
+
 @media (forced-colors: active) {
   .mark {
     outline-color: Highlight;
+  }
+
+  .callout {
+    border: 1px solid CanvasText;
   }
 }

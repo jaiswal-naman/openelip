@@ -26,9 +26,7 @@ export default async function TailorRoute({ params }: Props) {
   return (
     <div className="container page">
       <ChatContext jobId={job.id} company={job.company_name} />
-      <h1 className="t-page">Tailor your resume: {job.title}</h1>
-      <p>{job.company_name.trim() === "" ? "Company not stated" : job.company_name}</p>
-      <TailorView jobId={job.id} />
+      <TailorView jobId={job.id} header={{ title: job.title, company: job.company_name }} />
     </div>
   );
 }

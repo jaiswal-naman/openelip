@@ -1,4 +1,7 @@
-/* One job's own page: its facts, its requirements and the posting text (FRONTEND_UI 3.23 and 4.2). */
+/*
+ * One job as a sheet: the title block, a ruled strip of the posting's facts, then the requirements beside the posting text
+ * (FRONTEND_UI 3.23 and 4.2). Tokens only.
+ */
 
 .detail {
   display: flex;
@@ -6,44 +9,48 @@
   gap: var(--sp-24);
 }
 
-.head {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--sp-8);
-}
-
 .title {
   overflow-wrap: anywhere;
 }
 
 .company {
-  font-size: var(--fs-section);
+  color: var(--text);
+  font-size: 1.0625rem;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
+.place {
+  overflow-wrap: anywhere;
+}
+
+/* The posting's other facts in ruled cells, the way a drawing lists its specifications */
 .facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-4) var(--sp-16);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  border-block-start: 1px solid var(--line-strong);
+  border-inline-start: 1px solid var(--line-strong);
   color: var(--muted);
   font-size: var(--fs-small);
 }
 
 .facts li {
+  padding: var(--sp-8) var(--sp-12);
+  border-block-end: 1px solid var(--line-strong);
+  border-inline-end: 1px solid var(--line-strong);
   overflow-wrap: anywhere;
 }
 
-/* The word Closed is the signal; the bar and the border are extra, so it is not colour alone. */
+/* The word Closed is the signal; the rule and the lettering say it again, so it is not colour alone. */
 .closed {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--sp-4) var(--sp-8);
+  gap: var(--sp-4) var(--sp-12);
+  max-width: var(--measure);
   padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line-strong);
-  border-inline-start: 4px solid var(--warn);
-  border-radius: var(--r-md);
+  border: 1px solid var(--warn);
+  border-radius: var(--r-sm);
   background: var(--surface);
 }
 
@@ -58,20 +65,20 @@
   align-items: start;
 }
 
+/* A region of the sheet: a rule above, no box */
 .panel {
   display: flex;
   flex-direction: column;
   gap: var(--sp-12);
   min-width: 0;
-  padding: var(--sp-16) var(--sp-20);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+  padding-block-start: var(--sp-16);
+  border-block-start: 1px solid var(--line-strong);
 }
 
 @media (min-width: 64rem) {
   .split {
     grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+    column-gap: var(--sp-32);
   }
 
   /* The list stays in view while the text scrolls to the passage a requirement quotes. */
@@ -83,6 +90,14 @@
   }
 }
 
+/* The posting itself: paper set against the sheet, the same text scale as the resume beside it on a match page */
+.posting {
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
 .groups {
   display: flex;
   flex-direction: column;
@@ -90,28 +105,32 @@
 }
 
 .groupTitle {
-  margin-bottom: var(--sp-8);
+  margin-bottom: var(--sp-4);
 }
 
 .items {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-8);
+  border-block-start: 1px solid var(--line);
+}
+
+.items > li {
+  border-block-end: 1px solid var(--line);
 }
 
 .item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--sp-4);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sp-4) var(--sp-12);
   width: 100%;
-  padding: var(--sp-8) var(--sp-12);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-md);
-  background: var(--surface);
+  padding: var(--sp-8);
+  border: 0;
+  background: transparent;
   color: var(--text);
   font: inherit;
   text-align: start;
+  transition: background-color var(--dur-fast) var(--ease-in);
 }
 
 button.item {
@@ -120,30 +139,57 @@ button.item {
 
 @media (hover: hover) {
   button.item:hover {
-    background: var(--surface-2);
+    background: var(--surface);
   }
 }
 
-/* The selected requirement: the fill and a bar down its edge, so it is not shown by colour alone. */
+button.item:focus-visible {
+  outline-offset: -2px;
+}
+
+/* The selected requirement: a tint, a hairline box and a filled balloon, plus aria-pressed; not colour alone. */
 button.item[aria-pressed="true"] {
   background: var(--accent-soft);
-  border-color: var(--accent-strong);
-  box-shadow: inset 4px 0 0 var(--accent-strong);
+  outline: 1px solid var(--accent-strong);
+  outline-offset: -1px;
+}
+
+button.item[aria-pressed="true"]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+button.item[aria-pressed="true"] .itemNo {
+  background: var(--info);
+  color: var(--bg);
+}
+
+.itemText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  min-width: 0;
 }
 
 .withheld {
+  color: var(--muted);
+}
+
+.withheld .itemNo {
   border-style: dashed;
   color: var(--muted);
 }
 
 .reason {
+  grid-column: 2;
   color: var(--muted);
 }
 
 .badge {
-  padding: 0 var(--sp-8);
+  padding: 0.125rem var(--sp-8);
   border: 1px solid currentColor;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-sm);
 }
 
 .required {

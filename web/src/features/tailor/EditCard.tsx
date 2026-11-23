@@ -1,12 +1,11 @@
 "use client";
 
 import { Label, Radio, RadioGroup } from "react-aria-components";
+import balloon from "@/components/ui/balloon.module.css";
 import { describeFailure } from "@/lib/api/problems";
 import { wordDiff } from "@/lib/wordDiff";
 import type { EditDecision, EditView } from "./queries";
 import styles from "./tailor.module.css";
-
-const WIDE = 60; // characters a side above which the two versions sit side by side on a desktop screen
 
 const SECTION_LABELS: Record<string, string> = {
   experience: "Experience",
@@ -19,7 +18,7 @@ const SECTION_LABELS: Record<string, string> = {
 const DECISION_LABELS: Record<string, string> = { pending: "Not decided yet", approved: "Approved", rejected: "Rejected" };
 
 /** The text with removed words struck through and added words underlined; the words themselves say which, for a screen reader. */
-function Marked({ before, after, side }: { before: string; after: string; side: "before" | "after" | "unified" }) {
+function Marked({ before, after, side }: { before: string; after: string; side: "before" | "after" }) {
   const runs = wordDiff(before, after);
   return (
     <p className={styles.diff}>
@@ -56,10 +55,14 @@ export function EditCard({
 }) {
   const decided = edit.decision !== "pending";
   const reorder = edit.op === "reorder";
-  const wide = !reorder && edit.before_text.length > WIDE && edit.after_text.length > WIDE;
   return (
     <li className={styles.edit} data-op={edit.op}>
-      <p className="t-label">{SECTION_LABELS[edit.section] ?? edit.section}</p>
+      <div className={styles.editHead}>
+        <span className={`${balloon.balloon} ${styles.itemNo}`} aria-hidden="true">
+          {edit.ordinal}
+        </span>
+        <p className="t-label">{SECTION_LABELS[edit.section] ?? edit.section}</p>
+      </div>
       {reorder ? (
         <>
           <p>Reordered to match the job&apos;s emphasis. No new skills.</p>
@@ -69,19 +72,27 @@ export function EditCard({
             ))}
           </ol>
         </>
-      ) : wide ? (
+      ) : (
         <div className={styles.sides}>
-          <div>
-            <p className="t-label">Before</p>
+          <div className={styles.side}>
+            <div className={styles.sideHead}>
+              <span className={styles.letter} aria-hidden="true">
+                A
+              </span>
+              <p className="t-label">Before</p>
+            </div>
             <Marked before={edit.before_text} after={edit.after_text} side="before" />
           </div>
-          <div>
-            <p className="t-label">After</p>
+          <div className={styles.side}>
+            <div className={styles.sideHead}>
+              <span className={styles.letter} aria-hidden="true">
+                B
+              </span>
+              <p className="t-label">After</p>
+            </div>
             <Marked before={edit.before_text} after={edit.after_text} side="after" />
           </div>
         </div>
-      ) : (
-        <Marked before={edit.before_text} after={edit.after_text} side="unified" />
       )}
       {edit.supporting_fact_ids.length > 0 && (
         <p className="t-small muted">
