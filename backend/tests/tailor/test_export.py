@@ -79,6 +79,7 @@ def test_the_pdf_holds_every_block_line_in_order():
     text, pages = pdf_text(data)
     assert data.startswith(b"%PDF") and pages == 1
     assert_in_order(text, lines_of(blocks))
+    assert "(cid:" not in text  # every glyph reads back as text, so a parser sees the same words a person does
 
 
 def test_the_same_blocks_render_to_the_same_bytes_twice():
@@ -120,7 +121,9 @@ def test_a_character_outside_latin_1_is_refused_and_named_never_dropped(where):
     with pytest.raises(UnsupportedCharacters) as refused:
         render_pdf([Block("Clean"), block])
     assert set(refused.value.characters) <= {"–", "€"} and refused.value.characters
-    assert "Mar 2019" not in str(refused.value) and "Cut costs" not in str(refused.value)  # no resume text in the message
+    assert "Mar 2019" not in str(refused.value) and "Cut costs" not in str(
+        refused.value
+    )  # no resume text in the message
 
 
 # ---- the DOCX ----------------------------------------

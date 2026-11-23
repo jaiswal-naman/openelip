@@ -14,7 +14,7 @@ from app.tailor.resume import (
     derive_op,
     line_text,
 )
-from tests.tailor.fixtures.invented import CHAT, EDIT, bullet, candidate, fact, role, skill
+from tests.tailor.fixtures.invented import EDIT, bullet, candidate, fact, role, skill
 
 
 @dataclass(frozen=True)
@@ -109,7 +109,9 @@ def test_skills_education_certifications_and_projects_get_their_own_sections():
         ("edu-lakeshore", "B.Sc. Computer Science, Lakeshore Technical College, 2012 - 2016")
     ]
     assert [(b.fact_id, b.text) for b in doc.certifications] == [("cert-scrum", "Certified Scrum Master 2018")]
-    assert [(b.fact_id, b.text) for b in doc.projects] == [("p1", "Project: Ledger Sync (2024) Launched a side project.")]
+    assert [(b.fact_id, b.text) for b in doc.projects] == [
+        ("p1", "Project: Ledger Sync (2024) Launched a side project.")
+    ]
     assert (doc.name, doc.email) == ("Ada Example", "ada@example.test")
 
 
@@ -125,7 +127,11 @@ def test_a_chat_stated_fact_is_not_in_the_base_but_a_hand_added_or_corrected_one
 
 
 def test_an_achievement_whose_role_is_not_on_the_resume_is_kept_in_an_other_experience_block():
-    facts = [role("r1", "Initech Demo", "Engineer", "2020-01"), bullet("b1", "Kept", "r1"), bullet("b2", "Orphan", "gone")]
+    facts = [
+        role("r1", "Initech Demo", "Engineer", "2020-01"),
+        bullet("b1", "Kept", "r1"),
+        bullet("b2", "Orphan", "gone"),
+    ]
     doc = base(facts)
     assert [b.fact_id for b in doc.roles] == ["r1", None]
     other = doc.roles[1]
@@ -143,7 +149,10 @@ def test_a_fact_of_another_kind_is_not_in_the_base():
     [
         ("- Built the pipeline", "Built the pipeline"),
         ("•   Built the pipeline", "Built the pipeline"),
-        ("- Negotiated the reporting pipeline saving about 200 hours a\nyear", "Negotiated the reporting pipeline saving about 200 hours a year"),
+        (
+            "- Negotiated the reporting pipeline saving about 200 hours a\nyear",
+            "Negotiated the reporting pipeline saving about 200 hours a year",
+        ),
         ("-5% churn", "-5% churn"),  # a minus sign is not a bullet mark
         ("Built\x00 the\x0bpipeline", "Built the pipeline"),
         ("  spaced \t out  ", "spaced out"),
@@ -160,7 +169,14 @@ def test_a_rephrase_replaces_exactly_one_bullet():
     before = base()
     after = apply_edits(
         before,
-        [Edit("b-python", "Built Python services for payments", "Built and ran Python services for payments", ("b-python",))],
+        [
+            Edit(
+                "b-python",
+                "Built Python services for payments",
+                "Built and ran Python services for payments",
+                ("b-python",),
+            )
+        ],
     )
     assert texts(after.roles[0].bullets) == [
         "Built and ran Python services for payments",
@@ -187,7 +203,10 @@ def test_a_reorder_permutes_the_skills_line():
 def test_a_remove_deletes_one_bullet_or_one_skill():
     after = apply_edits(
         base(),
-        [Edit("b-mentor", "Mentored one junior developer", "", ("b-mentor",)), Edit("s-sql", "SQL", "", ("s-sql",), "skills")],
+        [
+            Edit("b-mentor", "Mentored one junior developer", "", ("b-mentor",)),
+            Edit("s-sql", "SQL", "", ("s-sql",), "skills"),
+        ],
     )
     assert [b.fact_id for b in after.roles[0].bullets] == ["b-python", "b-report", "b-checkout"]
     assert texts(after.skills) == ["Python", "Go"]
@@ -211,12 +230,16 @@ def test_applying_edits_returns_a_new_document_and_leaves_the_input_alone():
     snapshot = repr(original)
     result = apply_edits(original, [Edit("b-python", "x", "Changed", ("b-python",)), Edit("s-go", "Go", "", ("s-go",))])
     assert result is not original and repr(original) == snapshot
-    assert isinstance(result, ResumeDoc) and isinstance(result.skills, tuple) and isinstance(result.roles[0].bullets, tuple)
+    assert (
+        isinstance(result, ResumeDoc)
+        and isinstance(result.skills, tuple)
+        and isinstance(result.roles[0].bullets, tuple)
+    )
 
 
 def test_edits_are_applied_in_the_order_given():
-    one = Edit("b-python", "", "First", ("b-python",))
-    two = Edit("b-python", "", "Second", ("b-python",))
+    one = Edit("b-python", "Built Python services for payments", "First", ("b-python",))
+    two = Edit("b-python", "First", "Second", ("b-python",))
     assert apply_edits(base(), [one, two]).roles[0].bullets[0] == Bullet("b-python", "Second")
 
 

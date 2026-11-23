@@ -24,7 +24,7 @@ def fact(
 
 
 def role(fact_id: str, employer: str, title: str, start: str, end: str | None = None, **more: Any) -> Fact:
-    """A role as Phase 3 stores it: the statement is the resume's own heading lines, the attributes are checked values."""
+    """A role as Phase 3 stores it: the statement is the resume's heading lines, the attributes are checked values."""
     attributes: dict[str, Any] = {"employer": employer, "title": title, "start_date": start, **more}
     if end:
         attributes["end_date"] = end
@@ -64,7 +64,13 @@ def candidate() -> list[Fact]:
             start_date="2012",
             end_date="2016",
         ),
-        fact("cert-scrum", "certification", "Certified Scrum Master\n2018", name="Certified Scrum Master", end_date="2018"),
+        fact(
+            "cert-scrum",
+            "certification",
+            "Certified Scrum Master\n2018",
+            name="Certified Scrum Master",
+            end_date="2018",
+        ),
         skill("s-quill", "Quillscript", source=CHAT),
     ]
 
