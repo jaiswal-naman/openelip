@@ -8,12 +8,16 @@ from .liveness import verify_live
 from .normalize import parse_location
 from .requirements.rules import extract as rules_extract
 from .requirements.segment import segments
-from .requirements.validate import to_rows
+from .requirements.task import run as extract_requirements
+from .requirements.validate import RequirementRow, ValidationResult, to_rows
 from .search import InvalidCursor, SearchPage, get_job, search
 
 __all__ = [
     "InvalidCursor",
+    "RequirementRow",
     "SearchPage",
+    "ValidationResult",
+    "extract_requirements",
     "get_job",
     "parse_location",
     "rules_extract",
