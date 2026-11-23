@@ -371,8 +371,9 @@ def test_the_list_holds_only_the_callers_newest_first_and_another_persons_id_is_
     with w.engine.begin() as c:
         other = make_job(c, title="Analyst", description=harness.JOB_TEXT, requirements=harness.REQUIREMENTS)
         first = make_tailored_resume(c, w.ada, w.job)
-        second = make_tailored_resume(c, w.ada, other)
         bobs = make_tailored_resume(c, w.bob, w.job)
+    with w.engine.begin() as c:  # a later transaction: rows of one share their creation time
+        second = make_tailored_resume(c, w.ada, other)
     listed = ok(w.client.get("/v1/tailored-resumes"))
     assert [item["id"] for item in listed] == [str(second), str(first)]
     refused(w.client.get(f"/v1/tailored-resumes/{bobs}"), 404, "not_found")
