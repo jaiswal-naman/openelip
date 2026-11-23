@@ -14,6 +14,7 @@ from app.ingest import jobs  # noqa: F401  (importing it registers the ingest ha
 from app.platform import config, db, log, queue, relay, scheduler
 from app.profile import jobs as profile_jobs
 from app.profile import privacy as profile_privacy  # noqa: F401  (the export job reads the registry in this process)
+from app.trust import jobs as trust_jobs  # noqa: F401  (importing it registers the export and erase jobs and the sweep)
 
 POLL_SECONDS = 1
 
