@@ -36,9 +36,11 @@ from tests.hiring.world import (
     grant,
     insert_introduction,
     introduced,
+    invite,
     make_org,
     message,
     open_role,
+    overdue,
     refused,
     role_run,
     shortlist,
@@ -119,13 +121,6 @@ def worker_inserts(conn: Connection, desk: Desk, user: UUID, decision: UUID, **f
         conn.execute(text("RESET ROLE"))
 
 
-def make_overdue(conn: Connection, intro: UUID) -> None:
-    """Move an accepted introduction's answer time into the past. The guard allows it only under app.maintenance."""
-    conn.execute(text("SELECT set_config('app.maintenance', 'on', true)"))
-    conn.execute(text("UPDATE introductions SET answer_due_at = now() - interval '1 day' WHERE id = :i"), {"i": intro})
-    conn.execute(text("SELECT set_config('app.maintenance', 'off', true)"))
-
-
 def intro_row(conn: Connection, intro: UUID):
     return conn.execute(
         text(
@@ -195,6 +190,56 @@ def test_a_pay_range_cannot_run_backwards_and_a_draft_may_have_none(conn, desk):
     with refused(conn) as caught:
         conn.execute(text("UPDATE roles SET salary_min = 90000, salary_max = 80000 WHERE id = :r"), {"r": draft})
     assert sqlstate(caught) == "23514" and constraint_name(caught) == "roles_check"  # the one unnamed check of roles
+
+
+# ---- HIR-01: who belongs to an organization -------------------------------------------------------------------------
+
+
+def test_a_person_belongs_to_an_organization_once_and_an_address_is_invited_once(conn, desk):
+    with refused(conn) as caught:
+        add_member(conn, desk.org, desk.owner, "admin")  # the owner is a member already
+    assert sqlstate(caught) == "23505" and constraint_name(caught) == "org_members_one_per_user"
+    invite(conn, desk.org, "New.Colleague@example.test")
+    with refused(conn) as caught:  # the same address in another letter case
+        invite(conn, desk.org, "new.colleague@example.test")
+    assert sqlstate(caught) == "23505" and constraint_name(caught) == "org_members_one_invite"
+    conn.execute(
+        text("UPDATE org_members SET status = 'removed', removed_at = now() WHERE user_id = :u"), {"u": desk.owner}
+    )
+    add_member(conn, desk.org, desk.owner)  # a removed member can come back: the old row no longer counts
+
+
+BAD_MEMBERSHIPS = {  # case: (columns, values), each a row the table's checks refuse
+    "nobody": ("organization_id", ":o"),
+    "active-without-user": (
+        "organization_id, invited_email, status, joined_at",
+        ":o, 'x@example.test', 'active', now()",
+    ),
+    "active-without-joined-at": ("organization_id, user_id, status", ":o, :u, 'active'"),
+    "removed-without-time": ("organization_id, invited_email, status", ":o, 'x@example.test', 'removed'"),
+    "time-without-removed": ("organization_id, invited_email, removed_at", ":o, 'x@example.test', now()"),
+}
+
+
+@pytest.mark.parametrize("case", list(BAD_MEMBERSHIPS))
+def test_a_membership_row_says_who_it_is_for_and_what_became_of_it(conn, desk, case):
+    columns, values = BAD_MEMBERSHIPS[case]
+    person = make_user(conn)
+    with refused(conn) as caught:
+        conn.execute(text(f"INSERT INTO org_members ({columns}) VALUES ({values})"), {"o": desk.org, "u": person})
+    assert sqlstate(caught) == "23514"
+
+
+def test_a_requirement_number_is_used_once_in_a_role(conn, desk):
+    with refused(conn) as caught:
+        conn.execute(
+            text(
+                """INSERT INTO role_requirements (role_id, organization_id, ordinal, importance, kind, text)
+                   VALUES (:r, :o, 1, 'required', 'skill', 'A second first item')"""
+            ),
+            {"r": desk.role.id, "o": desk.org},
+        )
+    assert sqlstate(caught) == "23505"
 
 
 # ---- the answer clock's calendar ----------------------------------------------------------------------------------
@@ -301,7 +346,7 @@ def test_an_organization_with_an_overdue_answer_asks_nobody_until_it_answers(con
     owed = ask(conn, desk.role, waiting)
     accept(conn, owed, desk.role, waiting)
     assert conn.execute(text("SELECT organization_has_overdue_answers(:o)"), {"o": desk.org}).scalar_one() is False
-    make_overdue(conn, owed)
+    overdue(conn, owed)
     assert conn.execute(text("SELECT organization_has_overdue_answers(:o)"), {"o": desk.org}).scalar_one() is True
 
     decision = introduced(conn, desk.role, desk.cat)
@@ -316,6 +361,21 @@ def test_an_organization_with_an_overdue_answer_asks_nobody_until_it_answers(con
         {"i": owed},
     )
     assert worker_inserts(conn, desk, desk.cat, decision) is not None
+
+
+def test_an_ask_starts_as_asked_not_as_an_answer(conn, desk):
+    decision = introduced(conn, desk.role, desk.cat)
+    act_as(conn, "app_worker")
+    with refused(conn) as caught:
+        conn.execute(
+            text(
+                """INSERT INTO introductions (organization_id, role_id, user_id, match_decision_id, status,
+                                              share_preview)
+                   VALUES (:o, :r, :u, :d, 'accepted', CAST(:p AS jsonb))"""
+            ),
+            {"o": desk.org, "r": desk.role.id, "u": desk.cat, "d": decision, "p": json.dumps(PREVIEW)},
+        )
+    assert sqlstate(caught) == "23514" and message(caught) == "introductions start as asked"
 
 
 def test_a_second_ask_for_the_same_role_and_candidate_is_refused_by_the_unique_key(conn, desk):
@@ -652,10 +712,10 @@ def test_the_preview_says_when_the_latest_finished_run_ended(conn, desk):
     newer = role_run(conn, desk.role)
     conn.execute(text("UPDATE match_runs SET started_at = now() - interval '2 days' WHERE id = :r"), {"r": older})
     conn.execute(text("UPDATE match_runs SET finished_at = now() - interval '3 hours' WHERE id = :r"), {"r": newer})
-    conn.execute(  # a run that is still going does not count
+    conn.execute(  # a run that is still going, and started last, does not count
         text(
-            """INSERT INTO match_runs (trigger, role_id, local_date, ranker_version)
-               VALUES ('role', :r, current_date, 'test-ranker-v1')"""
+            """INSERT INTO match_runs (trigger, role_id, local_date, ranker_version, started_at)
+               VALUES ('role', :r, current_date, 'test-ranker-v1', now() + interval '1 minute')"""
         ),
         {"r": desk.role.id},
     )

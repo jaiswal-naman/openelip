@@ -201,6 +201,13 @@ def ask(conn: Connection, role: Role, user: UUID, *, run: UUID | None = None, as
     return insert_introduction(conn, role, user, introduced(conn, role, user, run=run), asked_at=asked_at)
 
 
+def overdue(conn: Connection, intro: UUID) -> None:
+    """Move an accepted introduction's answer time into the past. The guard allows it only under app.maintenance."""
+    conn.execute(text("SELECT set_config('app.maintenance', 'on', true)"))
+    conn.execute(text("UPDATE introductions SET answer_due_at = now() - interval '1 day' WHERE id = :i"), {"i": intro})
+    conn.execute(text("SELECT set_config('app.maintenance', 'off', true)"))
+
+
 def exclude_company(conn: Connection, user: UUID, company: str) -> None:
     """The candidate's hard constraint 'never this employer' (HIR-07), through the record's own change-log row."""
     event = conn.execute(
