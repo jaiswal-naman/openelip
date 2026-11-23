@@ -33,3 +33,10 @@ min_score = 1.0
 # An absolute CI blocker (AI_SYSTEM 12.8, MAT-01): no model is involved, so there is no tolerance.
 [constraint_property]
 min_score = 1.0
+
+# Scored by code and replayed from a recording built from the labels (see evals/role_intake/README.md): the score is 1.0
+# only when every pre-registered bar holds (every stored citation resolves, req_item_f1 >= 0.80 and
+# req_importance_accuracy >= 0.80), else 0.0. The bars were written before any run. A pass shows that the code path works
+# and says nothing about a model's quality.
+[role_intake]
+min_score = 1.0
