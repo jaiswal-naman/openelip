@@ -1,9 +1,10 @@
 """IDX-08: the sweep queues one extraction per open, canonical, listed job whose requirements are not those of its
-current text, oldest change first, a bounded number at a time, and only when a real model can be called.
+current text, oldest change first, a bounded number at a time, and only when a real model can be called and its route
+is proven by a passed gold-set run (AI_SYSTEM 2.2).
 
-Nothing here calls the gateway: the sweep reads the routing and writes queue rows, so the tests are rolled back in the
-`conn` fixture's transaction. Dates are explicit because every row inserted in one transaction would otherwise share
-one now(), and "oldest first" could not be told from "any order".
+Nothing here calls the gateway: the sweep reads the routing and the recorded runs and writes queue rows, so the tests
+are rolled back in the `conn` fixture's transaction. Dates are explicit because every row inserted in one transaction
+would otherwise share one now(), and "oldest first" could not be told from "any order".
 """
 
 import json
@@ -14,9 +15,11 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import text
 
+from app.evals import EVALS
 from app.ingest import extraction
 from app.ingest.requirements import task, validate
 from app.platform import config, queue
+from app.platform.llm import registry
 
 BASE = datetime(2030, 1, 1, tzinfo=timezone.utc)
 VERSION_2_TEXT = "Invented posting for a unit test; Acme Robotics is not a real company.\nYou need Go."
@@ -28,10 +31,41 @@ def settings_for(**env):
     return config.load({**os.environ, **blank, "APP_ENV": "test", **env})
 
 
+def keyed_settings():
+    return settings_for(LLM_PROVIDER="anthropic", ANTHROPIC_API_KEY="k")
+
+
+ROUTE_MODEL = registry.route(task.TASK, keyed_settings()).model  # what models.toml says answers the task
+
+
+def proof(**over):
+    """The config of a run that proves the route: the model method on the test split, naming this route's model and the
+    prompt in use."""
+    return {"method": "model", "split": "test", "model": ROUTE_MODEL, "prompt_version": task.PROMPT_VERSION, **over}
+
+
+def record_run(conn, run_config, *, suite="requirement_extraction", status="passed"):
+    """A finished run in eval_runs, inserted as it ends: no later update, which the table would refuse."""
+    conn.execute(
+        text(
+            """INSERT INTO eval_runs (suite, git_sha, config, status, metrics, is_gate_passed, finished_at)
+               VALUES (CAST(:suite AS eval_suite), 'abc', CAST(:config AS jsonb), CAST(:status AS eval_status),
+                       CAST('{}' AS jsonb), :ok, now())"""
+        ),
+        {"suite": suite, "config": json.dumps(run_config), "status": status, "ok": status == "passed"},
+    )
+
+
 @pytest.fixture
-def with_a_model(monkeypatch):
+def keyed_route(monkeypatch):
     """A keyed Anthropic route: the sweep sees a real model. Nothing is called."""
-    monkeypatch.setattr(config, "get", lambda: settings_for(LLM_PROVIDER="anthropic", ANTHROPIC_API_KEY="k"))
+    monkeypatch.setattr(config, "get", keyed_settings)
+
+
+@pytest.fixture
+def with_a_model(conn, keyed_route):
+    """The keyed route, proven by a passed run on the test split that names its model and the current prompt."""
+    record_run(conn, proof())
 
 
 @pytest.fixture(autouse=True)
@@ -100,6 +134,68 @@ def test_with_no_model_to_call_nothing_is_queued_and_the_log_says_why(conn, monk
     (line,) = sweep_lines(caplog)
     assert (line["status"], line["error_code"], line["queued"]) == ("ai_disabled", reason, 0)
     assert set(line) - {"ts", "level", "event", "request_id"} == {"status", "error_code", "queued"}  # no text
+
+
+# ---- a model nobody has measured ----------------------------------------
+
+
+def run_sweep_on_one_job(conn):
+    add_job(conn, add_source(conn), 1)
+    extraction.extract_sweep(conn, {})
+
+
+def test_a_key_alone_starts_nothing_while_no_passed_run_names_the_routes_model(conn, keyed_route, caplog):
+    run_sweep_on_one_job(conn)
+
+    assert queued(conn) == []
+    (line,) = sweep_lines(caplog)
+    assert (line["status"], line["error_code"], line["queued"]) == ("ai_disabled", "unproven", 0)
+    assert set(line) - {"ts", "level", "event", "request_id"} == {"status", "error_code", "queued"}  # no text
+
+
+@pytest.mark.parametrize(
+    ("what_differs", "run"),
+    [
+        ("another model", {"run_config": proof(model="another-model")}),
+        ("an older prompt", {"run_config": proof(prompt_version="0123456789ab")}),
+        ("the dev split", {"run_config": proof(split="dev")}),
+        ("the rules method", {"run_config": proof(method="rules")}),
+        ("no model named", {"run_config": {k: v for k, v in proof().items() if k != "model"}}),
+        ("a failed run", {"run_config": proof(), "status": "failed"}),
+        ("another suite", {"run_config": proof(), "suite": "location_accuracy"}),
+    ],
+)
+def test_a_run_that_differs_in_one_way_does_not_prove_the_route(conn, keyed_route, caplog, what_differs, run):
+    record_run(conn, **run)
+
+    run_sweep_on_one_job(conn)
+
+    assert queued(conn) == [], what_differs
+    assert sweep_lines(caplog)[-1]["error_code"] == "unproven"
+
+
+def test_the_replay_ci_records_does_not_prove_the_route_but_the_same_run_naming_the_model_would(
+    conn, keyed_route, caplog
+):
+    stored = json.loads((EVALS / "requirement_extraction" / "baseline.json").read_text(encoding="utf-8"))
+    replay = {**stored["runs"]["replay"]["config"], "prompt_version": task.PROMPT_VERSION}  # only the model is missing
+    assert replay["method"] == "model" and replay["split"] == "test" and "model" not in replay
+    record_run(conn, replay)
+    run_sweep_on_one_job(conn)
+    assert queued(conn) == [] and sweep_lines(caplog)[-1]["error_code"] == "unproven"
+
+    record_run(conn, {**replay, "model": ROUTE_MODEL})  # a live run's config names the model it measured
+    extraction.extract_sweep(conn, {})
+    assert len(queued(conn)) == 1
+
+
+def test_the_sweep_runs_as_the_worker_role_which_may_read_the_runs_that_prove_a_route(conn, with_a_model):
+    job = add_job(conn, add_source(conn), 1)
+    conn.execute(text("SET LOCAL ROLE app_worker"))
+    extraction.extract_sweep(conn, {})
+    conn.execute(text("RESET ROLE"))
+
+    assert [payload["job_id"] for _, _, payload in queued(conn)] == [job]
 
 
 # ---- which jobs, in which order ----------------------------------------

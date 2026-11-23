@@ -168,6 +168,13 @@ message.
 A live recording needs a model key and is a manual check: `score.py` refuses any recording that is not a `rules_fixture`
 one, and applying the live bars of the section above in code belongs with the first live run.
 
+**Until a live run passes, no job is extracted, key or no key.** A route may serve a task only when a passed gold-set run
+for that task and model exists (AI_SYSTEM 2.2). The extraction sweep checks this before it queues anything: it needs a
+passed `requirement_extraction` run in `eval_runs` on the test split, by the model method, whose config names the
+route's `model` and the current `prompt_version`. Otherwise it queues nothing and logs `unproven`. The replay CI records
+names no model, so it never counts; the first live run has to record `model` in its config for the sweep to start, and a
+changed prompt (`prompt_version`) needs a new live run.
+
 ## Recorded runs on the test split (2026-11-23)
 
 **Labels drafted by an agent, review pending.** Two runs of `score.py --record --report baseline.json` on the 39 clean test
