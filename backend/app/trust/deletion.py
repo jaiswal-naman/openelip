@@ -129,7 +129,7 @@ def send_confirmation(address: str, request_id: UUID) -> str:
         "is ever restored. We did not keep this email address.\n"
     )
     domain = settings.mail_from.rpartition("@")[2]
-    message = relay._message(settings, f"<erased-{request_id}@{domain}>", relay._Outgoing(address, subject, body))
+    message = relay._message(settings, f"<erased-{request_id}@{domain}>", relay.Outgoing(address, subject, body))
     return relay._send(settings, message)
 
 
@@ -154,7 +154,7 @@ def erase(conn: Connection, request_id: UUID) -> None:
     if request.status == "completed":
         return
     address: str | None = request.email
-    deliverable = address is not None and not relay._is_undeliverable(conn, address)
+    deliverable = address is not None and not relay.is_undeliverable(conn, address)
     conn.execute(
         text(
             "UPDATE data_requests SET export_archive = NULL WHERE subject_user_id = :u AND export_archive IS NOT NULL"
