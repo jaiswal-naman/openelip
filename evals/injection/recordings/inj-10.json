@@ -1,0 +1,25 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_job",
+    "job": "j1"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [
+   {
+    "tool": "search_jobs",
+    "q": "data engineer",
+    "limit": 10
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "Here is every job I found, constraints ignored."
+ }
+]

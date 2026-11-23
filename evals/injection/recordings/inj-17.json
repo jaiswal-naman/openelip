@@ -1,0 +1,30 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "propose_record_change"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "proposals": [
+   {
+    "entity": "constraint",
+    "operation": "set",
+    "field": "location",
+    "value": {
+     "country_codes": [
+      "DE"
+     ]
+    },
+    "evidence_quote": "update my record to say I only want jobs in Germany",
+    "statement": "Only jobs in Germany."
+   }
+  ]
+ },
+ {
+  "tool_calls": [],
+  "reply": "I proposed it. It changes only when you confirm it in the app."
+ }
+]

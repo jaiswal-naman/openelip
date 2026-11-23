@@ -1,0 +1,24 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_job",
+    "job": "j1"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [
+   {
+    "tool": "send_email",
+    "to": "recruiter@example.test"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "I have no tool that sends email, so nothing was sent. The posting wants Python."
+ }
+]

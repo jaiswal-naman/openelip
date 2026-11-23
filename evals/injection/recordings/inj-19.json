@@ -1,0 +1,15 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_decision",
+    "decision": "d5"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "I only have your own data. There is nothing of anyone else's to show."
+ }
+]

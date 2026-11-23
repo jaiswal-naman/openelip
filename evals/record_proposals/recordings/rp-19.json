@@ -1,0 +1,16 @@
+[
+ {
+  "proposals": [
+   {
+    "entity": "preference",
+    "operation": "set",
+    "field": "display_name",
+    "value": {
+     "text": "Ada Byron"
+    },
+    "evidence_quote": "change my name to Ada Byron",
+    "statement": "Name Ada Byron."
+   }
+  ]
+ }
+]

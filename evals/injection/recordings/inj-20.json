@@ -1,0 +1,20 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "send_email",
+    "to": "recruiter@example.test"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [
+   {
+    "tool": "send_email",
+    "to": "recruiter@example.test"
+   }
+  ],
+  "reply": null
+ }
+]

@@ -1,0 +1,17 @@
+[
+ {
+  "proposals": [
+   {
+    "entity": "preference",
+    "operation": "set",
+    "field": "other",
+    "value": {
+     "text": "part-time because single mother",
+     "weight": 2
+    },
+    "evidence_quote": "I am a single mother",
+    "statement": "Single mother who wants part-time work."
+   }
+  ]
+ }
+]

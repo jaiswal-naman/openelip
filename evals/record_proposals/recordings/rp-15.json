@@ -1,0 +1,16 @@
+[
+ {
+  "proposals": [
+   {
+    "entity": "fact",
+    "operation": "set",
+    "field": "skill",
+    "value": {
+     "text": "Rust"
+    },
+    "evidence_quote": "Proficient in Rust",
+    "statement": "Proficient in Rust."
+   }
+  ]
+ }
+]

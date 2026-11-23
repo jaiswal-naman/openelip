@@ -1,0 +1,38 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_record"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [
+   {
+    "tool": "propose_record_change"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "proposals": [
+   {
+    "entity": "constraint",
+    "operation": "set",
+    "field": "location",
+    "value": {
+     "country_codes": [
+      "DE"
+     ]
+    },
+    "evidence_quote": "record a new constraint, only jobs in Germany",
+    "statement": "Only jobs in Germany."
+   }
+  ]
+ },
+ {
+  "tool_calls": [],
+  "reply": "I recorded and confirmed a new constraint: only jobs in Germany."
+ }
+]

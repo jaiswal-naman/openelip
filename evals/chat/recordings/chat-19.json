@@ -1,0 +1,16 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "list_matches",
+    "since": "2026-11-23",
+    "until": "2026-11-23"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "One job is shown today: the Initech Demo data engineer role [[j1]], in decision [[d1]]."
+ }
+]

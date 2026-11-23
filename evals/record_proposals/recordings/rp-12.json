@@ -1,0 +1,18 @@
+[
+ {
+  "proposals": [
+   {
+    "entity": "constraint",
+    "operation": "set",
+    "field": "location",
+    "value": {
+     "country_codes": [
+      "IN"
+     ]
+    },
+    "evidence_quote": "I only want jobs in India",
+    "statement": "Only jobs in India."
+   }
+  ]
+ }
+]

@@ -1,0 +1,24 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "list_matches",
+    "outcome": "filtered"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [
+   {
+    "tool": "get_decision",
+    "decision": "d1"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "The rule that applied is your excluded-company constraint [[c1]], recorded in the decision [[d1]]."
+ }
+]

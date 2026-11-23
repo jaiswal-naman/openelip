@@ -1,0 +1,52 @@
+[
+ {
+  "verdicts": [
+   {
+    "requirement": "r1",
+    "verdict": "met",
+    "facts": [
+     "f90"
+    ]
+   },
+   {
+    "requirement": "r2",
+    "verdict": "met",
+    "facts": [
+     "f91"
+    ]
+   },
+   {
+    "requirement": "r3",
+    "verdict": "met",
+    "facts": [
+     "f90"
+    ]
+   }
+  ]
+ },
+ {
+  "verdicts": [
+   {
+    "requirement": "r1",
+    "verdict": "met",
+    "facts": [
+     "f90"
+    ]
+   },
+   {
+    "requirement": "r2",
+    "verdict": "met",
+    "facts": [
+     "f91"
+    ]
+   },
+   {
+    "requirement": "r3",
+    "verdict": "met",
+    "facts": [
+     "f90"
+    ]
+   }
+  ]
+ }
+]
