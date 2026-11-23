@@ -9,6 +9,7 @@ import json
 import logging
 import socket
 import time
+import types
 
 import httpx
 import pytest
@@ -44,12 +45,17 @@ def no_dns(monkeypatch):
     monkeypatch.setattr(http, "resolve", resolve)
 
 
+def named(request):
+    """The URL the caller asked for. The request itself goes to a checked address, with the name in the Host header."""
+    return f"{request.url.scheme}://{request.headers['host']}{request.url.raw_path.decode('ascii')}"
+
+
 def served(handler):
-    """(transport, requested): `handler` answers every request, and every URL it was asked for is listed."""
+    """(transport, requested): `handler` answers every request, and every URL it was asked for is listed, by name."""
     requested = []
 
     def record(request):
-        requested.append(str(request.url))
+        requested.append(named(request))
         return handler(request)
 
     return httpx.MockTransport(record), requested
@@ -131,6 +137,17 @@ def test_a_url_that_cannot_be_read_is_refused():
         "http://[::]/",
         "http://[::ffff:127.0.0.1]/",  # an IPv4 loopback address written as IPv6
         "http://[::ffff:169.254.169.254]/",
+        "http://[64:ff9b::7f00:1]/",  # NAT64 wrapping 127.0.0.1
+        "http://[64:ff9b::a00:1]/",  # NAT64 wrapping 10.0.0.1: a gateway would carry it to the private network
+        "http://[2002:7f00:1::]/",  # 6to4 wrapping 127.0.0.1
+        "http://[2002:a9fe:a9fe::]/",  # 6to4 wrapping the cloud metadata address
+        "http://[::127.0.0.1]/",  # the deprecated IPv4-compatible form
+        "http://[::10.0.0.1]/",
+        "http://[fec0::1]/",  # site-local, deprecated but still private
+        "http://[ff02::1]/",  # multicast
+        "http://[ff0e::1]/",
+        "http://224.0.0.1/",  # IPv4 multicast
+        "http://[::ffff:224.0.0.1]/",
         "http://2130706433/",
         "http://0x7f.1/",
         "http://localhost/",
@@ -164,6 +181,128 @@ def test_the_system_resolver_is_asked_for_the_host_and_returns_addresses_only():
     assert REAL_RESOLVE("127.0.0.1") == ["127.0.0.1"]  # an IP literal needs no network
 
 
+@pytest.mark.parametrize(
+    "host",
+    [
+        "[64:ff9b::5db8:d822]",  # NAT64 wrapping a public IPv4 address, which a DNS64 resolver hands out for real hosts
+        "[2002:5db8:d822::]",  # 6to4 wrapping a public IPv4 address
+        "[::ffff:93.184.216.34]",
+        "[2606:4700:4700::1111]",  # a plain public IPv6 address
+    ],
+)
+def test_a_public_address_inside_a_transition_form_is_still_fetched(host):
+    transport, requested = served(lambda request: page())
+    assert http.fetch_public(f"http://{host}/jobs/1", transport=transport).status == 200
+    assert len(requested) == 1
+
+
+# --- where the request goes: the address that was checked ---------------------------------------------------------
+
+
+def test_the_request_goes_to_the_address_that_passed_the_check_with_the_name_kept_for_host_and_tls():
+    seen = {}
+
+    def handler(request):
+        seen.update(address=request.url.host, host=request.headers["host"], tls_name=request.extensions["sni_hostname"])
+        return page()
+
+    http.fetch_public(JOB, transport=served(handler)[0])
+
+    assert seen == {"address": PUBLIC, "host": "example.test", "tls_name": "example.test"}
+
+
+def test_a_port_stays_on_the_connection_and_in_the_host_header():
+    seen = {}
+
+    def handler(request):
+        seen.update(port=request.url.port, host=request.headers["host"])
+        return page()
+
+    http.fetch_public("https://example.test:8443/jobs/1", transport=served(handler)[0])
+
+    assert seen == {"port": 8443, "host": "example.test:8443"}
+
+
+def test_a_name_whose_dns_answer_changes_after_the_check_is_never_connected_to_at_the_new_answer(monkeypatch):
+    """DNS rebinding: a name answers with a public address when it is checked and with loopback when it is asked again.
+    The request must go to the address that passed, so the transport only ever sees the public one."""
+    asked, connected = [], []
+
+    def rebinding(host):
+        asked.append(host)
+        return [PUBLIC] if asked.count(host) == 1 else ["127.0.0.1"]
+
+    monkeypatch.setattr(http, "resolve", rebinding)
+    answers = {JOB: redirect("https://careers.example.test/jobs/1"), "https://careers.example.test/jobs/1": page()}
+
+    def handler(request):
+        connected.append(request.url.host)
+        return answers[named(request)]
+
+    assert http.fetch_public(JOB, transport=served(handler)[0]).status == 200
+    assert connected == [PUBLIC, PUBLIC]  # one address per hop, never loopback
+    assert asked == ["example.test", "careers.example.test"]  # each name is asked once, and not again to connect
+
+
+def test_every_request_closes_its_connection_so_a_hop_to_another_name_never_reuses_it():
+    seen = {}
+
+    def handler(request):
+        seen.update(request.headers)
+        return page()
+
+    http.fetch_public(JOB, transport=served(handler)[0])
+
+    assert seen["connection"] == "close"
+
+
+def test_the_next_checked_address_is_tried_when_one_takes_no_connection(monkeypatch):
+    # A host with an IPv6 and an IPv4 address, fetched from a machine with no IPv6 route: the system's own connect
+    # would move on to the other address, and so does this.
+    monkeypatch.setitem(NAMES, "dual.test", ["2606:4700:4700::1111", PUBLIC])
+    tried = []
+
+    def handler(request):
+        tried.append(request.url.host)
+        if request.url.host == "2606:4700:4700::1111":
+            raise httpx.ConnectError("network unreachable")
+        return page()
+
+    assert http.fetch_public("https://dual.test/jobs/1", transport=served(handler)[0]).status == 200
+    assert tried == ["2606:4700:4700::1111", PUBLIC]
+
+
+def test_a_failure_after_the_connection_was_made_does_not_move_on_to_the_next_address(monkeypatch):
+    monkeypatch.setitem(NAMES, "dual.test", [PUBLIC, "93.184.216.35"])
+    tried = []
+
+    def handler(request):
+        tried.append(request.url.host)
+        raise httpx.ReadTimeout("slow")
+
+    with pytest.raises(http.FetchFailed) as error:
+        http.fetch_public("https://dual.test/jobs/1", transport=served(handler)[0])
+
+    assert error.value.reason == "timeout" and tried == [PUBLIC]
+
+
+@pytest.mark.parametrize(
+    ("failure", "reason"), [(httpx.ConnectTimeout("dead"), "timeout"), (httpx.ConnectError("refused"), "network")]
+)
+def test_when_no_address_takes_the_connection_the_fetch_fails_with_the_last_reason(monkeypatch, failure, reason):
+    monkeypatch.setitem(NAMES, "dead.test", [PUBLIC, "93.184.216.35"])
+    tried = []
+
+    def handler(request):
+        tried.append(request.url.host)
+        raise failure
+
+    with pytest.raises(http.FetchFailed) as error:
+        http.fetch_public("https://dead.test/jobs/1", transport=served(handler)[0])
+
+    assert error.value.reason == reason and tried == [PUBLIC, "93.184.216.35"]
+
+
 # --- redirects ----------------------------------------------------------------------------------------------------
 
 
@@ -191,7 +330,7 @@ def test_redirects_are_followed_with_relative_ones_resolved_and_the_final_url_re
         JOB: redirect("https://careers.example.test/jobs/1?ref=feed", 307),
         "https://careers.example.test/jobs/1?ref=feed": page(),
     }
-    transport, requested = served(lambda request: answers[str(request.url)])
+    transport, requested = served(lambda request: answers[named(request)])
 
     result = http.fetch_public("https://example.test/old", transport=transport)
 
@@ -202,7 +341,7 @@ def test_redirects_are_followed_with_relative_ones_resolved_and_the_final_url_re
 @pytest.mark.parametrize("status", [301, 302, 303, 307, 308])
 def test_every_redirect_status_is_followed(status):
     answers = {JOB: redirect("/jobs/2", status), "https://example.test/jobs/2": page()}
-    transport, _ = served(lambda request: answers[str(request.url)])
+    transport, _ = served(lambda request: answers[named(request)])
     assert http.fetch_public(JOB, transport=transport).final_url == "https://example.test/jobs/2"
 
 
@@ -308,18 +447,27 @@ def test_a_huge_body_stops_being_read_one_piece_after_the_cap():
 
 
 def test_connect_time_is_shared_among_the_addresses_so_a_name_with_many_dead_ones_cannot_hold_the_call(monkeypatch):
-    # httpx tries each resolved address in turn, each with the connect timeout: four dead ones must not cost 4 x 15 s.
+    # Each resolved address is tried in turn, and a dead one costs its whole connect timeout: four dead ones must not
+    # cost 4 x 15 s. The clock below moves on by exactly the time each dead address was given.
     monkeypatch.setitem(NAMES, "many.test", [f"93.184.216.{n}" for n in range(30, 34)])
-    seen = {}
+    now = [0.0]
+    monkeypatch.setattr(http, "time", types.SimpleNamespace(monotonic=lambda: now[0]))
+    connect_timeouts, longest_wait = [], []
 
     def handler(request):
-        seen.update(request.extensions["timeout"])
-        return page()
+        timeout = request.extensions["timeout"]
+        connect_timeouts.append(timeout["connect"])
+        longest_wait.append(max(timeout.values()))
+        now[0] += timeout["connect"]
+        raise httpx.ConnectTimeout("dead")
 
-    http.fetch_public("https://many.test/jobs/1", transport=served(handler)[0])
+    with pytest.raises(http.FetchFailed) as error:
+        http.fetch_public("https://many.test/jobs/1", transport=served(handler)[0])
 
-    assert seen["connect"] <= http.TIMEOUT_S / 4
-    assert max(seen.values()) <= http.TIMEOUT_S  # no single wait is longer than the whole budget
+    assert error.value.reason == "timeout" and len(connect_timeouts) == 4
+    assert connect_timeouts[0] <= http.TIMEOUT_S / 4  # the first try is a quarter of the budget
+    assert now[0] <= http.TIMEOUT_S  # all four together are the budget and no more
+    assert max(longest_wait) <= http.TIMEOUT_S  # no single wait is longer than the whole budget
 
 
 def test_a_chain_of_redirects_that_has_spent_the_budget_is_not_followed_further(monkeypatch):
