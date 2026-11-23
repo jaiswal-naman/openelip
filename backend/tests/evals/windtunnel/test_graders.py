@@ -250,6 +250,8 @@ def test_a_result_row_names_at_most_twenty_rows_but_counts_them_all():
             {"stage_history": (("applied", 1.0), ("interview", 2.0), ("applied", 3.0)), "final_stage": "applied"},
             False,
         ),
+        ("stays:applied", {"stage_history": (), "final_stage": "applied"}, True),  # made there, never moved
+        ("stays:applied", {"stage_history": (("talking", 1.0),), "final_stage": "applied"}, False),
         ("closed:no_response", {"final_stage": "closed", "closed_reason": "no_response"}, True),
         ("closed:no_response", {"final_stage": "closed", "closed_reason": "rejected"}, False),
         ("closed:no_response", {}, False),

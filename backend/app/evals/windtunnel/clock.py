@@ -2,7 +2,8 @@
 
 Days pass in minutes: instead of waiting, the driver moves what the campaign is waiting for into the past, by the same
 statements the Phase 7 `age` helpers use: `campaigns.last_update_at`, the due time of the campaign's waiting steps and
-the run time of its queued `campaign.wake` jobs. It never touches an undo window (`agent_actions.undo_until` is
+the run time of its queued `campaign.wake` jobs, and the finish time of its finished steps (the Chaser measures follow-up 2
+from the end of follow-up 1, so a silent employer needs that moved too). It never touches an undo window (`agent_actions.undo_until` is
 immutable and a real minute at least), an approval, or an introduction: no scenario depends on those clocks.
 
 Because each attempt shifts only its own campaign, fifty attempts interleave in one process without disturbing each
@@ -68,6 +69,10 @@ def shift(conn: Connection, campaign_id: UUID, delta: timedelta) -> None:
     conn.execute(text("UPDATE campaigns SET last_update_at = last_update_at - :d WHERE id = :c"), arguments)
     conn.execute(
         text("UPDATE campaign_steps SET due_at = due_at - :d WHERE campaign_id = :c AND status = 'waiting'"), arguments
+    )
+    conn.execute(
+        text("UPDATE campaign_steps SET finished_at = finished_at - :d WHERE campaign_id = :c AND finished_at IS NOT NULL"),
+        arguments,
     )
     conn.execute(
         text(

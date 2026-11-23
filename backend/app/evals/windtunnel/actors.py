@@ -151,6 +151,8 @@ class Attempt:
         self.quiet_fired = set()
 
     def _quiet_rules(self) -> list[dict[str, Any]]:
+        if self.last_stage == "closed":
+            return []  # a closed campaign has no quiet period: the person has nothing left to wait for
         return [r for r in self.scenario.candidate_rules if r["on"].startswith("quiet_days:")]
 
     def _quiet_due(self) -> list[dict[str, Any]]:

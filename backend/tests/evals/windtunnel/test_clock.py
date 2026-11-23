@@ -116,6 +116,25 @@ def test_shift_moves_exactly_the_three_columns_of_one_campaign(engine):
         assert abs(done_step - now) < timedelta(seconds=2)  # a finished step is history, not waiting
 
 
+def test_shift_moves_the_finish_time_of_finished_steps_of_that_campaign_only(engine):
+    now = datetime.now(UTC)
+    with engine.begin() as conn:
+        mine, other = make_world(conn), make_world(conn)
+        for world in (mine, other):
+            make_step(conn, world.campaign, "follow_up:1", status="done", due_at=now)
+            conn.execute(
+                text("UPDATE campaign_steps SET finished_at = :at WHERE campaign_id = :c"),
+                {"at": now, "c": world.campaign},
+            )
+        clock.shift(conn, mine.campaign, timedelta(days=7))
+        finished = {
+            w: conn.execute(text("SELECT finished_at FROM campaign_steps WHERE campaign_id = :c"), {"c": w}).scalar_one()
+            for w in (mine.campaign, other.campaign)
+        }
+        assert abs(finished[mine.campaign] - (now - timedelta(days=7))) < timedelta(seconds=2)
+        assert abs(finished[other.campaign] - now) < timedelta(seconds=2)
+
+
 def test_a_virtual_clock_counts_real_time_and_every_shift_made_before_a_moment():
     started = datetime(2026, 11, 1, 12, 0, tzinfo=UTC)
     virtual = clock.VirtualClock(started)

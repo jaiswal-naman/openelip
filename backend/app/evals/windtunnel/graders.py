@@ -496,8 +496,10 @@ def _goal(t: Trajectory, goal: str) -> bool:
     if form == "stage":
         return value in reached
     if form == "stays":
-        if t.final_stage != value or value not in reached:
+        if t.final_stage != value:
             return False
+        if value not in reached:
+            return not reached  # a campaign made at this stage (an introduction starts applied) records no move to it
         return all(stage == value for stage in reached[reached.index(value) :])
     if form == "closed":
         return t.final_stage == "closed" and t.closed_reason == value
