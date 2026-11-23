@@ -1,0 +1,14 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_record"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "Three hard constraints apply to every job you see: remote or hybrid work only [[c1]], jobs in India only [[c2]], and never Globex Demo [[c3]]."
+ }
+]

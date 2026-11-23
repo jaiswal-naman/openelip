@@ -1,0 +1,16 @@
+[
+ {
+  "proposals": [
+   {
+    "entity": "fact",
+    "operation": "set",
+    "field": "skill",
+    "value": {
+     "text": "Terraform"
+    },
+    "evidence_quote": "I also know Terraform",
+    "statement": "Knows Terraform."
+   }
+  ]
+ }
+]

@@ -1,0 +1,16 @@
+[
+ {
+  "proposals": [
+   {
+    "entity": "preference",
+    "operation": "remove",
+    "field": "target_title",
+    "value": {
+     "text": "data engineer"
+    },
+    "evidence_quote": "Forget that I wanted data engineer roles",
+    "statement": "Remove the data engineer target."
+   }
+  ]
+ }
+]
