@@ -11,7 +11,7 @@ Requirements for the first release. Each maps to exactly one roadmap phase. Item
 
 - [ ] **PLT-01**: A developer can start the whole stack locally with one command and reach the web app and the API
 - [ ] **PLT-02**: A user can sign in with an emailed one-time code, stays signed in across a refresh, and can sign out
-- [ ] **PLT-03**: Every write endpoint accepts an idempotency key and replays the first response for a repeated key
+- [ ] **PLT-03**: Every write endpoint that uses the session cookie accepts an idempotency key and replays the first response for a repeated key; the four public writes that carry their own proof instead (sign-in code request, sign-in, unsubscribe link, webhook receiver) are exempt (API.md 1.6)
 - [ ] **PLT-04**: Every model call goes through one gateway that validates structured output and records task, model, tokens, cost and latency
 - [ ] **PLT-05**: The instance operator can switch the model provider per task by configuration (Anthropic by default, one other provider, and an OpenAI-compatible local endpoint)
 - [ ] **PLT-06**: Background jobs run from a Postgres-backed queue with retries, a dead-letter state, per-job unique keys and scheduled jobs

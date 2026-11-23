@@ -10,7 +10,7 @@ import { useMe } from "@/features/auth/queries";
 import { useApi } from "@/lib/api/context";
 import { isFailure } from "@/lib/api/errors";
 import type { Costs } from "@/lib/api/types";
-import { formatMoney, formatMonth, formatPercent } from "@/lib/format";
+import { formatLatency, formatMoney, formatMonth, formatPercent } from "@/lib/format";
 import { useViewer } from "@/lib/viewer";
 import styles from "./costs.module.css";
 import { costsQuery } from "./queries";
@@ -104,8 +104,12 @@ function CostTable({ title, keyLabel, costs }: { title: string; keyLabel: string
         <thead>
           <tr>
             <th scope="col">{keyLabel}</th>
+            <th scope="col">Models</th>
             <th scope="col" className={ledger.num}>
               Calls
+            </th>
+            <th scope="col" className={ledger.num}>
+              Average latency
             </th>
             <th scope="col" className={ledger.num}>
               Tokens in / out
@@ -124,8 +128,14 @@ function CostTable({ title, keyLabel, costs }: { title: string; keyLabel: string
             return (
               <tr key={row.period ?? row.task ?? "unknown"}>
                 <th scope="row">{key}</th>
+                <td className={`t-data ${styles.models}`} data-label="Models">
+                  {row.models.join(", ")}
+                </td>
                 <td className={ledger.num} data-label="Calls">
                   <Count value={row.calls} />
+                </td>
+                <td className={ledger.num} data-label="Average latency">
+                  {formatLatency(row.avg_latency_ms, locale)}
                 </td>
                 <td className={ledger.num} data-label="Tokens in / out">
                   <Count value={row.input_tokens} /> / <Count value={row.output_tokens} />

@@ -16,13 +16,50 @@ const byMonth = (rows: unknown[], total = "1.120000", calls = 252) =>
 const byTask = (rows: unknown[], total = "1.120000", calls = 252) =>
   ok({ group_by: "task", currency: "USD", total_usd: total, model_calls: calls, rows, label: LABEL });
 
+// The model names are invented too. example_task and October each used two models, so their rows list both.
 const MONTHS = [
-  { period: "2026-11", task: null, calls: 212, cost_usd: "0.480000", input_tokens: 120000, output_tokens: 30000 },
-  { period: "2026-10", task: null, calls: 40, cost_usd: "0.640000", input_tokens: 9000, output_tokens: 1200 },
+  {
+    period: "2026-11",
+    task: null,
+    calls: 212,
+    cost_usd: "0.480000",
+    input_tokens: 120000,
+    output_tokens: 30000,
+    avg_latency_ms: 850,
+    models: ["example/model-a"],
+  },
+  {
+    period: "2026-10",
+    task: null,
+    calls: 40,
+    cost_usd: "0.640000",
+    input_tokens: 9000,
+    output_tokens: 1200,
+    avg_latency_ms: 1234,
+    models: ["example/model-a", "example/model-b"],
+  },
 ];
 const TASKS = [
-  { period: null, task: "example_task", calls: 200, cost_usd: "1.000000", input_tokens: 100000, output_tokens: 25000 },
-  { period: null, task: "ping", calls: 52, cost_usd: "0.004200", input_tokens: 5200, output_tokens: 1040 },
+  {
+    period: null,
+    task: "example_task",
+    calls: 200,
+    cost_usd: "1.000000",
+    input_tokens: 100000,
+    output_tokens: 25000,
+    avg_latency_ms: 1234,
+    models: ["example/model-a", "example/model-b"],
+  },
+  {
+    period: null,
+    task: "ping",
+    calls: 52,
+    cost_usd: "0.004200",
+    input_tokens: 5200,
+    output_tokens: 1040,
+    avg_latency_ms: 850,
+    models: ["example/model-a"],
+  },
 ];
 
 const routes = (month: Response, task: Response) => ({
@@ -42,12 +79,14 @@ describe("the costs page", () => {
     expect(total.parentElement).toHaveTextContent("252 model calls");
   });
 
-  it("has a table by month with calls, tokens in and out, cost and share of the total", async () => {
+  it("has a table by month with models, calls, average latency, tokens in and out, cost and share of the total", async () => {
     renderWithApi(<CostsView />, routes(byMonth(MONTHS), byTask(TASKS)));
     const table = await screen.findByRole("table", { name: /Model cost by month/ });
     expect(within(table).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
       "Month",
+      "Models",
       "Calls",
+      "Average latency",
       "Tokens in / out",
       "Cost",
       "Share of total",
@@ -73,6 +112,30 @@ describe("the costs page", () => {
     expect(within(table).getByRole("row", { name: /example_task/ })).toHaveTextContent("89%");
   });
 
+  it("names the models behind each row and the average latency of its calls, in a readable unit", async () => {
+    renderWithApi(<CostsView />, routes(byMonth(MONTHS), byTask(TASKS)));
+    const byTaskTable = await screen.findByRole("table", { name: /Model cost by task/ });
+    const ping = within(byTaskTable).getByRole("row", { name: /ping/ });
+    expect(ping).toHaveTextContent("example/model-a");
+    expect(ping).toHaveTextContent("850 ms"); // under a second: milliseconds
+    const example = within(byTaskTable).getByRole("row", { name: /example_task/ });
+    expect(example).toHaveTextContent("example/model-a, example/model-b"); // a task that used two models lists both
+    expect(example).toHaveTextContent("1.2 s"); // a second or more: seconds
+
+    const byMonthTable = screen.getByRole("table", { name: /Model cost by month/ });
+    const october = within(byMonthTable).getByRole("row", { name: /Oct 2026/ });
+    expect(october).toHaveTextContent("example/model-a, example/model-b");
+    expect(october).toHaveTextContent("1.2 s");
+  });
+
+  it("labels the model and latency cells for the phone layout, where every cell names itself", async () => {
+    renderWithApi(<CostsView />, routes(byMonth(MONTHS), byTask(TASKS)));
+    const table = await screen.findByRole("table", { name: /Model cost by task/ });
+    const ping = within(table).getByRole("row", { name: /ping/ });
+    expect(within(ping).getByText("example/model-a")).toHaveAttribute("data-label", "Models");
+    expect(within(ping).getByText("850 ms")).toHaveAttribute("data-label", "Average latency");
+  });
+
   it("draws each share as an SVG bar that screen readers skip, because the percentage is printed beside it", async () => {
     const { container } = renderWithApi(<CostsView />, routes(byMonth(MONTHS), byTask(TASKS)));
     await screen.findByRole("table", { name: /by task/ });
@@ -82,8 +145,12 @@ describe("the costs page", () => {
   });
 
   it("does not invent a share when nothing has a cost: a free fake provider shows no bar and no percentage", async () => {
-    const free = [{ period: null, task: "ping", calls: 3, cost_usd: "0.000000", input_tokens: 300, output_tokens: 60 }];
-    const freeMonth = [{ period: "2026-11", task: null, calls: 3, cost_usd: "0.000000", input_tokens: 300, output_tokens: 60 }];
+    const free = [
+      { period: null, task: "ping", calls: 3, cost_usd: "0.000000", input_tokens: 300, output_tokens: 60, avg_latency_ms: 2, models: ["example/model-a"] },
+    ];
+    const freeMonth = [
+      { period: "2026-11", task: null, calls: 3, cost_usd: "0.000000", input_tokens: 300, output_tokens: 60, avg_latency_ms: 2, models: ["example/model-a"] },
+    ];
     const { container } = renderWithApi(<CostsView />, routes(byMonth(freeMonth, "0.000000", 3), byTask(free, "0.000000", 3)));
     const table = await screen.findByRole("table", { name: /by task/ });
     expect(within(table).getByRole("row", { name: /ping/ })).toHaveTextContent("USD 0.00");

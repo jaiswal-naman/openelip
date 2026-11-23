@@ -26,6 +26,18 @@ export function formatCount(count: number, locale?: string): string {
   return new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(count);
 }
 
+/**
+ * A measured duration: whole milliseconds under one second, then seconds with at most one decimal ("850 ms", "1.2 s").
+ * The unit is joined to its number with a no-break space, so a narrow column never splits them.
+ * ponytail: nothing above seconds; the task timeouts in config/models.toml are 30 and 60 seconds. Add minutes if one grows.
+ */
+export function formatLatency(ms: number, locale?: string): string {
+  if (!Number.isFinite(ms)) return "Unknown";
+  const whole = Math.round(ms);
+  if (whole < 1000) return `${new Intl.NumberFormat(locale).format(whole)} ms`;
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(whole / 1000)} s`;
+}
+
 export function formatPercent(fraction: number, locale?: string): string {
   if (fraction > 0 && fraction < 0.005) return "<1%";
   return new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }).format(fraction);

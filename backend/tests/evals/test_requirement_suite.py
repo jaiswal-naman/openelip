@@ -662,10 +662,15 @@ def test_the_floor_the_ci_listing_and_the_documentation_are_in_place():
 # ---- the documentation of the bars ----------------------------------------
 
 
-def test_the_bars_were_written_down_with_a_date_before_any_number_and_say_what_they_do_not_show():
+def test_the_bars_are_dated_say_plainly_what_ran_before_them_and_say_what_they_do_not_show():
     readme = (SUITE_DIR / "README.md").read_text(encoding="utf-8")
-    bars = readme.split("## Pre-registered bars")[1]
-    assert "Written on 2026-11-23, before any run of `score.py`" in bars
+    bars = " ".join(readme.split("## Pre-registered bars")[1].split())  # one line, so re-wrapping the README is fine
+    assert "Written on 2026-11-23 (AI_SYSTEM 12.1" in bars
+    # A rules run came three minutes before the bars were committed: the README says so and never claims the bars
+    # came first, because git cannot show that.
+    assert "One development run of the rules baseline happened three minutes before these bars were committed" in bars
+    assert "the order cannot be shown from git; the bar values were not tuned to it" in bars
+    assert "before any run of `score.py`" not in bars
     assert (
         "`req_spans_resolved = 1.0`" in bars
         and "`req_item_f1 >= 0.85`" in bars
