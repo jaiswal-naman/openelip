@@ -40,6 +40,10 @@ TRACING_FLAGS = ("LANGSMITH_TRACING", "LANGSMITH_TRACING_V2", "LANGCHAIN_TRACING
 TRACING_KEYS = ("LANGSMITH_API_KEY", "LANGCHAIN_API_KEY")
 
 
+DEFAULT_MCP_ORIGINS = ("http://127.0.0.1:8080", "http://localhost:8080")
+LOOPBACK_ORIGIN_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
 class ConfigError(RuntimeError):
     """The environment is unusable; the process should not start."""
 
@@ -75,6 +79,10 @@ class Settings:
     # chance.
     app_mode: AppMode = "server"
     llm_provider_is_set: bool = False  # LLM_PROVIDER was given; a model key saved in the app never overrides it
+    # The origins a browser may send to /mcp (09-INDEX "Configuration"). Only loopback by default: the MCP server is
+    # local-only in both modes. A non-loopback origin needs mcp_allow_remote_origins, or the process does not start.
+    mcp_allowed_origins: tuple[str, ...] = DEFAULT_MCP_ORIGINS
+    mcp_allow_remote_origins: bool = False
 
     @property
     def campaign_budget_microusd(self) -> int:
@@ -170,8 +178,11 @@ def load(environ: Mapping[str, str]) -> Settings:
         research_pages_dir=get("RESEARCH_PAGES_DIR"),
         app_mode=_app_mode(get("APP_MODE")),
         llm_provider_is_set=get("LLM_PROVIDER") is not None,
+        mcp_allowed_origins=_split(get("MCP_ALLOWED_ORIGINS")) or DEFAULT_MCP_ORIGINS,
+        mcp_allow_remote_origins=_flag("MCP_ALLOW_REMOTE_ORIGINS", get("MCP_ALLOW_REMOTE_ORIGINS")),
     )
     _refuse_local_mode_off_localhost(settings)
+    _refuse_remote_mcp_origins(settings)
     _refuse_recorded_pages_in_production(settings)
     _check_keys_are_usable(settings)
     _refuse_development_secrets_off_localhost(settings)
@@ -183,6 +194,20 @@ def _refuse_local_mode_off_localhost(settings: Settings) -> None:
     """Local mode signs whoever reaches the API in as the owner, so it is only for an address nobody else can reach."""
     if settings.app_mode == "local" and not is_local(settings.app_base_url):
         raise ConfigError("APP_MODE=local is refused when APP_BASE_URL is not a localhost address; use APP_MODE=server")
+
+
+def _refuse_remote_mcp_origins(settings: Settings) -> None:
+    """The MCP server is reachable from this computer only. An origin that is not loopback (any port) is refused unless
+    MCP_ALLOW_REMOTE_ORIGINS=true says the owner means it. The origin itself is never echoed."""
+    if settings.mcp_allow_remote_origins:
+        return
+    for origin in settings.mcp_allowed_origins:
+        parts = urlsplit(origin)
+        if parts.scheme not in ("http", "https") or (parts.hostname or "") not in LOOPBACK_ORIGIN_HOSTS:
+            raise ConfigError(
+                "MCP_ALLOWED_ORIGINS holds an origin that is not on this computer; "
+                "set MCP_ALLOW_REMOTE_ORIGINS=true only if you mean to allow it"
+            )
 
 
 def _refuse_recorded_pages_in_production(settings: Settings) -> None:
