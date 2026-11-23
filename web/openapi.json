@@ -593,6 +593,23 @@
               "default": "month",
               "title": "Group By"
             }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Month"
+            }
           }
         ],
         "responses": {
@@ -3678,6 +3695,235 @@
         }
       }
     },
+    "/v1/control/runs": {
+      "get": {
+        "summary": "Read Runs",
+        "operationId": "read_runs_v1_control_runs_get",
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Campaign Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "running",
+                    "succeeded",
+                    "failed",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "agent_role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "scout",
+                    "researcher",
+                    "analyst",
+                    "writer",
+                    "operator",
+                    "chaser",
+                    "coach",
+                    "twin"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agent Role"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Runs_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/costs/campaigns": {
+      "get": {
+        "summary": "Campaign Costs",
+        "operationId": "campaign_costs_v1_control_costs_campaigns_get",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Month"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CampaignCosts_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/evals": {
+      "get": {
+        "summary": "Scoreboard",
+        "operationId": "scoreboard_v1_control_evals_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Scoreboard_"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/evals/runs/{eval_run_id}": {
+      "get": {
+        "summary": "Run Detail",
+        "operationId": "run_detail_v1_control_evals_runs__eval_run_id__get",
+        "parameters": [
+          {
+            "name": "eval_run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Eval Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_EvalRun_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/approvals": {
       "get": {
         "summary": "Approvals",
@@ -5932,6 +6178,90 @@
         ],
         "title": "ApproveIn"
       },
+      "Attempt": {
+        "properties": {
+          "scenario_key": {
+            "type": "string",
+            "title": "Scenario Key"
+          },
+          "attempt": {
+            "type": "integer",
+            "title": "Attempt"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scenario_key",
+          "attempt",
+          "seed",
+          "status",
+          "started_at",
+          "finished_at",
+          "results"
+        ],
+        "title": "Attempt"
+      },
+      "AttemptResult": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "passed": {
+            "type": "boolean",
+            "title": "Passed"
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "code",
+          "passed",
+          "details"
+        ],
+        "title": "AttemptResult"
+      },
       "AuditLink": {
         "properties": {
           "kind": {
@@ -6691,6 +7021,55 @@
         ],
         "title": "BriefUndoable"
       },
+      "CampaignCosts": {
+        "properties": {
+          "month": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "currency": {
+            "type": "string",
+            "const": "USD",
+            "title": "Currency"
+          },
+          "total_usd": {
+            "type": "string",
+            "title": "Total Usd"
+          },
+          "model_calls": {
+            "type": "integer",
+            "title": "Model Calls"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/CampaignSpend"
+            },
+            "type": "array",
+            "title": "Groups"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "currency",
+          "total_usd",
+          "model_calls",
+          "groups",
+          "label"
+        ],
+        "title": "CampaignCosts"
+      },
       "CampaignDetail": {
         "properties": {
           "id": {
@@ -6975,6 +7354,83 @@
         ],
         "title": "CampaignProposalView",
         "description": "An offer to start a campaign for a job (plan 07-06). Nothing is started until the candidate clicks the card."
+      },
+      "CampaignSpend": {
+        "properties": {
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "spent_usd": {
+            "type": "string",
+            "title": "Spent Usd"
+          },
+          "lifetime_spent_usd": {
+            "type": "string",
+            "title": "Lifetime Spent Usd"
+          },
+          "budget_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Usd"
+          },
+          "model_calls": {
+            "type": "integer",
+            "title": "Model Calls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "campaign_id",
+          "title",
+          "company_name",
+          "stage",
+          "spent_usd",
+          "lifetime_spent_usd",
+          "budget_usd",
+          "model_calls"
+        ],
+        "title": "CampaignSpend"
       },
       "CancelIn": {
         "properties": {
@@ -8689,6 +9145,47 @@
         ],
         "title": "Envelope[BriefDetail]"
       },
+      "Envelope_CampaignCosts_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampaignCosts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[CampaignCosts]"
+      },
       "Envelope_CampaignDetail_": {
         "properties": {
           "success": {
@@ -9016,6 +9513,47 @@
           "meta"
         ],
         "title": "Envelope[DocumentView]"
+      },
+      "Envelope_EvalRun_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvalRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[EvalRun]"
       },
       "Envelope_FactWritten_": {
         "properties": {
@@ -9877,6 +10415,88 @@
           "meta"
         ],
         "title": "Envelope[RoleView]"
+      },
+      "Envelope_Runs_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Runs"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[Runs]"
+      },
+      "Envelope_Scoreboard_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Scoreboard"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[Scoreboard]"
       },
       "Envelope_SessionView_": {
         "properties": {
@@ -10822,6 +11442,93 @@
         ],
         "title": "ErrorBody"
       },
+      "EvalRun": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "suite": {
+            "type": "string",
+            "title": "Suite"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "git_sha": {
+            "type": "string",
+            "title": "Git Sha"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics"
+          },
+          "attempts": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Attempt"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "suite",
+          "status",
+          "mode",
+          "git_sha",
+          "started_at",
+          "finished_at",
+          "config",
+          "metrics",
+          "attempts"
+        ],
+        "title": "EvalRun"
+      },
       "EventView": {
         "properties": {
           "status": {
@@ -11322,6 +12029,30 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HumanMinutes": {
+        "properties": {
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "run_id",
+          "label"
+        ],
+        "title": "HumanMinutes"
       },
       "IntroductionAccepted": {
         "properties": {
@@ -11914,6 +12645,26 @@
           "level"
         ],
         "title": "LevelIn"
+      },
+      "LiveRun": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "finished_at"
+        ],
+        "title": "LiveRun"
       },
       "LocalSessionRequest": {
         "properties": {
@@ -13383,6 +14134,27 @@
           "kind"
         ],
         "title": "PendingApproval"
+      },
+      "Persona": {
+        "properties": {
+          "persona": {
+            "type": "string",
+            "title": "Persona"
+          },
+          "scenarios": {
+            "items": {
+              "$ref": "#/components/schemas/Scenario"
+            },
+            "type": "array",
+            "title": "Scenarios"
+          }
+        },
+        "type": "object",
+        "required": [
+          "persona",
+          "scenarios"
+        ],
+        "title": "Persona"
       },
       "PreferenceChange": {
         "properties": {
@@ -15550,6 +16322,140 @@
         ],
         "title": "RoleView"
       },
+      "Run": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "campaign",
+              "matching"
+            ],
+            "title": "Source"
+          },
+          "campaign": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunCampaign"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "agent_role": {
+            "type": "string",
+            "title": "Agent Role"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "blocked": {
+            "type": "integer",
+            "title": "Blocked"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "campaign",
+          "agent_role",
+          "status",
+          "blocked",
+          "cost_usd",
+          "trigger",
+          "started_at",
+          "finished_at",
+          "duration_ms"
+        ],
+        "title": "Run"
+      },
+      "RunCampaign": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "company_name"
+        ],
+        "title": "RunCampaign"
+      },
       "RunSummary": {
         "properties": {
           "id": {
@@ -15593,6 +16499,40 @@
         ],
         "title": "RunSummary"
       },
+      "Runs": {
+        "properties": {
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/Run"
+            },
+            "type": "array",
+            "title": "Runs"
+          },
+          "server_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Server Time"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "runs",
+          "server_time",
+          "next_cursor"
+        ],
+        "title": "Runs"
+      },
       "SalaryFloor": {
         "properties": {
           "amount": {
@@ -15632,6 +16572,131 @@
           "quote"
         ],
         "title": "ScamSignal"
+      },
+      "Scenario": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScenarioResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "title",
+          "version",
+          "result"
+        ],
+        "title": "Scenario"
+      },
+      "ScenarioResult": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts"
+          },
+          "attempts_passed": {
+            "type": "integer",
+            "title": "Attempts Passed"
+          },
+          "passed": {
+            "type": "boolean",
+            "title": "Passed"
+          },
+          "attempt_statuses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Attempt Statuses"
+          },
+          "medians": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medians"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "git_sha": {
+            "type": "string",
+            "title": "Git Sha"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "version",
+          "attempts",
+          "attempts_passed",
+          "passed",
+          "attempt_statuses",
+          "medians",
+          "mode",
+          "git_sha",
+          "finished_at"
+        ],
+        "title": "ScenarioResult"
+      },
+      "Scoreboard": {
+        "properties": {
+          "suites": {
+            "items": {
+              "$ref": "#/components/schemas/Suite"
+            },
+            "type": "array",
+            "title": "Suites"
+          },
+          "wind_tunnel": {
+            "$ref": "#/components/schemas/WindTunnel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "suites",
+          "wind_tunnel"
+        ],
+        "title": "Scoreboard"
       },
       "SessionIn": {
         "properties": {
@@ -15956,6 +17021,125 @@
         ],
         "title": "Subprocessors"
       },
+      "Suite": {
+        "properties": {
+          "suite": {
+            "type": "string",
+            "title": "Suite"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuiteResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "suite",
+          "result"
+        ],
+        "title": "Suite"
+      },
+      "SuiteResult": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "n": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "N"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "git_sha": {
+            "type": "string",
+            "title": "Git Sha"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Finished At"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "labels": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labels"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "mode",
+          "n",
+          "passed",
+          "score",
+          "git_sha",
+          "finished_at",
+          "model",
+          "labels"
+        ],
+        "title": "SuiteResult"
+      },
       "TailoredIn": {
         "properties": {
           "job_id": {
@@ -16157,6 +17341,44 @@
           "record_version"
         ],
         "title": "VersionOnly"
+      },
+      "WindTunnel": {
+        "properties": {
+          "last_live_run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "personas": {
+            "items": {
+              "$ref": "#/components/schemas/Persona"
+            },
+            "type": "array",
+            "title": "Personas"
+          },
+          "human_minutes_per_interview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HumanMinutes"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "last_live_run",
+          "personas",
+          "human_minutes_per_interview"
+        ],
+        "title": "WindTunnel"
       },
       "app__hiring__role_routes__PayRange": {
         "properties": {
