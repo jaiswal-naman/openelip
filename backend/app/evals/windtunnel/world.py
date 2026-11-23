@@ -417,7 +417,7 @@ def _introduction(
 def _preview(conn: Connection, user_id: UUID, decision: UUID, name: str, email: str) -> dict[str, Any]:
     """What the candidate would share on a yes, in the shape of API.md 3.12 (hiring.preview.build is the production
     builder; this builds the same shape from the same rows)."""
-    quotes = dict(
+    quotes: dict[UUID, str] = dict(
         conn.execute(
             text(
                 """SELECT id, coalesce(source_quote, statement) FROM profile_facts
@@ -461,8 +461,9 @@ def _preview(conn: Connection, user_id: UUID, decision: UUID, name: str, email: 
     }
 
 
-def build(conn: Connection, scenario: Scenario, attempt: int, run_tag: str) -> World:
-    """Make one attempt's world and register its recordings for its candidate. `conn` is the migrate login's."""
+def build(conn: Connection, scenario: Scenario, attempt: int, run_tag: str, *, replay: bool = True) -> World:
+    """Make one attempt's world and register its recordings for its candidate (not for a live run, which has none).
+    `conn` is the migrate login's."""
     _require_test_database(conn)
     stem = f"wt-{_text(run_tag)}-{_text(scenario.key)}-{attempt}"
     spec = scenario.world
@@ -510,7 +511,8 @@ def build(conn: Connection, scenario: Scenario, attempt: int, run_tag: str) -> W
         started=started,
         **extra,
     )
-    fake.replay_for(user_id, scenario.recorded)
+    if replay:
+        fake.replay_for(user_id, scenario.recorded)
     return world
 
 
