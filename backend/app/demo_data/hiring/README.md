@@ -16,6 +16,10 @@ and writes them only into a scratch database whose name ends in `_test`, with `L
 `docker-compose.demo.yml` sets `LLM_FAKE_DIR` to the `recorded` folder here. The provider uses a file of this folder for
 its task and `app/platform/llm/recorded/` for every other task. Each file is a list handed out in order, once per process.
 
+**One demo per stack.** `LLM_FAKE_DIR` applies to the whole demo stack, so the matches and morning-brief demo would replay
+these hiring answers on a stack where this demo has run, and the other way round. Run each demo on a fresh stack
+(`down -v`, then `up`), as `.github/workflows/e2e.yml` does.
+
 - **Requirements.** `role.txt` has six non-blank lines. Line 3 is "Python and SQL services in production." (required skill),
   line 4 "3+ years as a backend engineer." (required experience, 3 years) and line 5 "Experience leading a small team is a
   plus." (preferred). The answers are identical, so which of the (at most two) calls takes which does not matter.
