@@ -363,11 +363,21 @@ def test_a_scratch_database_or_live_lets_the_run_be_recorded(monkeypatch, tmp_pa
     assert "recorded as run run-1" in capsys.readouterr().out
 
 
+def test_the_published_baseline_is_a_run_on_the_scored_rows_and_names_the_rows_it_left_out():
+    stored = json.loads((EVALS / "location" / "baseline.json").read_text(encoding="utf-8"))
+    assert stored["config"]["split"] == "test" and stored["labels"] == "labels drafted by an agent, review pending"
+    assert stored["config"]["excluded"] == suite.run_config("test", SCORE_FILE)["excluded"]
+    assert stored["metrics"]["n"] == len(suite.load_sample(suite.SAMPLE, "test"))
+    assert stored["metrics"]["location_guessed"] == 0 and stored["status"] == "passed"
+
+
 def test_the_floor_and_the_documentation_are_in_place():
     thresholds = (EVALS / "thresholds.toml").read_text(encoding="utf-8")
     assert "[location_accuracy]" in thresholds and "min_score = 0.95" in thresholds
     readme = (EVALS / "location" / "README.md").read_text(encoding="utf-8")
     assert "## Pre-registered bars" in readme and "location_guessed == 0" in readme
     assert "labels drafted by an agent, review pending" in readme
+    left_out = readme.split("## Rows left out of the test score")[1].split("## Pre-registered bars")[0]
+    assert "labels drafted by an agent, review pending" in left_out and "40 test rows" in left_out
     ai_system = (EVALS.parent / "docs" / "AI_SYSTEM.md").read_text(encoding="utf-8")
     assert "`location_accuracy`, `location_guessed`" in ai_system

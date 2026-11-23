@@ -5,9 +5,10 @@ none. It grades the location parser (IDX-06: country and city correct at least 9
 place nobody stated stays unknown).
 
 **Status: labels drafted by an agent, review pending.** Every row says `labeller: "agent"`. The maintainer reviews at
-least 20% of the test split (60 of the 300 rows) before any accuracy figure from this sample is published. Until then
-a report must say "labels drafted by an agent, review pending". The review is also where the 10 judgement calls in
-`GUIDELINE.md` ("Decisions made while labelling") should be read first.
+least 20% of the test split (60 of the 300 rows, taken from the 260 that are scored, see "Rows left out of the test
+score") before any accuracy figure from this sample is published. Until then a report must say "labels drafted by an
+agent, review pending". The review is also where the 10 judgement calls in `GUIDELINE.md` ("Decisions made while
+labelling") should be read first.
 
 ## Files
 
@@ -60,10 +61,10 @@ settle were decided while labelling and are listed at the end of the guideline w
 
 ## Limits to keep in mind
 
-- **Few unknowns.** Only 9 rows are null and null, 6 of them in the test split. With zero wrong guesses on 6 attempts
-  the 95% upper bound is about 3/6, so this sample can show that the parser does not guess on the commonest unclear
-  strings but cannot bound how often it guesses. A separate synthetic "unreadable strings" slice (labelled as
-  synthetic, reported apart) would be the way to measure that.
+- **Few unknowns.** Only 9 rows are null and null, 6 of them in the test split and 4 of those among the 260 scored
+  rows. With zero wrong guesses on 4 attempts the 95% upper bound is about 3/4, so this sample can show that the parser
+  does not guess on the commonest unclear strings but cannot bound how often it guesses. A separate synthetic
+  "unreadable strings" slice (labelled as synthetic, reported apart) would be the way to measure that.
 - **No ambiguous bare city.** No real row names a city that exists in several countries without a clue (the
   "Cambridge" case in `GUIDELINE.md` rule 4), so that branch is covered by the guideline but not by this data.
 - **United States heavy.** 51% of the rows are US; 14 countries have a single row.
@@ -76,12 +77,33 @@ or rules against the test split is not allowed (AI_SYSTEM 12.1, rule 3), and a f
 patched around. If review finds a wrong label, correct the label, say so in the commit message, and re-run; never change
 the code to fit a label.
 
+## Rows left out of the test score
+
+**Status: labels drafted by an agent, review pending.** The test split was frozen for scoring, but it was not hidden
+from development. The labeller read all 400 rows, `GUIDELINE.md` quotes inputs of test rows under "Decisions made while
+labelling" (for example "US-CA-Menlo Park", "CH-Zurich-Observe", "Mexico - Update Location"), and the parser's unit tests
+(`backend/tests/ingest/test_location.py`) spell out 23 strings that only test rows carry, some by coincidence
+("Toronto") and others through those quotations. The Phase 2 verification found this after the first recorded run.
+
+The 40 test rows whose input is written out in either file, and occurs in no dev row, are listed in `EXCLUDED` in
+`score.py`. They stay in `sample.jsonl`, are left out of every test score, and the recorded run names their ids. A test
+finds them again from the two files, so quoting another test input in either one fails the test until the row is listed
+and the run is made again. Neither the parser nor a label was changed. A row that a dev row also carries is not left out:
+equal inputs have equal labels, and the dev split exists for building the parser.
+
+What changed in the number: the first run (`adad9274-2e77-45b3-927a-7eedd728d121`, 298 of 300) scored all 300 rows and is
+replaced by the run below. The parser was right on all 40 left-out rows, so the two misses are the same and the figure is
+a little lower on the smaller set: 258 of 260 (0.9923) instead of 298 of 300 (0.9933). The bars were written for "the
+test rows" and keep their values; the population they apply to went from 300 rows to 260 after that first run, which is
+a change of the set made after seeing a result, and is stated here for that reason.
+
 ## Pre-registered bars
 
 Written on 2026-11-23, before any run of `score.py` on the test split (AI_SYSTEM 12.1: fix the metric and the bar
 before the run; a changed bar is a new, dated pre-registration).
 
-On the 300 test rows, both must hold:
+On the 300 test rows, both must hold (since the first run, on the 260 that are scored; see "Rows left out of the test
+score"):
 
 - `location_accuracy >= 0.95`. A row is correct when the predicted country equals `label_country` and the predicted
   city equals `label_city`. Cities are compared through GeoNames' names and alternate names (the suite's own reading of
@@ -94,26 +116,30 @@ Reported with counts and a 95% Wilson interval, always beside the words "labels 
 no figure from this sample is final until the maintainer has reviewed 60 of the 300 test rows. One recorded run, read
 once; a miss is reported as a miss and the code is not tuned against these rows.
 
-**What the guessed bar can and cannot show.** Only 6 of the 300 test rows are labelled null for both country and city,
-so `location_guessed = 0` on them is weak evidence: with zero guesses in 6 attempts the 95% upper bound on the guess rate
-is about 3/6 (AI_SYSTEM 12.1, rule 2). Rows with a country but a null city ("Remote - United States") are further
-chances to guess a city, and the report counts them, but no row names an ambiguous city with nothing to settle it, so
-that branch of the parser is covered by `backend/tests/ingest/test_location.py` and not by this data. Read the guessed
-bar as "no guess on the strings the sample holds", not as a rate.
+**What the guessed bar can and cannot show.** Only 4 of the 260 scored test rows are labelled null for both country and
+city (6 of the 300 before 40 were left out), so `location_guessed = 0` on them is weak evidence: with zero guesses in 4
+attempts the 95% upper bound on the guess rate is about 3/4 (AI_SYSTEM 12.1, rule 2). Rows with a country but a null
+city ("Remote - United States") are further chances to guess a city, and the report counts them, but no row names an
+ambiguous city with nothing to settle it, so that branch of the parser is covered by
+`backend/tests/ingest/test_location.py` and not by this data. Read the guessed bar as "no guess on the strings the
+sample holds", not as a rate.
 
 The harness gate reads `metrics.score`, so for this suite `score` is the accuracy, or 0 when any row was guessed; the
 honest numbers are `location_accuracy` and `location_guessed`. The floor is in `evals/thresholds.toml`.
 
 ## Recorded run on the test split (2026-11-23)
 
-**Labels drafted by an agent, review pending.** One run of `score.py --record` on the 300 test rows, against the parser
-as committed in `7d9be8b`. The run is `adad9274-2e77-45b3-927a-7eedd728d121`; `baseline.json` is that run as the
-database holds it (the database was a scratch one ending in `_test`, not the live one).
+**Labels drafted by an agent, review pending.** One run of `score.py --record` on the 260 scored test rows (the 300 less
+the 40 of "Rows left out of the test score"), made at commit `91bd6f0` against the same parser as the first run
+(`parser_sha256` in the run's config is unchanged). The run is `673aa2d8-ecbe-4a70-8e24-0204e85475f9`; `baseline.json`
+is that run as the database holds it, with the ids it left out (the database was a scratch one ending in `_test`, not
+the live one). It replaces the first run, `adad9274-2e77-45b3-927a-7eedd728d121` (298 of 300 rows), which counted rows
+that were not unseen.
 
 | | |
 |---|---|
-| Rows correct | 298 of 300: `location_accuracy` 0.9933, 95% Wilson interval 0.9760 to 0.9982 |
-| `location_guessed` | 0 (the chances to guess: 6 rows with no country label, 55 with no city label, 6 with neither) |
+| Rows correct | 258 of 260: `location_accuracy` 0.9923, 95% Wilson interval 0.9724 to 0.9979 |
+| `location_guessed` | 0 (the chances to guess: 4 rows with no country label, 46 with no city label, 4 with neither) |
 | Bars | `location_accuracy >= 0.95` met; `location_guessed == 0` met |
 
 The two wrong rows, neither a guess:
@@ -132,8 +158,10 @@ What this number does and does not show:
   checked. If review corrects a label, correct the label, say so in the commit message and run again; never change the
   code to fit a label.
 - The 100 development rows were used to build the parser, so their 100 of 100 is not a result.
-- `location_guessed = 0` is evidence about the 6 unknown rows and the 55 rows with no city label, which is little (see
+- `location_guessed = 0` is evidence about the 4 unknown rows and the 46 rows with no city label, which is little (see
   the bars section above). It is not a guess rate.
+- The 260 rows are not all as unseen as a held-out set should be: 133 of them have an input that a dev row carries too.
+  Equal inputs have equal labels, so those rows say little about inputs the parser never saw.
 - One day's postings from three ATS products: the interval describes this sample, not job postings in general.
 
 ## Commands
