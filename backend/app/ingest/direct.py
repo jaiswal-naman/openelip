@@ -6,10 +6,11 @@ listed (`is_listed = false`): search, matches and extraction skip it, and candid
 introduction. The source is created with `is_active = false`, which is what the index fetch selects on, so the fetch
 never visits it (there is no feed to read).
 
-These are plain functions over a worker connection (the API role cannot write `jobs`). The caller has already checked
-that the person may publish; nothing here knows about people.
+The API login cannot write `jobs`, so the rows are written by SECURITY DEFINER functions that check the caller is a
+member of the role's organization (db/sql/p6_0601_publish_close.sql); the API process never holds the worker's login.
 """
 
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from uuid import UUID
@@ -37,98 +38,45 @@ class DirectRequirement:
 
 
 def publish_direct_job(
-    conn: Connection,
-    *,
-    organization_id: UUID,
-    company_name: str,
-    role_id: UUID,
-    title: str,
-    description: str,
-    country: str | None,
-    city: str | None,
-    work_arrangements: Sequence[str],
-    employment_type: str,
-    seniority: str,
-    salary_min: int,
-    salary_max: int,
-    salary_currency: str,
-    visa_sponsorship: str,
-    requirements: Sequence[DirectRequirement],
+    conn: Connection, *, role_id: UUID, title: str, description: str, requirements: Sequence[DirectRequirement]
 ) -> int:
     """Create the role's unlisted job and its requirement rows and return the job id.
 
-    One `direct` source per organization (token = the organization id) is created on first use and reused after. The job
-    is open, at content version 1 with its requirements complete for that version. Every requirement's text must be the
-    description at its span; the database trigger refuses the insert otherwise.
+    The rows are written by the database function `direct_job_open` (db/sql/p6_0601_publish_close.sql), which the API
+    login may call: it takes the role's own title, company, place, pay and terms from the `roles` row, refuses a caller
+    who is not an active member of the role's organization, and refuses a role that is not a draft or already has a job.
+    One `direct` source per organization is created on first use and reused after. The job is open, at content version 1
+    with its requirements complete for that version. `title` must be the role's title (it goes into the content hash).
+    Every requirement's text must be the description at its span; the database trigger refuses the insert otherwise.
     """
-    source_id = conn.execute(
-        text(
-            """INSERT INTO job_sources (ats, token, company_name, organization_id, is_active)
-               VALUES ('direct', :token, :company, :org, false)
-               ON CONFLICT (ats, token) DO UPDATE SET company_name = EXCLUDED.company_name
-               RETURNING id"""
-        ),
-        {"token": str(organization_id), "company": company_name, "org": organization_id},
-    ).scalar_one()
-    job_id: int = conn.execute(
-        text(
-            """INSERT INTO jobs (source_id, external_id, title, company_name, country, city, work_arrangements,
-                                 employment_type, seniority, salary_min, salary_max, salary_currency, visa_sponsorship,
-                                 description, apply_url, content_hash, dedupe_key, content_version,
-                                 requirements_version, is_listed)
-               VALUES (:source, :external, :title, :company, :country, :city, CAST(:arrangements AS work_arrangement[]),
-                       CAST(:employment_type AS employment_type), CAST(:seniority AS seniority), :pay_min, :pay_max,
-                       :currency, CAST(:visa AS visa_sponsorship), :description, :apply_url, :hash, :dedupe, 1, 1,
-                       false)
-               RETURNING id"""
-        ),
+    rows = [
         {
-            "source": source_id,
-            "external": str(role_id),
-            "title": title,
-            "company": company_name,
-            "country": country,
-            "city": city,
-            "arrangements": list(work_arrangements),
-            "employment_type": employment_type,
-            "seniority": seniority,
-            "pay_min": salary_min,
-            "pay_max": salary_max,
-            "currency": salary_currency,
-            "visa": visa_sponsorship,
+            "ordinal": item.ordinal,
+            "importance": item.importance,
+            "kind": item.kind,
+            "text": item.text,
+            "start": item.start,
+            "end": item.end,
+            "min_years": item.min_years,
+        }
+        for item in requirements
+    ]
+    job_id: int = conn.execute(
+        text("SELECT direct_job_open(:role, :description, CAST(:requirements AS jsonb), :apply_url, :hash, :prompt)"),
+        {
+            "role": role_id,
             "description": description,
+            "requirements": json.dumps(rows),
             # Candidates reach a role only through its introduction, so the apply link is the app, not a posting page.
             "apply_url": f"{config.get().app_base_url}/app/today",
             "hash": content_hash(title, description, None),  # the rule Phase 2's store uses for every posting
-            "dedupe": f"direct:{role_id}",  # one per role, so the duplicate fold never merges two roles
+            "prompt": PROMPT_VERSION,
         },
     ).scalar_one()
-    for item in requirements:
-        conn.execute(
-            text(
-                """INSERT INTO job_requirements (job_id, content_version, ordinal, importance, kind, text, span,
-                                                 min_years, prompt_version)
-                   VALUES (:job, 1, :ordinal, CAST(:importance AS requirement_importance),
-                           CAST(:kind AS requirement_kind), :text, int4range(:start, :end), :min_years, :prompt)"""
-            ),
-            {
-                "job": job_id,
-                "ordinal": item.ordinal,
-                "importance": item.importance,
-                "kind": item.kind,
-                "text": item.text,
-                "start": item.start,
-                "end": item.end,
-                "min_years": item.min_years,
-                "prompt": PROMPT_VERSION,
-            },
-        )
     return job_id
 
 
 def close_direct_job(conn: Connection, job_id: int) -> None:
-    """Close the job of a closed role. Closing twice changes nothing."""
-    conn.execute(
-        text("UPDATE jobs SET status = 'closed', closed_at = now() WHERE id = :id AND status = 'open'"),
-        {"id": job_id},
-    )
+    """Close the job of a closed role, through `direct_job_close` (a member of the role's organization only). Closing
+    twice changes nothing."""
+    conn.execute(text("SELECT direct_job_close(:id)"), {"id": job_id})

@@ -8,6 +8,8 @@ The DDL is copied from docs/DATA_MODEL.md and lives beside this file in db/sql/,
                                    shortlist_entries, interest_signals; 3.14 the foreign keys from earlier tables
   p6_0601_triggers_security.sql    4.7 the consent helpers and the three hiring guards, 5.3 the organization functions
                                    and role_preview, 5.4 policies, 5.7 grants
+  p6_0601_publish_close.sql        direct_job_open, direct_job_close and withdraw_role_asks: the writes publishing and
+                                   closing a role need that the API login cannot make itself (integration fix, PR #4)
 
 Three things differ from the document (each is a comment in the SQL and a line in DATA_MODEL): role_intake is a new eval
 suite, interest_signals_check also requires an accepted introduction (owner decision G7), and role_preview carries the
@@ -28,7 +30,17 @@ branch_labels = None
 depends_on = None
 
 SQL_DIR = Path(__file__).resolve().parents[1] / "sql"
-UPGRADE_FILES = ("p6_0601_types_functions.sql", "p6_0601_tables.sql", "p6_0601_triggers_security.sql")
+UPGRADE_FILES = (
+    "p6_0601_types_functions.sql",
+    "p6_0601_tables.sql",
+    "p6_0601_triggers_security.sql",
+    "p6_0601_publish_close.sql",
+)
+# The functions of p6_0601_publish_close.sql, dropped after p6_0601_downgrade.sql (whose first statement refuses to run
+# on the database called app).
+PUBLISH_CLOSE_FUNCTIONS = (
+    "direct_job_open(uuid, text, jsonb, text, text, text), direct_job_close(bigint), withdraw_role_asks(uuid)"
+)
 
 
 def _read(name: str) -> str:
@@ -45,4 +57,5 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.execute("SET ROLE app_owner")
     op.execute(_read("p6_0601_downgrade.sql"))
+    op.execute(f"DROP FUNCTION IF EXISTS {PUBLISH_CLOSE_FUNCTIONS}")
     op.execute("RESET ROLE")
