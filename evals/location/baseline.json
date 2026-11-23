@@ -1,0 +1,41 @@
+{
+  "run_id": "adad9274-2e77-45b3-927a-7eedd728d121",
+  "suite": "location_accuracy",
+  "status": "passed",
+  "is_gate_passed": true,
+  "git_sha": "7d9be8b33a507640ad3812770d49a38009c942d0",
+  "finished_at": "2026-11-23T00:05:24.146959+00:00",
+  "labels": "labels drafted by an agent, review pending",
+  "config": {
+    "bars": {
+      "location_guessed": 0,
+      "location_accuracy": 0.95
+    },
+    "mode": "code",
+    "split": "test",
+    "labels": "agent-drafted, maintainer review pending",
+    "sample": "sample.jsonl",
+    "gazetteer": "geonamescache 3.0.2, GeoNames cities of 15,000 people or more",
+    "parser_sha256": "0fc4578f64059f5f8e03e2abeb09a06286300dfa13eb77cffcd35ae4c5d5087b"
+  },
+  "metrics": {
+    "n": 300,
+    "score": 0.9933333333333333,
+    "passed": 298,
+    "correct": 298,
+    "bars_met": true,
+    "wilson_low": 0.976,
+    "null_labels": {
+      "both": 6,
+      "city": 55,
+      "country": 6
+    },
+    "wilson_high": 0.9982,
+    "location_guessed": 0,
+    "location_accuracy": 0.9933
+  },
+  "wrong_items": [
+    "loc-264",
+    "loc-375"
+  ]
+}

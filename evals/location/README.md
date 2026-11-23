@@ -104,6 +104,38 @@ bar as "no guess on the strings the sample holds", not as a rate.
 The harness gate reads `metrics.score`, so for this suite `score` is the accuracy, or 0 when any row was guessed; the
 honest numbers are `location_accuracy` and `location_guessed`. The floor is in `evals/thresholds.toml`.
 
+## Recorded run on the test split (2026-11-23)
+
+**Labels drafted by an agent, review pending.** One run of `score.py --record` on the 300 test rows, against the parser
+as committed in `7d9be8b`. The run is `adad9274-2e77-45b3-927a-7eedd728d121`; `baseline.json` is that run as the
+database holds it (the database was a scratch one ending in `_test`, not the live one).
+
+| | |
+|---|---|
+| Rows correct | 298 of 300: `location_accuracy` 0.9933, 95% Wilson interval 0.9760 to 0.9982 |
+| `location_guessed` | 0 (the chances to guess: 6 rows with no country label, 55 with no city label, 6 with neither) |
+| Bars | `location_accuracy >= 0.95` met; `location_guessed == 0` met |
+
+The two wrong rows, neither a guess:
+
+- `loc-264`, "Remote - D.C., USA", label US and Washington. The parser reads a bare "D.C." as a state-level cue, so it
+  returns US and no city.
+- `loc-375`, "Barcelona", label ES and Barcelona. The city in Spain (1.69 million) is about twice the one in Venezuela
+  (0.82 million), not ten times, so the parser leaves country and city unknown.
+
+The parser was not changed after this run. Both are open for the maintainer: a bare "D.C." could be read as Washington,
+and a short list of famous cities, or a country prior per board, would settle "Barcelona".
+
+What this number does and does not show:
+
+- The labels were drafted by one agent and not yet reviewed, so the figure is provisional until 60 test rows have been
+  checked. If review corrects a label, correct the label, say so in the commit message and run again; never change the
+  code to fit a label.
+- The 100 development rows were used to build the parser, so their 100 of 100 is not a result.
+- `location_guessed = 0` is evidence about the 6 unknown rows and the 55 rows with no city label, which is little (see
+  the bars section above). It is not a guess rate.
+- One day's postings from three ATS products: the interval describes this sample, not job postings in general.
+
 ## Commands
 
 ```
