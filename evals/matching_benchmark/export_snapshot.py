@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-HERE = Path(__file__).parent
+HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 SNAPSHOT = HERE / "snapshot.jsonl"
 META = HERE / "snapshot.meta.json"
@@ -76,6 +76,12 @@ def descends_from(revision: str, base: str = MERGE_REVISION) -> bool:
 
 def stable_key(ats: str, token: str, external_id: str) -> str:
     return hashlib.sha256(f"{ats}/{token}/{external_id}".encode()).hexdigest()
+
+
+def ref_of(ats: str, token: str, external_id: str) -> str:
+    """The stable reference of a posting, the same one snapshot.jsonl carries: a database id changes on every load, this
+    does not."""
+    return "j" + stable_key(ats, token, external_id)[:10]
 
 
 def remote_hint(arrangements: list[str]) -> bool | None:
