@@ -146,6 +146,7 @@ def test_the_command_is_registered_and_needs_an_address():
 
 def test_the_account_becomes_a_demo_candidate_with_a_confirmed_record_and_the_three_consents(engine, provider):
     email = sign_in(engine)
+    started = datetime.now(timezone.utc)  # read before the seed: the morning window is judged at the moment it ran
     seeded = demo.seed_matches(email)
 
     (user,) = fetch(
@@ -161,16 +162,16 @@ def test_the_account_becomes_a_demo_candidate_with_a_confirmed_record_and_the_th
         None,
     )
     assert user.status == "active" and user.record_confirmed_at is not None
-    now = datetime.now(timezone.utc)
-    assert demo.in_window(user.timezone, now) and seeded.timezone == user.timezone  # morning in its own zone
-    assert ZoneInfo(user.timezone).utcoffset(now).total_seconds() % 3600 == 0  # a whole-hour zone
+    assert demo.in_window(user.timezone, started) and seeded.timezone == user.timezone  # morning in its own zone
+    assert ZoneInfo(user.timezone).utcoffset(started).total_seconds() % 3600 == 0  # a whole-hour zone
 
     granted = fetch(
         engine,
-        """SELECT purpose FROM consents g WHERE g.user_id = :u AND g.action = 'granted'
-              AND NOT EXISTS (SELECT 1 FROM consents w WHERE w.withdraws_id = g.id) ORDER BY purpose""",
+        """SELECT g.purpose::text AS purpose FROM consents g WHERE g.user_id = :u AND g.action = 'granted'
+              AND NOT EXISTS (SELECT 1 FROM consents w WHERE w.withdraws_id = g.id) ORDER BY g.purpose::text""",
         u=seeded.user_id,
     )
+    # one active grant of each, whatever order the rows come back in
     assert sorted(row.purpose for row in granted) == ["ai_processing", "brief_email", "terms"]
 
     # the record: a parsed DOCX, three confirmed facts that quote it, two hard constraints, one change-log row each
@@ -191,7 +192,7 @@ def test_the_account_becomes_a_demo_candidate_with_a_confirmed_record_and_the_th
     ]
     constraints = fetch(
         engine,
-        "SELECT kind::text AS kind, statement FROM constraints WHERE user_id = :u ORDER BY kind",
+        "SELECT kind::text AS kind, statement FROM constraints WHERE user_id = :u ORDER BY kind::text",
         u=seeded.user_id,
     )
     assert [(c.kind, c.statement) for c in constraints] == [
@@ -301,7 +302,7 @@ def test_the_brief_is_composed_once_with_the_three_matches_and_its_email_is_due_
 
     briefs = fetch(
         engine,
-        "SELECT channel::text AS channel, status::text AS status FROM briefs WHERE user_id = :u ORDER BY channel",
+        "SELECT channel::text AS channel, status::text AS status FROM briefs WHERE user_id = :u ORDER BY channel::text",
         u=seeded.user_id,
     )
     assert [(b.channel, b.status) for b in briefs] == [("email", "queued"), ("in_app", "composed")]
