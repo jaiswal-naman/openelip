@@ -98,3 +98,40 @@ uv run --project backend python evals/requirement_extraction/resolve.py --check 
 `--check` also validates the postings (50, split 10 and 40, at least 10 per ATS, no email or phone number, none over
 10,000 characters), that every posting has a label row, and every label's quote, importance, kind and years. Building
 needs a read-only `DATABASE_URL` and refuses to run while `postings.jsonl` exists.
+
+## Pre-registered bars
+
+Written on 2026-11-23, before any run of `score.py` (AI_SYSTEM 12.1: fix the metric and the bar before the run; a changed
+bar is a new, dated pre-registration).
+
+**What is scored.** One run scores one split, with the items pooled over its postings. The test split is the 40 test
+postings without `req-049`: that posting is a near-copy of dev posting `req-001` (99.9% the same text), so it is not
+unseen data and is left out of every test score (it stays in `gold.jsonl` and in the recordings). A test score covers
+39 postings and 390 items. `score.py` reads each posting's text from `gold.jsonl`, never from the live index, which holds
+a literal `&amp;` that the gold text keeps (see "Limits to keep in mind").
+
+- `req_item_f1`: predicted items and gold items are paired one to one, the pair with the greatest overlap first, where
+  overlap is intersection over union of the two character spans (in code points); a pair is a match at 0.5 or more.
+  Precision is matches over predicted items, recall is matches over gold items, and `req_item_f1` is their harmonic
+  mean. Precision and recall are reported with 95% Wilson intervals (AI_SYSTEM 12.1).
+- `req_importance_accuracy`: of the matched pairs, the share whose `required` or `preferred` agrees, with its Wilson
+  interval.
+- `req_spans_resolved`: the share of predicted rows whose text is exactly the posting's text at their span.
+
+**Bars.**
+
+1. Every run: `req_spans_resolved = 1.0`. Absolute: AI_SYSTEM 12.8 makes a stored citation that does not resolve a
+   blocker, whatever the other numbers are.
+2. A live-model run on the test split: `req_item_f1 >= 0.85` and `req_importance_accuracy >= 0.90` (the targets of
+   AI_SYSTEM 4.3). No live run exists, because there is no model key. `score.py` refuses a recording that is not a
+   fixture, so it never judges a live run by accident; applying these two bars in code is part of recording the first
+   live run (a manual check).
+3. No bar for the rules method (`--method rules`) or for a replay of `rules_fixture` recordings: they are baselines, and
+   a replay shows that the code path works. The CI gate holds the replay to the stored baseline instead: its
+   `req_item_f1` and `req_importance_accuracy` may not fall below the replay stored in `baseline.json`. A replay is
+   exact, so that margin is 0; the two-point margin of AI_SYSTEM 12.8 is for runs that vary.
+
+The CI gate reads one number, `metrics.score` (floor 1.0 in `evals/thresholds.toml`). `score` is 1.0 only when every bar
+that applies to the run holds and 0.0 otherwise; the honest numbers are the other metrics, always reported with the
+words "labels drafted by an agent, review pending". The maintainer's review of at least 10 of the 50 postings comes
+before any figure from this set is published.
