@@ -25,6 +25,30 @@ is reported, and disagreements amend the guideline. The set is meant to grow tow
 check 1); 30 ship now, because hand labelling is the limit. A score on 30 descriptions carries a wide interval and is
 reported with its counts and a Wilson interval (AI_SYSTEM 12.1), never as a bare percentage.
 
+## Files
+
+| File | What it is |
+|---|---|
+| `GUIDELINE.md` | What counts as a requirement, how to quote it, importance, kind and years, a worked example, and the decisions made while labelling. |
+| `cases.py` | The 30 invented descriptions and the hand-drafted labels: for each item its quote, importance, kind and years. |
+| `build_gold.py` | Writes `gold.jsonl` from `cases.py`, finding every span with Phase 2's `resolve.py`; `--check` proves it is current. |
+| `gold.jsonl` | The 30 descriptions as the scorer reads them (see below). Written by `build_gold.py`, never by hand. |
+| `record_fixture.py` | Builds `recorded.jsonl` and `fixtures/degraded.jsonl` from `gold.jsonl`, and checks that every answer reads back as its labels. |
+| `recorded.jsonl` | The replay: one line per description, `posting_id, split, source, request_sha256, answers`. `source` is `labels_fixture`, which says these are not model output. |
+| `fixtures/degraded.jsonl` | A damaged copy of the replay that the gate must fail. |
+| `score.py` | The scorer; the Phase 1 runner calls its `run()` (`role_intake` is an `OwnScorer` entry in `SUITES`). It loads the requirement-extraction suite's scorer and replays through the real task path; only the bars are its own. |
+
+A gold row is `{posting_id, split, title, organization, slice, labels, description, requirements}`, with
+`requirements: [{start, end, text, importance, kind, min_years}]` in the order of the text, the row shape of
+`evals/requirement_extraction/gold.jsonl` plus the organization it is invented for, its `slice` and the marker `labels`.
+Spans are Python string indices, that is Unicode code points: the same unit PostgreSQL `substr` uses. Anything that
+slices in UTF-16 (JavaScript `string.slice`) is wrong on a description with an emoji ahead of the span; use `Array.from`.
+
+A replay goes through the code a live extraction goes through: the gateway's fake provider hands the recorded answer to
+`job.requirements.extract`, the validator computes every span, and the rows are scored. `request_sha256` is a hash of the
+exact messages the task sends for that description, so a replay stops (the run ends in `error`, and the gate refuses it)
+when the prompt or the segmenter has changed since the recording was made: run `record_fixture.py` to rebuild it.
+
 ## Where the descriptions came from
 
 An agent wrote all 30 for this set, one for each of 30 invented organizations ("Halden Demo", "Brightwell Demo", ...),
@@ -122,12 +146,20 @@ cd backend
 # replay the recording, record the run, gate it (what CI does; needs a migrated scratch database)
 uv run python -m app.evals run role_intake
 uv run python -m app.evals gate role_intake --run <the id printed last>
+
+# the same, but refusing a database that is not a scratch one
+uv run python ../evals/role_intake/score.py [--recorded FILE]
+
+# rebuild or check the gold set and the recordings
+uv run python ../evals/role_intake/build_gold.py [--check]
+uv run python ../evals/role_intake/record_fixture.py
 ```
 
-A recorded run is frozen and cannot be deleted, and `python -m app.evals` writes to whichever database
-`DATABASE_URL_WORKER` names, whose default is the live one. Run it by hand only with `DATABASE_URL_MIGRATE`,
-`DATABASE_URL_API` and `DATABASE_URL_WORKER` all pointing at a scratch database whose name ends in `_test` (roles `app`,
-`app_api` and `app_worker`), and `LLM_PROVIDER=fake`.
+`--recorded FILE` replays another recording of the same format (the degraded one, for instance). A recorded run is frozen
+and cannot be deleted, and `python -m app.evals` writes to whichever database `DATABASE_URL_WORKER` names, whose default
+is the live one. Run it by hand only with `DATABASE_URL_MIGRATE`, `DATABASE_URL_API` and `DATABASE_URL_WORKER` all
+pointing at a scratch database whose name ends in `_test` (roles `app`, `app_api` and `app_worker`), and
+`LLM_PROVIDER=fake`; `score.py` refuses any other database by name.
 
 ## Manual checks (they need the maintainer or a model key)
 

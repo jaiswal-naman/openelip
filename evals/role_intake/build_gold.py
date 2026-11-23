@@ -33,8 +33,8 @@ SLICES = {"prose", "bullets", "mixed", "short", "long", "non_ascii", "injection"
 
 
 def load_script(name: str, path: Path) -> ModuleType:
-    """A script of this repository by a name of its own: several suites have a score.py, a build_sample.py and a cases.py,
-    so none of them is imported by its plain name."""
+    """A script of this repository by a name of its own: several suites have a score.py, a build_sample.py and a
+    cases.py, so none of them is imported by its plain name."""
     spec = importlib.util.spec_from_file_location(name, path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -111,7 +111,9 @@ def summary(rows: list[dict[str, Any]]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
-    parser.add_argument("--check", action="store_true", help="compare with the committed gold.jsonl instead of writing it")
+    parser.add_argument(
+        "--check", action="store_true", help="compare with the committed gold.jsonl instead of writing it"
+    )
     args = parser.parse_args(argv)
     rows, problems = build()
     if args.check and not problems and (not GOLD.exists() or GOLD.read_text(encoding="utf-8") != render(rows)):

@@ -5,10 +5,12 @@ posting or a real person. The descriptions are written the way employers write t
 headings, a mix of both, one or two lines, long pages with benefits and process around the requirements, non-ASCII text,
 and two that contain a sentence addressed to a model. build_gold.py turns this file into gold.jsonl.
 
-Each case is `id, organization, title, slice, description, labels`. A label is `(quote, importance, kind, min_years)`: the
-quote is copied from the description character for character (resolve.py finds it and reports anything missing or
+Each case is `id, organization, title, slice, description, labels`. A label is `(quote, importance, kind, min_years)`:
+the quote is copied from the description character for character (resolve.py finds it and reports anything missing or
 ambiguous), and the rest follows GUIDELINE.md. Descriptions have no trailing newline.
 """
+
+# ruff: noqa: E501  (a description written as running prose is one long line, as an employer would paste it)
 
 CASES = [
     {
@@ -38,7 +40,12 @@ Benefits
         "labels": [
             ("4+ years of backend engineering experience.", "required", "experience", 4),
             ("Strong Python and SQL skills.", "required", "skill", None),
-            ("Bachelor's degree in Computer Science or equivalent practical experience.", "required", "education", None),
+            (
+                "Bachelor's degree in Computer Science or equivalent practical experience.",
+                "required",
+                "education",
+                None,
+            ),
             ("Based in or willing to relocate to Toronto.", "required", "location", None),
             ("Experience with Kafka.", "preferred", "skill", None),
             ("AWS Certified Developer.", "preferred", "certification", None),
@@ -180,7 +187,12 @@ Nice to have
 We offer a 13th-month salary and staff lunches.""",
         "labels": [
             ("A recognised pastry diploma (CAP, EFZ or similar).", "required", "education", None),
-            ("2+ years in a fine-pastry kitchen — laminated dough, entremets, chocolate work.", "required", "experience", 2),
+            (
+                "2+ years in a fine-pastry kitchen — laminated dough, entremets, chocolate work.",
+                "required",
+                "experience",
+                2,
+            ),
             ("Able to start at 5 a.m. most days.", "required", "other", None),
             ("Swiss work permit or EU citizenship.", "required", "authorization", None),
             ("Fluent German or French.", "preferred", "skill", None),
@@ -768,7 +780,12 @@ A 30-minute intro call, a take-home design exercise, two technical interviews an
             ("including 3+ years leading teams or large projects.", "required", "experience", 3),
             ("Deep experience with distributed systems in production.", "required", "experience", None),
             ("Strong Go, or a willingness to become strong in Go within three months.", "required", "skill", None),
-            ("Bachelor's degree in computer science or equivalent practical experience.", "required", "education", None),
+            (
+                "Bachelor's degree in computer science or equivalent practical experience.",
+                "required",
+                "education",
+                None,
+            ),
             ("Fluent written and spoken English.", "required", "skill", None),
             ("You live within four hours of UTC+1.", "required", "location", None),
             ("Experience in payments, billing or banking.", "preferred", "experience", None),

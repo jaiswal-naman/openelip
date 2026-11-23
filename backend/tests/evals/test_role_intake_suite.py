@@ -402,7 +402,8 @@ def test_the_bars_are_dated_written_before_any_run_and_say_what_a_replay_does_no
     assert "No run of this suite existed when these bars were written" in bars
     for bar in ("`req_spans_resolved = 1.0`", "`req_item_f1 >= 0.80`", "`req_importance_accuracy >= 0.80`"):
         assert bar in bars
-    assert "`min_score = 1.0`" in bars and "says nothing about a model" in bars
+    assert "`min_score = 1.0`" in bars and "Neither says anything about a model" in bars
+    assert "a wiring check" in bars and "not targets for a model" in bars
     assert "not a model quality number" in readme and MARKER in readme and "invariant 8" in readme
     guideline = (SUITE_DIR / "GUIDELINE.md").read_text(encoding="utf-8")
     assert "Decisions made while labelling" in guideline and "Instructions are not items" in guideline
