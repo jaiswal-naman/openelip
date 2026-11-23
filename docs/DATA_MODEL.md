@@ -2741,8 +2741,11 @@ CREATE POLICY employer_answer  ON introductions FOR UPDATE TO app_api
          AND app_agent_token_id() IS NULL)
   WITH CHECK (app_is_org_member(organization_id) AND employer_answered_by = app_user_id());
 
-CREATE POLICY candidate_own ON shortlist_entries TO app_api
-  USING (user_id = app_user_id() AND app_agent_token_id() IS NULL)
+-- The candidate reads their own entry and writes it once, when they accept; there is no UPDATE or DELETE policy and
+-- the API login has no such grant (a candidate must not rewrite or move what the employer reads).
+CREATE POLICY candidate_own ON shortlist_entries FOR SELECT TO app_api
+  USING (user_id = app_user_id() AND app_agent_token_id() IS NULL);
+CREATE POLICY candidate_insert ON shortlist_entries FOR INSERT TO app_api
   WITH CHECK (user_id = app_user_id() AND app_agent_token_id() IS NULL);
 CREATE POLICY employer_read ON shortlist_entries FOR SELECT TO app_api   -- disappears if consent is withdrawn
   USING (app_is_org_member(organization_id) AND app_agent_token_id() IS NULL
@@ -2851,6 +2854,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   interest_signals, campaigns, campaign_steps, company_dossiers, agent_runs, autonomy_settings,
   twin_scopes, twin_sessions, agent_tokens, chat_sessions, chat_messages, idempotency_keys
   TO app_api, app_worker;
+-- Exception (p6_0601): shortlist_entries is in that list for app_worker only; app_api has SELECT and INSERT on it, because
+-- an entry is written once by the candidate's acceptance and never changed (erasure goes by the cascade from users).
 GRANT SELECT, INSERT, UPDATE, DELETE ON users, job_sources, jobs, skills, model_registry, match_runs,
                                         queue_jobs, sim_runs
   TO app_worker;

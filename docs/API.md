@@ -503,7 +503,7 @@ Phase 6: members are addressed by `member_id` (not `user_id`) so a pending invit
 
 | Method | Path | Purpose | Caller | Req | Phase |
 |---|---|---|---|---|---|
-| POST | `/v1/roles` | Describe a role in text; requirements are extracted with spans; the role starts as `draft` | E | HIR-02 | 6 |
+| POST | `/v1/roles` | Describe a role in text; requirements are extracted with spans; the role starts as `draft`. The model reads the text only on a route a passed eval run proves; otherwise `extraction.state` is `ai_disabled` and the employer types the requirements | E | HIR-02 | 6 |
 | GET | `/v1/roles?org_id=` | The organization's roles | E | HIR-02 | 6 |
 | GET | `/v1/roles/{role_id}` | One role with requirements, pay range, `can_publish` and any blockers | E | HIR-02 | 6 |
 | PATCH | `/v1/roles/{role_id}` | Change title, description, location, work arrangements, employment type, seniority, visa sponsorship or pay range | E | HIR-02 | 6 |

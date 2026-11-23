@@ -67,6 +67,7 @@ POLICIES = {
     ("introductions", "employer_read"),
     ("introductions", "employer_answer"),
     ("shortlist_entries", "candidate_own"),
+    ("shortlist_entries", "candidate_insert"),
     ("shortlist_entries", "employer_read"),
     ("interest_signals", "candidate_read"),
     ("interest_signals", "candidate_send"),
@@ -140,6 +141,11 @@ def test_a_member_changes_nothing_of_another_organization(conn, two, table):
     a, b = two
     act_as(conn, "app_api", a.owner)
     update = f"UPDATE {table} SET {TOUCH[table]} WHERE {ORG_KEY[table]} = :o"
+    if table == "shortlist_entries":  # no UPDATE or DELETE grant at all for the API login (W1)
+        with refused(conn) as caught:
+            conn.execute(text(update), {"o": b.org})
+        assert sqlstate(caught) == "42501"
+        return
     assert conn.execute(text(update), {"o": b.org}).rowcount == 0
     if table != "introductions":  # the API role has no DELETE on introductions at all: see the grants below
         assert conn.execute(text(f"DELETE FROM {table} WHERE {ORG_KEY[table]} = :o"), {"o": b.org}).rowcount == 0
@@ -263,6 +269,7 @@ def test_the_policies_and_grants_are_the_data_models_and_nothing_more(conn):
     expected = {(role, table): FULL for role in ("app_api", "app_worker") for table in TABLES}
     expected[("app_api", "introductions")] = {"SELECT", "UPDATE"}  # the ask is the worker's; people only move it on
     expected[("app_worker", "introductions")] = {"SELECT", "INSERT", "UPDATE"}
+    expected[("app_api", "shortlist_entries")] = {"SELECT", "INSERT"}  # written once by the acceptance, never changed
     assert granted == expected
 
 
@@ -286,6 +293,34 @@ def test_a_candidates_signal_stays_hidden_from_the_employer_until_the_candidate_
     accept(conn, a.asked_intro, a.role, a.asked)
     act_as(conn, "app_api", a.owner)
     assert ids(conn, candidate_signals) == {a.yes, a.asked}
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        'shared_payload = \'{"email": "rewritten@example.test"}\'::jsonb',
+        "organization_id = (SELECT id FROM organizations WHERE id <> shortlist_entries.organization_id LIMIT 1)",
+    ],
+)
+def test_a_candidate_cannot_rewrite_or_move_or_delete_their_shortlist_entry(conn, two, change):
+    """W1: the policy once admitted UPDATE and DELETE, so a candidate could swap what the employer reads."""
+    a, _ = two
+    before = conn.execute(
+        text("SELECT shared_payload FROM shortlist_entries WHERE id = :e"), {"e": a.entry}
+    ).scalar_one()
+    act_as(conn, "app_api", a.yes)
+    for statement in (
+        f"UPDATE shortlist_entries SET {change} WHERE id = :e",
+        "DELETE FROM shortlist_entries WHERE id = :e",
+    ):
+        with refused(conn) as caught:
+            conn.execute(text(statement), {"e": a.entry})
+        assert sqlstate(caught) == "42501"
+    act_as(conn, "app_api", a.owner)
+    after = conn.execute(
+        text("SELECT shared_payload FROM shortlist_entries WHERE id = :e"), {"e": a.entry}
+    ).scalar_one()
+    assert after == before
 
 
 def test_the_shortlist_entry_disappears_for_the_employer_when_the_consent_is_withdrawn(conn, two):

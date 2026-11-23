@@ -334,8 +334,11 @@ CREATE POLICY employer_answer  ON introductions FOR UPDATE TO app_api
          AND app_agent_token_id() IS NULL)
   WITH CHECK (app_is_org_member(organization_id) AND employer_answered_by = app_user_id());
 
-CREATE POLICY candidate_own ON shortlist_entries TO app_api
-  USING (user_id = app_user_id() AND app_agent_token_id() IS NULL)
+-- The candidate reads their own entry and creates it when they accept; they never rewrite or move it afterwards
+-- (the employer reads shared_payload as the candidate agreed to it), so there is no UPDATE or DELETE policy.
+CREATE POLICY candidate_own ON shortlist_entries FOR SELECT TO app_api
+  USING (user_id = app_user_id() AND app_agent_token_id() IS NULL);
+CREATE POLICY candidate_insert ON shortlist_entries FOR INSERT TO app_api
   WITH CHECK (user_id = app_user_id() AND app_agent_token_id() IS NULL);
 CREATE POLICY employer_read ON shortlist_entries FOR SELECT TO app_api   -- disappears if consent is withdrawn
   USING (app_is_org_member(organization_id) AND app_agent_token_id() IS NULL
@@ -376,5 +379,9 @@ GRANT SELECT, INSERT, UPDATE ON introductions TO app_worker;
 
 -- Mutable tables, scoped by the policies above.
 GRANT SELECT, INSERT, UPDATE, DELETE ON
-  organizations, org_members, roles, role_requirements, shortlist_entries, interest_signals
+  organizations, org_members, roles, role_requirements, interest_signals
   TO app_api, app_worker;
+-- A shortlist entry is written once, by the candidate's acceptance, and never changed: no UPDATE or DELETE for the
+-- API login (erasure removes it by the foreign key's cascade, which needs no grant).
+GRANT SELECT, INSERT ON shortlist_entries TO app_api;
+GRANT SELECT, INSERT, UPDATE, DELETE ON shortlist_entries TO app_worker;
