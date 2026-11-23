@@ -255,6 +255,7 @@ FORMS = [
     ("Hybrid - San Francisco, New York City, Austin", ("US", "San Francisco")),
     ("Mexico", ("MX", None)),  # the country, not Mexico City
     ("Mexico City", ("MX", "Mexico City")),
+    ("Hong Kong SAR", ("HK", "Hong Kong")),
     ("Ontario", ("CA", None)),  # the province, not the town in California
     ("Missouri", ("US", None)),
 ]

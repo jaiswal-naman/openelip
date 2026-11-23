@@ -99,7 +99,7 @@ QUALIFIERS = frozenset(
     "offices hq headquarters warehouse campus site plant factory store branch field home metro metropolitan area "
     "greater downtown midtown central north south east west center centre hub annex plaza based only update "
     "location locations multiple various other open any all tbd tba tbc none unknown full part time contract "
-    "permanent temporary ncr rural urban region district state national city nan null undefined bay valley".split()
+    "permanent temporary ncr rural urban region district state national city nan null undefined bay valley sar".split()
 )
 # Small words between a qualifier and a place ("Remote in Germany"). Lower case only: "IN" is a code.
 CONNECTIVES = frozenset({"in", "the", "of", "within", "near", "across"})
