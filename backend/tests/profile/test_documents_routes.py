@@ -8,7 +8,9 @@ queue handler with the scripted model of conftest.py; consent has its own file (
 import asyncio
 import io
 import os
+import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from tempfile import SpooledTemporaryFile
 from uuid import uuid4
 
@@ -16,10 +18,12 @@ import pytest
 from sqlalchemy import text
 from starlette import formparsers
 
+from app.platform import db
+from app.platform.errors import ApiError
 from app.platform.llm import SchemaInvalid
 from app.platform.sessions import open_sealed_bytes
-from app.profile import documents_routes
-from app.profile.documents import MAX_BYTES, PayloadTooLarge
+from app.profile import documents, documents_routes
+from app.profile.documents import MAX_BYTES, PER_DAY, PayloadTooLarge
 from app.profile.documents_routes import MAX_REQUEST_BYTES, capped
 from app.profile.extract import workflow
 from app.profile.resume.reader import DOCX_MIME, PDF_MIME
@@ -214,6 +218,108 @@ def test_the_upload_is_described_for_the_generated_web_types(api_client):
     assert schemas["DocumentView"]["properties"]["original_filename"]["x-untrusted-text"] is True
     assert schemas["DocumentLine"]["properties"]["text"]["x-untrusted-text"] is True
     assert schemas["DocumentHiddenText"]["properties"]["samples"]["x-untrusted-text"] is True
+
+
+# ---- the daily limit: 10 resume uploads per person per day (API.md 1.8) ---------------------------
+
+
+def store_many(kit, user, count):
+    data = kit.docx()
+    for _ in range(count):
+        kit.store(user, data)
+
+
+def age_the_oldest_upload(kit, interval):
+    """Make the oldest document older, as if it had been uploaded `interval` ago."""
+    with kit.engine.begin() as c:
+        c.execute(
+            text(
+                """UPDATE documents SET created_at = now() - CAST(:interval AS interval)
+                   WHERE id = (SELECT id FROM documents ORDER BY created_at LIMIT 1)"""
+            ),
+            {"interval": interval},
+        )
+
+
+def test_the_eleventh_upload_in_a_day_is_refused_with_429_the_wait_and_a_retry_after_header(uploader, kit):
+    for _ in range(PER_DAY):
+        ok(upload(uploader, kit.docx()), 202)
+
+    response = upload(uploader, kit.docx())
+
+    error = refused(response, 429, "rate_limited")
+    wait = error["details"]["retry_after_seconds"]
+    assert 86_000 < wait <= 86_400  # the first upload of the day has just been made: about a day to wait
+    assert response.headers["Retry-After"] == str(wait)  # API.md 1.8: a refusal carries Retry-After, in seconds
+    assert (kit.count("documents"), kit.count("queue_jobs")) == (PER_DAY, PER_DAY)  # nothing stored for the eleventh
+
+
+def test_the_limit_is_per_person(uploader, kit):
+    store_many(kit, uploader.user, PER_DAY)
+
+    refused(upload(uploader, kit.docx()), 429, "rate_limited")
+    kit.store(kit.person("bob@example.test"), kit.docx())  # someone else's first upload goes through
+
+    assert kit.count("documents") == PER_DAY + 1
+
+
+def test_the_wait_ends_when_the_oldest_upload_of_the_day_is_a_day_old(uploader, kit):
+    store_many(kit, uploader.user, PER_DAY)
+    age_the_oldest_upload(kit, "23 hours 50 minutes")
+
+    error = refused(upload(uploader, kit.docx()), 429, "rate_limited")
+    assert 540 <= error["details"]["retry_after_seconds"] <= 660  # about ten minutes
+
+    age_the_oldest_upload(kit, "25 hours")  # now it no longer counts
+    ok(upload(uploader, kit.docx()), 202)
+    assert kit.count("documents") == PER_DAY + 1
+
+
+def test_a_refused_upload_leaves_its_key_free_for_the_retry(uploader, kit):
+    store_many(kit, uploader.user, PER_DAY)
+    key, data = uuid4().hex, kit.docx()
+    refused(upload(uploader, data, key=key), 429, "rate_limited")
+
+    age_the_oldest_upload(kit, "25 hours")
+    retry = upload(uploader, data, key=key)
+
+    assert ok(retry, 202)["status"] == "queued"
+    assert "idempotent_replay" not in retry.json()["meta"]  # a new upload, not the stored refusal played back
+
+
+def test_a_file_that_is_refused_for_its_type_does_not_count_towards_the_day(uploader, kit):
+    for _ in range(3):
+        refused(upload(uploader, b"just some text"), 415, "unsupported_media_type")
+    store_many(kit, uploader.user, PER_DAY)  # all ten still fit
+    assert kit.count("documents") == PER_DAY
+
+
+def test_two_uploads_at_the_same_moment_cannot_both_take_the_last_place(kit, monkeypatch):
+    """Without a lock on the person each transaction counts nine, and all of them insert. The seal is slowed down so the
+    transactions overlap for certain: the count is made before it and the insert after it."""
+    user, data = kit.person(), kit.docx()
+    store_many(kit, user, PER_DAY - 1)
+    real_seal = documents.seal_bytes
+
+    def slow_seal(content):
+        time.sleep(0.3)
+        return real_seal(content)
+
+    monkeypatch.setattr(documents, "seal_bytes", slow_seal)
+
+    def try_one(_):
+        try:
+            with db.transaction(user) as conn:
+                return documents.store_document(conn, user, "resume.docx", data)
+        except ApiError as refusal:
+            return refusal
+
+    with ThreadPoolExecutor(4) as pool:
+        results = list(pool.map(try_one, range(4)))
+
+    refusals = [r for r in results if isinstance(r, ApiError)]
+    assert len(refusals) == 3 and all((r.status, r.code) == (429, "rate_limited") for r in refusals)
+    assert kit.count("documents") == PER_DAY
 
 
 # ---- GET /v1/me/documents/{id} -------------------------------------------------------------------

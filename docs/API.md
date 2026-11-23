@@ -153,7 +153,7 @@ A refusal is `429 rate_limited` with `Retry-After` in seconds. Default limits, a
 | Writes | 120 per minute per person |
 | Sign-in codes | 5 per hour per email address (counted from `login_codes`), 20 per hour per client address (counted in the API process's memory; ceiling: one API process) |
 | Chat messages | 30 per hour per person |
-| Resume uploads | 10 per day per person |
+| Resume uploads | 10 per day per person (any 24 hours, counted from the person's `documents`; the 11th is `429 rate_limited` with `Retry-After` set to the seconds until the oldest of the ten is a day old) |
 | Tailored resumes | 10 per day per person |
 | Twin questions | 40 per Twin session and $0.50 of model cost per session, charged to the organization (fixed by the design review) |
 | Exports | 2 per day per person |

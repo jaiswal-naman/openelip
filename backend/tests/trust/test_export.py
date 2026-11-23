@@ -187,8 +187,10 @@ def test_an_open_request_past_its_due_time_does_not_block_a_new_export(ada, api_
 def test_the_third_export_within_a_day_is_refused_with_the_wait(ada, api_client, engine, run_jobs):
     build(api_client, engine, run_jobs)
     build(api_client, engine, run_jobs)
-    error = refused(ask(api_client), 429, "rate_limited")
+    response = ask(api_client)
+    error = refused(response, 429, "rate_limited")
     assert 1 <= error["details"]["retry_after_seconds"] <= 86400
+    assert response.headers["Retry-After"] == str(error["details"]["retry_after_seconds"])  # API.md 1.8
     with engine.connect() as c:
         assert c.execute(text("SELECT count(*) FROM data_requests WHERE kind = 'export'")).scalar_one() == 2
 
