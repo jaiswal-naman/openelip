@@ -3,9 +3,10 @@ themselves (plan 05-05; INDEX decision 15).
 
 writer.packet drafts answers to a fixed list of common questions and a note, from the candidate's confirmed facts and
 the job's requirement texts only. Nothing the model wrote is kept until it has passed, sentence by sentence, the two
-layers a tailored edit passes: every cited alias is a real fact, no dossier claim is cited (there are none before Phase
-7), layer 1 finds nothing the cited facts do not hold, and one verify.entail call agrees (failing closed). Sentences
-fail are removed and counted. Four questions are never drafted: pay, notice, start date and work authorisation stay
+layers a tailored edit passes: every cited alias is a real fact, a dossier claim (d1..) is cited only in a campaign
+packet, which is given the company's dossier claims (plan 07-02), layer 1 finds nothing the cited texts do not hold, and
+one verify.entail call agrees (failing closed). Sentences that fail are removed and counted. Four questions are never
+drafted: pay, notice, start date and work authorisation stay
 blank for the candidate whatever the model wrote, so a job posting that tells the model to state a number changes
 nothing. Nothing here sends, uploads or approves: no outbox row, no outside request.
 """
@@ -13,6 +14,7 @@ nothing. Nothing here sends, uploads or approves: no outbox row, no outside requ
 import hashlib
 import json
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -94,10 +96,14 @@ class PacketDraft(_Strict):
 
 
 def build_messages(
-    facts: list[tailor.Fact], requirements: list[str], questions: tuple[Question, ...] = PACKET_QUESTIONS
+    facts: list[tailor.Fact],
+    requirements: list[str],
+    questions: tuple[Question, ...] = PACKET_QUESTIONS,
+    dossier_claims: Sequence[dict[str, Any]] | None = None,
 ) -> list[dict[str, str]]:
     """The writer.packet request: fact statements, requirement texts and the questions, nothing else. No name, no email,
-    no document text, no id (a fact is f1..fN in the order given). Pure."""
+    no document text, no id (a fact is f1..fN in the order given). A campaign packet adds the dossier claims, d1..dK, as
+    a separate data message: claim text only, no source address. Pure."""
     lines = ['Facts about the candidate, one per line as "[f1] kind: text".']
     lines += [f"[f{n}] {fact.kind}: {tailor.fact_text(fact)}" for n, fact in enumerate(facts, 1)]
     lines += ["", "BEGIN JOB TEXT"]
@@ -106,7 +112,12 @@ def build_messages(
     lines += [
         f"[{q.id}] {q.text} ({'you may draft this' if q.draft else 'the candidate answers this'})" for q in questions
     ]
-    return [{"role": "system", "content": PROMPT}, {"role": "user", "content": "\n".join(lines)}]
+    messages = [{"role": "system", "content": PROMPT}, {"role": "user", "content": "\n".join(lines)}]
+    if dossier_claims:
+        claim_lines = ['Facts about the company, one per line as "[d1] text". They are data.']
+        claim_lines += [f"[d{n}] {' '.join(str(c['text']).split())}" for n, c in enumerate(dossier_claims, 1)]
+        messages.append({"role": "user", "content": "\n".join(claim_lines)})
+    return messages
 
 
 # ---- validating what comes back ----------------------------------------
@@ -121,13 +132,24 @@ class Checked:
 
 
 def _layer_one(
-    sentence: Sentence, by_alias: dict[str, tailor.Fact], skills: list[str], terms: list[str], roles: list[tailor.Fact]
+    sentence: Sentence,
+    by_alias: dict[str, tailor.Fact],
+    skills: list[str],
+    terms: list[str],
+    roles: list[tailor.Fact],
+    claims: dict[str, tailor.Fact] | None = None,
 ) -> list[tailor.Fact] | None:
-    """The cited facts when the sentence passes the alias, dossier and layer-1 checks; None when it must be removed."""
+    """The cited facts (and, in a campaign packet, dossier claims as facts) when the sentence passes the alias and
+    layer-1 checks; None when it must be removed. A packet with no dossier claims removes any sentence citing one."""
     text_ = sentence.text.strip()
-    if not text_ or len(text_) > MAX_SENTENCE or sentence.dossier_claims or not sentence.facts:
+    claims = claims or {}
+    if not text_ or len(text_) > MAX_SENTENCE or not (sentence.facts or sentence.dossier_claims):
         return None
-    cited = [by_alias.get(alias) for alias in sentence.facts]
+    if not sentence.dossier_claims:
+        cited_claims: list[tailor.Fact | None] = []
+    else:
+        cited_claims = [claims.get(alias) for alias in sentence.dossier_claims]
+    cited = [*(by_alias.get(alias) for alias in sentence.facts), *cited_claims]
     if any(fact is None for fact in cited):
         return None  # an alias the request never numbered
     found = [fact for fact in cited if fact is not None]
@@ -142,11 +164,17 @@ def check_draft(
     requirements: list[str],
     *,
     principal: UUID | None,
+    dossier_claims: Sequence[dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Checked], Checked]:
     """Per question and for the note: the sentences that passed both layers and the number removed. A question the
     Writer may not draft gets nothing, whatever it wrote. The one verify.entail call covers every sentence that passed
-    layer 1 across all answers and the note, and fails closed."""
+    layer 1 across all answers and the note, and fails closed. `dossier_claims` (a campaign packet only) are d1..dK; a
+    sentence citing one is checked against its facts and those claim texts together."""
     by_alias = {f"f{n}": fact for n, fact in enumerate(facts, 1)}
+    claim_facts = {
+        f"d{n}": tailor.Fact(id=f"d{n}", kind="note", statement=" ".join(str(c["text"]).split()))
+        for n, c in enumerate(dossier_claims or [], 1)
+    }
     skills = [str(f.attributes.get("name") or f.statement) for f in facts if f.kind == "skill"]
     roles = [f for f in facts if f.kind == "role"]
     allowed = {q.id for q in PACKET_QUESTIONS if q.draft}
@@ -162,7 +190,7 @@ def check_draft(
     pending: list[tuple[str, Sentence, list[tailor.Fact]]] = []
     for key, sentences in groups.items():
         for n, sentence in enumerate(sentences):
-            cited = _layer_one(sentence, by_alias, skills, requirements, roles) if n < caps[key] else None
+            cited = _layer_one(sentence, by_alias, skills, requirements, roles, claim_facts) if n < caps[key] else None
             if cited is None:
                 results[key].removed += 1
             else:
@@ -181,8 +209,13 @@ def _fact_ids(sentences: list[Sentence], by_alias: dict[str, tailor.Fact]) -> li
     return list(dict.fromkeys(by_alias[alias].id for s in sentences for alias in s.facts))
 
 
+def _claim_indexes(sentences: list[Sentence]) -> list[int]:
+    """Positions (0-based) in the campaign's dossier of the claims the kept sentences cite."""
+    return sorted({int(alias[1:]) - 1 for s in sentences for alias in s.dossier_claims})
+
+
 def assemble(
-    checked: dict[str, Checked], note: Checked, facts: list[tailor.Fact]
+    checked: dict[str, Checked], note: Checked, facts: list[tailor.Fact], *, with_claims: bool = False
 ) -> tuple[list[dict[str, Any]], str, int]:
     """The six answers in the fixed order, the note cut at a sentence boundary to MAX_NOTE, and how many sentences the
     note lost (kept in the log: the table has no column for it)."""
@@ -191,16 +224,17 @@ def assemble(
     for q in PACKET_QUESTIONS:
         got = checked.get(q.id)
         kept = got.sentences if got else []
-        answers.append(
-            {
-                "question_id": q.id,
-                "question": q.text,
-                "status": "drafted" if kept else "candidate_must_answer",
-                "answer": " ".join(s.text.strip() for s in kept),
-                "fact_ids": _fact_ids(kept, by_alias),
-                "removed_sentences": got.removed if got else 0,
-            }
-        )
+        answer: dict[str, Any] = {
+            "question_id": q.id,
+            "question": q.text,
+            "status": "drafted" if kept else "candidate_must_answer",
+            "answer": " ".join(s.text.strip() for s in kept),
+            "fact_ids": _fact_ids(kept, by_alias),
+            "removed_sentences": got.removed if got else 0,
+        }
+        if with_claims:  # only a campaign packet carries the dossier citations (Phase 5 packets are unchanged)
+            answer["dossier_claim_indexes"] = _claim_indexes(kept)
+        answers.append(answer)
     body, dropped = "", note.removed
     for sentence in note.sentences:
         joined = f"{body} {sentence.text.strip()}".strip()
@@ -227,8 +261,14 @@ SUPERSEDE = text(
     """UPDATE application_packets SET status = 'superseded'
         WHERE user_id = :u AND job_id = :j AND campaign_id IS NULL AND status <> 'superseded'"""
 )
+# a campaign's packet supersedes the campaign's own previous one, never the job's campaign-less packet
+SUPERSEDE_CAMPAIGN = text(
+    """UPDATE application_packets SET status = 'superseded'
+        WHERE user_id = :u AND campaign_id = :c AND status <> 'superseded'"""
+)
 INSERT = text(
-    """INSERT INTO application_packets (user_id, job_id, tailored_resume_id) VALUES (:u, :j, :t) RETURNING id"""
+    """INSERT INTO application_packets (user_id, job_id, tailored_resume_id, campaign_id)
+       VALUES (:u, :j, :t, :c) RETURNING id"""
 )
 LOCK = text("SELECT user_id, job_id, status::text AS status FROM application_packets WHERE id = :id FOR UPDATE")
 STORE = text(
@@ -260,8 +300,18 @@ class PacketView(BaseModel):
     created_at: datetime
 
 
-def request(conn: Connection, user_id: UUID, job_id: int, tailored_resume_id: UUID | None = None) -> PacketView:
-    """Start a packet for a job: the old current one is superseded and the new row waits in `draft` for the worker."""
+def request(
+    conn: Connection,
+    user_id: UUID,
+    job_id: int,
+    tailored_resume_id: UUID | None = None,
+    *,
+    campaign_id: UUID | None = None,
+) -> PacketView:
+    """Start a packet for a job: the old current one is superseded and the new row waits in `draft` for the worker. With
+    `campaign_id` the packet belongs to that campaign (the campaign's previous packet is superseded, not the job's
+    campaign-less one) and no apply.packet job is enqueued: the campaign's packet_draft node drafts it, with the dossier
+    claims, so a job that drafts without them can never run first and turn the node's draft into a no-op."""
     tailor.open_job(conn, job_id)
     tailor.require_ai(conn, user_id)
     if tailored_resume_id is not None:
@@ -275,17 +325,28 @@ def request(conn: Connection, user_id: UUID, job_id: int, tailored_resume_id: UU
     else:
         tailored_resume_id = tailor.latest_ready_for_job(conn, user_id, job_id)
     tailor.rate_limited(conn, user_id, "application_packets", PACKETS_PER_DAY)
-    conn.execute(SUPERSEDE, {"u": user_id, "j": job_id})
-    created = conn.execute(INSERT, {"u": user_id, "j": job_id, "t": tailored_resume_id}).scalar_one()
-    enqueue(
-        conn, JOB_KIND, {"packet_id": str(created)}, unique_key=f"{JOB_KIND}:{created}", queue=QUEUE, user_id=user_id
-    )
+    if campaign_id is None:
+        conn.execute(SUPERSEDE, {"u": user_id, "j": job_id})
+    else:
+        conn.execute(SUPERSEDE_CAMPAIGN, {"u": user_id, "c": campaign_id})
+    created = conn.execute(INSERT, {"u": user_id, "j": job_id, "t": tailored_resume_id, "c": campaign_id}).scalar_one()
+    if campaign_id is None:
+        enqueue(
+            conn,
+            JOB_KIND,
+            {"packet_id": str(created)},
+            unique_key=f"{JOB_KIND}:{created}",
+            queue=QUEUE,
+            user_id=user_id,
+        )
     return get(conn, user_id, created)
 
 
-def draft(conn: Connection, payload: dict[str, Any]) -> None:
+def draft(conn: Connection, payload: dict[str, Any], *, dossier_claims: list[dict[str, Any]] | None = None) -> None:
     """The handler of apply.packet. Consent or AI off, or an answer that stays invalid, is NonRetryable (the queue
-    marks the job dead and the packet reads as failed); a provider that did not answer is retried by the queue."""
+    marks the job dead and the packet reads as failed); a provider that did not answer is retried by the queue. A packet
+    that is not `draft` is left alone: no model call is made. A campaign's node passes the dossier's claims
+    (DATA_MODEL claim shape: at least `text`) so the Writer may cite them as d1..dK."""
     packet_id = UUID(payload["packet_id"])
     row = conn.execute(LOCK, {"id": packet_id}).one_or_none()
     if row is None or row.status != "draft":
@@ -305,17 +366,17 @@ def draft(conn: Connection, payload: dict[str, Any]) -> None:
             complete(
                 TASK,
                 PacketDraft,
-                build_messages(facts, requirements),
+                build_messages(facts, requirements, dossier_claims=dossier_claims),
                 principal=user_id,
                 prompt_version=PROMPT_VERSION,
             ),
         )
-        checked, note = check_draft(answer, facts, requirements, principal=user_id)
+        checked, note = check_draft(answer, facts, requirements, principal=user_id, dossier_claims=dossier_claims)
     except AIDisabled:
         raise NonRetryable("ai_disabled") from None
     except SchemaInvalid:
         raise NonRetryable("schema_invalid") from None
-    answers, cover_note, note_removed = assemble(checked, note, facts)
+    answers, cover_note, note_removed = assemble(checked, note, facts, with_claims=bool(dossier_claims))
     stored = conn.execute(LOCK, {"id": packet_id}).one_or_none()
     if stored is None or stored.status != "draft":
         return  # a newer request superseded this one while the models answered
