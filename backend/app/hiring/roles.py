@@ -254,7 +254,7 @@ def create(
         ),
         {"org": org_id, "caller": caller, **columns},
     ).scalar_one()
-    result = intake.extract(description, caller)
+    result = intake.extract(conn, description, caller)
     for ordinal, item in enumerate(_extracted(result.rows), start=1):
         _insert_requirement(conn, role_id, org_id, ordinal, item)
     view = _view(conn, _fetch(conn, role_id))
@@ -303,7 +303,7 @@ def update(conn: Connection, caller: UUID, role_id: UUID, changes: Mapping[str, 
 
 def _read_again(conn: Connection, caller: UUID, role: Row[Any], description: str) -> dict[str, Any]:
     """Replace the extracted items with what the new description yields; typed items keep their place after them."""
-    result = intake.extract(description, caller)
+    result = intake.extract(conn, description, caller)
     typed = conn.execute(
         text("SELECT count(*) FROM role_requirements WHERE role_id = :id AND span IS NULL"), {"id": role.id}
     ).scalar_one()
