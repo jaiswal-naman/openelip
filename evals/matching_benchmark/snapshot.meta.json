@@ -1,0 +1,47 @@
+{
+  "exported_at": "2026-11-23T06:26:04+00:00",
+  "source": {
+    "database": "app_snapshot_test",
+    "alembic_revision": "p4_0401_match_brief",
+    "note": "restored copy of a pg_dump of the live database app (Alembic 0002_platform, 11,357 jobs), upgraded to head (p4_0401_match_brief, after the Phase 3 fixes merged); app itself was only dumped"
+  },
+  "selection": {
+    "pool_sql": "SELECT s.ats::text AS ats, s.token, s.company_name AS company, j.external_id, j.title, j.description, j.location_raw, j.country, j.work_arrangements::text[] AS work_arrangements, j.employment_type_raw AS employment_type, j.department, j.apply_url, j.posted_at, j.materially_changed_at AS changed_at FROM jobs j JOIN job_sources s ON s.id = j.source_id WHERE j.status = 'open' AND j.is_listed AND j.canonical_job_id IS NULL",
+    "rule": "Postings with an email address or phone number are dropped. The rest are grouped by (source, country) and ordered by the SHA-256 of ats/token/external_id inside each group; the snapshot is the first N of the list sorted by (position inside the group, hash), so it takes one posting from every group, then a second from every group that has one, and so on. N is 1,000 or, if the file would pass 5 MB, the most that fits.",
+    "open_listed_canonical": 9996,
+    "dropped_for_contact_data": 2038,
+    "pool": 7958,
+    "target_count": 1000,
+    "count": 758,
+    "size_bytes": 4995603,
+    "size_limit_bytes": 5000000
+  },
+  "sources": 57,
+  "by_ats": {
+    "ashby": 211,
+    "greenhouse": 512,
+    "lever": 35
+  },
+  "by_country": {
+    "not stated": 101,
+    "US": 89,
+    "IN": 84,
+    "GB": 59,
+    "CA": 53,
+    "SG": 43,
+    "JP": 42,
+    "AU": 38,
+    "DE": 35,
+    "IE": 33,
+    "MX": 32,
+    "FR": 29,
+    "BR": 26,
+    "ES": 19,
+    "NL": 18,
+    "PL": 18,
+    "AE": 14,
+    "IL": 14,
+    "ID": 9,
+    "LU": 2
+  }
+}
