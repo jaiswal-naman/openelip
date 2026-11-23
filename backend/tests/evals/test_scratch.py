@@ -97,3 +97,30 @@ def test_a_database_called_evals_is_scratch_too(monkeypatch):
     }
     monkeypatch.setattr(config, "get", lambda: config.load({"APP_ENV": "test", "LLM_PROVIDER": "fake", **names}))
     runner.refuse_unless_scratch()  # does not raise
+
+
+def test_a_replay_whose_url_names_a_scratch_database_but_reaches_another_writes_no_run(engine, monkeypatch):
+    """05+06 re-verification: a `dbname` query parameter overrides the URL's path, so the name check alone passed a
+    login that reached another database. The server's answer to current_database() refuses before the run row."""
+    from app.evals import runner
+    from app.platform import config, db
+
+    real = config.get()
+    worker = real.database_url_worker.split("?", 1)[0] + "?dbname=postgres"
+    settings = config.load(
+        {
+            "APP_ENV": "test",
+            "LLM_PROVIDER": "fake",
+            "DATABASE_URL_MIGRATE": real.database_url_migrate,
+            "DATABASE_URL_API": real.database_url_api,
+            "DATABASE_URL_WORKER": worker,
+            "DATABASE_URL_MATCH": real.database_url_match,
+        }
+    )
+    monkeypatch.setattr(config, "get", lambda: settings)
+    monkeypatch.setattr(db, "_engines", {})  # engines are made from the settings once: make the worker's again
+    runner.refuse_unless_scratch()  # the names alone pass: this is the hole
+    with pytest.raises(runner.NotAScratchDatabase, match="connected to database 'postgres'"):
+        runner.run_suite("harness_smoke")
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT count(*) FROM eval_runs")).scalar_one() == 0
