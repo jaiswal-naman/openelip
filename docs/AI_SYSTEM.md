@@ -1225,6 +1225,7 @@ Used in `eval_runs.metrics`, `eval_items` and on the scoreboard.
 | `hidden_text_recall`, `visible_text_removed_rate` | Hidden text |
 | `location_accuracy`, `location_guessed` | Location parsing (IDX-06) |
 | `req_item_f1`, `req_importance_accuracy`, `req_run_agreement` | Requirement extraction |
+| `req_spans_resolved` (absolute: the share of extracted requirement items whose span resolves to the posting text; bar 1.0) | Requirement extraction, every run |
 | `evidence_faithful_rate`, `false_met_required_rate`, `citation_reject_rate` | Evidence faithfulness, production |
 | `tailor_unsupported_passed`, `tailor_discard_rate` | Tailoring integrity |
 | `recall_at_300`, `recall_at_40`, `ndcg_at_5`, `precision_at_5`, `cost_per_candidate_day_usd` | Matching benchmark |
