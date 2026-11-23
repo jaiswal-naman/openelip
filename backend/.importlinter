@@ -71,3 +71,19 @@ source_modules =
 forbidden_modules =
     langchain_core
     langgraph_sdk
+
+# NET-01: only app.agentnet imports the MCP SDK. Written like langgraph-scope (source app, ignored edges), so a chain
+# such as app.main -> app.agentnet.server -> mcp stays legal while any other module importing mcp fails.
+[importlinter:contract:mcp-scope]
+name = Only app.agentnet imports the MCP SDK
+type = forbidden
+source_modules =
+    app
+forbidden_modules =
+    mcp
+ignore_imports =
+    app.agentnet -> mcp
+    app.agentnet -> mcp.**
+    app.agentnet.** -> mcp
+    app.agentnet.** -> mcp.**
+unmatched_ignore_imports_alerting = none

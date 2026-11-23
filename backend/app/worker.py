@@ -34,6 +34,7 @@ from app.profile import privacy as profile_privacy  # noqa: F401  (the export jo
 from app.tailor import jobs as tailor_jobs  # noqa: F401  (importing it registers the tailor handlers)
 from app.tailor import privacy as tailor_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.trust import jobs as trust_jobs  # noqa: F401  (importing it registers the export and erase jobs and the sweep)
+from app.twin import jobs as twin_jobs  # noqa: F401  (importing it registers the Twin handlers)
 
 POLL_SECONDS = 1
 
