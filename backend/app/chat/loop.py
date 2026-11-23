@@ -234,8 +234,8 @@ def _sentences(text: str) -> list[str]:
 
 
 NOT_DONE_NOTE = (
-    "Note: I cannot apply, send messages, approve anything or change your record. Nothing was changed; a change to your "
-    "record waits for your confirmation."
+    "Note: I cannot apply, send messages, approve anything or change your record. Nothing was changed; "
+    "a change to your record waits for your confirmation."
 )
 # The false-claim check (05-FIXES B1). The agent has seven read and propose tools and nothing that applies, sends,
 # approves or changes the record, so no event of a turn can ever back a claim that one of those was done: a reply that

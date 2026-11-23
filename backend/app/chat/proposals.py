@@ -38,8 +38,8 @@ DECLINE_MEMORY = timedelta(days=30)  # assumption: AI_SYSTEM 4.8, a change decli
 MAX_PROPOSALS = 5  # assumption: items taken from one message; the schema cannot bound the list
 MAX_QUOTE = 500  # the change log keeps the quote as the proposal's reason, and the record allows 500 characters
 # A quote must be long enough to hold a subject and a statement ("I know Go" is 9 characters, "no Globex" 9) and carry
-# the proposed words. 8 is the floor under which a quote is a word or two ("Go", "yes"); the length alone proves nothing,
-# the words check (_says) is the test. A vague quote such as "this posting" is long enough and still refused by it.
+# the proposed words. 8 is the floor under which a quote is a word or two ("Go", "yes"); the length alone proves
+# nothing, the words check (_says) is the test. A vague quote such as "this posting" is long enough and still refused by it.
 MIN_QUOTE = 8
 STEM = 5  # characters compared of each word, so "engineer" matches "engineering" and "pipelines" "pipeline"
 _FILLER = frozenset(
