@@ -104,8 +104,18 @@ def reason_text(code: str | None, details: dict[str, Any] | None = None) -> str:
     return UNKNOWN_REASON
 
 
+STEP_ORDER = ("research", "fit", "packet_draft", "packet", "follow_up", "interview_prep")
+
+
 def step_base(step_key: str) -> str:
     return step_key.split(":", 1)[0]
+
+
+def _step_position(step: Any) -> tuple[int, int]:
+    """The order a campaign's steps run in, then a numbered step's number: steps made in one transaction share a
+    creation time, so the pipeline's own order (not the clock) lists them."""
+    base, _, number = step.step_key.partition(":")
+    return (STEP_ORDER.index(base) if base in STEP_ORDER else len(STEP_ORDER), int(number) if number.isdigit() else 0)
 
 
 def _class(status: str) -> str:
@@ -177,6 +187,8 @@ def _facts(conn: Connection, user_id: UUID, ids: list[UUID]) -> _Facts:
         {"u": user_id, "ids": ids},
     ):
         steps.setdefault(row.campaign_id, []).append(row)
+    for rows in steps.values():
+        rows.sort(key=_step_position)
     for row in conn.execute(
         text(
             """SELECT a.campaign_id, p.id, a.id AS action_id, a.action_type::text AS kind

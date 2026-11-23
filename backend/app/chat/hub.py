@@ -69,6 +69,9 @@ class Reply:
             "citations": [e.data for e in events if e.name == "citation"],
             "proposals": [e.data for e in events if e.name == "proposal"],
         }
+        offers = [e.data for e in events if e.name == "campaign_proposal"]
+        if offers:  # only a reply that offered a campaign carries the key, so the other snapshots keep their shape
+            state["campaign_proposals"] = offers
         return len(events), state
 
     def request_stop(self) -> None:

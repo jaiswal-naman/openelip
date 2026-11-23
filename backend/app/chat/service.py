@@ -87,6 +87,15 @@ class ProposalView(BaseModel):
     statement: str
 
 
+class CampaignProposalView(BaseModel):
+    """An offer to start a campaign for a job (plan 07-06). Nothing is started until the candidate clicks the card."""
+
+    job_id: int
+    title: str = Field(json_schema_extra=UNTRUSTED)
+    company_name: str = Field(json_schema_extra=UNTRUSTED)
+    campaign_id: UUID | None
+
+
 class MessageView(BaseModel):
     id: UUID
     role: Literal["user", "assistant", "tool"]
@@ -94,6 +103,7 @@ class MessageView(BaseModel):
     tool_name: str | None
     citations: list[CitationView]
     proposals: list[ProposalView]
+    campaign_proposals: list[CampaignProposalView]
     finish_reason: FinishReason | None  # null while the reply is being written, and for rows that are not replies
     created_at: datetime
 
@@ -124,6 +134,7 @@ def _message_view(row: Row[Any]) -> MessageView:
         tool_name=row.tool_name,
         citations=[CitationView.model_validate(c) for c in refs.get("citations", [])],
         proposals=[ProposalView.model_validate(p) for p in refs.get("proposals", [])],
+        campaign_proposals=[CampaignProposalView.model_validate(p) for p in refs.get("campaign_proposals", [])],
         finish_reason=row.finish_reason,
         created_at=row.created_at,
     )
@@ -531,9 +542,11 @@ def _conclude(job: _Generation, outcome: _Outcome, begun: float) -> None:
     events = reply.since(0)
     citations = [event.data for event in events if event.name == "citation"]
     proposals = [event.data for event in events if event.name == "proposal"]
+    offers = [event.data for event in events if event.name == "campaign_proposal"]
     refs: dict[str, Any] = {
         "citations": citations,
         "proposals": proposals,
+        "campaign_proposals": offers,
         "proposal_event_ids": [proposal["event_id"] for proposal in proposals],
         "unknown_citations": result.unknown_citations if result is not None else 0,
         "last_event_id": reply.last_id + 1,  # message.end, below
