@@ -7,8 +7,9 @@ from sqlalchemy.engine import make_url
 # What information_schema must show after `alembic upgrade head`, as "column udt_name" ("?" marks a nullable column).
 # Transcribed by hand from DATA_MODEL 3.3, 3.7 and 3.13 (the Phase 1 tables), 3.3 again for the trust tables that plan
 # 03-01 added (consents, audit_log, data_requests), 3.4 for the record tables of plan 03-04 and 3.5 (the job index,
-# converted in place by revision p2_0201_job_index), and 3.6 and 3.7 for the match and brief tables of plan 04-01
-# (outbox is 3.7's and Phase 1's), so a change to either side that the other does not follow fails here.
+# converted in place by revision p2_0201_job_index), 3.6 and 3.7 for the match and brief tables of plan 04-01
+# (outbox is 3.7's and Phase 1's), and 3.9 for the hiring tables of plan 06-01, so a change to either side that the
+# other does not follow fails here.
 # Not autogenerate.
 EXPECTED = {
     "users": """
@@ -126,6 +127,33 @@ EXPECTED = {
     "brief_items": """
         brief_id uuid; position int2; user_id uuid; kind brief_item_kind; match_decision_id uuid?; approval_id uuid?
         agent_action_id int8?; introduction_id uuid?""",
+    # DATA_MODEL 3.9, the hiring tables that plan 06-01 added. name_key is a generated column, so it is nullable here.
+    "organizations": """
+        id uuid; name text; name_key text?; timezone text; is_synthetic bool; created_by uuid?
+        created_at timestamptz""",
+    "org_members": """
+        id uuid; organization_id uuid; user_id uuid?; invited_email text?; role org_role; status member_status
+        invited_by uuid?; created_at timestamptz; joined_at timestamptz?; removed_at timestamptz?""",
+    "roles": """
+        id uuid; organization_id uuid; title text; description text; status role_status; country bpchar?; city text?
+        work_arrangements _work_arrangement; employment_type employment_type; seniority seniority; salary_min int4?
+        salary_max int4?; salary_currency bpchar?; visa_sponsorship visa_sponsorship; job_id int8?
+        requirements_confirmed_at timestamptz?; created_by uuid?; created_at timestamptz; opened_at timestamptz?
+        closed_at timestamptz?""",
+    "role_requirements": """
+        id uuid; role_id uuid; organization_id uuid; ordinal int2; importance requirement_importance
+        kind requirement_kind; text text; span int4range?; is_confirmed bool; created_at timestamptz""",
+    "introductions": """
+        id uuid; organization_id uuid; role_id uuid; user_id uuid; match_decision_id uuid; status introduction_status
+        share_preview jsonb; asked_at timestamptz; expires_at timestamptz; responded_at timestamptz?
+        answer_due_at timestamptz?; employer_answer employer_answer?; employer_answer_reason text?
+        employer_answered_by uuid?; employer_answered_at timestamptz?; created_at timestamptz""",
+    "shortlist_entries": """
+        id uuid; organization_id uuid; role_id uuid; introduction_id uuid; user_id uuid; shared_payload jsonb
+        contact_released_at timestamptz?; created_at timestamptz""",
+    "interest_signals": """
+        id uuid; sender_side signal_side; user_id uuid; organization_id uuid; role_id uuid; introduction_id uuid?
+        sent_by uuid?; week_start date; slot int2; created_at timestamptz""",
 }
 
 

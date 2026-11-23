@@ -349,12 +349,23 @@ def test_accepting_starts_the_answer_clock_in_the_organizations_time_zone(conn):
     accept(conn, intro, role, cat)
     row = conn.execute(
         text(
-            """SELECT status::text, responded_at = now(), answer_due_at = add_business_days(now(), 5, 'Asia/Kolkata'),
-                      answer_due_at <> add_business_days(now(), 5, 'UTC') FROM introductions WHERE id = :i"""
+            """SELECT status::text, responded_at = now(), answer_due_at = add_business_days(now(), 5, 'Asia/Kolkata')
+               FROM introductions WHERE id = :i"""
         ),
         {"i": intro},
     ).one()
-    assert row == ("accepted", True, True, True)
+    assert row == ("accepted", True, True)
+
+
+def test_the_answer_clock_is_counted_in_the_organizations_own_time_zone(conn, desk):
+    """The instant five business days on is the same in most zones, so the proof that the zone is the organization's is
+    a zone the database does not know: it stops the acceptance, which it could not if the guard counted in UTC."""
+    conn.execute(text("UPDATE organizations SET timezone = 'Nowhere/Land' WHERE id = :o"), {"o": desk.org})
+    intro = ask(conn, desk.role, desk.cat)
+    grant(conn, desk.cat, "introduction", org=desk.org, role=desk.role.id)
+    with refused(conn) as caught:
+        conn.execute(text("UPDATE introductions SET status = 'accepted' WHERE id = :i"), {"i": intro})
+    assert sqlstate(caught) == "22023" and "Nowhere/Land" in message(caught)
 
 
 def test_declining_records_the_time_and_starts_no_clock(conn, desk):

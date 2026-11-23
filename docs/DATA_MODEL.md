@@ -60,7 +60,7 @@ These values are fixed by this schema. API payloads, agent code and screens shou
 | Agent token scopes | `agent_tokens.scopes` | Principal `candidate` (issued with an `agent_access` consent): `matches:read`, `explanations:read`. Principal `organization` (issued by an owner or admin): `twin:ask`, `introductions:request` |
 | Brief | `users.brief_frequency`, `brief_items.kind` | `daily`, `weekly`, `paused`; item kinds `match`, `approval`, `activity`, `introduction` |
 | Wind tunnel | `sim_scenarios.persona`, `sim_results.code` | Personas `cooperative` (control), `silent`, `lowball`, `scam`, `hidden_instruction`. Violation codes `constraint_break`, `invented_claim`, `privacy_leak`, `unauthorized_action`, `duplicate_send`, `followed_hidden_instruction`; outcome codes `goal_reached` plus names defined in each scenario |
-| Eval suites | `eval_runs.suite` | `resume_extraction`, `requirement_extraction`, `evidence_faithfulness`, `tailoring_integrity`, `matching_benchmark`, `injection`, `constraint_property`, `wind_tunnel`, `record_proposals`, `chat`, `dossier`, `twin`, `guardian`, `agent_drafts`, `harness_smoke` (the harness's own smoke suite: it proves the runner and the gate, never product quality), `location_accuracy` (share of labelled postings whose country and city are read correctly, IDX-06; added in Phase 2 because no other suite fits it) |
+| Eval suites | `eval_runs.suite` | `resume_extraction`, `requirement_extraction`, `evidence_faithfulness`, `tailoring_integrity`, `matching_benchmark`, `injection`, `constraint_property`, `wind_tunnel`, `record_proposals`, `chat`, `dossier`, `twin`, `guardian`, `agent_drafts`, `harness_smoke` (the harness's own smoke suite: it proves the runner and the gate, never product quality), `location_accuracy` (share of labelled postings whose country and city are read correctly, IDX-06; added in Phase 2 because no other suite fits it), `role_intake` (share of an employer's role description read into the right requirements, HIR-02; added in Phase 6 because no other suite fits it) |
 | Instance operator | (no column) | Acts through the command line; audit rows use `actor_type` `operator` |
 | Application | `applications.status` | `applied`, `interview`, `offer`, `rejected`, `no_response` |
 | Consent purposes | `consents.purpose` | `terms`, `ai_processing`, `brief_email`, `open_to_introductions`, `introduction` (per organization and role), `agent_access` |
@@ -2433,6 +2433,8 @@ CREATE TRIGGER interest_signals_check BEFORE INSERT ON interest_signals
   FOR EACH ROW EXECUTE FUNCTION interest_signals_check();
 ```
 
+Phase 6 addition (plan 06-01, owner decision G7): `interest_signals_check` also requires `i.status = 'accepted'` for an organization signal, so an employer cannot signal interest in a candidate who has not accepted the ask. Issue 4 in section 11 left employer signals before acceptance out of v1; the database now refuses them as well as the API. The block above is the original and does not show the added condition; `db/sql/p6_0601_triggers_security.sql` has the live function.
+
 ## 5. Database roles and row-level security
 
 ### 5.1 Roles
@@ -2823,6 +2825,13 @@ GRANT SELECT ON profile_facts, constraints, preferences, feedback_events TO app_
 GRANT SELECT, INSERT, UPDATE ON match_runs, queue_jobs TO app_match;
 GRANT SELECT, INSERT ON match_decisions, match_evidence, llm_calls TO app_match;
 ```
+
+Phase 6 additions (plan 06-01), live in `db/sql/p6_0601_triggers_security.sql` and not shown in the block above:
+
+- `role_preview` returns one more key, `as_of`: the time the latest completed role run finished (JSON `null` before the first one), so the employer can see how old the counts are.
+- `my_org_invitations()` is new. `SECURITY DEFINER`: the caller's open invitations by their own address (`member_id`, `organization_id`, `organization_name`, `role`, `created_at`). An invited person is not yet a member, so row-level security hides the invitation row from them, and `/v1/me` lists it through this function.
+- `introduction_role(p_introduction_id)` is new. `SECURITY DEFINER`: for the caller's own introduction only, `organization_name`, `role_title`, `job_id`, `country`, `city`, `work_arrangements`, `salary_min`, `salary_max`, `salary_currency` and `is_synthetic`. A candidate has no row access to `roles` or `organizations`, yet the ask must name the employer, the role and its pay range.
+- Both new functions refuse an agent token and return nothing for anyone else's rows. They are executable by `app_api` and `app_worker` only, because the match role may not read the hiring side (section 5.1).
 
 ## 6. Key queries
 

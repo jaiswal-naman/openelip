@@ -26,7 +26,8 @@ DEFAULT_TEST_URL = "postgresql://app:app_local_only@127.0.0.1:5433/app_test"
 DATA_TABLES = (
     "users, sessions, login_codes, idempotency_keys, outbox, queue_jobs, llm_calls, model_registry, "
     "eval_runs, eval_items, fetch_runs, jobs, job_sources, "
-    "match_runs, match_decisions, match_evidence, feedback_events, briefs, brief_items"
+    "match_runs, match_decisions, match_evidence, feedback_events, briefs, brief_items, "
+    "organizations, org_members, roles, role_requirements, introductions, shortlist_entries, interest_signals"
 )
 
 
