@@ -100,14 +100,16 @@ def writer_answer():
                         ["d1"],
                     ),
                     s("I like that Lumen Freight raised 12 million dollars.", [], ["d1"]),  # a number d1 lacks
-                    s("I admire the work of Zenith Corp.", [], ["d9"]),  # no such claim
                     s("I built nightly Python and PostgreSQL pipelines.", ["f2"]),
                 ],
             },
             {
                 "question_id": "relevant_experience",
                 "status": "drafted",
-                "sentences": [s("I led a team of three engineers on the reporting platform.", ["f3"])],
+                "sentences": [
+                    s("I led a team of three engineers on the reporting platform.", ["f3"]),
+                    s("I admire the work of Zenith Corp.", [], ["d9"]),  # no such claim
+                ],
             },
             {"question_id": "expected_pay", "status": "drafted", "sentences": [s("I want 100 thousand.", ["f2"])]},
             {
@@ -135,7 +137,8 @@ def test_a_campaign_packet_cites_dossier_claims_and_removes_the_ones_that_do_not
         "I like that Lumen Freight builds route planning software for regional trucking companies. "
         "I built nightly Python and PostgreSQL pipelines."
     )
-    assert answers["why_role"].removed_sentences == 2  # the changed number and the unknown d9
+    assert answers["why_role"].removed_sentences == 1  # the changed number
+    assert answers["relevant_experience"].removed_sentences == 1  # the unknown d9
     assert answers["why_role"].fact_ids == [w.record.facts["bullet_initech_1"]]
     assert answers["relevant_experience"].answer == "I led a team of three engineers on the reporting platform."
     assert got.cover_note == "I built nightly Python and PostgreSQL pipelines and I like Lumen Freight."
@@ -165,7 +168,7 @@ def test_a_packet_without_dossier_claims_removes_any_sentence_that_cites_one_as_
     got = view(w, created)
     answers = {a.question_id: a for a in got.answers}
     assert answers["why_role"].answer == "I built nightly Python and PostgreSQL pipelines."
-    assert answers["why_role"].removed_sentences == 3
+    assert answers["why_role"].removed_sentences == 2  # both cite a dossier this packet was never given
     assert got.cover_note == ""  # the note cites d1, so it is removed whole
     assert "dossier_claim_indexes" not in answers["why_role"].model_dump()
     assert [c[0] for c in calls] == ["writer.packet", "verify.entail"]

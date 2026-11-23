@@ -58,7 +58,7 @@
     "status": "drafted",
     "sentences": [
      {
-      "text": "My answer is 100 thousand.",
+      "text": "I built nightly Python and PostgreSQL pipelines.",
       "facts": [
        "f2"
       ],

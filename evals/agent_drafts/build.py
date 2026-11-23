@@ -278,7 +278,8 @@ def build_writer(n: int) -> tuple[dict[str, Any], list[Any]]:
         {
             "question_id": candidate_only,
             "status": "drafted",
-            "sentences": [sentence("My answer is 100 thousand.", ["f2"])],
+            # half of the drafts are a pay number, half a supported sentence that does not answer the question
+            "sentences": [sentence("My answer is 100 thousand." if n % 2 == 0 else p["ach1_ok_w"], ["f2"])],
         }
     )
     item = {
