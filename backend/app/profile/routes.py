@@ -24,7 +24,7 @@ from app.platform.api import Envelope, envelope
 from app.platform.idempotency import Write, idempotent
 from app.platform.sessions import Principal, current_user
 
-from . import api, events, service
+from . import api, documents_routes, events, service
 from .errors import InvalidField
 from .models import (
     ConstraintKind,
@@ -41,6 +41,7 @@ from .models import (
 )
 
 router = APIRouter(prefix="/v1/me")
+router.include_router(documents_routes.router)  # POST /documents and GET /documents/{id} (resume upload)
 
 MAX_DECISIONS = 100  # facts one review request may decide
 FactStatus = Literal["unconfirmed", "confirmed", "rejected", "superseded"]
