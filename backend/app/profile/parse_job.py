@@ -4,12 +4,15 @@ REC-01, REC-06, TRU-05).
 Five steps. Steps 2 to 4 can end the parse with a code the candidate reads on the document, and the job is then done:
 a retry could not change the answer.
   1. Claim. The document becomes "parsing" and that is committed, so a poll says "running". A document that is gone,
-     parsed or failed ends the job here, which is why a second run of one document adds nothing.
+     parsed or failed ends the job here, which is why a second run of one document adds nothing. So does a document
+     whose owner's account is no longer active (deletion requested, or suspended): nothing is read or sent.
   2. Read the file. Hidden text is removed and counted. A corrupt, encrypted or scanned file fails (corrupt, encrypted,
      scanned).
-  3. Consent. ai_processing is required as it stands now, so a consent withdrawn after the upload stops the parse before
-     the gateway sees anything (consent_required).
-  4. Extract the facts through the gateway (no provider configured: ai_disabled).
+  3. Consent and route. ai_processing is required as it stands now, so a consent withdrawn after the upload stops the
+     parse before the gateway sees anything (consent_required). So does a route that is no longer available: no
+     provider, or a real model that no passed gold-set run proves (ai_gate; ai_disabled).
+  4. Extract the facts through the gateway (a provider with no answer to give, such as the fake with no recording for
+     the task: ai_disabled).
   5. One transaction writes the text, the hidden-text count, status parsed and every fact, so a crash leaves nothing or
      everything.
 
@@ -30,15 +33,19 @@ from app.platform.llm import AIDisabled, ProviderUnavailable, complete
 from app.platform.sessions import open_sealed_bytes
 from app.trust.api import ConsentRequired, require_consent
 
-from . import models
+from . import ai_gate, models
 from .documents import job_key
 from .extract.schemas import UnverifiedItem
 from .extract.validate import MAX_STATEMENT
 from .extract.workflow import ExtractionResult, Gateway, extract_facts
 from .resume.reader import ReadResult, ResumeUnreadable, read_resume
 
+# Only an active account's document is claimed. A person who has asked for deletion (status deleting) must not have
+# their resume sent to a provider by a parse that was queued before they asked; the erase job removes the document.
 CLAIM = text(
-    """UPDATE documents SET status = 'parsing' WHERE id = :id AND status IN ('uploaded', 'parsing')
+    """UPDATE documents SET status = 'parsing'
+        WHERE id = :id AND status IN ('uploaded', 'parsing')
+          AND EXISTS (SELECT 1 FROM users u WHERE u.id = documents.user_id AND u.status = 'active')
        RETURNING user_id, mime_type, content"""
 )
 LOCK = text("SELECT status FROM documents WHERE id = :id FOR UPDATE")
@@ -82,8 +89,12 @@ def _run(conn: Connection, document_id: UUID, claimed: Row[Any], gateway: Gatewa
         return
     try:
         require_consent(conn, claimed.user_id, "ai_processing")
+        ai_gate.require_available(conn)
     except ConsentRequired:
         _fail(conn, document_id, "consent_required")
+        return
+    except AIDisabled:
+        _fail(conn, document_id, "ai_disabled")
         return
     conn.commit()  # no transaction stays open while the model answers
     try:

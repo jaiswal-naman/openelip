@@ -93,6 +93,8 @@ def request_deletion(conn: Connection, user_id: UUID, code: str) -> Deletion | i
         ),
         {"u": user_id},
     )
+    # No user_id: this job erases the person, and a job tied to them would be deleted with them (the cascade) before it
+    # could record that it finished.
     enqueue(conn, "trust.erase", {"request_id": str(request_id)}, unique_key=f"trust.erase:{request_id}")
     return Deletion(request_id, revoked)
 

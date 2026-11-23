@@ -14,7 +14,8 @@ from sqlalchemy import text
 from app.profile import api, events, protected, service
 from app.profile.errors import ConstraintNotEnforceable, ProtectedCharacteristic
 
-# One sentence per category, in the label style the screen recognizes (plan 03-02).
+# One sentence per category in the label style the narrow screen recognizes (plan 03-02), and one in the plain style
+# only the wide screen recognizes (the Phase 3 verification, B1): what a person types is screened with the wide one.
 PHRASES = {
     "age": "Date of birth: 04/03/1998",
     "marital_status": "Marital status: single",
@@ -26,6 +27,20 @@ PHRASES = {
     "caste": "my caste",
     "disability": "I have a disability",
     "pregnancy": "I am pregnant",
+}
+PLAIN = {
+    "age": "I am 45 years old",
+    "marital_status": "Married with two kids",
+    "family_status": "I have two kids",
+    "religion": "I am a practising Muslim",
+    "gender": "I am a woman",
+    "sexual_orientation": "I am gay",
+    "nationality": "my nationality",
+    "ethnicity": "Black woman engineer",
+    "caste": "I am a Brahmin",
+    "disability": "I use a wheelchair",
+    "health": "I have diabetes",
+    "pregnancy": "I'm expecting a baby",
 }
 WRITTEN_TABLES = (
     "documents, profile_events, profile_facts, constraints, preferences, audit_log, outbox, queue_jobs, llm_calls, "
@@ -136,29 +151,43 @@ def rows_everywhere(conn, user: UUID) -> dict:
 
 
 def test_the_table_has_a_sentence_for_every_category_the_screen_knows_and_each_is_recognized():
-    assert set(PHRASES) == set(protected.CATEGORIES)  # a category added to the screen needs a row here
-    assert {category: protected.screen(phrase) for category, phrase in PHRASES.items()} == {c: c for c in PHRASES}
+    assert set(PLAIN) == set(protected.CATEGORIES)  # a category added to the screen needs a row here
+    assert {category: protected.screen_typed(phrase) for category, phrase in PLAIN.items()} == {c: c for c in PLAIN}
+    assert {category: protected.screen_typed(phrase) for category, phrase in PHRASES.items()} == {c: c for c in PHRASES}
 
 
 @pytest.mark.parametrize("field", sorted(FIELDS))
-@pytest.mark.parametrize("category", sorted(PHRASES))
-def test_a_protected_characteristic_in_any_free_text_field_is_refused_and_nothing_is_written(conn, field, category):
+@pytest.mark.parametrize(
+    ("category", "sentence"),
+    [(c, PHRASES[c]) for c in sorted(PHRASES)] + [(c, PLAIN[c]) for c in sorted(PLAIN)],
+    ids=[f"label-{c}" for c in sorted(PHRASES)] + [f"plain-{c}" for c in sorted(PLAIN)],
+)
+def test_a_protected_characteristic_in_any_free_text_field_is_refused_and_nothing_is_written(
+    conn, field, category, sentence
+):
     ctx = Ctx(conn)
     before = rows_everywhere(conn, ctx.id)
     operation, named_field = FIELDS[field]
 
     with pytest.raises(ProtectedCharacteristic) as refused:
-        operation(conn, ctx, PHRASES[category])
+        operation(conn, ctx, sentence)
 
     assert (refused.value.category, refused.value.field) == (category, named_field)
     assert (refused.value.status, refused.value.code) == (422, "validation_failed")
     assert refused.value.details == {"fields": [{"field": named_field, "issue": "protected_characteristic"}]}
-    assert PHRASES[category] not in repr(vars(refused.value)) + str(refused.value)  # a code, never the text
+    assert sentence not in repr(vars(refused.value)) + str(refused.value)  # a code, never the text
     assert rows_everywhere(conn, ctx.id) == before  # no row of any table, and no version
 
 
 @pytest.mark.parametrize(
-    "harmless", ["Chief Age Officer tooling", "Authorized to work in India", "gender pay gap dashboard"]
+    "harmless",
+    [
+        "Chief Age Officer tooling",
+        "Authorized to work in India",
+        "gender pay gap dashboard",
+        "Led the Catholic Charities website rebuild",
+        "Managed a team of 40",
+    ],
 )
 @pytest.mark.parametrize("field", sorted(FIELDS))
 def test_the_screen_does_not_refuse_ordinary_words_that_merely_contain_a_keyword(conn, field, harmless):

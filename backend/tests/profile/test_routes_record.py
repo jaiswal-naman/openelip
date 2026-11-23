@@ -517,7 +517,10 @@ WRITES = {
 }
 
 
-@pytest.mark.parametrize("sentence", ["Religion: Jainism", "Date of birth: 04/03/1998"])
+@pytest.mark.parametrize(
+    "sentence",
+    ["Religion: Jainism", "Date of birth: 04/03/1998", "I am a practising Muslim", "Married with two kids"],
+)
 @pytest.mark.parametrize("name", sorted(WRITES))
 def test_a_protected_characteristic_is_a_422_that_names_the_field_and_stores_nothing(person, engine, name, sentence):
     (fact, *_) = seed_unconfirmed(engine, person.user)
@@ -534,7 +537,9 @@ def test_a_protected_characteristic_is_a_422_that_names_the_field_and_stores_not
 
     error = refused(response, 422, "validation_failed")
     assert error["details"] == {"fields": [{"field": field, "issue": "protected_characteristic"}]}
-    assert sentence not in response.text and "Jainism" not in response.text and "04/03/1998" not in response.text
+    assert sentence not in response.text and not any(
+        word in response.text for word in ("Jainism", "04/03/1998", "Muslim", "two kids")
+    )
     assert counts(engine, person.user) == before  # no row of the record, no version, no event
 
 

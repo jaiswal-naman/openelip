@@ -138,3 +138,28 @@ def test_the_api_role_writes_rows_about_the_person_it_acts_for_and_no_one_else(c
     with refused(conn):
         api.audit_log(conn, "model.provider_changed", "system", a)  # a system row has no actor: the worker writes it
     assert len(rows(conn)) == 1
+
+
+def test_the_api_role_cannot_write_a_row_about_someone_else_even_as_itself(conn):
+    """The policy checked the actor and not the subject, so a request acting for A could put a row in B's audit log
+    (TRU-03 shows a person the rows about them). A row about the caller, or about no one, is still allowed. The inserts
+    are plain SQL: the writer's own RETURNING is refused for a row the caller could not read, which hides the hole."""
+
+    def insert(actor, subject):
+        conn.execute(
+            text(
+                """INSERT INTO audit_log (event_type, actor_type, actor_user_id, subject_user_id)
+                   VALUES ('consent.granted', 'candidate', :a, :s)"""
+            ),
+            {"a": actor, "s": subject},
+        )
+
+    a, b = make_user(conn, "a@example.test"), make_user(conn, "b@example.test")
+    act_as(conn, "app_api", a)
+    with refused(conn):
+        insert(a, b)  # the actor is A; the subject is B
+    insert(a, a)
+    insert(a, None)  # about no one in particular
+
+    conn.execute(text("RESET ROLE"))
+    assert sorted(str(r.subject_user_id) for r in rows(conn)) == sorted([str(a), "None"])

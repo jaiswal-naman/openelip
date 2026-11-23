@@ -91,3 +91,19 @@ cd backend && DATABASE_URL_WORKER=... uv run python ../evals/resume_extraction/f
 After rewriting `baseline.json`, set `min_score` for `resume_extraction` in `evals/thresholds.toml` to its `score`, and
 state why in the commit. `backend/tests/profile/test_extract_gold.py` checks that the floor equals the baseline, that
 the committed recordings reproduce it, and that a recording set with 35% faults fails the gate.
+
+## Until a live run passes, no real model reads a resume
+
+A route may serve a task only when a passed gold-set run for that task and model exists (AI_SYSTEM 2.2). The resume
+upload asks `eval_runs` (`backend/app/profile/ai_gate.py`) for a passed `resume_extraction` run on the test split, by
+the model method, whose config names the model the three `resume.facts.*` routes use and the current prompt versions of
+the three tasks. With none, a real model is refused as `ai_disabled`, key or no key: the upload answers 503, and a parse
+queued earlier fails the same way. The replay in this folder never counts: its run names the model `recorded` and has no
+method or split. The fake provider needs no run, because it calls no model.
+
+The first live run has to record in `eval_runs.config`: `method` `"model"`, `split` `"test"`, `model` (the name
+`models.toml` gives the three routes, which must be one name) and `prompt_versions` (task name to version, as
+`workflow.prompt_versions()` returns it), and it has to pass the gate. A changed prompt or a changed model needs a new
+live run. This gold set has no division into a development and a test part yet; the first live run decides it, and that
+run is a manual step that needs a key.
+
