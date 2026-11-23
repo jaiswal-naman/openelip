@@ -120,6 +120,23 @@ def test_the_same_key_gets_the_same_ids_and_starts_no_second_generation(w, monke
     assert count(w.engine, "llm_calls") == 2  # one generation: the step and the reply
 
 
+def test_a_retry_while_its_own_reply_is_still_running_gets_the_first_answer_and_not_a_409(w, monkeypatch):
+    """The checks run inside the idempotent write: a client that did not get the 202 and retries meets its own running
+    reply, which would be a 409 reply_running if the checks came first."""
+    chat_world.record(monkeypatch, "two_messages.json")
+    gate = chat_world.hold(monkeypatch, "list_matches")
+    session, key = open_session(w), uuid4().hex
+    first = ok(say(w, session, "What is shown?", key=key), 202)
+    assert gate.entered.wait(chat_world.WAIT_SECONDS)  # its reply is running now
+
+    again = ok(say(w, session, "What is shown?", key=key), 202)
+
+    assert again["data"] == first["data"] and again["meta"]["idempotent_replay"] is True
+    gate.release.set()
+    chat_world.wait_done(first["data"]["message_id"])
+    assert count(w.engine, "chat_messages WHERE role = 'user'") == 1
+
+
 def test_a_write_needs_an_idempotency_key_and_a_json_body(w):
     url = f"/v1/chat/sessions/{open_session(w)}/messages"
     refused(w.client.post(url, json={"text": "hello"}), 400, "idempotency_key_missing")
