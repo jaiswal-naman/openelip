@@ -27,7 +27,7 @@
 
 .input::placeholder {
   color: var(--muted);
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .input[data-hovered] {

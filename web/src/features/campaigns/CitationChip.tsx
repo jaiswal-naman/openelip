@@ -1,24 +1,28 @@
-import { safeHttpUrl } from "@/features/jobs/jobs";
+import balloon from "@/components/ui/balloon.module.css";
 import { LocalTime } from "@/components/ui/Viewer";
-import styles from "./campaigns.module.css";
+import { safeHttpUrl } from "@/features/jobs/jobs";
 
 /**
- * One source of a dossier claim: a chip that opens the page it was read from, with the exact quote and the time it was
- * fetched (CMP-02). The URL, the quote and the host are text; a URL that is not http or https is shown as text and not linked.
+ * One source of a dossier claim as a balloon callout (CMP-02): the numbered balloon opens the page, the exact quote sits beside it,
+ * then where and when it was fetched. `label` ("Source 2a") is the accessible name; the balloon shows its number only.
  */
 export function CitationChip({ source, label }: { source: { url: string; quote: string; retrieved_at: string }; label: string }) {
   const href = safeHttpUrl(source.url);
+  const mark = label.replace(/^Source\s*/, "");
   return (
-    <span className={styles.stack}>
+    <span className={balloon.callout}>
       {href !== null ? (
-        <a className={styles.chip} href={href} target="_blank" rel="noopener noreferrer nofollow" aria-label={`${label}: open the source page (opens in a new tab)`}>
-          {label}
+        <a className={balloon.balloon} href={href} target="_blank" rel="noopener noreferrer nofollow" aria-label={`${label}: open the source page (opens in a new tab)`}>
+          {mark}
         </a>
       ) : (
-        <span className={styles.chip}>{label}</span>
+        <span className={balloon.balloon}>
+          <span className="sr-only">Source </span>
+          {mark}
+        </span>
       )}
-      <blockquote className={styles.quote}>{source.quote}</blockquote>
-      <span className="t-small muted">
+      <blockquote className={balloon.quote}>{source.quote}</blockquote>
+      <span className={balloon.where}>
         {hostOf(source.url)}, fetched <LocalTime iso={source.retrieved_at} />
       </span>
     </span>

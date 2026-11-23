@@ -1,15 +1,13 @@
 /*
- * Ledger tables: hairline rules, no zebra stripes, mono uppercase headers (FRONTEND_UI 5.1).
+ * Ledger tables, ruled like a drawing's bill of materials: a strong rule under the lettered head, hairlines between rows,
+ * no box and no zebra stripes. Figures are mono and tabular.
  * Under 40rem each row stacks and every cell names itself with its data-label, so nothing scrolls sideways (WCAG 1.4.10).
  */
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  overflow: hidden;
+  border-block-end: 1px solid var(--line);
 }
 
 .table caption {
@@ -18,20 +16,31 @@
 
 .table th,
 .table td {
-  padding: var(--sp-12) var(--sp-16);
+  padding: var(--sp-12) var(--sp-12);
   text-align: start;
   vertical-align: top;
   border-block-start: 1px solid var(--line);
 }
 
+.table tbody tr {
+  transition: background-color var(--dur-fast) var(--ease-in);
+}
+
+@media (hover: hover) {
+  .table tbody tr:hover {
+    background: var(--surface);
+  }
+}
+
 .table thead th {
-  border-block-start: 0;
-  background: var(--surface-2);
+  padding-block: var(--sp-8);
+  border-block-start: 2px solid var(--ink-rule);
+  border-block-end: 1px solid var(--line-strong);
   color: var(--muted);
-  font-family: var(--font-mono);
   font-size: var(--fs-label);
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  font-stretch: var(--stretch-lettering);
+  font-weight: 650;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -86,10 +95,10 @@
     content: attr(data-label);
     display: block;
     color: var(--muted);
-    font-family: var(--font-mono);
     font-size: var(--fs-label);
-    font-weight: 600;
-    letter-spacing: 0.05em;
+    font-stretch: var(--stretch-lettering);
+    font-weight: 650;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 

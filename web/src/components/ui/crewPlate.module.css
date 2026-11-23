@@ -1,0 +1,40 @@
+/* The crew's identity plates: a ruled square with the two-letter mark in the drawing's lettering, then the name. */
+
+.plate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  min-width: 0;
+}
+
+.mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1.5px solid var(--text);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-stretch: var(--stretch-lettering);
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 650;
+}
+
+.duty {
+  color: var(--muted);
+  font-size: var(--fs-small);
+}

@@ -1,0 +1,61 @@
+/*
+ * A balloon callout: the numbered circle a drawing uses to point at a part. Here it points at a source. It stays the size
+ * of its number wherever it sits (never stretched by a flex column), and the quote it calls out sits beside it.
+ */
+
+.callout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--sp-4) var(--sp-12);
+  align-items: start;
+}
+
+.balloon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  align-self: start;
+  justify-self: start;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 var(--sp-4);
+  border: 1.5px solid var(--info);
+  border-radius: var(--r-pill);
+  color: var(--info);
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition:
+    background-color var(--dur-fast) var(--ease-in),
+    color var(--dur-fast) var(--ease-in);
+}
+
+@media (hover: hover) {
+  a.balloon:hover {
+    background: var(--info);
+    color: var(--bg);
+  }
+}
+
+.quote {
+  margin: 0;
+  color: var(--text);
+  font-style: italic;
+}
+
+.quote::before {
+  content: "“";
+}
+
+.quote::after {
+  content: "”";
+}
+
+.where {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
