@@ -47,7 +47,10 @@ def error_response(status: int, code: str, message: str, details: dict[str, Any]
 
 async def _api_error(request: Request, exc: Exception) -> JSONResponse:
     error = cast(ApiError, exc)
-    return error_response(error.status, error.code, error.message, error.details)
+    response = error_response(error.status, error.code, error.message, error.details)
+    if error.status == 429 and (wait := error.details.get("retry_after_seconds")) is not None:
+        response.headers["Retry-After"] = str(wait)  # API.md 1.8: a refusal for rate carries the wait in seconds
+    return response
 
 
 async def _http_error(request: Request, exc: Exception) -> JSONResponse:

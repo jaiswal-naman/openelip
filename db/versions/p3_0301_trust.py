@@ -9,7 +9,8 @@ login_codes) never made it. The five enums are guarded the same way. Foreign key
 (consents.organization_id and role_id, audit_log.organization_id and agent_token_id) are plain nullable columns until
 the phase that creates the target table adds the constraint (DATA_MODEL 3.14).
 
-Additive only. The downgrade drops what this revision made, so it restores the state of the revision below it.
+Additive only. The downgrade drops what this revision made, so it restores the state of the revision below it. It is
+lossy, so it refuses to run on the database called app.
 
 Phase 2 (the job index) and Phase 3 were built side by side, both starting at 0002_platform. They are joined in one
 straight line, with this revision on top of p2_0201_job_index, and not by an Alembic merge revision: with two branches
@@ -179,7 +180,11 @@ REVOKE EXECUTE ON FUNCTION erase_user(uuid, uuid), purge_expired() FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION erase_user(uuid, uuid), purge_expired() TO app_worker;
 """
 
+# Lossy: every consent, audit row and data request goes. The first statement refuses the live database, which is called
+# app and is what db/env.py connects to when DATABASE_URL_MIGRATE is not set. The migration check in CI and the tests
+# use other names. Never run this against a database whose rows matter.
 DOWNGRADE_SQL = """
+DO $$ BEGIN IF current_database() = 'app' THEN RAISE EXCEPTION 'refusing a lossy downgrade on app'; END IF; END $$;
 DROP FUNCTION erase_user(uuid, uuid), purge_expired();
 DROP TABLE data_requests, audit_log, consents;
 DROP TYPE data_request_status, data_request_kind, actor_type, consent_action, consent_purpose;

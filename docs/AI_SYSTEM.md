@@ -59,7 +59,7 @@ Assigned to: **Code**, **Fixed workflow** (model tasks in a fixed order, validat
 | 7 | Resume text extraction, hidden-text stripping, contact details | Code | `profile` | Facts about the file |
 | 8 | Resume lines to facts | Fixed workflow (three `resume.facts.*` tasks) | `profile` | Code copies fact text from the source |
 | 9 | Confirm facts; confirm constraints from a guided form | Person | `profile` | REC-02, REC-03 |
-| 10 | Untypeable dealbreakers; protected characteristics | Code | `profile` | REC-04; REC-07 (no field exists) |
+| 10 | Untypeable dealbreakers; protected characteristics | Code | `profile` | REC-04; REC-07 (no field exists, and a pattern screen refuses typed text that states one: 4.9) |
 | 11 | Constraint filter, retrieval, pre-rank, ranking, daily cap, repeat suppression, "why not" | Code (SQL and rules) | `match` | MAT-01, MAT-02, MAT-06, MAT-07 |
 | 12 | Requirement-level evidence verdicts | Fixed workflow (`match.evidence.score`) | `match` | Output is ids and enums |
 | 13 | Citation validation | Code and database | `match` | MAT-05, invariant 2 |
@@ -118,7 +118,7 @@ A task carrying candidate data runs only under an `ai_processing` consent naming
 
 A task has two halves. The **code half** is fixed per release: input model, output model (Pydantic), prompt template and validator. The **data half** is its route in the versioned routing configuration: the model (a `model_registry` row), prompt version, mode, effort, output cap, timeout, data class and an optional fallback route.
 
-`model_registry` holds provider, model name, micro-dollar prices with `price_checked_at`, a retention note and `is_active`; there is no status column. **A route may name a model for a task only when a passed gold-set run for that task and model exists** (`eval_runs.config` records models and prompt versions under test); CI checks the routing configuration against recorded runs. Until that CI check is built, the extraction sweep makes the check for `job.requirements.extract` itself: it queues no job, and logs `unproven`, unless `eval_runs` holds a passed `requirement_extraction` run on the test split, by the model method, whose config names the route's model and the current prompt version. A retired model is `is_active = false`, and its routes fall back or return `unavailable`. A route change also needs shadow replay (12.9). The prompt version is the template's content hash (`llm_calls.prompt_version`); a role's prompt and tool configuration and the LangGraph graph version are `agent_runs.config_version`.
+`model_registry` holds provider, model name, micro-dollar prices with `price_checked_at`, a retention note and `is_active`; there is no status column. **A route may name a model for a task only when a passed gold-set run for that task and model exists** (`eval_runs.config` records models and prompt versions under test); CI checks the routing configuration against recorded runs. Until that CI check is built, the extraction sweep makes the check for `job.requirements.extract` itself: it queues no job, and logs `unproven`, unless `eval_runs` holds a passed `requirement_extraction` run on the test split, by the model method, whose config names the route's model and the current prompt version. The resume upload makes the same check for the three `resume.facts.*` tasks (`profile/ai_gate.py`): unless `eval_runs` holds a passed `resume_extraction` run on the test split, by the model method, whose config names the model the three routes use and the current prompt versions of the three tasks, the upload answers `503 ai_disabled` and a queued parse fails as `ai_disabled`. The fake provider replays recordings and calls no model, so it needs no run; with no recording for a task it answers `ai_disabled` at once. A retired model is `is_active = false`, and its routes fall back or return `unavailable`. A route change also needs shadow replay (12.9). The prompt version is the template's content hash (`llm_calls.prompt_version`); a role's prompt and tool configuration and the LangGraph graph version are `agent_runs.config_version`.
 
 Default routes at launch; effort values are starting points for a per-task effort sweep, as the provider recommends ([effort](https://platform.claude.com/docs/en/build-with-claude/effort), verified).
 
@@ -526,9 +526,46 @@ Unconstrained rewriting fabricated content in 58 of 60 outputs in one small stud
 Used by chat (CHT-03) and dismissal reasons (MAT-08).
 
 - **Output:** proposals, each with an operation, a target field from an allowed list, a typed value, an `evidence_quote`, and a plain restatement.
-- **Validation:** the `evidence_quote` must be an exact substring of the candidate's own message or dismissal reason, so job text or tool output can never originate a proposal; the field is allowed and the value type-checks; a proposal equal to the current value is dropped; one declined in the last 30 days is not repeated; anything touching a protected characteristic is dropped (the schema has no field for one, and a pattern screen checks the text, REC-07).
+- **Validation:** the `evidence_quote` must be an exact substring of the candidate's own message or dismissal reason, so job text or tool output can never originate a proposal; the field is allowed and the value type-checks; a proposal equal to the current value is dropped; one declined in the last 30 days is not repeated; anything touching a protected characteristic is dropped (the schema has no field for one, and the pattern screen of 4.9 checks the text, REC-07).
 - **Effect:** a `profile_events` row with `event_type` `proposed` and `origin` `chat` or `feedback`. Nothing changes until the candidate confirms; the resolving row is `applied` with source `confirmed_proposal`, `declined`, or `expired`.
 - **Eval:** 60 scripted multi-session conversations (target) in which preferences change; zero unconfirmed writes (enforced); proposal precision and recall; five attempts each.
+
+### 4.9 The protected-characteristic screen (code)
+
+REC-07: a protected characteristic is never stored in the Career Record. No table has a column for one, and `profile.protected` refuses text that states one. It is rules, not a model: the same words always give the same answer, and it returns a category name, never the matched text. There are two screens.
+
+| Screen | Applied to | Catches |
+|---|---|---|
+| Narrow, `screen` | A resume line the model cited, before it becomes a fact (`profile/extract/validate.py`) | Labels: "Age: 27", "Date of birth: ...", "Marital status: ...", "Religion: ...", "Gender: ...", "Nationality: ...", "Race: ...", "Ethnicity: ..."; and the bare words caste, disability, pregnant, pregnancy and "sexual orientation" |
+| Wide, `screen_typed` | Everything a person types into the record, in the app or through a chat proposal: fact, constraint, preference and dealbreaker statements, reasons, preference values, company names and cities (`profile/service.py`, `clean_text`) | The narrow screen, and plain sentences in twelve categories (below) |
+
+A refusal is `422 validation_failed` with the field issue `protected_characteristic`. Nothing is stored (no row, no log entry, no version), the text is not echoed, and the page says "We do not keep this in your record."
+
+**What the wide screen catches.** Each pattern needs a person in the sentence ("I am", "I have", "my", "as a") or a statement that stands alone. Examples that the tests pin:
+
+| Category | Caught |
+|---|---|
+| Age and date of birth | "I am 45 years old", "I'm 32, looking for ...", "Born in 1979", "I was born on 4 March 1979", "in my forties", "my age" |
+| Marital status | "Married with two kids", "I am married", "I'm divorced", "my wife", "my husband", "I am single, so ..." |
+| Family status | "I have two kids", "my children", "single mother", "father of two", "caring for my elderly mother", "we are expecting a baby" |
+| Religion | "I am a practising Muslim", "I'm Hindu", "as a Jewish person ...", "Hindu, vegetarian", "my faith", "I observe the Sabbath", "I wear a hijab" |
+| Gender | "I am a woman", "I'm non-binary", "As a woman in tech ...", "Female, 32", "my pronouns" |
+| Sexual orientation | "I am gay", "I'm bisexual", "my sexuality", "same-sex partner" |
+| National origin | "my nationality", "I am an immigrant", "I'm a refugee" |
+| Ethnicity | "I am Black", "Black woman engineer", "I'm of Indian descent", "my ethnicity" |
+| Caste | "I am a Brahmin", "I'm Dalit", and the bare word "caste" |
+| Disability and health | "I use a wheelchair", "I am deaf", "I have ADHD", "I have diabetes", "I was diagnosed with cancer", "I am on medication", and the bare word "disability" |
+| Pregnancy | "I'm expecting a baby", "I'm on maternity leave", and the bare word "pregnant" |
+
+**What passes.** Ordinary career text: "Led the Catholic Charities website rebuild", "managed a team of 40", "a 20 year old codebase", "Single sign-on", "gender-neutral language tooling", "Christian Aid", "Hindustan Unilever", "I have 10 years of experience", "I'm expecting a callback". The tests keep a written list of more than a hundred sentences that must pass and as many that must be caught, and run the wide screen over every line of the 120 invented resumes of the resume gold set (about 3,400 lines): none is flagged except the six lines that state a characteristic.
+
+**Known limits. This is a pattern screen and it does not catch everything.**
+
+- A characteristic worded another way gets through: spelled out ("forty-five years old"), implied ("I need Fridays off for prayers", "I was raised in a Hindu household"), in another language ("Je suis musulmane") or inside a list without a stated person ("Single, 28, female").
+- Bare nationality and citizenship ("I am Indian", "I am a US citizen") are not screened, because work authorization is a hard-constraint kind (REC-03).
+- It refuses some ordinary text. Any use of the words disability, caste, pregnant, pregnancy or "sexual orientation" is refused wherever it appears, and so are first-person sentences such as "I am a man of few words" and a typed text that starts with a surname that is also a faith, such as "Jain, R. (2019)".
+- A resume line is checked by the narrow screen only, because a resume holds many ordinary sentences and a wrong drop costs a real fact. A resume sentence such as "Married with two kids" (as opposed to "Marital status: married") can therefore reach the candidate's review list as an unconfirmed fact. The candidate sees it there and can reject it; confirming it keeps it. Raw resume and chat text stay as written (owner decision G4).
+- Adding a model check behind the consent, in front of these tables, would catch more. It must never replace them.
 
 ---
 
@@ -1498,7 +1535,7 @@ Token counts per task (p50, p95 from `llm_calls` and the gold sets); thinking sh
 | REC-01, REC-02 | 4.1, 4.2 |
 | REC-03, REC-04 | 1.2, rows 9 and 10 |
 | REC-06 | 4.1 |
-| REC-07 | 1.2, row 10; 4.8 |
+| REC-07 | 1.2, row 10; 4.8; 4.9 |
 | MAT-01 | 1.2, row 11; 12.2 |
 | MAT-02, MAT-06, MAT-07 | 4.5 |
 | MAT-03, MAT-04, MAT-05 | 4.4 (display in `FRONTEND_UI.md`) |

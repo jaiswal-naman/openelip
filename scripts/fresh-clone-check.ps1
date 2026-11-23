@@ -54,7 +54,10 @@ function Step([string]$name, [scriptblock]$body) {
 function Run([string]$exe, [string[]]$arguments) {
     $output = & $exe @arguments 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) {
+        $full = Join-Path ([IO.Path]::GetTempPath()) 'openelip-fresh-last-failure.log'
+        $output | Set-Content -Path $full -Encoding utf8
         ($output -split "`r?`n" | Select-Object -Last 30) -join "`n" | Write-Host
+        Write-Host "full output: $full"
         throw "$exe $($arguments -join ' ') exited with $LASTEXITCODE"
     }
     $output
@@ -173,9 +176,11 @@ ThreadingHTTPServer(("0.0.0.0", 8000), Handler).serve_forever()
                 $env:MAILPIT_URL = "http://localhost:$MailPort"
                 $env:COMPOSE_PROJECT_NAME = $Project
                 $env:E2E_COMPOSE_DIR = $clone
+                # A throwaway stack: seed the invented jobs even after its worker has imported real boards, or the job specs skip.
+                $env:E2E_SEED_JOBS = 'always'
                 Run pnpm @('exec', 'playwright', 'test', 'tests/e2e', '--project=chromium') | Select-Object -Last 3 | Write-Host
             } finally {
-                'BASE_URL', 'MAILPIT_URL', 'COMPOSE_PROJECT_NAME', 'E2E_COMPOSE_DIR' | ForEach-Object { Remove-Item "Env:$_" -ErrorAction SilentlyContinue }
+                'BASE_URL', 'MAILPIT_URL', 'COMPOSE_PROJECT_NAME', 'E2E_COMPOSE_DIR', 'E2E_SEED_JOBS' | ForEach-Object { Remove-Item "Env:$_" -ErrorAction SilentlyContinue }
                 Pop-Location
             }
         }

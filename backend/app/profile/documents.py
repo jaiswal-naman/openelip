@@ -12,7 +12,7 @@ import re
 import zipfile
 from uuid import UUID
 
-from sqlalchemy import Connection, insert
+from sqlalchemy import Connection, insert, text
 
 from app.platform import queue
 from app.platform.errors import ApiError
@@ -23,6 +23,7 @@ from .resume.reader import DOCX_MIME, PDF_MIME
 
 MAX_BYTES = 10_485_760  # 10 MB, the limit of documents.byte_size (DATA_MODEL 3.4; an assumption)
 MAX_FILENAME = 255
+PER_DAY = 10  # uploads one person may make in a day (API.md 1.8; an assumption)
 PARSE_JOB = "profile.parse"
 PARSE_QUEUE = "interactive"
 PARSE_ATTEMPTS = 4  # the first try and three retries, 30 s, 2 min and 10 min apart (queue.BACKOFF_SECONDS)
@@ -82,12 +83,39 @@ def clean_filename(name: str | None) -> str | None:
     return shown or None
 
 
+def _check_daily_limit(conn: Connection, user_id: UUID) -> None:
+    """429 rate_limited when the person already has PER_DAY uploads in the last 24 hours (API.md 1.8). Each upload makes
+    three model calls, so this is what bounds what one account can spend.
+
+    The count and the insert must not interleave for one person, or parallel uploads would all see nine and all be
+    kept: a lock on the person is held until the caller's transaction ends, and the count is made under it. The wait is
+    the time until the oldest of those uploads is a day old, when one place is free again."""
+    conn.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"), {"key": f"profile.upload:{user_id}"})
+    recent = conn.execute(
+        text(
+            """SELECT count(*) AS n,
+                      CAST(ceil(extract(epoch FROM min(created_at) + interval '1 day' - now())) AS integer) AS wait
+               FROM documents WHERE user_id = :u AND created_at > now() - interval '1 day'"""
+        ),
+        {"u": user_id},
+    ).one()
+    if recent.n >= PER_DAY:
+        raise ApiError(
+            429,
+            "rate_limited",
+            f"You can upload {PER_DAY} resumes a day. Try again later.",
+            {"retry_after_seconds": max(1, recent.wait)},
+        )
+
+
 def store_document(conn: Connection, user_id: UUID, filename: str | None, data: bytes) -> UUID:
     """Keep the file for this person and queue its parse, both in the caller's transaction: the row and the job exist
-    together or not at all. Raises PayloadTooLarge or UnsupportedMedia before anything is written."""
+    together or not at all. Raises PayloadTooLarge or UnsupportedMedia before anything is written, and 429 rate_limited
+    at PER_DAY uploads a day."""
     if len(data) > MAX_BYTES:
         raise PayloadTooLarge()
     mime = sniff(data)
+    _check_daily_limit(conn, user_id)
     document_id: UUID = conn.execute(
         insert(models.documents)
         .values(
@@ -107,5 +135,6 @@ def store_document(conn: Connection, user_id: UUID, filename: str | None, data: 
         unique_key=job_key(document_id),
         queue=PARSE_QUEUE,
         max_attempts=PARSE_ATTEMPTS,
+        user_id=user_id,
     )
     return document_id

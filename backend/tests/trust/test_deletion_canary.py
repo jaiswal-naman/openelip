@@ -26,11 +26,11 @@ from cryptography.fernet import InvalidToken
 from sqlalchemy import text
 
 from app.platform import sessions
+from app.profile import documents
 from app.trust import api, privacy
 
 CANARY = f"CANARY-{uuid4()}"
 ADDRESS = "canary.person@mail.test"
-DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 SCANNED_TYPES = ["text", "character varying", "character", "jsonb", "json", "uuid", "ARRAY", "bytea"]
 NOT_SCANNED = {("data_requests", "subject_user_id")}  # the bare id, kept on purpose so a restore can be erased again
 
@@ -46,7 +46,7 @@ PLANTED = {
     ("login_codes", "email"),
     ("llm_calls", "user_id"),
     ("outbox", "payload"),
-    ("queue_jobs", "payload"),
+    ("queue_jobs", "user_id"),  # the parse job of an upload: made by the real upload path, so it names the person
     ("idempotency_keys", "response_body"),
     ("consents", "text_version"),
     ("audit_log", "details"),
@@ -85,6 +85,14 @@ class Person:
 
 def as_json(value) -> str | None:
     return None if value is None else json.dumps(value)
+
+
+def a_docx(body: str) -> bytes:
+    """The smallest file the upload path takes for a DOCX: a ZIP that holds word/document.xml."""
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("word/document.xml", f"<w:document>{body}</w:document>")
+    return out.getvalue()
 
 
 def seed_person(engine) -> Person:
@@ -134,13 +142,6 @@ def seed_person(engine) -> Person:
             u=user,
             p=json.dumps({"note": CANARY}),
         )
-        run(  # not due for a day, so the worker leaves it alone and the erasure must remove it
-            """INSERT INTO queue_jobs (queue, kind, unique_key, user_id, payload, run_at)
-               VALUES ('default', 'x.later', :k, :u, :p, now() + interval '1 day')""",
-            k=f"x.later:{uuid4().hex}",
-            u=user,
-            p=json.dumps({"note": CANARY}),
-        )
         run(
             """INSERT INTO idempotency_keys (user_id, key, method, path, request_sha256, response_status, response_body)
                VALUES (:u, 'seed-idempotency-key', 'POST', '/v1/me/facts', :h, 201, :b)""",
@@ -180,14 +181,12 @@ def seed_person(engine) -> Person:
             h=hashlib.sha256(pdf).digest(),
             t=statement,
         ).scalar_one()
-        run(  # the second file, never parsed: it holds the canary in its sealed bytes only
-            """INSERT INTO documents (user_id, content, mime_type, byte_size, sha256)
-               VALUES (:u, :c, :m, 20, :h)""",
-            u=user,
-            c=sessions.seal_bytes(f"PK docx {CANARY}".encode()),
-            m=DOCX,
-            h=b"d" * 32,
-        )
+        # The second file goes in through the upload path itself (sealed, with its parse job), because that is what
+        # writes queue_jobs.user_id in production: a job planted by hand with a user id would pass whatever the code
+        # does. It is never parsed (the job is not due for a day, so the worker leaves it alone) and holds the canary
+        # in its sealed bytes only; the erasure must remove the job as well as the file.
+        documents.store_document(c, user, f"upload {CANARY}.docx", a_docx(f"docx {CANARY}"))
+        run("UPDATE queue_jobs SET run_at = now() + interval '1 day' WHERE user_id = :u", u=user)
 
         def event(entity: str, operation: str, before, after) -> UUID:
             return run(

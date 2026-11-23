@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from random import random
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import Connection, text
 
@@ -69,16 +70,22 @@ def enqueue(
     queue: str = "default",
     run_at: datetime | None = None,
     max_attempts: int = 5,
+    user_id: UUID | None = None,
 ) -> int | None:
     """Add a job in the caller's transaction and return its id, or None when the unique key already exists.
+
+    A job that is about one person's data names that person in user_id: the export lists the person's jobs by it, and
+    erasing the person deletes them (queue_jobs.user_id cascades). A job that must outlive the person, such as the one
+    that erases them, names no one.
 
     The id is an int because queue_jobs.id is a bigint (DATA_MODEL 3.13), not a UUID as the plans first wrote.
     Nothing is logged here: the caller's transaction may still roll back. The first log line for a job is its claim.
     """
     row = conn.execute(
         text(
-            """INSERT INTO queue_jobs (queue, kind, payload, unique_key, run_at, max_attempts)
-               VALUES (:queue, :kind, CAST(:payload AS jsonb), :unique_key, COALESCE(:run_at, now()), :max_attempts)
+            """INSERT INTO queue_jobs (queue, kind, payload, user_id, unique_key, run_at, max_attempts)
+               VALUES (:queue, :kind, CAST(:payload AS jsonb), :user_id, :unique_key, COALESCE(:run_at, now()),
+                       :max_attempts)
                ON CONFLICT (unique_key) DO NOTHING
                RETURNING id"""
         ),
@@ -86,6 +93,7 @@ def enqueue(
             "queue": queue,
             "kind": kind,
             "payload": json.dumps(payload),
+            "user_id": user_id,
             "unique_key": unique_key,
             "run_at": run_at,
             "max_attempts": max_attempts,

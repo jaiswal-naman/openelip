@@ -93,7 +93,7 @@ Jobs appear at http://localhost:8080/jobs as the fetches finish. A worker runs o
 
 ### With no model key
 
-Sign-in, the job index and search need no key. Anything that needs a language model answers `503 ai_disabled`. `.env.example` sets `LLM_PROVIDER=fake`: a built-in provider that replays recorded answers, makes no network call and costs nothing, so the screens that show model use (`/trust`, `/control/costs`) can be seen without a key. Its cost rows read zero because nothing was paid.
+Sign-in, the job index and search need no key. Anything that needs a language model answers `503 ai_disabled`. `.env.example` sets `LLM_PROVIDER=fake`: a built-in provider that replays recorded answers, makes no network call and costs nothing, so the screens that show model use (`/trust`, `/control/costs`) can be seen without a key. Its cost rows read zero because nothing was paid. It has an answer only for a task that has a recording, and none of the resume tasks has one here, so a resume you upload is refused as `ai_disabled` within a second (the three resume tasks read a real model only after a passed run on the resume gold set: see `evals/resume_extraction/facts/README.md`).
 
 ### Use a real model
 

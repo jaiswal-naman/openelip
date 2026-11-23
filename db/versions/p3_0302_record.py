@@ -14,7 +14,7 @@ work_arrangement, employment_type and seniority belong to the job index (Phase 2
 created here only if no other revision has made it. The downgrade leaves one in place while a job column still uses it.
 
 Additive only. The downgrade drops what this revision made so the migration history round-trips on a scratch database;
-it is never run against a database whose rows matter.
+it is never run against a database whose rows matter, and it refuses to run on the database called app.
 """
 
 import sqlalchemy as sa
@@ -261,7 +261,11 @@ GRANT SELECT, INSERT, UPDATE ON profile_facts, constraints, preferences TO app_a
 GRANT SELECT, INSERT, UPDATE, DELETE ON documents TO app_api, app_worker;
 """
 
+# Lossy: every document, fact, constraint, preference and change-log row goes. The first statement refuses the live
+# database, which is called app and is what db/env.py connects to when DATABASE_URL_MIGRATE is not set. The migration
+# check in CI and the tests use other names.
 DOWNGRADE_SQL = """
+DO $$ BEGIN IF current_database() = 'app' THEN RAISE EXCEPTION 'refusing a lossy downgrade on app'; END IF; END $$;
 DROP TABLE profile_facts, constraints, preferences, profile_events, documents;
 DROP FUNCTION profile_facts_check_span(), write_once_columns();
 DROP TYPE proposal_origin, profile_event_type, profile_operation, profile_entity, preference_kind, constraint_kind,

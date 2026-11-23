@@ -172,7 +172,13 @@ def request_export(conn: Connection, user_id: UUID) -> UUID:
         ),
         {"u": user_id, "due": DUE},
     ).scalar_one()
-    enqueue(conn, "trust.export", {"request_id": str(request_id)}, unique_key=f"trust.export:{request_id}")
+    enqueue(
+        conn,
+        "trust.export",
+        {"request_id": str(request_id)},
+        unique_key=f"trust.export:{request_id}",
+        user_id=user_id,
+    )
     return request_id
 
 

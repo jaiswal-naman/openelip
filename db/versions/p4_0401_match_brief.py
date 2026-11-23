@@ -25,7 +25,7 @@ from alembic import op
 from psycopg import sql
 
 revision = "p4_0401_match_brief"
-down_revision = "p3_0303_skill_fks"
+down_revision = "p3_0304_audit_subject"
 branch_labels = None
 depends_on = None
 
