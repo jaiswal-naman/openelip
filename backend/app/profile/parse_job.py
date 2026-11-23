@@ -4,7 +4,8 @@ REC-01, REC-06, TRU-05).
 Five steps. Steps 2 to 4 can end the parse with a code the candidate reads on the document, and the job is then done:
 a retry could not change the answer.
   1. Claim. The document becomes "parsing" and that is committed, so a poll says "running". A document that is gone,
-     parsed or failed ends the job here, which is why a second run of one document adds nothing.
+     parsed or failed ends the job here, which is why a second run of one document adds nothing. So does a document
+     whose owner's account is no longer active (deletion requested, or suspended): nothing is read or sent.
   2. Read the file. Hidden text is removed and counted. A corrupt, encrypted or scanned file fails (corrupt, encrypted,
      scanned).
   3. Consent. ai_processing is required as it stands now, so a consent withdrawn after the upload stops the parse before
@@ -37,8 +38,12 @@ from .extract.validate import MAX_STATEMENT
 from .extract.workflow import ExtractionResult, Gateway, extract_facts
 from .resume.reader import ReadResult, ResumeUnreadable, read_resume
 
+# Only an active account's document is claimed. A person who has asked for deletion (status deleting) must not have
+# their resume sent to a provider by a parse that was queued before they asked; the erase job removes the document.
 CLAIM = text(
-    """UPDATE documents SET status = 'parsing' WHERE id = :id AND status IN ('uploaded', 'parsing')
+    """UPDATE documents SET status = 'parsing'
+        WHERE id = :id AND status IN ('uploaded', 'parsing')
+          AND EXISTS (SELECT 1 FROM users u WHERE u.id = documents.user_id AND u.status = 'active')
        RETURNING user_id, mime_type, content"""
 )
 LOCK = text("SELECT status FROM documents WHERE id = :id FOR UPDATE")

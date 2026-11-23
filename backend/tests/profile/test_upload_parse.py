@@ -371,6 +371,25 @@ def test_with_no_model_configured_the_real_gateway_fails_the_document_as_ai_disa
     assert (kit.job(document_id).state, kit.job(document_id).attempts) == ("succeeded", 1)
 
 
+@pytest.mark.parametrize("status", ["deleting", "suspended"])
+def test_a_parse_queued_before_the_account_was_closed_does_nothing_for_an_account_that_is_not_active(kit, status):
+    """A person who asked for deletion (users.status deleting) must not have their resume sent to the provider by a job
+    that was queued before they asked; the erase job removes the document a little later. Nor must a suspended one."""
+    user = kit.person()
+    kit.agree(user)
+    document_id = kit.store(user, kit.docx())
+    with kit.engine.begin() as c:
+        c.execute(text("UPDATE users SET status = CAST(:s AS user_status) WHERE id = :u"), {"s": status, "u": user})
+    model = kit.model()
+
+    assert kit.run(model) == 1
+
+    document = kit.document(document_id)
+    assert (document.state, document.extracted_text, document.parse_error_code) == ("uploaded", None, None)  # unclaimed
+    assert model.calls == [] and kit.facts(document_id) == [] and kit.count("llm_calls") == 0
+    assert (kit.job(document_id).state, kit.job(document_id).attempts) == ("succeeded", 1)  # finished, not retried
+
+
 # ---- failures the queue retries ------------------------------------------------------------------
 
 
