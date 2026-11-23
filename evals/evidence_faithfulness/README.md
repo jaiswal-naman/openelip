@@ -33,12 +33,14 @@ bare percentage.
 | `fixtures/degraded.json` | A damaged copy of the replay that the gate must fail. |
 | `score.py` | The scorer; the Phase 1 runner calls its `run()` (`evidence_faithfulness` is an `OwnScorer` entry in `SUITES`). |
 
-A gold item is `{key, slice, resume_ref, posting_ref, as_of, facts, requirements, expected, labels}`. `facts` are rows
-shaped like `profile.api.usable_facts` and `requirements` rows shaped like `ingest.api.get_job`'s, written in the order
-`build_request` numbers them, so `f1` is the first fact in the list and `r1` the first requirement. `expected.verdicts`
-holds, for every requirement, `{requirement, verdict, facts, why}`; `why` is the labeller's reason and is never part of a
-recorded answer. `slice` is the requirement kind mix of the pair (`skill_led`, `experience_led` or `mixed`). `as_of` is
-the date a current role is counted to.
+A gold item is `{key, slice, fit, resume_ref, posting_ref, as_of, facts, requirements, expected, labels}`. `facts` are
+rows shaped like `profile.api.usable_facts` and `requirements` rows shaped like `ingest.api.get_job`'s, written in the
+order `build_request` numbers them, so `f1` is the first fact in the list and `r1` the first requirement.
+`expected.verdicts` holds, for every requirement, `{requirement, verdict, facts, why}`; `why` is the labeller's reason
+and is never part of a recorded answer. `slice` is the requirement kind mix of the pair (`skill_led`, `experience_led`
+or `mixed`). `fit` is the agent's judgement of whether the posting is from the record's own field: `close` (the same
+field), `partial` (an adjacent one) or `poor` (another: a sales posting for an engineer's record, an engineering posting
+for a sales record). `as_of` is the date a current role is counted to.
 
 ## Where the pairs came from
 
@@ -48,15 +50,46 @@ the date a current role is counted to.
 - **Postings:** thirty of the 50 real public postings of `evals/requirement_extraction/gold.jsonl` (Phase 2), three for
   each resume, with the requirement items and spans that gold set already holds. Phase 2's rule applies: no posting with
   an email address or phone number. The text is third-party text that companies published on their own job boards.
-- **Pairs:** about a third are deliberately poor fits (a business posting for an engineer's record and the other way
-  round), so that most verdicts are not `met`, and every verdict and every requirement kind the Phase 2 labels contain
-  appears.
+- **Pairs:** 10 of the 30 are deliberately poor fits by field (a sales posting for an engineer's record and the other way
+  round), 9 are partial and 11 close, so that most verdicts are not `met`; every verdict and every requirement kind the
+  Phase 2 labels contain appears.
+
+## What the labels cover
+
+| | Count |
+|---|---|
+| Pairs | 30 (10 invented resumes, 30 postings); 5 to 15 requirements per pair, 18 to 30 facts per pair |
+| Verdicts | 287: `no_evidence` 214, `partly_met` 49, `met` 17, `not_met` 7 |
+| Requirements | 234 required, 53 preferred |
+| Kinds | skill 155, experience 103, education 10, location 10, other 6, certification 3, authorization 0 |
+| `met` by kind | education 7, skill 6, experience 4 |
+| `not_met` | 7, every one a years requirement longer than the whole career counted by code |
+| Pairs by fit | poor 10, partial 9, close 11 |
+| Pairs with at least half of the required requirements `met` or `partly_met` | 4 of 30 |
+
+## Limits to keep in mind
+
+- **Thirty is a start, not the target.** AI_SYSTEM 12.2 aims at 150 pairs and about 1,500 verdicts with two raters.
+- **Three quarters of the verdicts are `no_evidence`.** The postings are real and specific, the records are invented
+  and generic, so few requirements find support. The set is strong on the false-`met` bar (214 verdicts a model must not
+  turn into `met`) and thin on positives: a per-verdict rate on 17 `met` or 7 `not_met` carries a very wide interval.
+- **Some kinds only have negatives.** No fact kind covers a place, so all 10 location items are `no_evidence`; the 3
+  certification items name certifications the records do not hold; the Phase 2 labels hold no `authorization`
+  requirement at all.
+- **One labeller, no second rater.** The twelve decisions at the end of `GUIDELINE.md` are the judgement calls.
+- **The invented resumes are odd.** Their achievement bullets are generated ("Mentored vendor contracts") and some
+  summary lines claim more years than the dated roles add up to. The labels read them literally and ignore summary
+  years (GUIDELINE, Years and decision 4).
+- **The test and dev postings of Phase 2 are not kept apart here.** The recording is built from the labels, so there is
+  nothing to tune on; a frozen split is chosen when the first live run is planned.
 
 ## Pre-registered bars
 
 Written on 2026-11-23 (AI_SYSTEM 12.1: fix the metric and the bar before the run; a changed bar is a new, dated
 pre-registration). No run of this suite existed when these bars were written: this file and `GUIDELINE.md` are the first
-files of the suite in git history, committed before `gold.jsonl`, `score.py` and any recording.
+files of the suite in git history, committed before `gold.jsonl`, `score.py` and any recording. Since then only the
+parts that describe the finished gold set (the files table, what the labels cover, the limits) and the guideline's
+"Decisions made while labelling" were added; the bars and the guideline's rules are as first committed.
 
 **What is scored.** A run replays the recording over every pair: `build_request`, the gateway's fake provider, then
 `validate`, and one fresh call when the validator rejects the first answer (AI_SYSTEM 4.4: a rejected set gets one

@@ -107,4 +107,41 @@ All invented. `[f4]` and the other aliases are the labeller's view of one pair.
 
 ## Decisions made while labelling
 
-(Filled in while the labels were drafted: cases this guideline did not settle, and what was decided.)
+Twelve cases the rules above did not settle were decided while the 30 pairs were labelled. They are the place for a
+second rater to start; a disagreement here amends the guideline.
+
+1. **Leadership.** A title (Manager, Lead, Director) does not state that anyone was led. A leadership or management
+   requirement is `met` only when a fact says people or a team were led, managed or mentored; otherwise `no_evidence`.
+   "Mentored the release process" mentions a process, not people.
+2. **Generic ability claims** (communication, ownership, problem solving, comfortable with ambiguity, organised,
+   strategic thinker) are `no_evidence` even when the record lists a skill that sounds related. Where a requirement names
+   the same skill the record lists in words (stakeholder management for working with stakeholders or cross-functional
+   partners, technical writing for written communication), the skill supports `partly_met`: it states the named skill and
+   not the rest.
+3. **Systems languages** are C, C++, Rust and Go. Java, Ruby, Python, TypeScript and Kotlin are not "a comparable systems
+   language".
+4. **Summary lines.** A line such as "Backend Developer with 5 years of experience in cloud infrastructure" is a fact of
+   kind `other`. It may support a requirement that asks for experience in that field (`partly_met` or `met`, citing it),
+   never a number of years (see Years). Several of these lines claim more years than the dated roles add up to; they are
+   left as the resume gold set has them.
+5. **Titles and kinds.** For an `experience` requirement a role title can show relevance (a Sales Representative role for
+   "managing sales cycles"), because the work the requirement names is the work the title names. For a `skill`
+   requirement a title never states a skill.
+6. **Qualifiers that can be checked keep a requirement from `met`** even when its headline is stated: a backend focus
+   (ev-013 requirement 1), a track record of building durable systems (ev-026 requirement 2), a leading company and top
+   performance (ev-020 requirement 1).
+7. **Related fields.** An M.Sc. in Data Science meets "BS/MS in Computer Science or related majors" (the requirement
+   asks for related majors); a B.Sc. in Computer Science is `partly_met` for "Information Systems, Data Engineering,
+   Education, Statistics" (a field the requirement does not list).
+8. **Tools in a category.** Grafana is a clear member of "observability toolchains" (`met`, ev-004 requirement 4) and a
+   related reporting tool for "Business Intelligence experience" (`partly_met`, ev-006 requirement 5). Excel is not a BI
+   or visualisation tool (`no_evidence`, ev-009 requirement 3).
+9. **A language is not its frameworks, and SQL is not Postgres.** "Java frameworks such as Spring" with only Java stated,
+   and "Postgres depth" with only SQL stated, are `no_evidence`: the requirement names the tool.
+10. **Places, languages, travel and physical ability** (a city, fluent German, 25% travel, sitting for four hours) are
+    `no_evidence`: no fact kind covers them.
+11. **Unverifiable adjectives are colour.** "Graduate from a reputed institution" is `met` by a degree alone (ev-009
+    requirement 6).
+12. **Relevant roles for a named field** are counted by title: an Operations Manager role is relevant to "support
+    operations or operations strategy" (ev-029 requirement 1, `partly_met`), a Software Engineer role to "software
+    engineering" (ev-013 requirement 1).
