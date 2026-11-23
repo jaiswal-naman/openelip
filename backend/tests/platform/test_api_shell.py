@@ -67,7 +67,8 @@ CONTRACT = [
     ("get", "/healthz"),
 ]
 FIELDS = {
-    "Me": {"id", "email", "timezone", "created_at", "consents"},  # consents: plan 03-01 (TRU-05)
+    # consents: plan 03-01 (TRU-05); brief and capabilities: plan 04-05 (BRF-03, API.md 2.3)
+    "Me": {"id", "email", "timezone", "created_at", "consents", "brief", "capabilities"},
     "CostRow": {"period", "task", "calls", "cost_usd", "input_tokens", "output_tokens", "avg_latency_ms", "models"},
     "Subprocessor": {"name", "kind", "purpose", "receives", "tasks"},
 }

@@ -27,6 +27,7 @@ from . import config, db, errors, log, outbox, sessions
 from .api import Envelope, envelope
 from .errors import ApiError
 from .idempotency import Write, idempotent, json_only
+from .llm import registry
 from .sessions import Principal, current_user
 
 router = APIRouter(prefix="/v1")
@@ -97,18 +98,61 @@ class ConsentChange(BaseModel):
         return self
 
 
+BriefFrequency = Literal["daily", "weekly", "paused"]
+
+
+class BriefSettings(BaseModel):
+    """How often the morning brief comes (BRF-03). Whether it also comes by email is the brief_email consent."""
+
+    frequency: BriefFrequency
+    weekday: int | None  # a weekly brief's day, ISO 1 (Monday) to 7; set exactly when the frequency is weekly
+
+
+class BriefSettingsChange(BaseModel):
+    frequency: BriefFrequency
+    weekday: int | None = Field(default=None, ge=1, le=7)
+
+    @model_validator(mode="after")
+    def _a_weekday_goes_with_weekly(self) -> Self:
+        if (self.frequency == "weekly") != (self.weekday is not None):  # the users table holds the same rule
+            raise ValueError("weekday is required with weekly and not allowed otherwise")
+        return self
+
+
 class Me(BaseModel):
     id: UUID
     email: str
     timezone: str
     created_at: datetime
     consents: list[ConsentState]
+    brief: BriefSettings
+    capabilities: list[
+        str
+    ]  # the model tasks that would be called right now (API.md 2.3); empty with no usable provider
 
 
 class MePatch(BaseModel):
-    """PATCH /v1/me. Consents only for now: the account settings of API.md 2.3 arrive with the brief settings."""
+    """PATCH /v1/me: consents, the time zone and the brief schedule, any of them, at least one."""
 
-    consents: list[ConsentChange] = Field(min_length=1, max_length=4)  # at most one change per purpose
+    consents: list[ConsentChange] | None = Field(default=None, min_length=1, max_length=4)  # one change per purpose
+    timezone: str | None = None  # an IANA name
+    brief: BriefSettingsChange | None = None
+
+    @field_validator("timezone")
+    @classmethod
+    def _is_an_iana_name(cls, name: str | None) -> str | None:
+        if name is not None:
+            try:
+                ZoneInfo(name)
+            except (KeyError, ValueError, OSError) as error:  # unknown name, malformed name, a directory
+                raise ValueError("not an IANA time zone name") from error
+        return name
+
+    @model_validator(mode="after")
+    def _something_to_change(self) -> Self:
+        if self.consents is None and self.timezone is None and self.brief is None:
+            raise ValueError("send at least one of consents, timezone or brief")
+        return self
 
 
 # Filled in by app.main when it builds the app. The consent rules live in app.trust, which this layer may not import
@@ -251,7 +295,8 @@ def _exchange(email: str, code: str, timezone: str | None) -> tuple[Me, str] | i
         # now() is the start of this transaction, so created_at = now() is true only for an account made just above.
         account = conn.execute(
             text(
-                """SELECT id, email, timezone, created_at, status = 'active' AS is_active, created_at = now() AS is_new
+                """SELECT id, email, timezone, created_at, brief_frequency, brief_weekday,
+                          status = 'active' AS is_active, created_at = now() AS is_new
                    FROM users WHERE id = :id"""
             ),
             {"id": user_id},
@@ -264,7 +309,15 @@ def _exchange(email: str, code: str, timezone: str | None) -> tuple[Me, str] | i
             zone = timezone
         token = sessions.start(conn, user_id)
         consents = hooks["consents"](conn, user_id)
-    me = Me(id=account.id, email=account.email, timezone=zone, created_at=account.created_at, consents=consents)
+    me = Me(
+        id=account.id,
+        email=account.email,
+        timezone=zone,
+        created_at=account.created_at,
+        consents=consents,
+        brief=BriefSettings(frequency=account.brief_frequency, weekday=account.brief_weekday),
+        capabilities=_capabilities(),
+    )
     log.event("auth.signed_in", outcome="new_account" if account.is_new else "existing_account")
     return me, token
 
@@ -305,15 +358,43 @@ def end_session(request: Request, write: Annotated[Write, Depends(idempotent)]) 
     return response
 
 
+def _capabilities() -> list[str]:
+    """The model tasks that have a route that would be called right now, in the order models.toml lists them."""
+    return [route.task for route in registry.active_routes(config.get())]
+
+
 def _account(conn: Connection, user_id: UUID) -> Me | None:
     """The person's account as GET /v1/me reports it, or None when their row is gone."""
     row = conn.execute(
-        text("SELECT id, email, timezone, created_at FROM users WHERE id = :id"), {"id": user_id}
+        text("SELECT id, email, timezone, created_at, brief_frequency, brief_weekday FROM users WHERE id = :id"),
+        {"id": user_id},
     ).one_or_none()
     if row is None:
         return None
     consents: list[ConsentState] = hooks["consents"](conn, user_id)
-    return Me(id=row.id, email=row.email, timezone=row.timezone, created_at=row.created_at, consents=consents)
+    return Me(
+        id=row.id,
+        email=row.email,
+        timezone=row.timezone,
+        created_at=row.created_at,
+        consents=consents,
+        brief=BriefSettings(frequency=row.brief_frequency, weekday=row.brief_weekday),
+        capabilities=_capabilities(),
+    )
+
+
+def _save_settings(conn: Connection, user_id: UUID, body: MePatch) -> None:
+    """The time zone and the brief schedule, whichever of them the request carries. The statement is fixed text."""
+    assignments: list[str] = []
+    values: dict[str, Any] = {"id": user_id}
+    if body.timezone is not None:
+        assignments.append("timezone = :zone")
+        values["zone"] = body.timezone
+    if body.brief is not None:  # both columns, so a weekday never outlives a weekly schedule (the table's own check)
+        assignments += ["brief_frequency = CAST(:frequency AS brief_frequency)", "brief_weekday = :weekday"]
+        values.update(frequency=body.brief.frequency, weekday=body.brief.weekday)
+    if assignments:
+        conn.execute(text(f"UPDATE users SET {', '.join(assignments)} WHERE id = :id"), values)
 
 
 @router.get("/me", response_model=Envelope[Me])
@@ -327,10 +408,13 @@ def me(principal: Annotated[Principal, Depends(current_user)]) -> dict[str, Any]
 
 @router.patch("/me", response_model=Envelope[Me])
 def update_me(body: MePatch, write: Annotated[Write, Depends(idempotent)]) -> Response:
-    """Grant or withdraw consents. The person is the session's, never anything in the body (T-3-01)."""
+    """Grant or withdraw consents and change the time zone and the brief schedule. The person is the session's, never
+    anything in the body (T-3-01)."""
 
     def effect(conn: Connection) -> Me:
-        hooks["change_consents"](conn, write.user_id, body.consents)
+        if body.consents is not None:
+            hooks["change_consents"](conn, write.user_id, body.consents)
+        _save_settings(conn, write.user_id, body)
         account = _account(conn, write.user_id)
         if account is None:
             raise ApiError(401, "unauthenticated", "Sign in to continue.")
