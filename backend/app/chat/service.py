@@ -318,9 +318,17 @@ def accept(
     # 29 and all be kept, and two replies could start. The lock is held until this transaction ends.
     conn.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"), {"key": f"chat.post:{user_id}"})
     _check_rate(conn, user_id)
-    if _settle(conn, user_id):
+    running = _settle(conn, user_id)
+    if running:
+        # the running reply's ids, so the client can stop it or follow it (it may be in another session of the person)
+        where = conn.execute(
+            text("SELECT session_id FROM chat_messages WHERE id = :m AND user_id = :u"), {"m": running[0], "u": user_id}
+        ).scalar_one()
         raise ApiError(
-            409, "conflict", "A reply is still being written. Wait for it, or stop it.", {"state": "reply_running"}
+            409,
+            "conflict",
+            "A reply is still being written. Wait for it, or stop it.",
+            {"state": "reply_running", "message_id": str(running[0]), "session_id": str(where)},
         )
     if context_job_id is not None and ingest.get_job(conn, context_job_id) is None:
         raise not_found()

@@ -164,6 +164,43 @@ describe("ChatPanel", () => {
     expect(stop).toHaveBeenCalledTimes(1);
   });
 
+  describe("when a reply is still running (409 reply_running)", () => {
+    const running = () => fail(409, "conflict", { state: "reply_running", message_id: "m0", session_id: "s0" });
+
+    it("offers Stop for the running reply named by the refusal, and stops that one", async () => {
+      const stop = vi.fn(() => ok({ message_id: "m0", finish_reason: null }));
+      const { user, dialog } = await openAndSend({
+        "POST /v1/chat/sessions/s1/messages": running,
+        "POST /v1/chat/sessions/s0/messages/m0/stop": stop,
+      } as never);
+      expect(await within(dialog).findByText(/A reply is still being written/)).toBeInTheDocument();
+      await user.click(await within(dialog).findByRole("button", { name: "Stop" }));
+      expect(stop).toHaveBeenCalledTimes(1);
+    });
+
+    it("follows the running reply's stream, so waiting shows it arrive and the panel is free again at its end", async () => {
+      const { dialog } = await openAndSend({ "POST /v1/chat/sessions/s1/messages": running } as never);
+      await waitFor(() => expect(FakeEventSource.all).toHaveLength(1));
+      const stream = FakeEventSource.all[0];
+      expect(stream.url).toBe("/v1/chat/sessions/s0/messages/m0/stream");
+      expect(stream.init?.withCredentials).toBe(true);
+      stream.emit("message.snapshot", { text: "So far, the job needs Python", citations: [], proposals: [] });
+      expect(await within(dialog).findByText(/So far, the job needs Python/)).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: "Stop" })).toBeInTheDocument();
+      stream.emit("message.end", { message_id: "m0", finish_reason: "complete" });
+      await waitFor(() => expect(within(dialog).queryByRole("button", { name: "Stop" })).not.toBeInTheDocument());
+      expect(within(dialog).queryByText(/A reply is still being written/)).not.toBeInTheDocument();
+      expect(within(dialog).getByRole("textbox", { name: "Your message" })).toHaveValue("Why was the excluded job ruled out?"); // the draft is kept
+    });
+
+    it("says only to wait when the refusal names no reply", async () => {
+      await openAndSend({ "POST /v1/chat/sessions/s1/messages": () => fail(409, "conflict", { state: "reply_running" }) } as never);
+      expect(await screen.findByRole("alert")).toHaveTextContent(/A reply is still being written/);
+      expect(screen.queryByRole("button", { name: "Stop" })).not.toBeInTheDocument();
+      expect(FakeEventSource.all).toHaveLength(0);
+    });
+  });
+
   it.each([
     ["ai_disabled", 503, {}, /AI features are not set up on this server/],
     ["consent_required", 403, {}, /agreement to AI processing/],
