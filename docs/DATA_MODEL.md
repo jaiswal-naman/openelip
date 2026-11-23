@@ -2822,6 +2822,9 @@ GRANT SELECT ON job_sources, jobs, job_requirements, fetch_runs, skills, model_r
 GRANT SELECT, INSERT ON consents, audit_log, profile_events, feedback_events, application_events, twin_messages
   TO app_api;
 GRANT SELECT ON match_runs, match_decisions, match_evidence, guardian_checks, llm_calls TO app_api;
+-- The chat reply calls the model in the API process (Phase 5), so the API login records those calls: its own rows
+-- only (candidate_own), and the registry row of a model the code names on first use.
+GRANT INSERT ON llm_calls, model_registry TO app_api;
 GRANT SELECT, INSERT ON consents, audit_log, profile_events, fetch_runs, job_requirements, match_decisions,
                         match_evidence, feedback_events, application_events, guardian_checks, twin_messages,
                         llm_calls, eval_items, sim_scenarios, sim_results

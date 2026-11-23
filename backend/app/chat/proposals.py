@@ -257,7 +257,8 @@ def propose(user_id: UUID, user_text: str, *, principal: UUID | None) -> list[Pr
     }
     messages = build_messages(user_text, current)
     answer = cast(
-        ProposalList, complete(TASK, ProposalList, messages, principal=principal, prompt_version=PROMPT_VERSION)
+        ProposalList,
+        complete(TASK, ProposalList, messages, principal=principal, prompt_version=PROMPT_VERSION, ledger="api"),
     )
 
     plans: list[_Plan] = []

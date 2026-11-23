@@ -149,7 +149,9 @@ def _model(state: _State, runtime: Runtime[_Run]) -> dict[str, Any]:
         return {"finish": reason, "pending": []}
     step = cast(
         ChatStep,
-        complete(TASK, ChatStep, state["messages"], principal=run.ctx.user_id, prompt_version=PROMPT_VERSION),
+        complete(
+            TASK, ChatStep, state["messages"], principal=run.ctx.user_id, prompt_version=PROMPT_VERSION, ledger="api"
+        ),
     )
     written = {"role": "assistant", "content": step.model_dump_json(exclude_none=True)}
     return {

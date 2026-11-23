@@ -4,6 +4,7 @@ The file is read on every call, so an edit needs no restart and no code change. 
 """
 
 import tomllib
+from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
@@ -14,8 +15,12 @@ from uuid import UUID
 from sqlalchemy import Connection, text
 
 from .. import db
-from ..config import Settings
+from ..config import Role, Settings
 from .failures import AIDisabled
+
+# The login that writes a call's registry and ledger rows. gateway.complete() sets it for one call: the worker by
+# default, the API login for the chat reply, which runs in the API process and has no worker login (05-INDEX 3).
+LEDGER: ContextVar[Role] = ContextVar("llm_ledger", default="worker")
 
 PATH = Path(__file__).resolve().parents[3] / "config" / "models.toml"
 ADAPTERS = ("anthropic", "openai_compatible", "fake")
@@ -183,7 +188,7 @@ _UPDATE = text(
 
 def model_id(r: Route) -> UUID:
     """The registry row of a route's model, created on first use so a checkout works before any sync has run."""
-    with db.transaction(role="worker") as conn:
+    with db.transaction(role=LEDGER.get()) as conn:
         conn.execute(_ONLY_IF_MISSING, _params(r))
         row = conn.execute(
             text("SELECT id FROM model_registry WHERE provider = :p AND model_name = :m"),

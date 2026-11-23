@@ -543,15 +543,16 @@ def test_the_request_holds_only_the_prompt_the_current_values_and_the_current_me
 def test_the_model_is_called_with_exactly_that_request_and_nothing_from_earlier(engine, world, monkeypatch):
     sent = []
 
-    def capture(task, schema, messages, *, principal, prompt_version):
-        sent.append((task, schema, messages, principal, prompt_version))
+    def capture(task, schema, messages, *, principal, prompt_version, ledger):
+        sent.append((task, schema, messages, principal, prompt_version, ledger))
         return ProposalList(proposals=[])
 
     monkeypatch.setattr(proposals, "complete", capture)
     propose(world.ada, "just this message", principal=world.ada)
 
-    ((task, schema, messages, principal, version),) = sent
+    ((task, schema, messages, principal, version, ledger),) = sent
     assert (task, schema, principal, version) == ("record.propose", ProposalList, world.ada, PROMPT_VERSION)
+    assert ledger == "api"  # chat proposes inside the API process, which holds no worker login
     assert [m["role"] for m in messages] == ["system", "user"]
     assert messages[1]["content"].endswith("BEGIN MESSAGE\njust this message\nEND MESSAGE")
     assert '- employment_type: {"employment_types": ["full_time"]}' in messages[1]["content"]

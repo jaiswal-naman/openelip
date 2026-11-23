@@ -104,10 +104,11 @@ def turn(
     attributed: list[tuple[Any, str]] = []
     real = loop.complete
 
-    def spy(task, schema, messages, *, principal, prompt_version):
+    def spy(task, schema, messages, *, principal, prompt_version, ledger):
+        assert ledger == "api"  # the reply runs in the API process, which holds no worker login
         sent.append([dict(m) for m in messages])
         attributed.append((principal, prompt_version))
-        return real(task, schema, messages, principal=principal, prompt_version=prompt_version)
+        return real(task, schema, messages, principal=principal, prompt_version=prompt_version, ledger=ledger)
 
     monkeypatch.setattr(loop, "complete", spy)
     ran: list[tuple[str, Any]] = []

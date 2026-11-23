@@ -81,3 +81,7 @@ GRANT SELECT, INSERT ON application_events TO app_api, app_worker;
 GRANT SELECT, INSERT, UPDATE, DELETE ON tailored_resumes, resume_edits, application_packets, applications,
                                         chat_sessions, chat_messages
   TO app_api, app_worker;
+-- The chat reply calls the model inside the API process, which holds no worker login, so the API login records those
+-- calls. The candidate_own policy of llm_calls (0002) already limits such a row to the signed-in person. On
+-- model_registry it can add the row of a model the code names on first use; it cannot change or remove one.
+GRANT INSERT ON llm_calls, model_registry TO app_api;

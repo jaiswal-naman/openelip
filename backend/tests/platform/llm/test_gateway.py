@@ -5,10 +5,11 @@ import traceback
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import DBAPIError
 
 from app.main import create_app
 from app.platform import db
-from app.platform.llm import AIDisabled, ProviderUnavailable, SchemaInvalid, complete, fake
+from app.platform.llm import AIDisabled, ProviderUnavailable, SchemaInvalid, complete, fake, registry
 from app.platform.llm.__main__ import PingResult
 from app.platform.llm.adapters import Reply
 from app.platform.llm.gateway import cost_microusd, usd
@@ -33,6 +34,23 @@ def test_a_valid_answer_is_parsed_and_costed_in_one_ledger_row(harness):
         "output_tokens": 20, "cache_read_tokens": 0, "cache_write_tokens": 0, "cost_microusd": 450, "attempt": 1,
         "provider": "fake", "model_name": "recorded",
     }  # fmt: skip
+
+
+def test_a_call_made_in_the_api_process_is_recorded_by_the_api_login_alone(harness):
+    harness.record(PONG)
+    user = harness.user()
+    answer = complete("ping", PingResult, MESSAGES, principal=user, prompt_version="v1", ledger="api")
+    assert answer == PingResult(reply="pong")
+    assert [r["user_id"] for r in harness.ledger()] == [user]
+    assert set(db._engines) == {"api"}  # the API container holds no worker login (05-INDEX decision 3)
+    assert registry.LEDGER.get() == "worker"  # the next call, wherever it runs, starts from the default again
+
+
+def test_the_api_login_cannot_record_a_call_that_is_not_the_signed_in_persons(harness):
+    harness.record(PONG)
+    with pytest.raises(DBAPIError):  # candidate_own: the row must be the person's whose id the connection carries
+        complete("ping", PingResult, MESSAGES, principal=None, prompt_version="v1", ledger="api")
+    assert harness.ledger() == []
 
 
 def test_invalid_output_then_valid_output_succeeds_after_one_retry(harness):
