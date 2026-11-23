@@ -9,7 +9,11 @@ from langgraph.graph import END, START, StateGraph
 from sqlalchemy import Engine
 
 from app import cli
-from app.campaigns import graph, nodes
+from app.campaigns import (
+    graph,
+    nodes,
+    subscribers,  # noqa: F401  (registered in the API and the worker, so here as well)
+)
 from app.guardian import runtime
 from app.platform.llm import fake
 from tests.campaigns.fixtures.graph import world as w
@@ -78,8 +82,11 @@ def test_reseat_deletes_the_checkpoints_and_the_campaign_is_placed_again_from_it
         )
         == 0
     )
-    (job,) = w.rows(engine, "SELECT payload FROM queue_jobs WHERE kind = 'campaign.resume'")
-    assert job.payload["cause"].startswith("reseat.")
+    # the Guardian's own action events also ask for a resume (07-05's subscribers); reseat adds exactly one more
+    (job,) = w.rows(
+        engine, "SELECT payload FROM queue_jobs WHERE kind = 'campaign.resume' AND payload->>'cause' LIKE 'reseat.%'"
+    )
+    assert job.payload["campaign_id"] == str(stuck.campaign)
     w.run_jobs()
     assert runtime.thread_state(graph.compiled(), nodes.thread_id(stuck.campaign))[0] == "parked"
     assert cli.main(["graphs", "check"]) == 0
