@@ -20,6 +20,7 @@ from app.campaigns import subscribers as campaign_subscribers  # noqa: F401  (fi
 from app.chat import privacy as chat_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.guardian import jobs as guardian_jobs  # noqa: F401  (importing it registers the Guardian handlers)
 from app.guardian import privacy as guardian_privacy  # noqa: F401  (the export job reads the registry in this process)
+from app.guardian import runtime as guardian_runtime
 from app.hiring import jobs as hiring_jobs  # noqa: F401  (importing it registers the hiring handlers and mail templates)
 from app.hiring import privacy as hiring_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.ingest import jobs  # noqa: F401  (importing it registers the ingest handlers)
@@ -47,6 +48,7 @@ def main() -> None:
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
     queues = config.get().worker_queues  # empty means every queue
     profile_jobs.register()
+    guardian_runtime.assert_checkpoints_current()  # refuse to start behind the LangGraph checkpoint schema
     log.event("worker.started")
     try:
         while not stop.is_set():
