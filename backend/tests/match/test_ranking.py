@@ -8,12 +8,12 @@ import pytest
 from app.match.ranking import (
     RANKER_VERSION,
     Scored,
-    fit_score,
+    age_bucket,
     final_score,
+    fit_score,
     is_showable,
     pick,
     prerank_score,
-    recency_bucket,
 )
 from app.match.validator import EvidenceRow
 
@@ -70,7 +70,7 @@ def test_a_job_with_no_verdicts_has_fit_zero():
 # ---- final and pre-rank scores ----------------------------------------
 
 
-def test_final_adds_a_tenth_of_preference_match_takes_off_a_twentieth_per_seniority_step_and_adds_a_fiftieth_of_recency():
+def test_final_adds_a_tenth_of_preference_a_fiftieth_of_recency_and_takes_a_twentieth_per_seniority_step():
     assert final_score(0.5, 1.0, 2.0, 1.0) == pytest.approx(0.5 + 0.10 - 0.10 + 0.02)
     assert final_score(0.8, 0.0, 0.0, 0.0) == pytest.approx(0.8)
     assert final_score(0.8, -1.0, 3.0, 0.5) == pytest.approx(0.8 - 0.10 - 0.15 + 0.01)
@@ -86,7 +86,7 @@ def test_the_pre_rank_has_the_same_shape_over_the_normalized_fusion_score():
     [(-3, 1.0), (0, 1.0), (7, 1.0), (7.5, 0.5), (30, 0.5), (30.5, 0.0), (400, 0.0)],
 )
 def test_recency_is_a_full_bucket_within_a_week_half_within_a_month_and_none_after(age_days, bucket):
-    assert recency_bucket(age_days) == bucket
+    assert age_bucket(age_days) == bucket
 
 
 # ---- who may be shown ----------------------------------------
@@ -120,7 +120,12 @@ def job(job_id, final=0.9, *, company="Acme", title="Data Engineer", rows=(REQ_M
 
 
 def test_the_best_final_scores_are_shown_first_and_a_tie_goes_to_the_lower_job_id():
-    scored = [job(30, 0.7, company="C"), job(20, 0.9, company="B"), job(10, 0.9, company="A"), job(40, 0.8, company="D")]
+    scored = [
+        job(30, 0.7, company="C"),
+        job(20, 0.9, company="B"),
+        job(10, 0.9, company="A"),
+        job(40, 0.8, company="D"),
+    ]
     picked = pick(scored, 4)
     assert [s.job_id for s in picked.shown] == [10, 20, 40, 30]
     assert picked.held == {}

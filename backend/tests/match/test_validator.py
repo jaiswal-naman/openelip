@@ -160,7 +160,9 @@ def test_no_evidence_that_cites_a_fact_rejects_the_set_by_rule_4():
 
 
 def years_request(min_years, kind="experience"):
-    return request([requirement(11, f"{min_years}+ years of Go", kind=kind, min_years=min_years)], [fact("fact-uuid-1")])
+    return request(
+        [requirement(11, f"{min_years}+ years of Go", kind=kind, min_years=min_years)], [fact("fact-uuid-1")]
+    )
 
 
 def test_met_on_more_years_than_the_whole_career_rejects_the_set_by_rule_5():
@@ -198,7 +200,9 @@ def test_met_on_a_skill_whose_cited_facts_share_no_term_with_it_is_accepted_but_
 
 
 def test_met_on_a_skill_that_shares_a_term_with_a_cited_fact_is_not_weak():
-    result = check(answer(("r1", "met", ["f1"])), skill_request("Strong Kubernetes experience", "Ran Kubernetes clusters"))
+    result = check(
+        answer(("r1", "met", ["f1"])), skill_request("Strong Kubernetes experience", "Ran Kubernetes clusters")
+    )
     assert isinstance(result, Accepted) and result.weak_fit is False
 
 

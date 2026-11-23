@@ -1,4 +1,4 @@
-"""The independent constraint checker (MAT-01): which hard constraints a job breaks, and which fields it leaves unstated.
+"""The independent constraint checker (MAT-01): the hard constraints a job breaks, and the fields it leaves unstated.
 
 The expectations are the rules of DATA_MODEL 4.1 written out as cases. Plan 04-04 compares the checker with the SQL
 functions over 10,000 generated cases; these are the hand-made ones that say what each rule means.
@@ -85,7 +85,8 @@ def test_the_ambiguity_flag_is_reported_for_a_removed_job_too_as_the_sql_does():
 
 
 @pytest.mark.parametrize(
-    ("visa", "expected"), [("offered", []), ("not_offered", ["work_authorization"]), ("unknown", ["work_authorization"])]
+    ("visa", "expected"),
+    [("offered", []), ("not_offered", ["work_authorization"]), ("unknown", ["work_authorization"])],
 )
 def test_a_job_outside_the_authorized_countries_passes_only_when_it_offers_sponsorship(visa, expected):
     c = Constraints(authorized_countries=("IN",))
