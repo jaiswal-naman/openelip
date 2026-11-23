@@ -2628,6 +2628,11 @@ BEGIN
 END;
 $$;
 
+-- data_requests names two people (user_id and subject_user_id), and erase_user trusts subject_user_id, so an insert must
+-- name the caller as both. Without this a caller could open a deletion request about someone else (plan 03-01).
+ALTER POLICY candidate_own ON data_requests
+  WITH CHECK (user_id = app_user_id() AND subject_user_id = app_user_id() AND app_agent_token_id() IS NULL);
+
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY self ON users TO app_api
   USING (id = app_user_id() AND app_agent_token_id() IS NULL) WITH CHECK (id = app_user_id());
