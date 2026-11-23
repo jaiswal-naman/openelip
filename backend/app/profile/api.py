@@ -12,12 +12,15 @@ by accident. The predicate is the one of the partial index profile_facts_usable_
   facts_by_ids(conn, user_id, ids)    facts a verdict cited, by id, once confirmed and since corrected or retired too
   propose_change(conn, user_id, ...)  suggest a record change; it waits for the candidate (CHT-03)
   confirm(conn, user_id, event_id)    apply a proposal the candidate confirmed
+  declined_since(conn, user_id, since) the proposals the candidate declined since a time, so they are not repeated
+  screen(text)                        the protected-characteristic screen (REC-07): a category name, or None
 
-Each takes an open connection, as the caller owns the transaction.
+Each but screen takes an open connection, as the caller owns the transaction.
 """
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -25,8 +28,18 @@ from sqlalchemy import Connection, text
 
 from . import events, service
 from .events import propose_change
+from .protected import screen
 
-__all__ = ["compiled_constraints", "confirm", "facts_by_ids", "get_record", "propose_change", "usable_facts"]
+__all__ = [
+    "compiled_constraints",
+    "confirm",
+    "declined_since",
+    "facts_by_ids",
+    "get_record",
+    "propose_change",
+    "screen",
+    "usable_facts",
+]
 
 PAGE = 100
 
@@ -45,6 +58,41 @@ def confirm(conn: Connection, user_id: UUID, event_id: UUID) -> Confirmed:
     """Apply a proposal the candidate confirmed (CHT-03). Raises 404 when it is not theirs, 409 when it was answered."""
     applied = events.confirm(conn, user_id, event_id)
     return Confirmed(applied.entity, UUID(applied.row["id"]), applied.record_version)
+
+
+@dataclass(frozen=True)
+class DeclinedProposal:
+    """A proposal the candidate answered with no: the kind of row (fact, constraint or preference), what the change was
+    (create, update or remove), the row's `field` (its kind: a constraint or preference kind, or a fact kind), `value`
+    (what it would have written, or for a removal what it would have removed, as the change log stores it) and when."""
+
+    entity: str
+    operation: str
+    field: str
+    value: dict[str, Any]
+    declined_at: datetime
+
+
+def declined_since(conn: Connection, user_id: UUID, since: datetime) -> list[DeclinedProposal]:
+    """The person's declined proposals from `since` on, newest first. A proposal still waiting, or answered with yes,
+    is not here. It lets a proposer see what the person already said no to and not offer it again."""
+    rows = conn.execute(
+        text(
+            """SELECT entity::text AS entity, operation::text AS operation, before, after, created_at
+                 FROM profile_events
+                WHERE user_id = :u AND event_type = 'declined' AND created_at >= :since
+                ORDER BY created_at DESC, id DESC"""
+        ),
+        {"u": user_id, "since": since},
+    )
+    declined = []
+    for row in rows:
+        # A creation or an update was declined with its `after`; a removal has only the row it would have removed.
+        value = row.after if row.after is not None else row.before
+        field = (value or {}).get("kind") or (row.before or {}).get("kind")  # a fact update's `after` has no kind
+        if value is not None and field is not None:
+            declined.append(DeclinedProposal(row.entity, row.operation, field, value, row.created_at))
+    return declined
 
 
 def usable_facts(conn: Connection, user_id: UUID) -> list[dict[str, Any]]:
