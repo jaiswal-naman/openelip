@@ -24,7 +24,7 @@ function titleCells(roles: RoleListItem[]): TitleCell[] {
   return [
     { label: "Open roles", value: roles.filter((role) => role.status === "open").length },
     { label: "Drafts", value: roles.filter((role) => role.status === "draft").length, tone: "muted" },
-    { label: "Shortlisted", value: roles.reduce((sum, role) => sum + role.said_yes, 0) },
+    { label: "Said yes", value: roles.reduce((sum, role) => sum + role.said_yes, 0) },
     {
       label: "Answers owed",
       tone: owedTotal > 0 ? "redline" : "muted",

@@ -94,7 +94,7 @@ function TeamOf({ orgId }: { orgId: string }) {
                 )}
               </Cell>
               <Cell data-label="Status">{MEMBER_STATUS_LABELS[member.status]}</Cell>
-              <Cell data-label="Actions">
+              <Cell data-label={canManage && !(member.role === "owner" && owners <= 1) ? "Actions" : undefined}>
                 {canManage && !(member.role === "owner" && owners <= 1) && (
                   <RemoveButton member={member} onRemove={() => remove.mutateAsync(member.member_id)} />
                 )}
