@@ -155,7 +155,7 @@ def test_the_seed_job_and_the_import_register_the_same_boards(conn, probes, monk
 @pytest.fixture
 def committed_index(engine):
     """The command opens its own worker connection and commits, so this empties the tables before and after."""
-    empty = text("TRUNCATE fetch_runs, jobs, job_sources RESTART IDENTITY CASCADE")
+    empty = text("TRUNCATE fetch_runs, jobs, job_sources, audit_log RESTART IDENTITY CASCADE")
     with engine.begin() as c:
         c.execute(empty)
     yield
@@ -172,6 +172,14 @@ def run_cli(capsys, *argv):
 def stored_sources(engine):
     with engine.connect() as c:
         return sources(c)
+
+
+def audit_rows(engine):
+    with engine.connect() as c:
+        rows = c.execute(
+            text("SELECT event_type, actor_type, actor_user_id, subject_user_id, details FROM audit_log ORDER BY id")
+        )
+        return [tuple(row) for row in rows]
 
 
 def test_the_command_is_parsed_and_has_a_handler():
@@ -216,6 +224,28 @@ def test_a_dry_run_through_the_command_writes_nothing_and_says_so(engine, commit
 
     assert code == 0 and out[0] == "dry run, nothing written: probed 3, registered 1, already known 0, rejected 1"
     assert stored_sources(engine) == []
+
+
+def test_a_real_import_leaves_one_operator_audit_row_with_counts_and_no_names(
+    engine, committed_index, probes, capsys, tmp_path
+):
+    boards = tmp_path / "boards.txt"
+    boards.write_text("\n".join(FILE), encoding="utf-8")
+
+    run_cli(capsys, "sources", "import", str(boards))
+
+    counts = {"probed": 3, "registered": 1, "already_known": 0, "rejected": 1}  # no board name, no rejected text
+    assert audit_rows(engine) == [("ingest.sources_imported", "operator", None, None, counts)]
+
+
+def test_a_dry_run_and_a_file_that_cannot_be_read_leave_no_audit_row(engine, committed_index, probes, capsys, tmp_path):
+    boards = tmp_path / "boards.txt"
+    boards.write_text("\n".join(FILE), encoding="utf-8")
+
+    run_cli(capsys, "sources", "import", str(boards), "--dry-run")
+    run_cli(capsys, "sources", "import", str(tmp_path / "no-such-file.txt"))
+
+    assert audit_rows(engine) == []
 
 
 def test_a_rejected_line_is_shown_cut_to_80_characters(committed_index, probes, capsys, tmp_path):
