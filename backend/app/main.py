@@ -7,6 +7,12 @@ from fastapi import FastAPI
 
 from app.brief import privacy as brief_privacy  # noqa: F401  (importing it registers the brief tables and exporter)
 from app.brief import routes as brief_routes
+from app.hiring import api as hiring_api
+from app.hiring import introduction_routes as hiring_introduction_routes
+from app.hiring import org_routes as hiring_org_routes
+from app.hiring import privacy as hiring_privacy  # noqa: F401  (importing it registers the hiring tables and exporter)
+from app.hiring import role_routes as hiring_role_routes
+from app.hiring import signal_routes as hiring_signal_routes
 from app.ingest import privacy as ingest_privacy  # noqa: F401  (importing it registers the ingest tables)
 from app.ingest import routes as ingest_routes
 from app.match import privacy as match_privacy  # noqa: F401  (importing it registers the match tables and exporter)
@@ -23,8 +29,13 @@ def create_app() -> FastAPI:
     errors.register(app)
     telemetry.instrument(app)
     api.install(app)  # added last, so it is outermost: the request id exists for everything inside it
-    # app.platform may not import app.trust, so the account endpoints get the consent rules from here (ARCHITECTURE 3.3)
-    auth.hooks.update(consents=trust_consent.current_consents, change_consents=trust_consent.apply_changes)
+    # app.platform may not import app.trust or app.hiring, so the account endpoints get the consent rules and the
+    # memberships from here (ARCHITECTURE 3.3)
+    auth.hooks.update(
+        consents=trust_consent.current_consents,
+        change_consents=trust_consent.apply_changes,
+        organizations=hiring_api.my_organizations,
+    )
     for router in (
         api.router,
         ingest_routes.router,
@@ -34,6 +45,10 @@ def create_app() -> FastAPI:
         profile_routes.router,
         match_routes.router,
         brief_routes.router,
+        hiring_org_routes.router,
+        hiring_role_routes.router,
+        hiring_introduction_routes.router,
+        hiring_signal_routes.router,
     ):
         app.include_router(router)
     return app

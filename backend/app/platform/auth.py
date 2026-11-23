@@ -20,7 +20,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import Connection, text
 
 from . import config, db, errors, log, outbox, sessions
@@ -119,6 +119,31 @@ class BriefSettingsChange(BaseModel):
         return self
 
 
+OrgRole = Literal["owner", "admin", "member"]
+
+
+class OrganizationMembership(BaseModel):
+    """An employer organization the person is an active member of, with their role in it (HIR-01)."""
+
+    model_config = ConfigDict(from_attributes=True)  # filled from the hiring module's own values (see `hooks` below)
+
+    id: UUID
+    name: str
+    role: OrgRole
+    is_synthetic: bool  # a demo organization, labelled wherever it is shown
+
+
+class OrganizationInvitation(BaseModel):
+    """An open invitation to join an organization, sent to the person's address (HIR-01)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    organization_id: UUID
+    organization_name: str
+    role: OrgRole
+    invited_at: datetime
+
+
 class Me(BaseModel):
     id: UUID
     email: str
@@ -127,6 +152,8 @@ class Me(BaseModel):
     consents: list[ConsentState]
     brief: BriefSettings
     capabilities: list[str]  # the model tasks a call would reach right now (API.md 2.3); none without a provider
+    organizations: list[OrganizationMembership] = []  # employer organizations the person belongs to (HIR-01)
+    invitations: list[OrganizationInvitation] = []  # open invitations to their address
 
 
 class MePatch(BaseModel):
@@ -153,10 +180,12 @@ class MePatch(BaseModel):
         return self
 
 
-# Filled in by app.main when it builds the app. The consent rules live in app.trust, which this layer may not import
-# (ARCHITECTURE 3.3), so the account endpoints call them through these two hooks:
+# Filled in by app.main when it builds the app. The consent rules live in app.trust and the memberships in app.hiring,
+# which this layer may not import (ARCHITECTURE 3.3), so the account endpoints call them through these hooks:
 #   "consents":        (conn, user_id) -> list[ConsentState], one per purpose
 #   "change_consents": (conn, user_id, changes: Sequence[ConsentChange]) -> None; raises ApiError to refuse a change
+#   "organizations":   (conn, user_id) -> (memberships, invitations): objects with the fields of OrganizationMembership
+#                      and OrganizationInvitation, for the person whose transaction this is
 hooks: dict[str, Callable[..., Any]] = {}
 
 
@@ -307,6 +336,7 @@ def _exchange(email: str, code: str, timezone: str | None) -> tuple[Me, str] | i
             zone = timezone
         token = sessions.start(conn, user_id)
         consents = hooks["consents"](conn, user_id)
+        organizations = _organizations(conn, user_id)
     me = Me(
         id=account.id,
         email=account.email,
@@ -315,6 +345,7 @@ def _exchange(email: str, code: str, timezone: str | None) -> tuple[Me, str] | i
         consents=consents,
         brief=BriefSettings(frequency=account.brief_frequency, weekday=account.brief_weekday),
         capabilities=_capabilities(),
+        **organizations,
     )
     log.event("auth.signed_in", outcome="new_account" if account.is_new else "existing_account")
     return me, token
@@ -361,6 +392,12 @@ def _capabilities() -> list[str]:
     return [route.task for route in registry.active_routes(config.get())]
 
 
+def _organizations(conn: Connection, user_id: UUID) -> dict[str, Any]:
+    """The person's memberships and open invitations, as the keyword arguments Me takes."""
+    memberships, invitations = hooks["organizations"](conn, user_id)
+    return {"organizations": memberships, "invitations": invitations}
+
+
 def _account(conn: Connection, user_id: UUID) -> Me | None:
     """The person's account as GET /v1/me reports it, or None when their row is gone."""
     row = conn.execute(
@@ -378,6 +415,7 @@ def _account(conn: Connection, user_id: UUID) -> Me | None:
         consents=consents,
         brief=BriefSettings(frequency=row.brief_frequency, weekday=row.brief_weekday),
         capabilities=_capabilities(),
+        **_organizations(conn, user_id),
     )
 
 

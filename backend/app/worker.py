@@ -12,6 +12,8 @@ from types import FrameType
 
 from app.brief import jobs as brief_jobs  # noqa: F401  (importing it registers the brief handlers)
 from app.brief import privacy as brief_privacy  # noqa: F401  (the export job reads the registry in this process)
+from app.hiring import jobs as hiring_jobs  # noqa: F401  (importing it registers the hiring handlers and mail templates)
+from app.hiring import privacy as hiring_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.ingest import jobs  # noqa: F401  (importing it registers the ingest handlers)
 from app.ingest import privacy as ingest_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.match import jobs as match_jobs  # noqa: F401  (importing it registers the match handlers)

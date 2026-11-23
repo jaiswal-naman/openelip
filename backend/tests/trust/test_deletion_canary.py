@@ -67,6 +67,10 @@ PLANTED = {
     ("match_decisions", "change_note"),
     ("match_evidence", "note"),
     ("feedback_events", "comment"),
+    ("org_members", "invited_email"),  # the address the person was invited by
+    ("introductions", "share_preview"),
+    ("introductions", "employer_answer_reason"),
+    ("shortlist_entries", "shared_payload"),
     ("eval_items", "expected"),
     ("eval_items", "actual"),
 }
@@ -303,6 +307,121 @@ def seed_person(engine) -> Person:
             b=brief,
             u=user,
             d=decision,
+        )
+        # The hiring tables (plan 06-01). The person owns one employer organization, and a second one, "Canary Hiring
+        # Demo", asked them about an open role: the ask, its consent, the employer's answer, the shortlist entry and a
+        # signal all name them. Every guard of the schema runs on these rows, so each is built the way the product
+        # builds it.
+        own_organization = run(
+            "INSERT INTO organizations (name, created_by) VALUES ('Canary Employer Demo', :u) RETURNING id", u=user
+        ).scalar_one()
+        run(
+            """INSERT INTO org_members (organization_id, user_id, invited_email, role, status, joined_at)
+               VALUES (:o, :u, :e, 'owner', 'active', now())""",
+            o=own_organization,
+            u=user,
+            e=ADDRESS,
+        )
+        hiring = run("INSERT INTO organizations (name) VALUES ('Canary Hiring Demo') RETURNING id").scalar_one()
+        direct = run(
+            """INSERT INTO job_sources (ats, token, company_name, organization_id, is_active)
+               VALUES ('direct', 'canary-hiring', 'Canary Hiring Demo', :o, false) RETURNING id""",
+            o=hiring,
+        ).scalar_one()
+        posting = "SQL is required."
+        role_job = run(
+            """INSERT INTO jobs (source_id, external_id, title, company_name, description, apply_url, content_hash,
+                                 dedupe_key, requirements_version, is_listed)
+               VALUES (:s, 'canary-role', 'Platform engineer', 'Canary Hiring Demo', :d, 'https://example.test/apply',
+                       'h', 'direct:canary-role', 1, false) RETURNING id""",
+            s=direct,
+            d=posting,
+        ).scalar_one()
+        job_requirement = run(
+            """INSERT INTO job_requirements (job_id, content_version, ordinal, importance, kind, text, span,
+                                             prompt_version)
+               VALUES (:j, 1, 1, 'required', 'skill', :t, int4range(0, :n), 'employer-confirmed') RETURNING id""",
+            j=role_job,
+            t=posting,
+            n=len(posting),
+        ).scalar_one()
+        role = run(
+            """INSERT INTO roles (organization_id, title, description, status, salary_min, salary_max, salary_currency,
+                                  requirements_confirmed_at, job_id, opened_at)
+               VALUES (:o, 'Platform engineer', :d, 'open', 90000, 130000, 'USD', now(), :j, now()) RETURNING id""",
+            o=hiring,
+            d=posting,
+            j=role_job,
+        ).scalar_one()
+        run(
+            """INSERT INTO role_requirements (role_id, organization_id, ordinal, importance, kind, text, span,
+                                              is_confirmed)
+               VALUES (:r, :o, 1, 'required', 'skill', :t, int4range(0, :n), true)""",
+            r=role,
+            o=hiring,
+            t=posting,
+            n=len(posting),
+        )
+        role_run = run(
+            """INSERT INTO match_runs (trigger, role_id, local_date, status, ranker_version, finished_at)
+               VALUES ('role', :r, current_date, 'completed', 'seed', now()) RETURNING id""",
+            r=role,
+        ).scalar_one()
+        role_decision = run(
+            """INSERT INTO match_decisions (match_run_id, user_id, job_id, job_content_version, local_date, outcome,
+                                            reason_codes, summary)
+               VALUES (:r, :u, :j, 1, current_date, 'introduced', '{selected_for_role}', 'Meets the required item.')
+               RETURNING id""",
+            r=role_run,
+            u=user,
+            j=role_job,
+        ).scalar_one()
+        run(  # the evidence a shown or introduced decision must carry by the time it commits
+            """INSERT INTO match_evidence (match_decision_id, user_id, job_requirement_id, verdict)
+               VALUES (:d, :u, :q, 'no_evidence')""",
+            d=role_decision,
+            u=user,
+            q=job_requirement,
+        )
+        api.grant_consent(c, user, "open_to_introductions", f"v-{CANARY}")  # the consent the ask checks
+        preview = {
+            "on_accept": {"name": f"Ada {CANARY}", "headline": statement, "evidence": [], "facts": []},
+            "on_employer_yes": {"email": ADDRESS},
+        }
+        introduction = run(
+            """INSERT INTO introductions (organization_id, role_id, user_id, match_decision_id, share_preview)
+               VALUES (:o, :r, :u, :d, CAST(:p AS jsonb)) RETURNING id""",
+            o=hiring,
+            r=role,
+            u=user,
+            d=role_decision,
+            p=json.dumps(preview),
+        ).scalar_one()
+        run(  # accepting needs the person's consent for this employer and role
+            """INSERT INTO consents (user_id, purpose, action, text_version, organization_id, role_id)
+               VALUES (:u, 'introduction', 'granted', 'v1', :o, :r)""",
+            u=user,
+            o=hiring,
+            r=role,
+        )
+        run("UPDATE introductions SET status = 'accepted' WHERE id = :i", i=introduction)
+        run(
+            "UPDATE introductions SET employer_answer = 'yes', employer_answer_reason = :r WHERE id = :i",
+            r=f"Reason {CANARY}",
+            i=introduction,
+        )
+        run(
+            """INSERT INTO shortlist_entries (organization_id, role_id, introduction_id, user_id, shared_payload,
+                                              contact_released_at)
+               SELECT organization_id, role_id, id, user_id, share_preview, now() FROM introductions WHERE id = :i""",
+            i=introduction,
+        )
+        run(
+            """INSERT INTO interest_signals (sender_side, user_id, organization_id, role_id, sent_by, week_start, slot)
+               VALUES ('candidate', :u, :o, :r, :u, date_trunc('week', now() AT TIME ZONE 'UTC')::date, 1)""",
+            u=user,
+            o=hiring,
+            r=role,
         )
     return Person(user, ADDRESS)
 
