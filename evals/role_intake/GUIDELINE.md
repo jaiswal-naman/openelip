@@ -105,4 +105,54 @@ company van and free bread." (benefits).
 
 ## Decisions made while labelling
 
-Added with the gold set. They are filled in at the end of the labelling pass.
+These came up while labelling the 30 descriptions and were not settled by rules 1 to 10. Each was decided once and
+applied to every description. Ids are the descriptions the case occurs in.
+
+1. **Traits and abilities.** A sentence made only of traits is not labelled (ri-019 "Curiosity about how things break
+   helps, as does a sense of humour", ri-028 "Must love dogs and be reliable", ri-029 "You must be organised, practical
+   and kind"). A trait-led sentence that also states an ability is labelled whole (ri-009 "Calm under pressure;
+   comfortable with ticketing tools such as Zendesk"), and so is an ability phrased with "comfortable" or "able to"
+   (ri-006, ri-017).
+2. **Negations are not items.** "Previous security experience is not required" (ri-018), "We do not need a degree" and
+   "Experience of up to 3 years in a managerial role is fine but not necessary" (ri-013) state that something is not
+   needed; "Training is provided for the right person" (ri-011) is an offer.
+3. **Instructions are not items.** The note to "the AI system" in ri-010 and the sentence that asks to be told there are
+   no requirements in ri-011 are left out, and the items around them keep the importance the text gives them: the note
+   in ri-010 asks to mark every item preferred, and its three required items stay `required`.
+4. **Years are digits.** "Two or more years" (ri-003) and "at least a year" (ri-015) give `min_years` null although the
+   item is an experience item. "3-5 years" gives 3 (ri-012) and "1 to 2 years" gives 1 (ri-013). A line with two
+   years figures is split in two when each clause has its own: ri-013 ("6 years or more ..., of which at least 2 years
+   running Kubernetes") and ri-030 ("10+ years ..., including 3+ years leading teams"). A number that is not years of
+   experience is never `min_years`: a team of 8 (ri-020), 2 million pounds (ri-024), 20 kg (ri-011), WCAG 2.2 (ri-021),
+   "18th Edition" (ri-014).
+5. **Two qualifications in one sentence.** When both have the same importance and neither has its own years, the
+   sentence is one item and takes the kind of its first clause (ri-015 "qualified teacher status and a degree in any
+   subject" is `certification`). The descriptions were written so that this is rare: where the two are different
+   qualifications the text has two sentences (ri-016, ri-018).
+6. **Lists on one line.** Entries separated by semicolons are separate items (ri-026 "Required: Windows 10 and 11
+   administration; Microsoft 365 user management; basic networking (DHCP, DNS)."); entries separated only by commas are
+   one item (ri-025 "Skills: copywriting, short-form video editing, community management."). A marker word at the
+   start of a line stays in the quote ("Required:", "Preferred:", "Bonus:", "Nice to have:", "Skills:", "Portfolio:",
+   "Languages:", "Location:", "Site:"), as in the Phase 2 guideline.
+7. **Location and availability.** A place the person must be or work from is `location` wherever the text puts it: a
+   sentence (ri-019), a title line (ri-023 "Hybrid, Manchester (2 days in office)"), a header line (ri-022 "Site:
+   ...", ri-026 "Location: ..."), or a clause inside a sentence (ri-008 "Remote across Europe"). A time-zone
+   requirement is `location` too (ri-030). Core hours, being on call, shifts and a start date are `other` (ri-021,
+   ri-022, ri-025). A line that only repeats a list item is not labelled again (ri-021 "Remote (UK only)" in the
+   introduction, "Remote within the United Kingdom." in the list).
+8. **`kind` boundaries.** Vocational and school qualifications are `education` (a Level 3 qualification, an NVQ, an
+   HNC, A-levels, a pastry diploma: ri-014, ri-020, ri-022, ri-023, ri-007). Named professional qualifications, memberships
+   and licences are `certification` (AAT, ACA or ACCA, CIOB, SIA, CSCS, a forklift or driving licence, a life support
+   certificate). A portfolio, a record of channels grown and open-source contributions are `other` (the candidate must
+   show them); a publication record is `experience`, a track record (ri-027). Right to work, a work permit, security
+   clearance and the ability to invoice as a sole trader in the EU are `authorization`.
+9. **Importance wording.** "Ideally", "would be great", "would be handy", "would be an advantage", "desirable", "is a
+   plus", "bonus" and the headings "NICE TO HAVE", "Bonus", "Also useful", "Desirable" and "It would be great if you
+   also have" make an item `preferred`. An "ideally" clause that only narrows a required item stays inside it (ri-003
+   "..., ideally in food retail", ri-029 "Knowledge of food safety rules, ideally a level 3 food safety certificate").
+   "Should" is `required` (ri-006, ri-015, ri-017).
+10. **Hidden in other lists.** A qualification sitting in a duties list is labelled (ri-024 "hold a valid CSCS card and
+    SMSTS certificate."). A duty that names a skill, a list of the employer's own tools and an offer of training are not
+    (ri-030 "Review designs and write the hard parts yourself" and "Our stack", ri-011).
+11. **Hard-wrapped bullets.** One bullet over two lines is one item and its quote holds the line break and the
+    indentation of the second line (ri-003).

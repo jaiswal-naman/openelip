@@ -25,6 +25,53 @@ is reported, and disagreements amend the guideline. The set is meant to grow tow
 check 1); 30 ship now, because hand labelling is the limit. A score on 30 descriptions carries a wide interval and is
 reported with its counts and a Wilson interval (AI_SYSTEM 12.1), never as a bare percentage.
 
+## Where the descriptions came from
+
+An agent wrote all 30 for this set, one for each of 30 invented organizations ("Halden Demo", "Brightwell Demo", ...),
+and then drafted the labels from `GUIDELINE.md`. Nothing is copied from a real posting or a real employer, and no person
+is named. The roles are ordinary ones (a nurse, a bookkeeper, a barista, an electrician, a data analyst, a principal
+engineer, ...) so that the set is not only engineering. The text is varied on purpose, the way employers write:
+
+| Slice | Descriptions | What it is |
+|---|---|---|
+| `prose` | 6 | one paragraph, the requirements in running sentences |
+| `bullets` | 6 | headings and bullet or numbered lists, with different bullet marks; one bullet wrapped over two lines |
+| `mixed` | 4 | prose, headings, a duties list that hides a requirement, `Required:` and `Preferred:` lines, semicolon lists |
+| `short` | 3 | one to three lines; one states no requirement at all |
+| `long` | 3 | a page with the company's story, benefits, how to apply and an equal-opportunity notice around the requirements |
+| `non_ascii` | 3 | accents, curly quotes, dashes, CJK, and emoji outside the Basic Multilingual Plane ahead of the first item |
+| `injection` | 2 | a sentence addressed to a model ("ignore your earlier instructions ..."), which must not become an item |
+| `years` | 3 | many typed numbers of years: `5+`, `3-5`, `at least 2`, `1 to 2`, `up to 3`, and clauses with their own figure |
+
+No extractor, no heading rule and no model was run or read while the descriptions were written and labelled.
+
+## What the labels cover
+
+| | Count |
+|---|---|
+| Descriptions | 30; 127 to 1,736 characters, median 421; 10 contain non-ASCII text; 1 has no requirement |
+| Items | 155: 115 required, 40 preferred; 0 to 9 per description, median 5.5; the items cover about half of the text |
+| Kinds | skill 51, experience 41, certification 19, other 19, education 10, location 9, authorization 6 (all seven kinds) |
+| Items that state a number of years | 21 (`min_years` set) |
+| Spans | 2 descriptions have a symbol outside the Basic Multilingual Plane before their first item, so a span counted in UTF-16 would be wrong; 1 item's quote contains a line break |
+| Preferred items | 28 of the 30 descriptions have at least one |
+
+## Limits to keep in mind
+
+- **Thirty is a start, not the target.** The set is meant to grow toward 50 with a second rater on 20%. A score on 30
+  descriptions carries a wide interval.
+- **One labeller, no second rater.** The eleven decisions at the end of `GUIDELINE.md` are the judgement calls.
+- **Invented text is tidier than real text.** The agent's descriptions have few typos, no pasted markup, no half-English
+  mixtures and none is longer than 1,736 characters. Real employers write messier and longer text, so a live score here
+  would read better than one on real role descriptions.
+- **English only**, apart from a few words of Japanese and German.
+- **Nearly every description has a "nice to have".** Only two have none, so a model that marks too many items preferred
+  is hard to catch here, and one that marks too few is easy to catch.
+- **The two injection descriptions test the labels, not a defence.** They show that the sentence is not an item; the
+  prompt-injection suite of Phase 5 is where defences are measured.
+- **No dev and test split.** Nothing is tuned on this set: the prompt is the one that reads postings. If it is ever tuned
+  for employer text, grow the set and freeze a test split first.
+
 ## Pre-registered bars
 
 Written on 2026-11-23 (AI_SYSTEM 12.1: fix the metric and the bar before the run; a changed bar is a new, dated
