@@ -1,9 +1,4 @@
-.head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-  max-width: var(--measure);
-}
+/* The trust sheet: a ledger of who receives data, in plain words, and the one statement of what deletion cannot reach. Tokens only. */
 
 .region {
   display: flex;
@@ -12,6 +7,7 @@
 }
 
 .name {
+  font-weight: 650;
   overflow-wrap: anywhere;
 }
 
@@ -27,16 +23,30 @@
   color: var(--muted);
 }
 
+/* What deletion cannot reach: a ruled note under the ledger, not a box */
 .statement {
   max-width: var(--measure);
-  padding: var(--sp-16) var(--sp-20);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+  padding-block-start: var(--sp-12);
+  border-block-start: 1px solid var(--line-strong);
 }
 
 .skeleton {
   height: 8rem;
-  border-radius: var(--r-lg);
+  border-block-start: 2px solid var(--ink-rule);
   background: var(--surface-2);
+}
+
+/* The name and the data sent keep a width of their own, so a long purpose never squeezes them into a column of letters */
+@media (min-width: 40rem) {
+  .table {
+    table-layout: fixed;
+  }
+
+  .table th:nth-child(1) {
+    width: 14rem;
+  }
+
+  .table th:nth-child(3) {
+    width: 20rem;
+  }
 }

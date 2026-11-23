@@ -34,7 +34,7 @@ export function ExportCard({ pollMs = POLL_MS }: { pollMs?: number }) {
   const working = requestId !== null && status !== "succeeded" && status !== "failed" && !request.isError;
 
   return (
-    <section className={styles.card} aria-labelledby="export-title">
+    <section className={styles.section} aria-labelledby="export-title">
       <h2 id="export-title" className="t-section">
         Export your data
       </h2>

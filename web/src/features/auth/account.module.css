@@ -19,17 +19,19 @@
   }
 }
 
+/* A failed sign-out opens upward: the account sits at the foot of the register, with no room below it */
 .problem {
   position: absolute;
-  inset-inline-end: 0;
-  top: calc(100% + var(--sp-4));
+  inset-inline-start: 0;
+  bottom: calc(100% + var(--sp-8));
   z-index: 11;
   width: max-content;
-  max-width: min(18rem, 100vw - var(--sp-32));
+  max-width: min(13rem, 100vw - var(--sp-32));
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   background: var(--surface);
   box-shadow: var(--shadow-1);
   font-size: var(--fs-small);
+  font-weight: 600;
 }

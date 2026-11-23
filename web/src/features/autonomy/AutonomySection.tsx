@@ -5,12 +5,13 @@ import { useState } from "react";
 import { Label, Radio, RadioGroup } from "react-aria-components";
 import { ErrorState } from "@/components/ui/States";
 import { Button } from "@/components/ui/Button";
+import field from "@/components/ui/field.module.css";
 import { useApi } from "@/lib/api/context";
 import { isFailure } from "@/lib/api/errors";
 import { describeFailure } from "@/lib/api/problems";
 import { AUTONOMY_LEVEL_LABELS, AUTONOMY_ROW_LABELS } from "@/lib/labels";
 import { autonomyQuery, useSaveAutonomy } from "./queries";
-import styles from "@/features/campaigns/campaigns.module.css";
+import styles from "./autonomy.module.css";
 
 const SAVED = "Saved. Applies to new actions from now.";
 
@@ -58,17 +59,17 @@ export function AutonomySection() {
   }
 
   return (
-    <section aria-labelledby="autonomy-heading" className={styles.page}>
+    <section aria-labelledby="autonomy-heading" className={styles.section}>
       <h2 id="autonomy-heading" className="t-section">
         Autonomy
       </h2>
-      <p className="muted">How much your agents may do before they ask you. Follow-ups and applications are never sent without your approval.</p>
-      <ul className={styles.list}>
+      <p className={`muted ${styles.lead}`}>How much your agents may do before they ask you. Follow-ups and applications are never sent without your approval.</p>
+      <ul className={styles.rows}>
         {Object.entries(data.actions).map(([type, row]) => {
           const label = AUTONOMY_ROW_LABELS[type] ?? { name: type, locked: "This cannot be changed." };
           const locked = row.allowed_levels.length <= 1;
           return (
-            <li key={type} className={styles.dial}>
+            <li key={type} className={styles.row}>
               {locked ? (
                 <>
                   <p className="t-card">{label.name}</p>
@@ -76,16 +77,11 @@ export function AutonomySection() {
                   <p className="t-small muted">{label.locked}</p>
                 </>
               ) : (
-                <RadioGroup
-                  value={row.level}
-                  onChange={(level) => change(type, level)}
-                  isDisabled={save.isPending}
-                  className={styles.stack}
-                >
+                <RadioGroup value={row.level} onChange={(level) => change(type, level)} isDisabled={save.isPending} className={styles.group}>
                   <Label className="t-card">{label.name}</Label>
-                  <div className={styles.radios}>
+                  <div className={styles.segmented}>
                     {row.allowed_levels.map((level) => (
-                      <Radio key={level} value={level} className={styles.radio}>
+                      <Radio key={level} value={level} className={styles.segment}>
                         {AUTONOMY_LEVEL_LABELS[level] ?? level}
                       </Radio>
                     ))}
@@ -101,19 +97,26 @@ export function AutonomySection() {
             </li>
           );
         })}
-        <li className={styles.dial}>
+        <li className={styles.row}>
           <p className="t-card">Share my profile</p>
           <p>Only when you accept an introduction</p>
           <p className="t-small muted">No agent shares your profile or your address on its own.</p>
         </li>
       </ul>
-      <div className={styles.dial}>
-        <label className={styles.field}>
-          <span className="t-card">Undo window for follow-ups (minutes, 1 to 60)</span>
-          <input className={styles.input} type="number" min={1} max={60} value={days ?? String(data.undo_window_minutes)} onChange={(event) => setDays(event.target.value)} />
+      <div className={styles.window}>
+        <label className={field.field}>
+          <span className={field.label}>Undo window for follow-ups (minutes, 1 to 60)</span>
+          <input
+            className={`${field.input} ${styles.minutes}`}
+            type="number"
+            min={1}
+            max={60}
+            value={days ?? String(data.undo_window_minutes)}
+            onChange={(event) => setDays(event.target.value)}
+          />
         </label>
-        <div className={styles.row}>
-          <Button size="sm" isPending={save.isPending} onPress={saveWindow}>
+        <div className={styles.buttons}>
+          <Button isPending={save.isPending} onPress={saveWindow}>
             Save undo window
           </Button>
         </div>

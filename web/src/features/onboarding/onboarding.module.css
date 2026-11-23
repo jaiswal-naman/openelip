@@ -1,20 +1,16 @@
-/* Onboarding: one step per screen, with the Back and Continue bar kept in reach on a phone (FRONTEND_UI 3.2). Tokens only. */
+/*
+ * Onboarding as a numbered step sheet (FRONTEND_UI 3.2): the title block says which step of how many, the step's content is
+ * ruled, and Back and Continue stay in one row at the foot, in reach on a phone. Tokens only.
+ */
 
 .flow {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-24);
-  max-width: 56rem;
-}
-
-.head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--sp-32);
 }
 
 /* The heading takes focus when the step changes, so a screen reader starts at the top of the new step; it is not a control */
-.title:focus {
+.flow h1:focus {
   outline: none;
 }
 
@@ -22,6 +18,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-16);
+  max-width: 56rem;
 }
 
 .stack {
@@ -40,11 +37,12 @@
 .note {
   max-width: var(--measure);
   padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
   background: var(--surface);
 }
 
+/* Where the file goes: a ruled area with a dashed line, because a dashed line says "drop here" */
 .drop {
   display: flex;
   flex-direction: column;
@@ -52,8 +50,8 @@
   gap: var(--sp-8);
   width: min(100%, var(--measure));
   padding: var(--sp-24);
-  border: 2px dashed var(--line-strong);
-  border-radius: var(--r-lg);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-sm);
   background: var(--surface);
 }
 
@@ -62,6 +60,8 @@
   flex-direction: column;
   gap: var(--sp-8);
   width: min(100%, var(--measure));
+  padding-block-start: var(--sp-12);
+  border-block-start: 1px solid var(--line-strong);
 }
 
 /* The first matches: the cards of Today, one under another. */
@@ -73,22 +73,25 @@
 }
 
 .problem {
+  max-width: var(--measure);
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   background: var(--surface);
+  color: var(--bad);
   font-weight: 600;
 }
 
-/* Back and Continue. On a phone the bar sticks to the bottom of the screen; the page reserves room for it. */
+/* Back and Continue, one row, one size. On a phone the bar sticks to the bottom of the screen. */
 .bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-12);
+  max-width: 56rem;
   padding-block: var(--sp-12);
-  border-block-start: 1px solid var(--line);
+  border-block-start: 1px solid var(--line-strong);
 }
 
 @media (max-width: 39.99rem) {
@@ -102,12 +105,12 @@
   }
 }
 
-.counts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-8) var(--sp-24);
-}
-
 .lead {
   max-width: var(--measure);
+}
+
+/* A part of a step with its own heading (the brief, the first matches): a rule above it */
+.part {
+  padding-block-start: var(--sp-12);
+  border-block-start: 1px solid var(--line-strong);
 }

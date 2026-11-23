@@ -1,0 +1,45 @@
+/*
+ * One long ruled sheet: the title block, then numbered sections down the page. Each section draws its own rule and heading;
+ * the number sits in the margin on the same rule, so the sections read as items of a drawing's index. Tokens only.
+ */
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-32);
+}
+
+.item {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+/* The number: a lettered figure on the section's own rule, set level with the section heading */
+.num {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-start: var(--sp-16);
+  z-index: 1;
+  padding-inline: var(--sp-8);
+  color: var(--muted);
+  font-size: var(--fs-section);
+  font-stretch: var(--stretch-lettering);
+  font-weight: 650;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 40rem) {
+  .item {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+  }
+
+  /* In the margin the number carries the rule on, so the rule runs unbroken from the margin across the section */
+  .num {
+    position: static;
+    padding: var(--sp-16) var(--sp-8) 0 0;
+    border-block-start: 1px solid var(--line-strong);
+  }
+}

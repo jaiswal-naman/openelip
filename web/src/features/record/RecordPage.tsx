@@ -7,16 +7,18 @@ import { Button } from "@/components/ui/Button";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { Pill } from "@/components/ui/Pill";
 import { EmptyState, ErrorState } from "@/components/ui/States";
+import { TitleBlock, type TitleCell } from "@/components/ui/TitleBlock";
 import { LocalTime } from "@/components/ui/Viewer";
 import { useMe } from "@/features/auth/queries";
 import { useAiConsent } from "@/features/consent/useAiConsent";
 import { useApi } from "@/lib/api/context";
 import { useViewer } from "@/lib/viewer";
-import { answerProposal, type RecordDocument, type RecordEvent, proposalsQuery, unconfirmedFactsQuery, useRecordWrite } from "./api";
+import { answerProposal, type RecordDocument, type RecordEvent, type RecordView, proposalsQuery, unconfirmedFactsQuery, useRecordWrite } from "./api";
 import { AiOffNotice } from "./AiOffNotice";
 import { ChangeLog } from "./ChangeLog";
 import { ConfirmedFacts } from "./ConfirmedFacts";
 import { ConstraintCards } from "./ConstraintCards";
+import { CONSTRAINT_ORDER } from "./constraints";
 import { FactReview } from "./FactReview";
 import { constraintSubject, documentStatusLabel, entityLabel, parseProblemLabel, sizeLabel, writeProblemText } from "./labels";
 import { PreferenceInput } from "./PreferenceInput";
@@ -66,10 +68,16 @@ export function RecordPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.pageHead}>
-        <h1 className="t-page">Your record</h1>
-        <p className="muted">Only what you confirm is used. Every change is logged at the bottom of this page.</p>
-      </header>
+      <TitleBlock
+        title="Your record"
+        lines={
+          <>
+            <p>Only what you confirm is used.</p>
+            <p>Every change is logged at the bottom of this page.</p>
+          </>
+        }
+        cells={titleCells(view, toReview.length)}
+      />
 
       {view.open_proposals > 0 && <Proposals count={view.open_proposals} />}
 
@@ -82,7 +90,7 @@ export function RecordPage() {
       </RecordSection>
 
       {toReview.length > 0 && (
-        <RecordSection title={`Facts to review (${toReview.length})`}>
+        <RecordSection title={`Facts to review (${toReview.length})`} mark={<Pill tone="redline">Needs you</Pill>}>
           <FactReview facts={toReview} document={resume.data?.lines ? { id: resume.data.id, lines: resume.data.lines } : undefined} />
         </RecordSection>
       )}
@@ -102,11 +110,23 @@ export function RecordPage() {
   );
 }
 
-function RecordSection({ title, children }: { title: string; children: ReactNode }) {
+/** The title block's cells, counted from what the page already loaded. Nothing here is guessed. */
+function titleCells(view: RecordView, waiting: number): TitleCell[] {
+  const resumesRead = view.documents.filter((document) => document.status === "succeeded").length;
+  return [
+    { label: "Confirmed facts", value: view.facts.filter((fact) => fact.status === "confirmed").length },
+    { label: "Waiting for review", value: waiting, tone: waiting > 0 ? "redline" : "muted" },
+    { label: "Resumes read", value: resumesRead, tone: resumesRead > 0 ? undefined : "muted" },
+    { label: "Constraints set", value: `${view.constraints.length} of ${CONSTRAINT_ORDER.length}` },
+  ];
+}
+
+function RecordSection({ title, mark, children }: { title: string; mark?: ReactNode; children: ReactNode }) {
   return (
     <details className={styles.section} open>
       <summary className={styles.sectionHead}>
         <h2 className="t-section">{title}</h2>
+        {mark}
       </summary>
       <div className={styles.sectionBody}>{children}</div>
     </details>
@@ -128,7 +148,7 @@ function Proposals({ count }: { count: number }) {
       {proposals.isError ? (
         <ErrorState what="Could not load the proposed changes." error={proposals.error} onRetry={() => void proposals.refetch()} />
       ) : (
-        <ul className={styles.facts}>
+        <ul className={styles.rows}>
           {(proposals.data ?? []).map((event) => (
             <li key={event.id} className={styles.confirmed}>
               <p className={styles.statement}>{describeProposal(event)}</p>
@@ -171,7 +191,7 @@ function Documents({ documents }: { documents: RecordDocument[] }) {
       {documents.length === 0 ? (
         <EmptyState>No resume uploaded yet.</EmptyState>
       ) : (
-        <ul className={styles.facts} aria-label="Uploaded documents">
+        <ul className={styles.rows} aria-label="Uploaded documents">
           {documents.map((document) => (
             <li key={document.id} className={styles.confirmed}>
               <div className={styles.what}>

@@ -1,9 +1,12 @@
-/* The Career Record screens: fact review, hidden-text panel, inline editors (FRONTEND_UI 3.2 and 3.8). Tokens only. */
+/*
+ * The Career Record as a drawing sheet (FRONTEND_UI 3.2 and 3.8): sections under a ruled head, confirmed facts as a ledger,
+ * facts waiting for the person marked in redline, the change log as a revision table. Rows are ruled, never boxed. Tokens only.
+ */
 
 .review {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-20);
+  gap: var(--sp-24);
 }
 
 .group {
@@ -12,33 +15,70 @@
   gap: var(--sp-8);
 }
 
+.note {
+  max-width: var(--measure);
+}
+
+/* ---- ledger heads: the lettered columns over a list of rows, as a bill of materials has them ---- */
+
+.ledgerHead {
+  display: none;
+}
+
+@media (min-width: 48rem) {
+  .ledgerHead {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 13rem;
+    gap: var(--sp-16);
+    padding: var(--sp-8);
+    border-block-start: 2px solid var(--ink-rule);
+    border-block-end: 1px solid var(--line-strong);
+    color: var(--muted);
+    font-size: var(--fs-label);
+    font-stretch: var(--stretch-lettering);
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .ledgerHead + .facts {
+    border-block-start: 0;
+  }
+}
+
+/* ---- the facts read from a resume, one ruled row each ---- */
+
 .facts {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  overflow: hidden;
+  border-block-start: 2px solid var(--ink-rule);
 }
 
-/* A fact is a card on a phone: the fact, the resume's own words under it, then the buttons. From 48rem it is a row. */
 .fact {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-8) var(--sp-16);
   align-items: start;
-  padding: var(--sp-12) var(--sp-16);
-  border-block-start: 1px solid var(--line);
-}
-
-.fact:first-child {
-  border-block-start: 0;
+  padding: var(--sp-12) var(--sp-8);
+  border-block-end: 1px solid var(--line);
+  transition: background-color var(--dur-fast) var(--ease-in);
 }
 
 @media (min-width: 48rem) {
   .fact {
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 13rem;
   }
+}
+
+@media (hover: hover) {
+  .fact:hover {
+    background: var(--surface);
+  }
+}
+
+/* A fix is being typed: the field takes the whole row, and the resume's words stay under it */
+.fact[data-editing] > .what {
+  grid-column: 1 / -1;
 }
 
 .what {
@@ -48,16 +88,40 @@
   min-width: 0;
 }
 
+.labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4) var(--sp-12);
+  color: var(--muted);
+}
+
+/* Waiting on the person: the revision delta and the word, in redline (the only redline on the row) */
+.needs {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  color: var(--redline);
+}
+
+.needs::before {
+  content: "";
+  width: 0.6875rem;
+  height: 0.625rem;
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
 .statement {
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
-/* The resume's own words, set apart: a rule beside them, and a mono label that says where they came from */
+/* The resume's own words, set apart by a hairline rule and a lettered label of where they came from */
 .source {
   margin: 0;
   padding-inline-start: var(--sp-12);
-  border-inline-start: 2px solid var(--line-strong);
+  border-inline-start: 1px solid var(--line-strong);
   color: var(--muted);
   font-size: var(--fs-small);
   min-width: 0;
@@ -75,14 +139,20 @@
   gap: var(--sp-8);
 }
 
+@media (min-width: 48rem) {
+  .fact > .actions {
+    justify-content: flex-end;
+  }
+}
+
 .footer {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--sp-12) var(--sp-24);
-  padding-block-start: var(--sp-12);
-  border-block-start: 1px solid var(--line);
+  padding-block: var(--sp-12);
+  border-block-end: 1px solid var(--line);
 }
 
 .footerAction {
@@ -93,17 +163,22 @@
 }
 
 .problem {
+  max-width: var(--measure);
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   background: var(--surface);
+  color: var(--bad);
   font-weight: 600;
 }
+
+/* ---- the editors: a ruled form, a visible label, one control height ---- */
 
 .editor {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-8);
+  gap: var(--sp-12);
+  max-width: var(--measure);
 }
 
 .buttons {
@@ -124,25 +199,19 @@
   margin-top: var(--sp-8);
 }
 
-/* Phone: the Continue / Finish bar of a step stays in reach (FRONTEND_UI 3.2) */
+/* Phone: 40px targets for the buttons on a row */
 @media (max-width: 39.99rem) {
   .actions button {
-    min-height: 2.5rem; /* 40px targets on a phone */
+    min-height: 2.5rem;
   }
 }
 
-/* The record page: sections that fold, the proposals card, rows of confirmed facts, the add-a-fact form */
+/* ---- the record page: sections under a ruled head that folds ---- */
 
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-24);
-}
-
-.pageHead {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--sp-32);
 }
 
 .section {
@@ -153,16 +222,24 @@
 .sectionHead {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--sp-12);
-  padding-block: var(--sp-8);
-  border-block-end: 1px solid var(--line);
+  padding-block: var(--sp-12) var(--sp-4);
+  border-block-start: 1px solid var(--line-strong);
   cursor: pointer;
   list-style: none;
 }
 
+.sectionHead h2 {
+  margin-inline-end: auto;
+}
+
 .sectionHead::-webkit-details-marker {
   display: none;
+}
+
+.sectionHead:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 /* A chevron that turns when the section opens: the fold's state is also in the summary's own semantics */
@@ -185,17 +262,33 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-16);
-  padding-block: var(--sp-16) var(--sp-8);
+  padding-block: var(--sp-12) var(--sp-8);
 }
 
+/* Proposed by the agent: they wait for the person's yes, so the sheet marks them in redline */
 .proposals {
   display: flex;
   flex-direction: column;
   gap: var(--sp-8);
-  padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+  padding: var(--sp-12) var(--sp-16) var(--sp-16);
+  border: 1px solid var(--redline);
+  border-radius: var(--r-sm);
+  background: var(--redline-soft);
+}
+
+.proposals h2 {
+  color: var(--redline);
+}
+
+/* A plain ruled list: documents and proposals */
+.rows {
+  display: flex;
+  flex-direction: column;
+  border-block-start: 2px solid var(--ink-rule);
+}
+
+.proposals .rows {
+  border-block-start-color: var(--redline);
 }
 
 .confirmed {
@@ -204,12 +297,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-8) var(--sp-16);
-  padding: var(--sp-12) var(--sp-16);
-  border-block-start: 1px solid var(--line);
-}
-
-.confirmed:first-child {
-  border-block-start: 0;
+  padding: var(--sp-12) var(--sp-8);
+  border-block-end: 1px solid var(--line);
 }
 
 .confirmed > .what {
@@ -221,6 +310,8 @@
   flex-direction: column;
   gap: var(--sp-12);
   max-width: var(--measure);
+  padding-block-start: var(--sp-12);
+  border-block-start: 1px solid var(--line-strong);
 }
 
 .addRow {
@@ -242,4 +333,66 @@
 
 .words {
   overflow-wrap: anywhere;
+}
+
+/* The confirmed-facts ledger: the fact, where it came from, when, and what can be done to it */
+.statementCell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.rowActions {
+  text-align: end;
+}
+
+.rowActions .actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 39.99rem) {
+  .rowActions {
+    text-align: start;
+  }
+
+  .rowActions .actions {
+    justify-content: flex-start;
+  }
+}
+
+.editRow > td {
+  padding-inline: var(--sp-8);
+  background: var(--surface);
+}
+
+/* The revision delta: each row of the log is a change made to the record */
+@media (min-width: 40rem) {
+  .change::before {
+    content: "";
+    display: inline-block;
+    width: 0.6875rem;
+    height: 0.625rem;
+    margin-inline-end: var(--sp-8);
+    background: var(--muted);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  }
+}
+
+/* Every ledger of facts keeps the same columns, so the figures line up from one group to the next */
+@media (min-width: 40rem) {
+  .factsTable {
+    table-layout: fixed;
+  }
+
+  .factsTable th:nth-child(2) {
+    width: 11rem;
+  }
+
+  .factsTable th:nth-child(3) {
+    width: 12rem;
+  }
+
+  .factsTable th:nth-child(4) {
+    width: 11rem;
+  }
 }

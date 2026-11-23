@@ -30,10 +30,11 @@ test("opening the app signs the owner in with no sign-in page, asks for the mode
   expect(before.ok()).toBe(true);
   expect((await before.json()).data).toMatchObject({ mode: "local", has_owner: true, model: { key_set: false } });
 
-  // Paste a key: it is saved, the page goes on to where the visit was going, and only the last four characters come back.
+  // Paste a key: it is saved, the page goes on to where the visit was going (/), which sends a record with no resume read yet
+  // to onboarding (key first, then the resume, then Today), and only the last four characters come back.
   await page.getByLabel("API key").fill(KEY);
   await page.getByRole("button", { name: "Save key" }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/onboarding$/);
   const after = await page.request.get("/v1/local/status");
   const saved = await after.text();
   expect(JSON.parse(saved).data.model).toEqual({ provider: "anthropic", key_set: true, key_last4: "test", source: "app" });

@@ -1,24 +1,33 @@
-/* Hard constraints: one card per kind, with the editor that opens inside a card (FRONTEND_UI 3.2 step 4 and 3.8). Tokens only. */
+/*
+ * Hard constraints as ruled rows (FRONTEND_UI 3.2 step 4 and 3.8): the heavy rule on top, a hairline under each, the name, the
+ * value and the buttons across the row. The editor opens inside its row as a ruled form. Tokens only.
+ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
 
 .cards {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-8);
+  border-block-start: 2px solid var(--ink-rule);
 }
 
 .card {
   display: flex;
   flex-direction: column;
   gap: var(--sp-12);
-  padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+  padding: var(--sp-12) var(--sp-8);
+  border-block-end: 1px solid var(--line);
 }
 
-/* The card being worked on stands out by a stronger border, not by colour alone: it also holds the form */
+/* The row being worked on is outlined, not only tinted: it also holds the form */
 .card[data-open] {
-  border-color: var(--line-strong);
+  background: var(--surface);
+  outline: 1px solid var(--line-strong);
+  outline-offset: -1px;
 }
 
 .head {
@@ -37,6 +46,21 @@
   flex: 1 1 16rem;
 }
 
+/* From 48rem the name and the value sit side by side, so the values line up down the sheet */
+@media (min-width: 48rem) {
+  .head {
+    flex-wrap: nowrap;
+    align-items: baseline;
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: 12rem minmax(0, 1fr);
+    gap: var(--sp-16);
+    align-items: baseline;
+  }
+}
+
 .value {
   overflow-wrap: anywhere;
 }
@@ -48,15 +72,21 @@
 .buttons {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--sp-8);
 }
 
-/* The editor */
+/* ---- the editor: a ruled form, labels showing, one control height ---- */
 
 .form {
   display: flex;
   flex-direction: column;
   gap: var(--sp-16);
+  padding-block-start: var(--sp-12);
+  border-block-start: 1px solid var(--line-strong);
+}
+
+.form > * {
   max-width: var(--measure);
 }
 
@@ -72,9 +102,11 @@
   }
 }
 
+/* What the value means, read back in a plain sentence before it is saved: a ruled box on the sheet */
 .restated {
   padding: var(--sp-8) var(--sp-12);
-  border-inline-start: 3px solid var(--line-strong);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
   background: var(--surface-2);
   font-weight: 600;
 }
@@ -90,8 +122,9 @@
   gap: var(--sp-8);
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   background: var(--surface);
+  color: var(--bad);
   font-weight: 600;
 }
 
@@ -121,7 +154,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sp-8);
-  min-height: 2rem;
+  min-height: 2.5rem;
   cursor: pointer;
 }
 
@@ -168,18 +201,6 @@
   gap: var(--sp-4);
   padding-inline-start: var(--sp-12);
   border: 1px solid var(--line-strong);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-sm);
   background: var(--surface);
-}
-
-@media (max-width: 39.99rem) {
-  .option {
-    min-height: 2.5rem; /* 40px targets on a phone */
-  }
-}
-
-.wrap {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-8);
 }

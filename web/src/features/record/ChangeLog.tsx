@@ -81,7 +81,9 @@ export function ChangeLog() {
               <th scope="row" className={styles.when}>
                 <LocalTime iso={event.created_at} />
               </th>
-              <td data-label="What changed">{whatChanged(event)}</td>
+              <td data-label="What changed" className={styles.change}>
+                {whatChanged(event)}
+              </td>
               <td data-label="Before" className={styles.words}>
                 {side(event, "before")}
               </td>

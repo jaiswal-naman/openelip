@@ -1,59 +1,16 @@
-/* Settings: the section list, the Privacy cards and the delete-account dialog (FRONTEND_UI 3.10). Tokens only. */
+/*
+ * The privacy and data sections of the Settings sheet, and the delete-account dialog (FRONTEND_UI 3.10). Each section is a rule
+ * above its heading and its content; deleting the account is a separate block in the error colour, never in redline, which is
+ * reserved for what needs the person's decision. Tokens only.
+ */
 
-.layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--sp-24);
-  align-items: start;
-}
-
-@media (min-width: 48rem) {
-  .layout {
-    grid-template-columns: 12rem minmax(0, 1fr);
-  }
-}
-
-.nav ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-4);
-}
-
-@media (min-width: 48rem) {
-  .nav ul {
-    flex-direction: column;
-  }
-}
-
-.nav a {
-  display: block;
-  padding: var(--sp-8) var(--sp-12);
-  border-radius: var(--r-md);
-  color: var(--text);
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.nav a[aria-current="page"] {
-  background: var(--surface-2);
-  box-shadow: inset 3px 0 0 var(--accent-strong); /* the current section is marked by more than colour: a bar and the aria-current state */
-}
-
-.sections {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-20);
-  max-width: 48rem;
-}
-
-.card {
+.section {
   display: flex;
   flex-direction: column;
   gap: var(--sp-12);
-  padding: var(--sp-16) var(--sp-20);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+  max-width: 48rem;
+  padding-block-start: var(--sp-16);
+  border-block-start: 1px solid var(--line-strong);
 }
 
 .lead {
@@ -68,10 +25,12 @@
 }
 
 .problem {
+  max-width: var(--measure);
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   background: var(--surface);
+  color: var(--bad);
   font-weight: 600;
 }
 
@@ -81,14 +40,28 @@
   gap: var(--sp-8) var(--sp-12);
 }
 
-/* Delete is the one destructive control here: red text on the secondary button, a red fill only for the final confirmation */
-button.danger {
+/* ---- delete account: the one destructive block, boxed in the error colour ---- */
+
+.danger {
+  align-items: flex-start;
+  padding: var(--sp-16);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-sm);
+}
+
+.danger h2 {
+  color: var(--bad);
+}
+
+/* The button that opens the dialog: error colour on the secondary button, a fill only for the final confirmation */
+button.dangerButton {
   border-color: var(--bad);
   color: var(--bad);
 }
 
 button.dangerFill {
   background: var(--bad);
+  border-color: var(--bad);
   color: var(--on-accent);
 }
 
@@ -107,8 +80,9 @@ button.dangerFill {
   width: min(100%, 34rem);
   max-height: 100%;
   overflow-y: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--r-xl);
+  border: 1px solid var(--line-strong);
+  border-block-start: 2px solid var(--bad);
+  border-radius: var(--r-md);
   background: var(--surface);
   box-shadow: var(--shadow-2);
 }
@@ -127,17 +101,4 @@ button.dangerFill {
   gap: var(--sp-4);
   padding-inline-start: var(--sp-20);
   list-style: disc;
-}
-
-/* The page a person lands on after deleting their account */
-.farewell {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--sp-16);
-  width: min(100%, 36rem);
-  padding: var(--sp-24);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
 }

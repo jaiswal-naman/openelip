@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/States";
+import { TitleBlock } from "@/components/ui/TitleBlock";
 import { LocalTime } from "@/components/ui/Viewer";
 import { useMe } from "@/features/auth/queries";
 import { AiConsentSheet } from "@/features/consent/AiConsentSheet";
@@ -63,13 +64,17 @@ export function OnboardingFlow() {
     if (me.data === null) router.replace(SIGN_IN);
   }, [me.data, router]);
 
-  // The heading takes focus when the step changes, so a screen reader starts at the top of the new step.
-  const heading = useRef<HTMLHeadingElement>(null);
+  // The heading takes focus when the step changes, so a screen reader starts at the top of the new step. The title block
+  // draws the heading, so it is found from the sheet's own element.
+  const sheet = useRef<HTMLDivElement>(null);
   const shown = useRef(step);
   useEffect(() => {
+    const heading = sheet.current?.querySelector("h1");
+    if (!heading) return;
+    heading.tabIndex = -1;
     if (shown.current === step) return;
     shown.current = step;
-    heading.current?.focus();
+    heading.focus();
   }, [step]);
 
   const address = (next: Step, doc: string | null) => `/onboarding?step=${next}${doc ? `&doc=${doc}` : ""}`;
@@ -81,13 +86,12 @@ export function OnboardingFlow() {
   const hasNext = step === "facts" || step === "constraints" || step === "preferences";
 
   return (
-    <div className={styles.flow}>
-      <header className={styles.head}>
-        <p className="t-label muted">{`Step ${index + 1} of ${STEPS.length}`}</p>
-        <h1 className={`t-page ${styles.title}`} ref={heading} tabIndex={-1}>
-          {TITLES[step]}
-        </h1>
-      </header>
+    <div className={styles.flow} ref={sheet}>
+      <TitleBlock
+        title={TITLES[step]}
+        lines={<p>Setting up your career record.</p>}
+        cells={[{ label: "Progress", value: `Step ${index + 1} of ${STEPS.length}` }, ...(after ? [{ label: "Next", value: TITLES[after] }] : [])]}
+      />
 
       <div className={styles.body}>
         {step === "consent" && <ConsentStep onContinue={() => go("upload")} onSkip={() => go(INTAKE)} />}
@@ -125,7 +129,7 @@ export function OnboardingFlow() {
       {(before !== null || hasNext) && (
         <div className={styles.bar}>
           {before !== null ? (
-            <Button variant="quiet" onPress={() => go(before)}>
+            <Button onPress={() => go(before)}>
               Back
             </Button>
           ) : (
