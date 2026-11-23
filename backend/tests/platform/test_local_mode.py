@@ -256,6 +256,32 @@ def test_the_time_zone_is_kept_only_when_the_call_makes_the_account(local):
     assert local.post("/v1/auth/local", json={"timezone": "Mars/Olympus"}).status_code == 422
 
 
+def test_the_owner_is_a_candidate_and_an_employer_at_once(local, engine):
+    """Job seekers and employers have equal weight in the local app: nothing on the account stops the one owner from
+    creating an organization and using the hiring desk beside their own record."""
+    owner = sign_in(local)
+    org = write(local, "post", "/v1/orgs", json={"name": "Halden Studio", "timezone": "Europe/Berlin"})
+    assert org.status_code == 201
+    org_id = org.json()["data"]["id"]
+    assert org.json()["data"]["role"] == "owner" and org.json()["data"]["is_synthetic"] is False
+
+    memberships = local.get("/v1/me").json()["data"]["organizations"]
+    assert [(m["id"], m["role"]) for m in memberships] == [(org_id, "owner")]
+
+    role = write(
+        local,
+        "post",
+        "/v1/roles",
+        json={"org_id": org_id, "title": "Backend engineer", "description": "Build the thing."},
+    )
+    assert role.status_code == 201, role.text
+    assert [r["title"] for r in local.get("/v1/roles", params={"org_id": org_id}).json()["data"]] == [
+        "Backend engineer"
+    ]
+    assert local.get(f"/v1/orgs/{org_id}").json()["data"]["members"][0]["user_id"] == owner["id"]
+    assert rows(engine, "SELECT count(*) FROM users")[0][0] == 1  # still the one account on both sides
+
+
 # --- what the web asks before it shows anything ----------------------------------------------------------------------
 
 

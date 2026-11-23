@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fail, ok, renderWithApi } from "@/test/render";
 import { AccountMenu } from "./AccountMenu";
@@ -122,5 +123,23 @@ describe("signing out", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not sign out. You are still signed in. Try again.");
     expect(screen.getByRole("button", { name: "Account: reader@example.test" })).toBeInTheDocument();
     expect(nav.push).not.toHaveBeenCalled();
+  });
+});
+
+describe("the Hiring desk entry", () => {
+  const open = async (ui: ReactElement) => {
+    const user = userEvent.setup();
+    renderWithApi(ui, signedIn);
+    await user.click(await screen.findByRole("button", { name: "Account: reader@example.test" }));
+    return screen.findByRole("menu", { name: "Account: reader@example.test" });
+  };
+
+  it("is left out for someone who belongs to no organization", async () => {
+    expect(within(await open(<AccountMenu />)).queryByRole("menuitem", { name: "Hiring desk" })).not.toBeInTheDocument();
+  });
+
+  it("is listed for everyone in local mode, where the one owner is a candidate and an employer", async () => {
+    const item = within(await open(<AccountMenu hiringDeskAlways />)).getByRole("menuitem", { name: "Hiring desk" });
+    expect(item).toHaveAttribute("href", "/hire/roles");
   });
 });

@@ -8,7 +8,7 @@ test.skip(process.env.LOCAL_STACK !== "1", "needs a stack started from .env.exam
 // Invented. It is stored (sealed) and never sent anywhere: no model call is made in this test.
 const KEY = "sk-ant-api03-an-invented-key-for-the-browser-test";
 
-test("opening the app signs the owner in with no sign-in page, asks for the model key once, and remembers it", async ({
+test("opening the app signs the owner in with no sign-in page, asks for the model key once, and opens the hiring desk too", async ({
   page,
   browser,
 }) => {
@@ -38,6 +38,15 @@ test("opening the app signs the owner in with no sign-in page, asks for the mode
   const saved = await after.text();
   expect(JSON.parse(saved).data.model).toEqual({ provider: "anthropic", key_set: true, key_last4: "test", source: "app" });
   expect(saved).not.toContain(KEY);
+
+  // The one owner is a candidate and an employer at once: the hiring desk is in their menu from the start, and they create
+  // their organization there.
+  await page.getByRole("button", { name: "Account: owner@example.test" }).click();
+  await page.getByRole("menuitem", { name: "Hiring desk" }).click();
+  await expect(page).toHaveURL(/\/hire\/roles$/);
+  await page.getByLabel("Organization name").fill("Halden Studio");
+  await page.getByRole("button", { name: "Create organization" }).click();
+  await expect(page).toHaveURL(/\/hire\/team$/);
 
   // Another browser with no session never sees a sign-in page either, and is not asked for the key again.
   const other = await browser.newContext();
