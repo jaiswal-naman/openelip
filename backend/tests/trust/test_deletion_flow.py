@@ -290,7 +290,7 @@ def test_the_erase_job_erases_the_person_writes_the_ledger_and_tells_them_keepin
     # and the address was not kept anywhere to send it from: not in a row, not in a log line
     for table in ("outbox", "queue_jobs", "audit_log", "data_requests", "idempotency_keys", "login_codes", "users"):
         assert EMAIL not in one(engine, f"SELECT coalesce(string_agg(t::text, ' '), '') FROM {table} t"), table
-    assert EMAIL not in caplog.text and "ada" not in caplog.text.lower().replace("data_request", "")
+    assert EMAIL not in caplog.text and str(ada) not in caplog.text  # the logs name neither the address nor the person
     job = rows(engine, "SELECT status, payload FROM queue_jobs WHERE kind = 'trust.erase'")[0]
     assert (job.status, job.payload) == (
         "succeeded",
