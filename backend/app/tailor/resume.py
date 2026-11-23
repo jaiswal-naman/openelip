@@ -133,6 +133,12 @@ def role_header(fact: Fact) -> str:
     return ", ".join(part for part in parts if part) or line_text(fact.statement)
 
 
+def role_line(fact: Fact) -> str:
+    """A role as one line: its header, and its dates in brackets when it has any."""
+    dates = _date_range(fact.attributes)
+    return f"{role_header(fact)} ({dates})" if dates else role_header(fact)
+
+
 def item_text(fact: Fact) -> str:
     """The text a fact has on the resume: a skill's name, an education entry written from its attributes, otherwise
     the statement as one line. An add_from_fact edit must carry exactly this text."""

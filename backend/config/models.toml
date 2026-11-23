@@ -160,3 +160,75 @@ model = "local-model"   # placeholder: set this to the model name your server ru
 
 [tasks."match.evidence.score".models.fake]
 model = "recorded"
+
+# Phase 5 (AI_SYSTEM 2.2 lines 130-136, prices 2.12 read on 2026-11-22). Anthropic only, and no fallback route: OpenAI's
+# retention terms are not checked (see its retention_note), so candidate data is never sent to it, and AI_SYSTEM 2.2 lists
+# "none" as the fallback for these tasks. The output caps and timeouts are the assumptions of AI_SYSTEM 2.2. The fake
+# provider serves any task that has a recording, so no fake entry is needed. Candidate-facing tasks are called with the
+# person's consent only (the callers check it), and each prompt lives next to its code in a prompts/ folder.
+
+# One chat turn (INDEX decision 1: a validated step, not token streaming). It reads the person's record, matches and
+# decisions through tools, and their own messages: identified data.
+[tasks."chat.turn"]
+description = "Takes one step of a chat with a candidate about their record and matches: a few read tool calls, or the reply."
+data_class = "identified"
+max_tokens = 2000       # AI_SYSTEM 2.2 (assumption), per turn
+timeout_seconds = 45    # AI_SYSTEM 2.2 (assumption), per message
+
+[tasks."chat.turn".models.anthropic]
+model = "claude-sonnet-5-5"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-22
+
+# Record-change proposals from the candidate's own message (AI_SYSTEM 4.8): identified data.
+[tasks."record.propose"]
+description = "Finds changes to a candidate's record that their latest chat message states, each with the words it rests on."
+data_class = "identified"
+max_tokens = 1500       # AI_SYSTEM 2.2 (assumption)
+timeout_seconds = 15    # AI_SYSTEM 2.2 (assumption)
+
+[tasks."record.propose".models.anthropic]
+model = "claude-haiku-5-5"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-22
+
+# Tailoring (AI_SYSTEM 4.7): confirmed fact statements and the job's requirement texts, no name or contact details, so the
+# data class is de-identified. The proposer and the checker are different models on purpose.
+[tasks."tailor.propose"]
+description = "Proposes edits to one candidate's resume for one job: reorder, remove, add a confirmed fact, and reword when allowed."
+data_class = "de-identified"
+max_tokens = 6000       # AI_SYSTEM 2.2 (assumption)
+timeout_seconds = 60    # AI_SYSTEM 2.2 (assumption)
+
+[tasks."tailor.propose".models.anthropic]
+model = "claude-sonnet-5-5"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-22
+
+[tasks."verify.entail"]
+description = "Checks whether new resume wording says anything that the facts it rests on do not say."
+data_class = "de-identified"
+max_tokens = 800        # AI_SYSTEM 2.2 (assumption)
+timeout_seconds = 20    # AI_SYSTEM 2.2 (assumption)
+
+[tasks."verify.entail".models.anthropic]
+model = "claude-haiku-5-5"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-22
+
+# The application packet's answers and note (AI_SYSTEM 6.6): de-identified facts and the job's requirement texts.
+[tasks."writer.packet"]
+description = "Drafts answers to common application questions and a short note for one job, from the candidate's confirmed facts."
+data_class = "de-identified"
+max_tokens = 3000       # AI_SYSTEM 2.2 (assumption)
+timeout_seconds = 60    # AI_SYSTEM 2.2 (assumption)
+
+[tasks."writer.packet".models.anthropic]
+model = "claude-sonnet-5-5"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-22
