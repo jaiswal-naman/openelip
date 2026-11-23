@@ -64,3 +64,26 @@ export const parseProblemLabel = labelIn(PARSE_PROBLEMS);
 export const hiddenReasonLabel = labelIn(HIDDEN_REASONS);
 export const constraintKindLabel = labelIn(CONSTRAINT_KINDS);
 export const entityLabel = labelIn(ENTITIES);
+
+const OPERATIONS: Record<string, string> = { create: "Added", update: "Changed", remove: "Removed", confirm: "Confirmed", reject: "Rejected" };
+const FACT_STATUSES: Record<string, string> = { unconfirmed: "To review", confirmed: "Confirmed", rejected: "Rejected", superseded: "Replaced" };
+const ORIGINS: Record<string, string> = {
+  onboarding: "Proposed in onboarding",
+  chat: "Proposed in chat",
+  feedback: "Proposed from your feedback",
+  agent: "Proposed by your agent",
+};
+
+export const operationLabel = labelIn(OPERATIONS);
+export const factStatusLabel = labelIn(FACT_STATUSES);
+export const originLabel = labelIn(ORIGINS);
+
+/** "4.0 KB", "1.2 MB": a file size a person can read. */
+export function sizeLabel(bytes: number, locale: string): string {
+  const number = (value: number) => new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
+  if (bytes < 1024) return `${bytes} bytes`;
+  return bytes < 1024 * 1024 ? `${number(bytes / 1024)} KB` : `${number(bytes / (1024 * 1024))} MB`;
+}
+
+/** The kind of a constraint as it reads in a sentence: "salary floor", "excluded company" (the card's heading is the plural). */
+export const constraintSubject = (kind: string) => (kind === "excluded_company" ? "excluded company" : constraintKindLabel(kind).toLowerCase());

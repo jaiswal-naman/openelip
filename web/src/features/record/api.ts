@@ -96,18 +96,23 @@ export const addFact = (api: Api, body: { kind: FactKind; statement: string }) =
 /** One active constraint per kind: saving replaces the one there is, and the change log keeps it. */
 export const saveConstraint = (api: Api, body: NewConstraint) => unwrap(api.POST("/v1/me/constraints", { body }));
 
+export const removeConstraint = (api: Api, id: string) =>
+  unwrap(api.DELETE("/v1/me/constraints/{constraint_id}", { params: { path: { constraint_id: id } } }));
+
 export const savePreference = (api: Api, body: NewPreference) => unwrap(api.POST("/v1/me/preferences", { body }));
 
-export const changePreference = (api: Api, id: string, body: Schemas["PreferenceChange"]) =>
+export const changePreference = (api: Api, { id, body }: { id: string; body: Schemas["PreferenceChange"] }) =>
   unwrap(api.PATCH("/v1/me/preferences/{preference_id}", { params: { path: { preference_id: id } }, body }));
 
 export const removePreference = (api: Api, id: string) =>
   unwrap(api.DELETE("/v1/me/preferences/{preference_id}", { params: { path: { preference_id: id } } }));
 
-export const answerProposal = (api: Api, id: string, answer: "confirm" | "decline") =>
-  answer === "confirm"
-    ? unwrap(api.POST("/v1/me/events/{event_id}/confirm", { params: { path: { event_id: id } } }))
-    : unwrap(api.POST("/v1/me/events/{event_id}/decline", { params: { path: { event_id: id } } }));
+/** Confirming a proposal applies it; declining answers no. Either way the proposal is answered, once. */
+export async function answerProposal(api: Api, { id, answer }: { id: string; answer: "confirm" | "decline" }): Promise<void> {
+  const path = { params: { path: { event_id: id } } };
+  if (answer === "confirm") await unwrap(api.POST("/v1/me/events/{event_id}/confirm", path));
+  else await unwrap(api.POST("/v1/me/events/{event_id}/decline", path));
+}
 
 /**
  * A write that refetches the record, the review list and the change log afterwards, so nothing needs a reload. It does so

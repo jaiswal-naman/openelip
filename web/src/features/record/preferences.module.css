@@ -1,0 +1,117 @@
+/* Soft preferences: a short form, the chips of what is saved, and the offer to make a dealbreaker a hard constraint. Tokens only. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  max-width: var(--measure);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+}
+
+.strengths {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  padding: 0;
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8) var(--sp-16);
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  min-height: 2rem;
+  cursor: pointer;
+}
+
+.option input {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--accent-strong);
+}
+
+.alert {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.offer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-8) var(--sp-16);
+  padding: var(--sp-12) var(--sp-16);
+  border-block-start: 1px solid var(--line);
+}
+
+.item:first-child {
+  border-block-start: 0;
+}
+
+.what {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+  flex: 1 1 14rem;
+}
+
+.statement {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+}
+
+@media (max-width: 39.99rem) {
+  .option {
+    min-height: 2.5rem; /* 40px targets on a phone */
+  }
+}

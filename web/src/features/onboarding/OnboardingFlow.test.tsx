@@ -66,7 +66,7 @@ describe("onboarding", () => {
   it("starts at the AI processing consent, names the step, and shows the sheet to a person who has not agreed", async () => {
     renderWithApi(<OnboardingFlow />, { ...aiRoutes({ agreed: false }), "GET /v1/me/record": ok(recordView()) });
     expect(screen.getByRole("heading", { level: 1, name: "AI processing" })).toBeInTheDocument();
-    expect(screen.getByText("Step 1 of 3")).toBeInTheDocument();
+    expect(screen.getByText("Step 1 of 5")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Agree" })).toBeInTheDocument();
     expect(screen.getByText("Example Model Provider")).toBeInTheDocument();
   });
@@ -85,7 +85,7 @@ describe("onboarding", () => {
     const user = userEvent.setup();
     const { calls } = renderWithApi(<OnboardingFlow />, aiRoutes({ agreed: false }));
     await user.click(await screen.findByRole("button", { name: "Not now" }));
-    expect(nav.push).toHaveBeenCalledWith("/onboarding?step=done");
+    expect(nav.push).toHaveBeenCalledWith("/onboarding?step=constraints");
     expect(calls.filter((call) => call.method !== "GET")).toHaveLength(0); // nothing was recorded
   });
 
@@ -104,7 +104,7 @@ describe("onboarding", () => {
     expect(await screen.findByText("AI features are off on this installation")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Agree" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continue without AI" }));
-    expect(nav.push).toHaveBeenCalledWith("/onboarding?step=done");
+    expect(nav.push).toHaveBeenCalledWith("/onboarding?step=constraints");
   });
 
   it("falls back to the first step for an address it does not know, and ignores a document id that is not one", async () => {
@@ -165,7 +165,7 @@ describe("onboarding", () => {
     });
     await screen.findByText("From your resume · L3");
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    expect(nav.push).toHaveBeenCalledWith(`/onboarding?step=done&doc=${DOC}`);
+    expect(nav.push).toHaveBeenCalledWith(`/onboarding?step=constraints&doc=${DOC}`);
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(nav.push).toHaveBeenCalledWith(`/onboarding?step=upload&doc=${DOC}`);
   });
@@ -187,6 +187,49 @@ describe("onboarding", () => {
     });
     expect(await screen.findByText("Turn on AI processing to use this")).toBeInTheDocument();
     expect(screen.getByText(/You can type your facts on your record page/)).toBeInTheDocument();
+  });
+
+  it("asks the hard constraints one card at a time with the same cards the record page uses, and goes on", async () => {
+    const user = userEvent.setup();
+    nav.search = "step=constraints";
+    renderWithApi(<OnboardingFlow />, { ...aiRoutes(), "GET /v1/me/record": ok(recordView()) });
+    expect(screen.getByRole("heading", { level: 1, name: "Your hard constraints" })).toBeInTheDocument();
+    expect(screen.getByText("Step 4 of 5")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Countries you want jobs in")).toBeInTheDocument(); // the first card is open
+    expect(screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      "Location",
+      "Remote policy",
+      "Work authorization",
+      "Salary floor",
+      "Employment type",
+      "Seniority",
+      "Excluded companies",
+    ]);
+    expect(screen.queryByText(/cannot be read automatically/)).not.toBeInTheDocument(); // agreed: nothing was skipped
+
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(nav.push).toHaveBeenCalledWith("/onboarding?step=preferences");
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(nav.push).toHaveBeenCalledWith("/onboarding?step=facts");
+  });
+
+  it("tells a person who skipped the resume why, and where to type their facts, at the start of the intake", async () => {
+    nav.search = "step=constraints";
+    renderWithApi(<OnboardingFlow />, { ...aiRoutes({ agreed: false }), "GET /v1/me/record": ok(recordView()) });
+    const note = await screen.findByText(/the upload and the fact review were skipped/);
+    expect(note).toHaveTextContent("Your resume cannot be read automatically without AI processing");
+    expect(within(note).getByRole("link", { name: "your record page" })).toHaveAttribute("href", "/app/record");
+  });
+
+  it("asks for preferences on the last step, and Finish leads to the end", async () => {
+    const user = userEvent.setup();
+    nav.search = "step=preferences";
+    renderWithApi(<OnboardingFlow />, { ...aiRoutes(), "GET /v1/me/record": ok(recordView()) });
+    expect(screen.getByRole("heading", { level: 1, name: "Your preferences" })).toBeInTheDocument();
+    expect(screen.getByText("Step 5 of 5")).toBeInTheDocument();
+    expect(await screen.findByRole("textbox", { name: "A preference, or something you will not accept" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Finish" }));
+    expect(nav.push).toHaveBeenCalledWith("/onboarding?step=done");
   });
 
   it("ends on a panel that links to the record, with what it holds", async () => {

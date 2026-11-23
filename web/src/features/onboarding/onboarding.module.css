@@ -99,3 +99,7 @@
   flex-wrap: wrap;
   gap: var(--sp-8) var(--sp-24);
 }
+
+.lead {
+  max-width: var(--measure);
+}

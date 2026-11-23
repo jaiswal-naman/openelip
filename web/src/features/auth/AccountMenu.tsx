@@ -41,6 +41,12 @@ export function AccountMenu() {
               <Header className={menu.heading}>
                 Signed in as <strong>{email}</strong>
               </Header>
+              <MenuItem id="record" href="/app/record" textValue="Your record" className={menu.item}>
+                <span>Your record</span>
+              </MenuItem>
+              <MenuItem id="settings" href="/app/settings?section=privacy" textValue="Settings" className={menu.item}>
+                <span>Settings</span>
+              </MenuItem>
               <MenuItem id="sign-out" textValue="Sign out" className={menu.item}>
                 <LogOutIcon />
                 <span>Sign out</span>
