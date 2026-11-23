@@ -213,6 +213,10 @@ export interface components {
             input_tokens: number;
             /** Output Tokens */
             output_tokens: number;
+            /** Avg Latency Ms */
+            avg_latency_ms: number;
+            /** Models */
+            models: string[];
         };
         /** Costs */
         Costs: {

@@ -491,6 +491,17 @@
           "output_tokens": {
             "type": "integer",
             "title": "Output Tokens"
+          },
+          "avg_latency_ms": {
+            "type": "integer",
+            "title": "Avg Latency Ms"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Models"
           }
         },
         "type": "object",
@@ -500,7 +511,9 @@
           "calls",
           "cost_usd",
           "input_tokens",
-          "output_tokens"
+          "output_tokens",
+          "avg_latency_ms",
+          "models"
         ],
         "title": "CostRow"
       },
