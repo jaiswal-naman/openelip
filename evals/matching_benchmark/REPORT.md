@@ -2,16 +2,16 @@
 
 **Labels: agent-drafted, maintainer review pending.** One agent wrote the 20 invented profiles and graded every pooled pair; nobody has reviewed the labels and no second rater has graded a sample. The profiles and labels are small (the target is 50 profiles and 1,000 to 2,000 pairs), so every interval below is wide. These numbers describe this snapshot, these profiles and these labels, on one machine, and nothing else (AI_SYSTEM 12.1, invariant 8). Read `README.md` for the pre-registered metrics and bars, and its limits.
 
-Recorded run: 2026-11-23T12:34:26+05:30; eval_runs row `fe21b577-ae7a-4497-9257-188047c2a6b9` in the scratch database `app_p4_07_bench_test` (dropped after the run, so the row is not kept: the numbers here and in `results.json` are the record). 758 public postings exported 2026-11-23T06:26:04+00:00; 20 invented profiles; 366 pooled pairs graded 0 to 3 (grade 0: 114, 1: 86, 2: 90, 3: 76). Ranker `rules-2026-11-a`, embedding model `BAAI/bge-small-en-v1.5`.
+Recorded run: 2026-11-23T13:41:52+05:30; eval_runs row `e4c3895f-06d3-493e-941d-4d272fe87bb8` in the scratch database `app_p4_fixb_bench_test` (dropped after the run, so the row is not kept: the numbers here and in `results.json` are the record). 758 public postings exported 2026-11-23T06:26:04+00:00; 20 invented profiles; 366 pooled pairs graded 0 to 3 (grade 0: 114, 1: 86, 2: 90, 3: 76). Ranker `rules-2026-11-a`, embedding model `BAAI/bge-small-en-v1.5`.
 
 ## Headline
 
 | Method | ndcg_at_5 (95% interval) | precision_at_5 | recall_at_40 | recall_at_300 | constraint_violations | unjudged at 5 | cost per candidate-day | latency p50 / p95 (s) | CPU s (embedding CPU s) |
 |---|---|---|---|---|---|---|---|---|---|
-| M1 Keyword | 0.598 (0.501 to 0.689) | 0.600 | 0.931 | 1.000 | 0 | 0.0% | $0.000000 | 0.035 / 0.071 | 0.002 (0.000) |
-| M2 Vector | 0.684 (0.606 to 0.752) | 0.680 | 0.855 | 0.987 | 0 | 0.0% | $0.000000 | 0.032 / 0.039 | 0.268 (0.155) |
-| M3 Hybrid | 0.777 (0.710 to 0.837) | 0.780 | 0.987 | 1.000 | 0 | 0.0% | $0.000000 | 0.053 / 0.081 | 0.438 (0.141) |
-| M4 Hybrid plus rules | 0.795 (0.733 to 0.850) | 0.810 | 0.987 | 0.994 | 0 | 0.0% | $0.000000 | 0.055 / 0.107 | 0.491 (0.120) |
+| M1 Keyword | 0.598 (0.501 to 0.689) | 0.600 | 0.931 | 1.000 | 0 | 0.0% | $0.000000 | 0.034 / 0.071 | 0.003 (0.000) |
+| M2 Vector | 0.684 (0.606 to 0.752) | 0.680 | 0.855 | 0.987 | 0 | 0.0% | $0.000000 | 0.032 / 0.041 | 0.309 (0.159) |
+| M3 Hybrid | 0.777 (0.710 to 0.837) | 0.780 | 0.987 | 1.000 | 0 | 0.0% | $0.000000 | 0.049 / 0.079 | 0.413 (0.148) |
+| M4 Hybrid plus rules | 0.795 (0.733 to 0.850) | 0.810 | 0.987 | 0.994 | 0 | 0.0% | $0.000000 | 0.052 / 0.106 | 0.535 (0.193) |
 | M5 Full cascade | not run: needs a model key | | | | | | | | |
 | M6 Score only what is shown | not run: needs a model key | | | | | | | | |
 
