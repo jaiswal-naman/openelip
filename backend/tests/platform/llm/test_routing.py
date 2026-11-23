@@ -125,14 +125,14 @@ def test_the_registry_row_is_created_on_first_use_without_a_sync(harness):
 
 def test_sync_mirrors_the_file_one_row_per_model_and_retires_the_rest(harness):
     with harness.engine.begin() as conn:
-        assert registry.sync(conn) == 4  # anthropic, openai, local, fake
+        assert registry.sync(conn) == 5  # anthropic haiku and sonnet (Phase 5 routes), openai, local, fake
         conn.execute(
             text(
                 "INSERT INTO model_registry (provider, model_name, kind, is_local, retention_note) "
                 "VALUES ('old', 'm', 'chat', true, 'x')"
             )
         )
-        assert registry.sync(conn) == 4
+        assert registry.sync(conn) == 5
         found = conn.execute(
             text(
                 "SELECT provider, model_name, is_active, input_microusd_per_mtok, output_microusd_per_mtok "
@@ -143,7 +143,8 @@ def test_sync_mirrors_the_file_one_row_per_model_and_retires_the_rest(harness):
     assert rows[("anthropic", "claude-haiku-5-5")] == (True, 100_000, 500_000)
     assert rows[("openai", "gpt-6-luna")] == (True, 100_000, 500_000)
     assert rows[("local", "local-model")] == (True, None, None)
-    assert rows[("old", "m")][0] is False and len(rows) == 5
+    assert rows[("anthropic", "claude-sonnet-5-5")][0] is True
+    assert rows[("old", "m")][0] is False and len(rows) == 6
 
 
 def test_ping_writes_a_row_for_the_user_and_prints_its_id_and_cost(harness, capsys):
