@@ -8,6 +8,7 @@ CI gate does, to prove the stored baseline is reproduced; no code is tuned again
 """
 
 import json
+import re
 import sys
 import tempfile
 from dataclasses import replace
@@ -17,7 +18,7 @@ from uuid import UUID
 import pytest
 from sqlalchemy import text
 
-from app.evals import EVALS
+from app.evals import EVALS, gate
 from app.ingest.api import rules_extract
 from app.ingest.requirements.validate import RequirementRow
 from app.platform import config
@@ -317,28 +318,31 @@ def test_an_answer_with_no_usable_item_asks_again_and_an_answer_invalid_twice_fa
     assert result["metrics"]["n"] == 10 and result["metrics"]["passed"] == 9
 
 
-def a_recorded_item_that_matches_a_label():
-    """(posting id, index of the item) in a dev posting that has other items too, so that losing this one must cost
-    the score (losing a wrong item would raise it) and leaves the posting an answer worth keeping."""
-    for found in score.load_gold("dev"):
+def a_recorded_item_that_matches_a_label(split):
+    """(posting id, index of the item) in a posting that has other items too, so that losing this one must cost the
+    score (losing a wrong item would raise it) and leaves the posting an answer worth keeping."""
+    for found in score.load_gold(split):
         rows = rules_extract(found["description"])
         gold = [(g["start"], g["end"], g["importance"]) for g in found["requirements"]]
         pairs = score.match([(r.start, r.end, r.importance) for r in rows], gold)
         if pairs and len(rows) >= 2:
             return found["posting_id"], pairs[0][0]
-    raise AssertionError("no dev posting has a matched item and another")
+    raise AssertionError(f"no {split} posting has a matched item and another")
+
+
+def with_one_quote_altered(posting_id, index):
+    def change(lines):
+        target = next(line for line in lines if line["posting_id"] == posting_id)
+        target["answers"][0]["requirements"][index]["quote"] += " (altered)"  # no longer words of the posting
+
+    return change
 
 
 def test_a_degraded_recording_lowers_the_score_misses_the_baseline_and_names_the_posting(engine, tmp_path):
     clean = score.run("model", "dev")
     assert clean["metrics"]["bars_met"] is True and clean["metrics"]["rejected"] == {}
-    posting_id, index = a_recorded_item_that_matches_a_label()
-
-    def alter_one_quote(lines):
-        target = next(line for line in lines if line["posting_id"] == posting_id)
-        target["answers"][0]["requirements"][index]["quote"] += " (altered)"  # no longer words of the posting
-
-    path = write_recordings(tmp_path, alter_one_quote)
+    posting_id, index = a_recorded_item_that_matches_a_label("dev")
+    path = write_recordings(tmp_path, with_one_quote_altered(posting_id, index))
     degraded = score.run("model", "dev", baseline=clean["metrics"], recordings=path)
 
     metrics = degraded["metrics"]
@@ -554,6 +558,70 @@ def test_the_stored_runs_are_on_the_clean_test_split_and_say_they_are_baselines_
     assert replay["config"]["recording_source"] == "rules_fixture" and replay["metrics"]["harness_check_only"] is True
     assert "proves the code path, not model quality" in replay["note"]
     assert "harness_check_only" not in stored["runs"]["rules"]["metrics"]  # a real measurement, of the baseline
+
+
+# ---- the gate ----------------------------------------
+
+
+def run_id_printed(capsys):
+    return UUID(capsys.readouterr().out.strip().splitlines()[-1])  # the last line, which CI hands to the gate
+
+
+def test_the_gate_passes_a_clean_replay_and_fails_a_degraded_one_naming_the_posting(engine, tmp_path, capsys):
+    clean = score.run("model", "dev")
+    clean_id = score.record(clean, score.run_config("model", "dev"))
+    assert gate.main("requirement_extraction", UUID(clean_id)) == 0
+    assert "scored 1.000 (10 of 10 items), floor 1.000: PASS" in capsys.readouterr().out
+
+    posting_id, index = a_recorded_item_that_matches_a_label("dev")
+    path = write_recordings(tmp_path, with_one_quote_altered(posting_id, index))
+    degraded = score.run("model", "dev", baseline=clean["metrics"], recordings=path)
+    degraded_id = score.record(degraded, score.run_config("model", "dev"))
+    assert gate.main("requirement_extraction", UUID(degraded_id)) == 1
+    out = capsys.readouterr().out
+    assert "scored 0.000 (9 of 10 items), floor 1.000: FAIL" in out and f"items that failed: {posting_id}" in out
+
+
+def test_one_citation_that_does_not_resolve_fails_the_gate_however_good_the_overlap(engine, capsys):
+    gold = [posting("a", "Needs Python.", ("Needs Python.", "required"))]
+    fabricated = RequirementRow(1, "required", "skill", "Needs Rust.", 0, 13, None)  # the right span, other words
+    result = score.score(gold, fixed({"a": [fabricated]}))
+    assert result["metrics"]["req_item_f1"] == 1.0 and result["metrics"]["bars_met"] is False
+    run_id = score.record(result, score.run_config("rules", "dev"))
+    assert gate.main("requirement_extraction", UUID(run_id)) == 1
+    out = capsys.readouterr().out
+    assert "scored 0.000 (0 of 1 items), floor 1.000: FAIL" in out and "items that failed: a" in out
+
+
+def test_the_ci_step_replays_the_test_split_from_the_command_line_and_the_gate_judges_it(
+    engine, tmp_path, monkeypatch, capsys
+):
+    """What the eval-gate job does for this suite: score.py --record, then the gate on the id it printed last."""
+    assert score.main(["--record"]) == 0  # the defaults: the model replay of the test split, held to baseline.json
+    assert gate.main("requirement_extraction", run_id_printed(capsys)) == 0
+    assert "scored 1.000 (39 of 39 items), floor 1.000: PASS" in capsys.readouterr().out
+
+    posting_id, index = a_recorded_item_that_matches_a_label("test")
+    path = write_recordings(tmp_path, with_one_quote_altered(posting_id, index))
+    real_run = score.run
+    monkeypatch.setattr(score, "run", lambda method, split, baseline=None: real_run(method, split, baseline, path))
+    assert score.main(["--record"]) == 0  # a degraded run is recorded, not an error: the gate is what fails
+    assert gate.main("requirement_extraction", run_id_printed(capsys)) == 1
+    out = capsys.readouterr().out
+    assert "floor 1.000: FAIL" in out and f"items that failed: {posting_id}" in out
+
+
+# ---- the gate's configuration ----------------------------------------
+
+
+def test_the_floor_the_ci_listing_and_the_documentation_are_in_place():
+    assert gate.floor("requirement_extraction") == 1.0  # score is 1.0 only when every bar holds
+    ci = (EVALS.parent / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert re.search(r"suite: \[[^\]]*\brequirement_extraction\b[^\]]*\]", ci)  # in the matrix, whatever else is
+    assert "../evals/requirement_extraction/score.py --record" in ci
+    assert 'gate "${{ matrix.suite }}" --run "$(tail -n 1 run.out)"' in ci  # the same gate command as every suite
+    readme = (SUITE_DIR / "README.md").read_text(encoding="utf-8")
+    assert "## Recorded runs on the test split" in readme and "not a model quality number" in readme
 
 
 # ---- the documentation of the bars ----------------------------------------

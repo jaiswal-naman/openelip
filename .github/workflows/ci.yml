@@ -73,7 +73,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [harness_smoke] # later phases add their gold sets here
+        suite: [harness_smoke, requirement_extraction] # later phases add their gold sets here
     services:
       db:
         image: pgvector/pgvector:pg17
@@ -109,7 +109,12 @@ jobs:
       - name: Replay the recorded answers, then gate the run
         shell: bash
         run: |
-          uv run --frozen python -m app.evals run "${{ matrix.suite }}" | tee run.out
+          if [ "${{ matrix.suite }}" = "requirement_extraction" ]; then
+            # Scored by span overlap, not by exact match: the suite's own script replays, records the run and prints its id last.
+            uv run --frozen python ../evals/requirement_extraction/score.py --record | tee run.out
+          else
+            uv run --frozen python -m app.evals run "${{ matrix.suite }}" | tee run.out
+          fi
           uv run --frozen python -m app.evals gate "${{ matrix.suite }}" --run "$(tail -n 1 run.out)"
 
   web:

@@ -155,6 +155,14 @@ The suite is scored by code (span overlap), not by exact match, so it is not in 
 `backend/app/evals/runner.py`: that table replays answers and compares them whole. `score.py --record` writes the same
 tables, and `python -m app.evals gate requirement_extraction --run ID` judges the run from them.
 
+In CI the `eval-gate` job (`.github/workflows/ci.yml`) runs `score.py --record` for this suite and then
+`python -m app.evals gate requirement_extraction --run ID`, as it does for every suite. The floor in
+`evals/thresholds.toml` is 1.0 and `score` is 1.0 only when every bar that applies holds: every citation resolves, and
+`req_item_f1` and `req_importance_accuracy` are not below the replay stored in `baseline.json`. A change to the prompt,
+the segmenter, the validator or the heading rules therefore has to rebuild the recordings (`record_fixture.py`) and, if
+the numbers move, store new runs (`--record --report baseline.json`, once for each method) with the reason in the commit
+message.
+
 A live recording needs a model key and is a manual check: `score.py` refuses any recording that is not a `rules_fixture`
 one, and applying the live bars of the section above in code belongs with the first live run.
 
