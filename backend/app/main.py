@@ -5,6 +5,8 @@ Run:  uvicorn app.main:app --port 8000
 
 from fastapi import FastAPI
 
+from app.agentnet import privacy as agentnet_privacy  # noqa: F401  (importing it registers the agent-token table)
+from app.agentnet import routes as agentnet_routes
 from app.apply import privacy as apply_privacy  # noqa: F401  (importing it registers the apply tables and exporter)
 from app.apply import routes as apply_routes
 from app.brief import privacy as brief_privacy  # noqa: F401  (importing it registers the brief tables and exporter)
@@ -40,6 +42,8 @@ from app.tailor import privacy as tailor_privacy  # noqa: F401  (importing it re
 from app.tailor import routes as tailor_routes
 from app.trust import consent as trust_consent
 from app.trust import routes as trust_routes
+from app.twin import privacy as twin_privacy  # noqa: F401  (importing it registers the Twin tables and exporter)
+from app.twin import routes as twin_routes
 
 
 def create_app() -> FastAPI:
@@ -78,6 +82,8 @@ def create_app() -> FastAPI:
         hiring_role_routes.router,
         hiring_introduction_routes.router,
         hiring_signal_routes.router,
+        twin_routes.router,
+        agentnet_routes.router,
     ):
         app.include_router(router)
     return app

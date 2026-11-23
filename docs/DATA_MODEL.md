@@ -1490,7 +1490,7 @@ CREATE TABLE twin_messages (
   FOREIGN KEY (session_id, user_id, organization_id)
     REFERENCES twin_sessions (id, user_id, organization_id) ON DELETE CASCADE,
   CHECK ((author = 'twin') = (answer_kind IS NOT NULL)),
-  CHECK (author = 'candidate' OR topic IS NOT NULL),
+  CHECK (author <> 'twin' OR topic IS NOT NULL),     -- Phase 9 amendment (a): an employer's question has no topic yet
   CHECK (answer_kind IS DISTINCT FROM 'answered' OR cardinality(cited_fact_ids) > 0),
   CHECK (answer_kind IS DISTINCT FROM 'relayed' OR in_reply_to IS NOT NULL),
   CHECK (answer_kind NOT IN ('answered', 'relayed') OR agent_action_id IS NOT NULL),
@@ -1499,7 +1499,12 @@ CREATE TABLE twin_messages (
     CHECK (answer_kind NOT IN ('answered', 'relayed') OR topic NOT IN ('current_pay', 'contact_details'))
 );
 CREATE INDEX twin_messages_session_idx ON twin_messages (session_id, created_at);
+-- Phase 9 amendment (g): at most one final Twin message per question, whatever retries happen.
+CREATE UNIQUE INDEX twin_messages_one_final ON twin_messages (in_reply_to)
+  WHERE author = 'twin' AND answer_kind IN ('answered', 'relayed', 'declined');
 ```
+
+Phase 9 additions (plan 09-01): revision `p9_0901_twin_agentnet` builds the seven enums, these four tables and the three cross foreign keys of 3.14 (`audit_log.agent_token_id`, `agent_runs.twin_session_id`, `twin_messages.agent_action_id`). It differs from the block above in three places: the topic CHECK of `twin_messages` is `author <> 'twin' OR topic IS NOT NULL` (an employer question is stored with `topic` NULL, because the topic is known only after the worker classifies it; the Twin's own messages carry it); the partial unique index `twin_messages_one_final` is new; and `twin_sessions` has an index on `introduction_id`, because the intake looks a session up by its introduction.
 
 ### 3.12 chat
 
@@ -1793,7 +1798,7 @@ CREATE TRIGGER twin_questions_delete_thread AFTER DELETE ON twin_messages
   FOR EACH ROW WHEN (OLD.author = 'employer') EXECUTE FUNCTION twin_questions_delete_thread();
 ```
 
-Phase 7 (plan 07-01): revision `p7_0702_langgraph` runs the schema statements (`db/sql/p7_0702_schema.sql`), `PostgresSaver.setup()` on a separate autocommit connection as `app_owner`, and the deletion function and the campaign trigger (`db/sql/p7_0702_delete_thread.sql`); the Twin trigger waits for `twin_messages` (Phase 9). It records `LANGGRAPH_MIGRATION_COUNT` and `LANGGRAPH_MIGRATIONS_SHA256` of `PostgresSaver.MIGRATIONS`, which `tests/db/test_langgraph_schema.py` compares with the installed library. Both revisions are listed in section 8.
+Phase 7 (plan 07-01): revision `p7_0702_langgraph` runs the schema statements (`db/sql/p7_0702_schema.sql`), `PostgresSaver.setup()` on a separate autocommit connection as `app_owner`, and the deletion function and the campaign trigger (`db/sql/p7_0702_delete_thread.sql`); the Twin trigger `twin_questions_delete_thread` arrives with `twin_messages` in revision `p9_0901_twin_agentnet` (Phase 9). It records `LANGGRAPH_MIGRATION_COUNT` and `LANGGRAPH_MIGRATIONS_SHA256` of `PostgresSaver.MIGRATIONS`, which `tests/db/test_langgraph_schema.py` compares with the installed library. Both revisions are listed in section 8.
 
 ### 3.16 local mode: the model key and the owner
 
@@ -2042,6 +2047,10 @@ BEGIN
   IF sess.status IS DISTINCT FROM 'open' THEN
     RAISE EXCEPTION 'twin session is closed' USING ERRCODE = 'check_violation';
   END IF;
+  -- Phase 9: only a Twin message carries an action or cited facts.
+  IF NEW.author <> 'twin' AND (NEW.agent_action_id IS NOT NULL OR cardinality(NEW.cited_fact_ids) > 0) THEN
+    RAISE EXCEPTION 'only a Twin message carries an action or cited facts' USING ERRCODE = 'check_violation';
+  END IF;
   -- Invariant 5: a Twin answer reaches the employer only as an executed outside action.
   IF NEW.agent_action_id IS NOT NULL THEN
     PERFORM 1 FROM agent_actions a
@@ -2062,10 +2071,11 @@ BEGIN
   IF NEW.answer_kind IN ('answered', 'relayed') THEN
     SELECT s.permission INTO permission FROM twin_scopes s WHERE s.user_id = NEW.user_id AND s.topic = NEW.topic;
     permission := coalesce(permission, CASE WHEN NEW.topic IN ('current_pay', 'contact_details') THEN 'never'::twin_permission ELSE 'ask_me' END);
-    IF NEW.answer_kind = 'answered' AND permission <> 'answer' THEN
-      RAISE EXCEPTION 'scope_denied: topic % is not open to the Twin', NEW.topic USING ERRCODE = 'check_violation';
-    END IF;
-    IF NEW.answer_kind = 'relayed' AND permission = 'never' THEN
+    -- Phase 9 deviation (09-INDEX decision 35, amendment f): 'answered' is refused only for a topic whose permission is
+    -- 'never' (pay and contact always are). The original refused it unless the permission was 'answer', which would
+    -- refuse every approved draft on a default 'ask_me' topic; whether an ask_me answer leaves is decided by the policy,
+    -- the approval and the two keys, not by this check.
+    IF permission = 'never' THEN
       RAISE EXCEPTION 'scope_denied: topic % is never answered', NEW.topic USING ERRCODE = 'check_violation';
     END IF;
   END IF;
@@ -2258,6 +2268,12 @@ END;
 $$;
 CREATE TRIGGER agent_actions_guard BEFORE INSERT OR UPDATE OR DELETE ON agent_actions
   FOR EACH ROW EXECUTE FUNCTION agent_actions_guard();
+-- Phase 9 amendment (b), revision p9_0901_twin_agentnet: the function above is replaced (CREATE OR REPLACE) so that a
+-- candidate's own relay is not stopped by the dial. With is_relay := NEW.action_type = 'twin_answer' AND
+-- coalesce(NEW.payload->>'kind', '') = 'relay', the dial test reads `IF dial = 'never' AND NOT is_relay THEN` and the
+-- approval test reads `(NEW.policy_decision = 'ask' OR action_always_needs_approval(NEW.action_type) OR dial = 'ask_first'
+-- OR is_relay)`: a relay always needs an approved approval, and a draft answered from the record (kind 'answer') is still
+-- refused under 'never'. Every other line, and every other action type, is as above.
 
 -- An approval is decided once, before it expires, and never deleted.
 CREATE FUNCTION approvals_decide_once() RETURNS trigger
@@ -2853,8 +2869,10 @@ CREATE POLICY employer_send  ON interest_signals FOR INSERT TO app_api
 -- employer questions and released Twin answers, never the candidate's private replies.
 CREATE POLICY candidate_read ON twin_sessions FOR SELECT TO app_api
   USING (user_id = app_user_id() AND app_agent_token_id() IS NULL);
-CREATE POLICY employer_all   ON twin_sessions TO app_api
-  USING (app_is_org_member(organization_id) AND app_scope_ok('twin:ask'))
+-- Phase 9: the employer reads and opens sessions, and never updates or deletes one (was one FOR ALL policy).
+CREATE POLICY employer_read  ON twin_sessions FOR SELECT TO app_api
+  USING (app_is_org_member(organization_id) AND app_scope_ok('twin:ask'));
+CREATE POLICY employer_open  ON twin_sessions FOR INSERT TO app_api
   WITH CHECK (app_is_org_member(organization_id) AND app_scope_ok('twin:ask'));
 
 CREATE POLICY candidate_read  ON twin_messages FOR SELECT TO app_api
@@ -2972,6 +2990,15 @@ Phase 6 additions (plan 06-01), live in `db/sql/p6_0601_triggers_security.sql` a
 - `introduction_role(p_introduction_id)` is new. `SECURITY DEFINER`: for the caller's own introduction only, `organization_name`, `role_title`, `job_id`, `country`, `city`, `work_arrangements`, `salary_min`, `salary_max`, `salary_currency` and `is_synthetic`. A candidate has no row access to `roles` or `organizations`, yet the ask must name the employer, the role and its pay range.
 - Both new functions refuse an agent token and return nothing for anyone else's rows. They are executable by `app_api` and `app_worker` only, because the match role may not read the hiring side (section 5.1).
 - `direct_job_open(p_role_id, p_description, p_requirements, p_apply_url, p_content_hash, p_prompt_version)`, `direct_job_close(p_job_id)` and `withdraw_role_asks(p_role_id)` are new (integration fix of PR #4, in `db/sql/p6_0601_publish_close.sql`). Publishing and closing a role run in the API process, which holds only `app_api`: `app_worker` serves every person, so its login stays in the worker container. These are the writes those two actions need that `app_api` may not make: the role's unlisted job with its source and requirement rows (the job takes the role's own title, company, place, pay and terms), closing that job, and moving the role's `asked` introductions to `withdrawn` (`introductions_guard` still checks the move). Each is `SECURITY DEFINER`, refuses a caller who is not an active member of the role's organization or who holds an agent token, and is executable by `app_api` only.
+
+Phase 9 additions (plan 09-01), live in revision `p9_0901_twin_agentnet` (`db/versions/p9_0901_twin_agentnet.py`, SQL inline) and not shown in the blocks above:
+
+- `app_scope_ok(token_scope)` and `resolve_agent_token(bytea)` are created here (they were designed in 5.2 and not built before); `resolve_agent_token` is executable by `app_api` only.
+- `touch_agent_token(p_token_id)` is new. `SECURITY DEFINER`: sets `last_used_at` to now only when it is NULL or more than a minute old; refuses (`insufficient_privilege`) unless the request is that token's own context or its issuer signed in as themselves, since a token's context cannot update its own row.
+- `role_ask_bucket(p_role_id)` is new. `SECURITY DEFINER`: for a member of the role's organization (and, for an organization token, one holding `introductions:request`), counts the role's introductions with status `asked` and returns `under_5`, `5_to_9`, `10_to_24` or `25_plus`. Anyone else gets `insufficient_privilege`.
+- `twin_message_citations(p_message_id)` is new. `SECURITY DEFINER`: the `statement` of each fact an `answered` Twin message cites, in the order cited, for that candidate (no token) and for an active member of the message's organization with `twin:ask` (or the person's own request). An employer reads nothing else of the record. Nothing for any other message kind or caller.
+- Policies added beside 5.5: `agent_introductions` (accepted introductions only), `agent_shortlist` (only while the introduction consent is active), `agent_roles` and `agent_organizations` (the token's own organization row, for names) for an organization token whose issuer is an active member and which holds `twin:ask` or `introductions:request`; `org_token_calls` lets an organization's owner or admin read the `audit_log` rows of its tokens. The agent match policies (`agent_matches`, `agent_explanations`) are created here too, as they did not exist. DATA_MODEL's `agent_request_introduction` policy on `queue_jobs` is not created: `queue_jobs` has no row-level security (Phase 1), so the MCP gate and the tool enforce `introductions:request`.
+- Narrowings for the API login (the employer's and an outside agent's requests run on it): `twin_sessions` has SELECT and INSERT policies and grants only for `app_api` (opening a session is the one write; closing and deleting are the worker's), and `agent_tokens` grants `app_api` only SELECT, INSERT and UPDATE of `revoked_at`. The worker holds the full grants. `twin_messages` is SELECT and INSERT for both logins, never UPDATE or DELETE.
 
 ## 6. Key queries
 
@@ -3123,6 +3150,8 @@ Periods marked "assumption" are proposals for the maintainer to confirm; they ar
 ### 7.2 Deletion registry
 
 Every table, and what erasure does to it. Erasure is `erase_user(user_id, request_id)` in one transaction. File bytes are columns (`documents.content`, `data_requests.export_archive`, both Fernet tokens) and go with their rows; tailored resumes are rendered on demand from approved edits and are never stored as files. `data_requests.store_results` records what was removed.
+
+Plan 09-01: `twin_scopes`, `twin_sessions` and `twin_messages` are registered by module `twin`, and `agent_tokens` by module `agentnet`, each as `cascade` with an exporter (a session's `opened_by` and `agent_token_id` are `SET NULL` by their foreign keys and left out of the export; the token export never holds `token_sha256`). The `twin:` thread is removed by `twin_questions_delete_thread` in the same transaction as its employer question, and the canary seeds one row in each of the four tables.
 
 | Effect of erasure | Tables |
 |---|---|

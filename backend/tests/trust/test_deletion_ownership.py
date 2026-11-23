@@ -258,3 +258,28 @@ def test_a_module_with_personal_data_and_no_exporter_is_reported(conn):
 def test_the_cascade_reach_follows_foreign_keys_through_parents():
     schema = Schema({"users", "a", "b", "c"}, [("a", "users", "c"), ("b", "a", "c"), ("c", "b", "n")])
     assert cascading_tables(schema) == {"users", "a", "b"}  # c is only SET NULL from b: its rows stay
+
+
+def test_the_twin_and_token_exports_hold_the_persons_rows_and_never_a_token_hash(conn):
+    """Plan 09-01: the exporters of `twin` and `agentnet` return the person's scopes, sessions, messages and tokens;
+    the session leaves out who opened it, and a token leaves out its hash."""
+    from tests.twin.factories import candidate_token, employer_question, twin_session, twin_world
+
+    world = twin_world(conn)
+    session = twin_session(conn, world, opened_by=world.member.user)
+    question = employer_question(conn, session)
+    token = candidate_token(conn, world.candidate.id)
+    conn.execute(
+        text("INSERT INTO twin_scopes (user_id, topic, permission) VALUES (:u, 'skills', 'answer')"),
+        {"u": world.candidate.id},
+    )
+    exporters = privacy.exporters()
+    twin = exporters["twin"](conn, world.candidate.id).data
+    assert [row["topic"] for row in twin["twin_scopes"]] == ["skills"]
+    assert [row["id"] for row in twin["twin_sessions"]] == [str(session)]
+    assert "opened_by" not in twin["twin_sessions"][0] and "agent_token_id" not in twin["twin_sessions"][0]
+    assert [row["id"] for row in twin["twin_messages"]] == [str(question)]
+    tokens = exporters["agentnet"](conn, world.candidate.id).data["agent_tokens"]
+    assert [row["id"] for row in tokens] == [str(token.id)]
+    assert "token_sha256" not in tokens[0] and token.secret not in str(tokens)
+    assert exporters["agentnet"](conn, world.member.user).data["agent_tokens"] == []  # someone else's: nothing

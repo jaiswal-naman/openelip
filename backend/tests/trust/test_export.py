@@ -22,6 +22,7 @@ from app.trust.routes import API_STATUS
 
 FORMAT_MODULES = {
     "apply",
+    "agentnet",
     "brief",
     "campaigns",
     "chat",
@@ -32,6 +33,7 @@ FORMAT_MODULES = {
     "platform",
     "profile",
     "tailor",
+    "twin",
     "trust",
 }
 
