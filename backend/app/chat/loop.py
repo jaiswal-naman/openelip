@@ -21,7 +21,7 @@ import logging
 import re
 import time
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, TypedDict, cast
@@ -75,12 +75,15 @@ class TurnContext:
 @dataclass(frozen=True)
 class TurnResult:
     """How a turn ended. `text` is the reply as it is stored and shown (known [[alias]] markers kept, others plain), and
-    is empty unless finish_reason is "complete". `proposals` are the record changes proposed along the way."""
+    is empty unless finish_reason is "complete". `proposals` are the record changes proposed along the way.
+    `unknown_citations` is how many [[markers]] named an alias no tool returned and were rewritten to plain text (the
+    service stores the count); it is not part of what a result equals."""
 
     text: str
     finish_reason: str  # complete | length | stopped | interrupted
     citations: tuple[Citation, ...]
     proposals: tuple[ProposalEvent, ...]
+    unknown_citations: int = field(default=0, compare=False)
 
 
 class _State(TypedDict):
@@ -273,4 +276,4 @@ def run_turn(
         emit("text.delta", {"text": piece})
     for citation in resolved.citations:
         emit("citation", _cited(citation))
-    return TurnResult(resolved.text, "complete", resolved.citations, proposals)
+    return TurnResult(resolved.text, "complete", resolved.citations, proposals, resolved.unknown)
