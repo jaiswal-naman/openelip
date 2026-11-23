@@ -322,14 +322,16 @@ def _introduction(
     job = scenario.world["job"]
     description = role_spec.get("description", job["description"])
     requirements = role_spec.get("requirements", job["requirements"])
-    # The role's job carries the scenario's company address (not the app's, as a published role has), so the Researcher
-    # has recorded pages to read: a deviation of fixture tooling, noted in the SUMMARY.
+    # Two departures from a published role's job, both so the scripted run can go on, both noted in the SUMMARY: it
+    # carries the scenario's company address (a published one carries the app's), so the Researcher has recorded pages
+    # to read, and it is listed, because ingest.get_job and so the application tracker see only listed jobs: with an
+    # unlisted one the Researcher reads no job and the candidate's tracker answers 404 (a finding for the owner).
     job_id, job_requirements = _job(
         conn,
         {**job, "title": role_spec.get("title", job["title"])},
         tag=f"{tag}-role",
         source=("direct", str(org_id), str(org_id)),
-        listed=False,
+        listed=True,
         requirements=requirements,
         description=description,
     )

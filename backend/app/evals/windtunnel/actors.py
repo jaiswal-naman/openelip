@@ -266,7 +266,13 @@ class Attempt:
             found = [a for a in self.candidate.call("GET", "/v1/applications") if a["job_id"] == self.world.job_id]
             self.application_id = found[0]["id"] if found else None
         if self.application_id is None:
-            created = self.candidate.call("POST", "/v1/applications", {"job_id": self.world.job_id, "occurred_at": now})
+            applied = (
+                self.scenario.world["candidate"].get("applied_on")
+                or (datetime.now(UTC) - timedelta(minutes=1)).isoformat()
+            )
+            created = self.candidate.call(
+                "POST", "/v1/applications", {"job_id": self.world.job_id, "occurred_at": applied}
+            )
             self.application_id = created["id"]
             if status == "applied":
                 self._note(f"record_status {status}")

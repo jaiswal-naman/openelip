@@ -1,0 +1,10 @@
+[
+  {"answers": [
+     {"question_id": "why_role", "status": "drafted", "sentences": [
+        {"text": "I like that Brackenridge Logistics builds route planning software for regional trucking companies.", "facts": [], "dossier_claims": ["d1"]},
+        {"text": "I built nightly Python and PostgreSQL pipelines.", "facts": ["f2"], "dossier_claims": []}]},
+     {"question_id": "relevant_experience", "status": "drafted", "sentences": [
+        {"text": "I led a team of three engineers on the reporting platform.", "facts": ["f3"], "dossier_claims": []}]}
+   ],
+   "note": [{"text": "I built nightly Python and PostgreSQL pipelines and I like Brackenridge Logistics.", "facts": ["f2"], "dossier_claims": ["d1"]}]}
+]

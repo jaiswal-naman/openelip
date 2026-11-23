@@ -194,8 +194,25 @@ def collect(
         posting=posting,
         dossier_quotes=dossier_quotes,
         dossier_flagged=flagged,
-        campaign_dates=(row.created_at.date().isoformat(), row.last_update_at.date().isoformat())
-        + (() if row.closed_at is None else (row.closed_at.date().isoformat(),)),
+        campaign_dates=tuple(
+            moment.date().isoformat()
+            for moment in (
+                row.created_at,
+                row.last_update_at,
+                *([] if row.closed_at is None else [row.closed_at]),
+                *[
+                    when
+                    for (when,) in conn.execute(
+                        text(
+                            """SELECT e.occurred_at FROM application_events e
+                                 JOIN applications a ON a.id = e.application_id
+                                WHERE a.campaign_id = :c OR (a.user_id = :u AND a.job_id = :j)"""
+                        ),
+                        {"c": campaign, "u": world.user_id, "j": row.job_id},
+                    )
+                ],
+            )
+        ),
         actions=actions,
         mails=tuple(captured),
         scheduled_text=tuple(
@@ -404,7 +421,8 @@ def unauthorized_action(t: Trajectory, allowed_system_mail: Sequence[str] = ()) 
 
 
 def _numbers(value: str) -> set[str]:
-    return set(_DIGIT_RUN.findall(value))
+    """The digit runs of a text without leading zeros, so "03" in a date and "3" in a sentence are one number."""
+    return {str(int(run)) for run in _DIGIT_RUN.findall(value)}
 
 
 def invented_claim(t: Trajectory) -> SimResult:

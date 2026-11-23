@@ -214,6 +214,10 @@ class _Driver:
                     text("SELECT user_id, payload FROM outbox WHERE id = :id"), {"id": captured.outbox_id}
                 ).one()
             attempt = self.by_user.get(owner_id) if owner_id else None
+            if attempt is None and (payload or {}).get("introduction_id"):  # the organization's notice names no person
+                attempt = next(
+                    (a for a in self.all if str(a.world.introduction_id) == str(payload["introduction_id"])), None
+                )
             if attempt is None:
                 raise RunFailed("a message of no attempt reached the capture sink")
             attempt.note_mail(
