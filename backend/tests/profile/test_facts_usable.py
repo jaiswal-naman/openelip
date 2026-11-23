@@ -136,11 +136,27 @@ def check_compiled_constraints(conn, ada: Person, bob: Person) -> None:
     assert api.compiled_constraints(conn, make_user(conn, "new")) == {}
 
 
+def check_facts_by_ids(conn, ada: Person, bob: Person) -> None:
+    """The one read that may return a fact that is no longer usable: a verdict made while a fact was confirmed cites it
+    by id, and must still be able to show it once the person has corrected or retired it (plan 04-04). It returns only
+    facts the person confirmed at some time, so a fact waiting for review or rejected unconfirmed never leaves."""
+    service.reject_fact(conn, ada.id, ada.written)  # a confirmed fact, retired since
+    asked = [ada.confirmed, ada.corrected, ada.written, ada.unconfirmed, ada.rejected, ada.superseded]
+    found = {f["id"]: f for f in api.facts_by_ids(conn, ada.id, asked)}
+    assert set(found) == {str(ada.confirmed), str(ada.corrected), str(ada.written)}
+    assert (found[str(ada.confirmed)]["status"], found[str(ada.written)]["status"]) == ("confirmed", "superseded")
+    assert not set(found) & {str(ada.unconfirmed), str(ada.rejected), str(ada.superseded)}  # never confirmed
+    assert found[str(ada.confirmed)]["provenance"]["quote"] == TEXT[41:66] and found[str(ada.written)]["provenance"] is None
+    assert api.facts_by_ids(conn, bob.id, asked) == []  # nothing of another person comes back
+    assert api.facts_by_ids(conn, ada.id, []) == []
+
+
 # Reads are checked for the usable rule. The two writers return no rows of the record: an id, or ids.
 CHECKS = {
     "usable_facts": check_usable_facts,
     "get_record": check_get_record,
     "compiled_constraints": check_compiled_constraints,
+    "facts_by_ids": check_facts_by_ids,
 }
 WRITERS = {"propose_change", "confirm"}
 
