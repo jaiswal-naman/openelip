@@ -6,10 +6,12 @@ withdraw it between the two. The wording a consent was given under names the pro
 makes an old consent stale (trust.consent); the job sees that as a missing consent too.
 """
 
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 
+from app.profile import documents_routes
 from app.profile.documents_routes import MAX_REQUEST_BYTES
 
 URL = "/v1/me/documents"
@@ -98,6 +100,16 @@ def test_with_no_model_configured_the_upload_says_so_before_it_asks_for_a_consen
         assert "needs an AI model" in error["message"]
     nothing_stored(kit)
     assert ok(signed_in.get("/v1/me/record"))["facts"] == []  # the record still works
+
+
+def test_every_resume_task_needs_a_provider_not_only_the_first(signed_in, kit, monkeypatch):
+    kit.provider("local")  # a server that serves exactly the tasks models.toml names for it
+    kit.agree(signed_in.user)
+    assert ok(upload(signed_in, kit.docx()), 202)["status"] == "queued"  # all three resume tasks are served
+    one_more = SimpleNamespace(name="resume.facts.not_configured")
+    monkeypatch.setattr(documents_routes, "TASKS", (*documents_routes.TASKS, one_more))
+    refused(upload(signed_in, kit.docx()), 503, "ai_disabled")
+    assert kit.count("documents") == 1  # only the first upload
 
 
 def test_with_a_provider_and_a_consent_the_upload_is_accepted(with_a_provider, kit):

@@ -403,15 +403,21 @@ def test_an_unexpected_error_is_retried_and_on_the_last_attempt_fails_the_docume
     assert secret not in str(tuple(document) + tuple(job))
 
 
-def test_a_crash_while_writing_the_facts_leaves_nothing_not_even_the_text(kit, monkeypatch):
+def make_the_fact_insert_fail(monkeypatch) -> None:
+    """The last fact gets an empty statement, which the facts table refuses: the error comes from the database, in the
+    middle of the transaction that has already written the text."""
     real = parse_job._fact_rows
 
     def last_fact_is_empty(*args):
         rows = real(*args)
-        rows[-1] = {**rows[-1], "statement": ""}  # the facts table refuses an empty statement
+        rows[-1] = {**rows[-1], "statement": ""}
         return rows
 
     monkeypatch.setattr(parse_job, "_fact_rows", last_fact_is_empty)
+
+
+def test_a_crash_while_writing_the_facts_leaves_nothing_not_even_the_text(kit, monkeypatch):
+    make_the_fact_insert_fail(monkeypatch)
     user = kit.person()
     kit.agree(user)
     document_id = kit.store(user, kit.docx())
@@ -419,6 +425,55 @@ def test_a_crash_while_writing_the_facts_leaves_nothing_not_even_the_text(kit, m
     document = kit.document(document_id)
     assert (document.state, document.extracted_text, document.parsed_at) == ("parsing", None, None)
     assert kit.facts(document_id) == [] and kit.job(document_id).state == "queued"  # all or nothing; a retry is due
+
+
+def test_a_database_error_on_the_last_attempt_still_fails_the_document(kit, monkeypatch):
+    make_the_fact_insert_fail(monkeypatch)  # the failed transaction must be rolled back before the document is failed
+    user = kit.person()
+    kit.agree(user)
+    document_id = kit.store(user, kit.docx())
+    on_the_last_attempt(kit, document_id)
+    assert kit.run(kit.model()) == 1
+    document, job = kit.document(document_id), kit.job(document_id)
+    assert (document.state, document.parse_error_code, document.extracted_text) == ("failed", "parse_failed", None)
+    assert (job.state, job.last_error_code) == ("dead", "IntegrityError") and kit.facts(document_id) == []
+
+
+# ---- when the document says running, and what the worker holds while the model answers ------------
+
+
+def test_the_document_says_running_while_its_file_is_being_read(kit, monkeypatch):
+    user = kit.person()
+    kit.agree(user)
+    document_id = kit.store(user, kit.docx())
+    seen, real = [], parse_job.read_resume
+
+    def read_and_look(data, mime):
+        seen.append(kit.document(document_id).state)  # on another connection, as a poll would
+        return real(data, mime)
+
+    monkeypatch.setattr(parse_job, "read_resume", read_and_look)
+    assert kit.run(kit.model()) == 1
+    assert seen == ["parsing"]
+
+
+def test_no_transaction_stays_open_while_the_model_answers(kit):
+    user = kit.person()
+    kit.agree(user)
+    document_id = kit.store(user, kit.docx())
+    scripted, open_transactions, one_at_a_time = kit.model(), [], threading.Lock()
+    idle_in_transaction = text(
+        """SELECT count(*) FROM pg_stat_activity
+           WHERE datname = current_database() AND usename = 'app_worker' AND state LIKE 'idle in transaction%'"""
+    )
+
+    def answer_and_look(task, schema, messages, *, principal, prompt_version):
+        with one_at_a_time, kit.engine.connect() as c:
+            open_transactions.append(c.execute(idle_in_transaction).scalar_one())
+        return scripted(task, schema, messages, principal=principal, prompt_version=prompt_version)
+
+    assert kit.run(answer_and_look) == 1
+    assert open_transactions == [0, 0, 0] and kit.document(document_id).state == "parsed"
 
 
 # ---- what is logged, and how the worker finds the handler ----------------------------------------
