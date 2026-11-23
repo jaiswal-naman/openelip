@@ -17,6 +17,7 @@ from app.brief.api import compose
 from app.platform import http
 from app.profile import api as profile
 from app.trust import api as trust
+from tests.brief.world import count, everything, world
 from tests.match.factories import (
     LOCAL_DATE,
     Verdict,
@@ -30,44 +31,6 @@ from tests.match.factories import (
 
 IST = ZoneInfo("Asia/Kolkata")
 MORNING = datetime(2026, 11, 23, 6, 10, tzinfo=IST)  # before any email would be released
-
-
-def world(conn, count=3, *, consent=True):
-    """A person with a confirmed record, the brief_email consent (unless left out), and `count` shown matches today."""
-    user = make_user(conn)
-    make_record(conn, user)
-    if consent:
-        trust.grant_consent(conn, user, "brief_email", "test-wording")
-    run = make_run(conn, user)
-    decisions = []
-    for rank in range(1, count + 1):
-        job = make_job(
-            conn,
-            title=f"Role {rank}",
-            description="Python.",
-            requirements=[("Python.", "required")],
-            external_id=f"job-{rank}",
-        )
-        decisions.append(
-            make_shown_decision(
-                conn, run, user, job, [Verdict("no_evidence")], rank_position=rank, summary=f"Summary {rank}."
-            )
-        )
-    return user, decisions
-
-
-def count(conn, table, **where):
-    clause = " AND ".join(f"{column} = :{column}" for column in where) or "true"
-    return conn.execute(text(f"SELECT count(*) FROM {table} WHERE {clause}"), where).scalar_one()
-
-
-def everything(conn, user):
-    """The rows a compose writes for a person, counted: briefs, items and outbox rows."""
-    return (
-        count(conn, "briefs", user_id=user),
-        count(conn, "brief_items", user_id=user),
-        count(conn, "outbox", user_id=user),
-    )
 
 
 # ---- what is written -------------------------------------------------------------------------------------------

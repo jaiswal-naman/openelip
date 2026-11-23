@@ -11,9 +11,12 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy import text
 
 from app.brief import unsubscribe
 from app.platform import config
+from app.trust import api as trust
+from tests.brief.conftest import new_person
 
 NOW = datetime(2026, 11, 23, 1, 0, tzinfo=timezone.utc)
 
@@ -101,3 +104,130 @@ def test_the_token_names_nothing_but_the_person_and_the_expiry():
 
     assert len(unsubscribe._unb64(payload_text)) == 24
     assert UUID(bytes=unsubscribe._unb64(payload_text)[:16]) == person
+
+
+# ---- the one-click POST ----------------------------------------------------------------------------------------
+
+FORM = {"List-Unsubscribe": "One-Click"}
+
+
+def subscribed(engine, email="ada@mail.test", *, agreed=True):
+    """A committed person who has (or has not) agreed to the brief email."""
+    person = new_person(engine, email)
+    if agreed:
+        with engine.begin() as c:
+            trust.grant_consent(c, person, "brief_email", "test-wording")
+    return person
+
+
+def link(person, **options):
+    now = options.get("now", datetime.now(timezone.utc))
+    return f"/v1/briefs/unsubscribe?t={unsubscribe.sign(person, now=now)}"
+
+
+def email_is_on(engine, person):
+    with engine.connect() as c:
+        return {s.purpose: s.granted for s in trust.current_consents(c, person)}["brief_email"]
+
+
+def audit_rows(engine, person, event="brief.unsubscribed"):
+    with engine.connect() as c:
+        return c.execute(
+            text(
+                """SELECT actor_type::text AS actor, details FROM audit_log
+                   WHERE subject_user_id = :u AND event_type = :e"""
+            ),
+            {"u": person, "e": event},
+        ).all()
+
+
+def test_one_post_with_the_token_alone_withdraws_the_consent_with_no_redirect_and_audits_it(engine, api_client):
+    ada = subscribed(engine)
+
+    answered = api_client.post(link(ada), data=FORM, follow_redirects=False)  # no cookie, no Idempotency-Key
+
+    assert answered.status_code == 200 and "location" not in answered.headers
+    body = answered.json()
+    assert body["success"] is True and body["data"] == {"is_brief_email_on": False}
+    assert email_is_on(engine, ada) is False
+    (row,) = audit_rows(engine, ada)
+    assert row.actor == "candidate" and row.details == {"channel": "email"}
+    assert len(audit_rows(engine, ada, "consent.withdrawn")) == 1
+
+
+def test_the_multipart_form_a_mail_client_may_send_works_the_same(engine, api_client):
+    ada = subscribed(engine)
+
+    answered = api_client.post(link(ada), files={"List-Unsubscribe": (None, "One-Click")}, follow_redirects=False)
+
+    assert answered.status_code == 200 and email_is_on(engine, ada) is False
+
+
+def test_a_second_post_answers_the_same_and_changes_nothing(engine, api_client):
+    ada = subscribed(engine)
+    url = link(ada)
+    first = api_client.post(url, data=FORM)
+    with engine.connect() as c:
+        consent_rows = c.execute(text("SELECT count(*) FROM consents")).scalar_one()
+        audit_count = c.execute(text("SELECT count(*) FROM audit_log")).scalar_one()
+
+    second = api_client.post(url, data=FORM)
+
+    assert (first.status_code, second.status_code) == (200, 200) and second.json()["data"] == first.json()["data"]
+    with engine.connect() as c:
+        assert c.execute(text("SELECT count(*) FROM consents")).scalar_one() == consent_rows
+        assert c.execute(text("SELECT count(*) FROM audit_log")).scalar_one() == audit_count
+
+
+def test_a_person_who_never_agreed_is_answered_the_same_and_nothing_is_written(engine, api_client):
+    bob = subscribed(engine, "bob@mail.test", agreed=False)
+
+    answered = api_client.post(link(bob), data=FORM)
+
+    assert answered.status_code == 200 and audit_rows(engine, bob) == []
+
+
+def test_the_token_is_the_person_a_session_of_someone_else_changes_nothing(engine, api_client, act_as):
+    ada, bob = subscribed(engine), subscribed(engine, "bob@mail.test")
+    act_as(api_client, bob)
+
+    answered = api_client.post(link(ada), data=FORM)
+
+    assert answered.status_code == 200
+    assert email_is_on(engine, ada) is False and email_is_on(engine, bob) is True
+
+
+def test_a_forged_altered_or_expired_link_is_a_404_and_changes_nothing(engine, api_client, monkeypatch):
+    ada = subscribed(engine)
+    good = unsubscribe.sign(ada, now=datetime.now(timezone.utc))
+    last = "A" if good[-1] != "A" else "B"
+    other_key = replace(config.get(), link_key="another-link-key-entirely")
+    with monkeypatch.context() as m:
+        m.setattr(config, "get", lambda: other_key)
+        foreign = unsubscribe.sign(ada, now=datetime.now(timezone.utc))
+    expired = unsubscribe.sign(ada, now=datetime.now(timezone.utc) - unsubscribe.TOKEN_LIFE - timedelta(minutes=1))
+
+    for token in (good[:-1] + last, foreign, expired, "garbage", "a.b", " "):
+        answered = api_client.post(f"/v1/briefs/unsubscribe?t={token}", data=FORM)
+        assert answered.status_code == 404 and answered.json()["error"]["code"] == "not_found", token
+    assert email_is_on(engine, ada) is True and audit_rows(engine, ada) == []
+
+
+def test_a_post_without_the_one_click_body_is_refused_and_changes_nothing(engine, api_client):
+    ada = subscribed(engine)
+    url = link(ada)
+
+    for sent in ({}, {"List-Unsubscribe": "Yes"}, {"unsubscribe": "One-Click"}):
+        answered = api_client.post(url, data=sent)
+        assert answered.status_code == 422 and answered.json()["error"]["code"] == "validation_failed", sent
+    assert api_client.post("/v1/briefs/unsubscribe", data=FORM).status_code == 422  # no token at all
+    assert email_is_on(engine, ada) is True
+
+
+def test_a_get_on_the_link_does_nothing_so_a_scanner_that_fetches_it_unsubscribes_nobody(engine, api_client):
+    ada = subscribed(engine)
+
+    fetched = api_client.get(link(ada), follow_redirects=False)
+
+    assert fetched.status_code in (401, 405, 422) and "location" not in fetched.headers
+    assert email_is_on(engine, ada) is True and audit_rows(engine, ada) == []
