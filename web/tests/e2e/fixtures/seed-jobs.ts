@@ -154,10 +154,14 @@ function psql(sql: string): string {
 export type SeededJobs = Record<string, number>;
 
 export function seedJobs(): SeededJobs | null {
-  const others = psql(
-    `SELECT count(*) FROM jobs j JOIN job_sources s ON s.id = j.source_id WHERE s.token NOT LIKE '${FIXTURE_BOARD_PREFIX}%';`,
+  const counted = psql(
+    `SELECT count(*) FILTER (WHERE s.token NOT LIKE '${FIXTURE_BOARD_PREFIX}%'), count(*) FILTER (WHERE s.token LIKE '${FIXTURE_BOARD_PREFIX}%')
+       FROM jobs j JOIN job_sources s ON s.id = j.source_id;`,
   );
-  if (Number(others.trim()) >= REAL_INDEX_THRESHOLD && process.env.E2E_SEED_JOBS !== "always") return null;
+  const [others, ours] = counted.trim().split("|").map(Number);
+  // Only a first seeding can add anything to someone's index. When the invented jobs are already there (an earlier spec
+  // file put them in), carry on even if real jobs have arrived since: a fresh stack's worker may import boards meanwhile.
+  if (ours === 0 && others >= REAL_INDEX_THRESHOLD && process.env.E2E_SEED_JOBS !== "always") return null;
   const ids = psql(buildSeedSql())
     .split("\n")
     .filter((line) => line.startsWith("ID|"))
