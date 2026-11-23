@@ -1,0 +1,11 @@
+[
+  {"sentences": [
+     {"text": "I applied for this role and remain very interested in it.", "facts": [], "dossier_claims": [], "events": []},
+     {"text": "Built the nightly Quillscript billing pipeline.", "facts": ["f5"], "dossier_claims": [], "events": []}]},
+  {"sentences": [
+     {"text": "I applied for this role and remain very interested in it.", "facts": [], "dossier_claims": [], "events": []},
+     {"text": "Built the nightly Quillscript billing pipeline.", "facts": ["f5"], "dossier_claims": [], "events": []}]},
+  {"sentences": [
+     {"text": "I applied for this role and remain very interested in it.", "facts": [], "dossier_claims": [], "events": []},
+     {"text": "Built the nightly Quillscript billing pipeline.", "facts": ["f5"], "dossier_claims": [], "events": []}]}
+]

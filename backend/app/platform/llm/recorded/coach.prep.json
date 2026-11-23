@@ -1,0 +1,8 @@
+[
+  {"questions": [
+     {"text": "Tell us about a pipeline you built in Quillscript.", "requirement": "r1", "facts": ["f5"], "gap": false,
+      "framing": "Tell the story of the nightly Quillscript billing pipeline you built."},
+     {"text": "Have you run Kubernetes in production?", "requirement": "r3", "facts": [], "gap": true,
+      "framing": "Be honest that your record shows no Kubernetes in production and say how you would learn it."}],
+   "ask_them": [{"text": "How do small utilities use your billing platform?", "dossier_claims": ["d1"]}]}
+]

@@ -180,6 +180,32 @@ def _demo_seed_hiring(args: argparse.Namespace) -> int:
     return 0
 
 
+def _demo_seed_campaign(args: argparse.Namespace) -> int:
+    """Invented data for the campaign demo, on a scratch database with the fake provider and the page directory."""
+    from app import demo
+
+    try:
+        seeded = demo.seed_campaign(args.email)
+    except demo.SeedRefused as refusal:
+        print(f"refused: {refusal}", file=sys.stderr)
+        return 2
+    print(seeded.report())
+    return 0
+
+
+def _demo_age_campaign(args: argparse.Namespace) -> int:
+    """Move an account's open campaigns days into the past (same refusals as seed-campaign)."""
+    from app import demo
+
+    try:
+        aged = demo.age_campaign(args.email, args.days)
+    except demo.SeedRefused as refusal:
+        print(f"refused: {refusal}", file=sys.stderr)
+        return 2
+    print(aged.report(args.days))
+    return 0
+
+
 def _demo_seed_tailor(args: argparse.Namespace) -> int:
     """Invented facts for the chat, tailoring and packet demo, on an account `demo seed-matches` already seeded."""
     from app import demo
@@ -231,6 +257,8 @@ COMMANDS: dict[tuple[str, str], Callable[[argparse.Namespace], int | None]] = {
     ("demo", "seed-matches"): _demo_seed_matches,
     ("demo", "seed-tailor"): _demo_seed_tailor,
     ("demo", "seed-hiring"): _demo_seed_hiring,
+    ("demo", "seed-campaign"): _demo_seed_campaign,
+    ("demo", "age-campaign"): _demo_age_campaign,
 }
 
 
@@ -294,6 +322,12 @@ def build_parser() -> argparse.ArgumentParser:
     seed_hiring.add_argument(
         "--candidate-email", required=True, help="a second account that has signed in: it is asked"
     )
+    demo.add_parser(
+        "seed-campaign", help="get an account ready for the campaign demo (needs RESEARCH_PAGES_DIR on the demo pages)"
+    ).add_argument("--email", required=True, help="the address of an account that has signed in")
+    age = demo.add_parser("age-campaign", help="move an account's open campaigns days into the past")
+    age.add_argument("--email", required=True, help="the address of an account that has signed in")
+    age.add_argument("--days", type=int, required=True, help="how many days to move the clock on (1 to 365)")
     return parser
 
 
