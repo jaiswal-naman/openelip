@@ -18,6 +18,7 @@ from app.campaigns import jobs as campaign_jobs  # noqa: F401  (importing it reg
 from app.campaigns import privacy as campaign_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.campaigns import subscribers as campaign_subscribers  # noqa: F401  (fills the event registry of this process)
 from app.chat import privacy as chat_privacy  # noqa: F401  (the export job reads the registry in this process)
+from app.evals import privacy as evals_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.guardian import jobs as guardian_jobs  # noqa: F401  (importing it registers the Guardian handlers)
 from app.guardian import privacy as guardian_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.guardian import runtime as guardian_runtime

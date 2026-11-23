@@ -12,6 +12,7 @@ keeps the answer it always had, so one demo's recordings never hide another phas
 import json
 import os
 from pathlib import Path
+from uuid import UUID
 
 from .adapters import Reply
 from .failures import AIDisabled
@@ -31,6 +32,29 @@ def replay_from(path: Path | None) -> None:
     _given.clear()
 
 
+_principals: dict[UUID, Path] = {}  # principal -> directory of <task>.json files (the wind tunnel's candidates)
+_taken: dict[tuple[UUID, Path], int] = {}
+
+
+def replay_for(principal: UUID, directory: Path) -> None:
+    """Answer every call made for this principal from <directory>/<task>.json, with counters of its own that start at
+    0, however calls of other principals interleave. replay_from does not clear it."""
+    _principals[principal] = directory
+    for key in [key for key in _taken if key[0] == principal]:
+        del _taken[key]
+
+
+def is_registered(principal: UUID) -> bool:
+    return principal in _principals
+
+
+def forget(principal: UUID) -> None:
+    """Return this principal to the ordinary rules."""
+    _principals.pop(principal, None)
+    for key in [key for key in _taken if key[0] == principal]:
+        del _taken[key]
+
+
 def _path(task: str) -> Path:
     """The file this task is answered from: the scripted one, else the demo directory's file, else recorded/."""
     if _source is not None:
@@ -43,7 +67,22 @@ def _path(task: str) -> Path:
     return _RECORDED / f"{task}.json"
 
 
-def call(task: str) -> Reply:
+def _call_for(task: str, principal: UUID) -> Reply:
+    path = _principals[principal] / f"{task}.json"
+    if not path.exists():
+        raise RuntimeError(f"no recorded answer for task {task} in {path.parent.name}")
+    answers = json.loads(path.read_text(encoding="utf-8"))
+    taken = _taken.get((principal, path), 0)
+    if taken >= len(answers):
+        raise RuntimeError(f"no recorded answer left in {path.name}")
+    _taken[(principal, path)] = taken + 1
+    answer = answers[taken]
+    return Reply(answer if isinstance(answer, str) else json.dumps(answer), INPUT_TOKENS, OUTPUT_TOKENS)
+
+
+def call(task: str, principal: UUID | None = None) -> Reply:
+    if principal is not None and is_registered(principal):
+        return _call_for(task, principal)
     path = _path(task)
     if _source is None and not path.exists():
         # A fresh install runs this provider and holds one recording (ping). A task with none has no answer to give,

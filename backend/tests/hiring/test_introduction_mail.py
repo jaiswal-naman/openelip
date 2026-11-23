@@ -8,7 +8,7 @@ from sqlalchemy import text
 import app.worker  # noqa: F401  (importing the worker is what registers its resolvers)
 from app.hiring import introduction_mail
 from app.platform import relay
-from app.platform.relay import Outgoing, Refusal
+from app.platform.relay import Outgoing, Refusal, is_undeliverable
 from tests.hiring.factories import make_accepted, make_ask, make_candidate, make_member, make_open_role, make_org
 
 
@@ -74,7 +74,8 @@ def test_with_no_active_owner_or_creator_nobody_is_written_to(conn):
 
 def test_a_synthetic_recipient_a_missing_introduction_and_a_bad_payload_are_refused(conn):
     org, role, candidate, accepted = accepted_scene(conn)
-    assert introduction_mail.resolve_accepted(conn, accepted_payload(accepted)) == Refusal("cancelled", "undeliverable")
+    out = introduction_mail.resolve_accepted(conn, accepted_payload(accepted))
+    assert isinstance(out, Outgoing) and is_undeliverable(conn, out.to)  # the relay core refuses it (plan 08-01)
     assert introduction_mail.resolve_accepted(conn, {"introduction_id": str(uuid4())}) == Refusal("cancelled", "stale")
     assert introduction_mail.resolve_accepted(conn, {}) == Refusal("failed", "bad_payload")
     assert introduction_mail.resolve_answered(conn, {"introduction_id": "nope"}) == Refusal("failed", "bad_payload")
@@ -116,6 +117,8 @@ def test_the_answer_is_refused_before_it_exists_and_for_a_synthetic_or_example_t
     org, role, candidate, accepted = accepted_scene(conn)
     assert introduction_mail.resolve_answered(conn, accepted_payload(accepted)) == Refusal("cancelled", "stale")
     answer(conn, accepted, org, "yes", "Strong fit")
-    assert introduction_mail.resolve_answered(conn, accepted_payload(accepted)) == Refusal("cancelled", "undeliverable")
+    out = introduction_mail.resolve_answered(conn, accepted_payload(accepted))
+    assert isinstance(out, Outgoing) and is_undeliverable(conn, out.to)  # the relay core refuses it (plan 08-01)
     conn.execute(text("UPDATE users SET is_synthetic = false WHERE id = :u"), {"u": candidate.id})  # still example.test
-    assert introduction_mail.resolve_answered(conn, accepted_payload(accepted)) == Refusal("cancelled", "undeliverable")
+    out = introduction_mail.resolve_answered(conn, accepted_payload(accepted))
+    assert isinstance(out, Outgoing) and is_undeliverable(conn, out.to)

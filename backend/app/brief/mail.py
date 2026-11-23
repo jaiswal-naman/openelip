@@ -14,7 +14,7 @@ from uuid import UUID
 from sqlalchemy import Connection, text
 
 from app.platform import config
-from app.platform.relay import Outgoing, Refusal, is_undeliverable
+from app.platform.relay import Outgoing, Refusal
 
 from . import unsubscribe, views
 from .compose import email_is_on
@@ -150,8 +150,6 @@ def resolve(conn: Connection, payload: dict[str, Any]) -> Outgoing | Refusal:
         return Refusal("cancelled", "stale")  # the brief or the account is gone
     if not email_is_on(conn, person.user_id):
         return Refusal("cancelled", "consent_withdrawn")  # taken back after the brief was composed
-    if is_undeliverable(conn, person.email):
-        return Refusal("cancelled", "undeliverable")
     view = views.brief_view(conn, brief_id, person.user_id)
     if view is None:
         return Refusal("cancelled", "stale")

@@ -204,14 +204,16 @@ def test_a_brief_that_is_gone_and_a_payload_that_is_wrong_are_refused_in_their_o
 def test_the_relays_undeliverable_rule_covers_the_brief_too(conn, apply_links):
     user, _, result = composed(conn)
     payload = {"brief_id": str(result.in_app_brief_id)}
-    undeliverable = relay.Refusal("cancelled", "undeliverable")
-
+    # Plan 08-01: the rule lives once in the relay core, on the resolved recipient; the resolver only names the person.
     conn.execute(text("UPDATE users SET email = 'someone@example.test' WHERE id = :u"), {"u": user})
-    assert mail.resolve(conn, payload) == undeliverable  # an address that cannot exist
+    out = mail.resolve(conn, payload)
+    assert isinstance(out, relay.Outgoing) and relay.is_undeliverable(conn, out.to)  # an address that cannot exist
     conn.execute(text("UPDATE users SET email = 'reader@mail.test', is_synthetic = true WHERE id = :u"), {"u": user})
-    assert mail.resolve(conn, payload) == undeliverable  # a demo or wind-tunnel account
+    out = mail.resolve(conn, payload)
+    assert isinstance(out, relay.Outgoing) and relay.is_undeliverable(conn, out.to)  # a demo or wind-tunnel account
     conn.execute(text("UPDATE users SET is_synthetic = false WHERE id = :u"), {"u": user})
-    assert isinstance(mail.resolve(conn, payload), relay.Outgoing)  # the same person, deliverable otherwise
+    out = mail.resolve(conn, payload)
+    assert isinstance(out, relay.Outgoing) and not relay.is_undeliverable(conn, out.to)  # deliverable otherwise
 
 
 # ---- through the relay -----------------------------------------------------------------------------------------

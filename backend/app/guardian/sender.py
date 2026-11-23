@@ -29,8 +29,6 @@ def resolve_follow_up(conn: Connection, payload: dict[str, Any]) -> Outgoing | R
         return Refusal("cancelled", reason or "action_not_scheduled")
     message = action["payload"] or {}
     to = str(message.get("to") or "")
-    if relay.is_undeliverable(conn, to):
-        return Refusal("cancelled", "undeliverable")
     return Outgoing(to, str(message["subject"]), str(message["body"]), {"Reply-To": str(message["reply_to"])})
 
 

@@ -40,6 +40,7 @@ class Attribution:
 
 # The attribution of the calls being made right now, per thread of execution (a context variable does not cross to a
 # thread that was started inside the block, so one worker's campaign can never be charged to another's calls).
+_PRINCIPAL: ContextVar[UUID | None] = ContextVar("llm_principal", default=None)
 _ATTRIBUTION: ContextVar[Attribution | None] = ContextVar("llm_attribution", default=None)
 
 
@@ -74,6 +75,9 @@ def _call(route: registry.Route, messages: list[dict[str, Any]], schema: type[Ba
         return adapters.call_anthropic(route, messages, schema.model_json_schema())
     if route.adapter == "openai_compatible":
         return adapters.call_openai_compatible(route, messages, schema.model_json_schema())
+    principal = _PRINCIPAL.get()
+    if principal is not None and fake.is_registered(principal):
+        return fake.call(route.task, principal=principal)
     return fake.call(route.task)
 
 
@@ -152,6 +156,16 @@ def complete(
 
 
 def _complete(
+    task: str, schema: type[BaseModel], messages: list[dict[str, Any]], *, principal: UUID | None, prompt_version: str
+) -> BaseModel:
+    token = _PRINCIPAL.set(principal)  # read by the fake adapter only, so a synthetic candidate replays its own answers
+    try:
+        return _complete_for(task, schema, messages, principal=principal, prompt_version=prompt_version)
+    finally:
+        _PRINCIPAL.reset(token)
+
+
+def _complete_for(
     task: str, schema: type[BaseModel], messages: list[dict[str, Any]], *, principal: UUID | None, prompt_version: str
 ) -> BaseModel:
     settings = config.get()
