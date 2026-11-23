@@ -101,8 +101,10 @@ needs a read-only `DATABASE_URL` and refuses to run while `postings.jsonl` exist
 
 ## Pre-registered bars
 
-Written on 2026-11-23, before any run of `score.py` (AI_SYSTEM 12.1: fix the metric and the bar before the run; a changed
-bar is a new, dated pre-registration).
+Written on 2026-11-23 (AI_SYSTEM 12.1: fix the metric and the bar before the run; a changed bar is a new, dated
+pre-registration). One development run of the rules baseline happened three minutes before these bars were committed, so
+the order cannot be shown from git; the bar values were not tuned to it (the rules baseline misses `req_item_f1 >= 0.85`).
+No model run exists yet: the first live run is the real test of these bars.
 
 **What is scored.** One run scores one split, with the items pooled over its postings. The test split is the 40 test
 postings without `req-049`: that posting is a near-copy of dev posting `req-001` (99.9% the same text), so it is not
