@@ -106,7 +106,7 @@ def resolve_answered(conn: Connection, payload: dict[str, Any]) -> Outgoing | Re
     organization, title = _line(row.name), _line(row.title)
     body = (
         f"{organization} answered {row.answer} for {title}: {_line(row.reason)}\n\n"
-        f"See it in the app: {settings.app_base_url.rstrip('/')}/app/today\n\n"
+        f"See it in the app: {settings.app_base_url.rstrip('/')}/app/today?view=decisions\n\n"
         f"Sent by {settings.product_name}.\n"
     )
     return Outgoing(row.email, f"{organization} answered {row.answer} for {title}", body)

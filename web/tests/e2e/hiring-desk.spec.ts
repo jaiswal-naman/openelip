@@ -187,7 +187,7 @@ test.describe("the hiring desk demo", () => {
     });
 
     await test.step("the candidate sees the employer's yes and its reason", async () => {
-      await candidate.goto("/app/today");
+      await candidate.goto("/app/today?view=decisions"); // the answer email's link
       const accepted = candidate.getByRole("region", { name: "Introductions you accepted" });
       await expect(accepted).toContainText("They answered yes.");
       await expect(accepted).toContainText("Strong fit for the role.");

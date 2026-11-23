@@ -107,7 +107,9 @@ def test_the_answer_goes_to_the_candidate_in_one_line(conn):
 
     assert isinstance(out, Outgoing) and out.to == "asha@candidate.example.com"
     assert f"{org.name} answered no for {role.title}: We need someone who has led a team." in out.body
-    assert "/app/today" in out.body
+    # The Decisions tab, where accepted introductions and their answers are listed; plain /app/today opens on the
+    # matches when nothing waits.
+    assert "/app/today?view=decisions\n" in out.body
 
 
 def test_the_answer_is_refused_before_it_exists_and_for_a_synthetic_or_example_test_person(conn):
