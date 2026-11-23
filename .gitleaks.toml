@@ -18,6 +18,11 @@ targetRules = ["generic-api-key"]
 regexes = ['''agt_7Qm2xV9pL4sR8tW1yZ6bN3cK5dF0gH2j''']
 
 [[allowlists]]
+description = "The LangSmith-shaped key in the no-tracing test is invented: the test proves such a key stops the settings loading"
+targetRules = ["generic-api-key"]
+regexes = ['''lsv2_pt_0123456789abcdef_this_is_a_secret''']
+
+[[allowlists]]
 description = "The development data key in .env.example is published on purpose; config.py refuses it unless APP_BASE_URL is a localhost address"
 targetRules = ["generic-api-key"]
 regexes = ['''b3BlbmVsaXAtZGV2ZWxvcG1lbnQtb25seS1rZXktMDA=''']
