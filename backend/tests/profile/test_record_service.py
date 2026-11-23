@@ -244,6 +244,44 @@ def test_operations_on_one_persons_record_run_one_at_a_time(engine):
     assert isinstance(outcome[0], StateConflict) and outcome[0].state == "confirmed"
 
 
+@pytest.mark.parametrize("role", ["app_api", "app_worker"])
+def test_every_operation_works_under_the_roles_that_run_it_row_level_security_included(conn, role):
+    """The API acts as one person (policies filter every row); the worker acts for everyone (a chat agent, a job)."""
+    person = make_user(conn)
+    conn.execute(text(f"SET LOCAL ROLE {role}"))
+    conn.execute(text("SELECT set_config('app.user_id', :u, true)"), {"u": str(person) if role == "app_api" else ""})
+
+    fact = service.add_fact(conn, person, "skill", "Kubernetes")
+    service.correct_fact(conn, person, UUID(fact.row["id"]), "Kubernetes and Helm")
+    service.set_constraint(conn, person, *REMOTE)
+    service.set_constraint(conn, person, "remote_policy", {"arrangements": ["hybrid"]}, "Hybrid")
+    pref = service.add_preference(conn, person, "untyped_dealbreaker", "No remote work")
+    service.remove_preference(conn, person, UUID(pref.row["id"]))
+    proposal = events.propose_change(
+        conn, person, origin="agent", entity="fact", operation="create", after={"kind": "skill", "statement": "Go"}
+    )
+    events.confirm(conn, person, proposal)
+    events.decline(
+        conn,
+        person,
+        events.propose_change(
+            conn,
+            person,
+            origin="chat",
+            entity="constraint",
+            operation="create",
+            after={"kind": "location", "country_codes": ["IN"], "statement": "India"},
+        ),
+    )
+
+    assert service.record_header(conn, person).record_version == 7
+    assert [f["statement"] for f in service.list_facts(conn, person, status="confirmed")[0]] == [
+        "Kubernetes and Helm",
+        "Go",
+    ]
+    assert [c["arrangements"] for c in service.list_constraints(conn, person)] == [["hybrid"]]
+
+
 # ---- facts ---------------------------------------------------------------------------------------
 
 
@@ -643,6 +681,17 @@ def test_facts_page_in_order_with_a_cursor_and_filter_by_status(conn, user):
     }
     with pytest.raises(InvalidField):
         service.list_facts(conn, user, status="pending")
+
+
+def test_rows_written_in_one_transaction_list_in_the_order_they_were_written(conn, user):
+    """now() is one value for a whole transaction, so created_at alone would leave their order to the random ids."""
+    names = [f"Skill {n}" for n in range(8)]
+    for name in names:
+        service.add_fact(conn, user, "skill", name)
+        service.add_preference(conn, user, "other", name, weight=1)
+    assert [f["statement"] for f in service.list_facts(conn, user, limit=100)[0]] == names
+    assert [p["statement"] for p in service.list_preferences(conn, user, limit=100)[0]] == names
+    assert [e["after"]["statement"] for e in reversed(events.list_events(conn, user, limit=100)[0])][::2] == names
 
 
 @pytest.mark.parametrize("cursor", ["", "nonsense", "e30", "WzEsMiwzXQ", "W10"])

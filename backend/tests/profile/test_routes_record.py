@@ -647,6 +647,10 @@ def test_the_openapi_document_describes_the_record_and_marks_untrusted_text(api_
     paths = spec["paths"]
     assert {m for m in paths["/v1/me/constraints/{constraint_id}"]} == {"patch", "delete"}
     assert {m for m in paths["/v1/me/events/{event_id}/confirm"]} == {"post"} and "get" in paths["/v1/me/record"]
+    assert all(
+        "201" in paths[path]["post"]["responses"]
+        for path in ("/v1/me/facts", "/v1/me/constraints", "/v1/me/preferences")
+    )
     schemas = spec["components"]["schemas"]
     assert schemas["FactProvenance"]["properties"]["quote"]["x-untrusted-text"] is True
     assert schemas["RecordFact"]["properties"]["statement"]["x-untrusted-text"] is True

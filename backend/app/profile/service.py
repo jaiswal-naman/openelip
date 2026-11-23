@@ -373,8 +373,9 @@ def _apply(
     """The one write path: bump the version, then write the change-log row that says what changed. Every operation
     calls this inside its savepoint and then writes the rows the event describes (a new row points back at the event).
 
-    The first fact the person confirms sets record_confirmed_at. clock_timestamp() keeps the rows of one transaction in
-    the order they were made, as now() would not.
+    The first fact the person confirms sets record_confirmed_at. The rows written here take clock_timestamp() for
+    created_at (as does the event), which keeps rows of one transaction in the order they were made: now() would give
+    them all one time.
     """
     version = conn.execute(
         text(
@@ -434,6 +435,7 @@ def _insert_fact(conn: Connection, user_id: UUID, snapshot: dict[str, Any], even
             parent_fact_id=snapshot["parent_fact_id"],
             source=snapshot["source"],
             profile_event_id=event_id,
+            created_at=func.clock_timestamp(),
             confirmed_at=func.now(),
         )
         .returning(models.profile_facts.c.created_at)
@@ -535,7 +537,14 @@ def _write_constraint(
     values["salary_currency"] = None if floor is None else floor["currency"]
     created_at: datetime = conn.execute(
         insert(table)
-        .values(id=new_id, user_id=user_id, source=via.source, profile_event_id=event_id, **values)
+        .values(
+            id=new_id,
+            user_id=user_id,
+            source=via.source,
+            profile_event_id=event_id,
+            created_at=func.clock_timestamp(),
+            **values,
+        )
         .returning(table.c.created_at)
     ).scalar_one()
     if old is not None:
@@ -604,7 +613,14 @@ def _write_preference(
     table = models.preferences
     created_at: datetime = conn.execute(
         insert(table)
-        .values(id=new_id, user_id=user_id, source=via.source, profile_event_id=event_id, **clean)
+        .values(
+            id=new_id,
+            user_id=user_id,
+            source=via.source,
+            profile_event_id=event_id,
+            created_at=func.clock_timestamp(),
+            **clean,
+        )
         .returning(table.c.created_at)
     ).scalar_one()
     if old is not None:
