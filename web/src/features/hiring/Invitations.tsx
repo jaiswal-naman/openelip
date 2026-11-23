@@ -13,13 +13,13 @@ export function Invitations({ invitations }: { invitations: Invitation[] }) {
   const join = useJoinOrganization();
   if (invitations.length === 0) return null;
   return (
-    <section aria-labelledby="invitations" className={styles.card}>
+    <section aria-labelledby="invitations" className={styles.stack}>
       <h2 id="invitations" className="t-section">
         You were invited
       </h2>
-      <ul className={styles.list}>
+      <ul className={styles.invited}>
         {invitations.map((invitation) => (
-          <li key={invitation.organization_id} className={styles.row}>
+          <li key={invitation.organization_id}>
             <span className={styles.words}>
               {invitation.organization_name} ({ORG_ROLE_LABELS[invitation.role]})
             </span>

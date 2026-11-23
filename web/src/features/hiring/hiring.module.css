@@ -1,43 +1,107 @@
-/* The hiring desk (FRONTEND_UI 3.12 to 3.17). Tokens only. */
+/*
+ * The hiring desk as a sheet (FRONTEND_UI 3.12 to 3.17): a strip of sections over a title block, then ruled forms (numbered
+ * zones, one control height), ledgers (roles, answers, team) and ruled rows (the shortlist). Publishing is an outside action,
+ * so it sits in its own ruled block. Tokens only.
+ */
 
-.shell {
+.frame {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-16);
+  gap: var(--sp-24);
 }
+
+/* ---- the desk's strip: the sections as tabs with the ink rule, the organization's plate at the right ---- */
 
 .bar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: var(--sp-8) var(--sp-16);
+  gap: 0 var(--sp-24);
+  border-bottom: 1px solid var(--line-strong);
 }
 
 .orgName {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-8);
-  font-weight: 600;
+  order: 2;
+  min-width: 0;
+  margin-inline-start: auto;
+  padding-block-end: var(--sp-8);
+  font-size: 1rem;
+  font-stretch: var(--stretch-lettering);
+  font-weight: 650;
 }
 
 .nav {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-4) var(--sp-16);
-  border-bottom: 1px solid var(--line);
+  order: 1;
+  gap: var(--sp-4);
 }
 
 .nav a {
-  padding: var(--sp-8) 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  margin-block-end: -1px;
+  padding: var(--sp-8) var(--sp-16);
   border-bottom: 2px solid transparent;
   color: var(--muted);
+  font-size: 1rem;
+  font-stretch: var(--stretch-lettering);
+  font-weight: 650;
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-in);
 }
 
 .nav a[aria-current="page"] {
-  border-bottom-color: var(--accent-strong);
+  border-bottom-color: var(--ink-rule);
   color: var(--text);
 }
+
+@media (hover: hover) {
+  .nav a:hover {
+    color: var(--text);
+  }
+}
+
+.nav a:focus-visible {
+  outline-offset: -2px;
+}
+
+@media (max-width: 39.99rem) {
+  .orgName {
+    order: 0;
+    flex-basis: 100%;
+    margin-inline-start: 0;
+    padding-block-end: var(--sp-4);
+  }
+}
+
+/* ---- the notice that asking is paused: it waits on the person, so it speaks in redline ---- */
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8) var(--sp-16);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--redline);
+  border-radius: var(--r-sm);
+  background: var(--redline-soft);
+}
+
+.bannerLabel {
+  color: var(--redline);
+}
+
+.bannerText {
+  flex: 1 1 18rem;
+}
+
+/* ---- page parts ---- */
 
 .page {
   display: flex;
@@ -45,47 +109,11 @@
   gap: var(--sp-24);
 }
 
-.head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-8) var(--sp-16);
-}
-
-.banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--sp-4) var(--sp-12);
-  padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line-strong);
-  border-inline-start: 4px solid var(--bad);
-  border-radius: var(--r-md);
-  background: var(--surface);
-}
-
-.bannerLabel {
-  color: var(--bad);
-  font-weight: 700;
-}
-
-.card {
+.stack {
   display: flex;
   flex-direction: column;
   gap: var(--sp-12);
   min-width: 0;
-  padding: var(--sp-16) var(--sp-20);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-}
-
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-12);
-  max-width: 28rem;
 }
 
 .row {
@@ -93,36 +121,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-8) var(--sp-12);
-}
-
-.choices {
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-/* The same sizes as the record screens' option checkboxes (features/record/constraints.module.css). */
-.choice {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-8);
-  min-height: 2rem;
-  cursor: pointer;
-}
-
-.choice input {
-  width: 1.125rem;
-  height: 1.125rem;
-  margin: 0;
-  accent-color: var(--accent-strong);
-}
-
-.problem {
-  padding: var(--sp-8) var(--sp-12);
-  border: 1px solid var(--bad);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  font-weight: 600;
 }
 
 .muted {
@@ -133,68 +131,180 @@
   overflow-wrap: anywhere;
 }
 
-/* ---- tables become cards on a phone ---- */
-
-.tableWrap {
-  overflow-x: auto;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.column {
-  padding: var(--sp-8) var(--sp-12);
-  border-bottom: 1px solid var(--line-strong);
-  color: var(--muted);
-  text-align: start;
-  vertical-align: bottom;
-}
-
-.cell {
-  padding: var(--sp-12);
-  border-top: 1px solid var(--line);
-  font-weight: 400;
-  text-align: start;
-  vertical-align: top;
+.company {
+  color: var(--text);
+  font-size: 1.0625rem;
+  font-weight: 550;
   overflow-wrap: anywhere;
 }
 
-.list {
+.sub {
+  display: block;
+  margin-block-start: var(--sp-2);
+  color: var(--muted);
+  font-size: var(--fs-small);
+  font-stretch: normal;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+/* "You owe N answers" under a title: what only the person can do, with the clock beside it */
+.owe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-4) var(--sp-12);
+  color: var(--redline);
+  font-weight: 650;
+}
+
+.problem {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--bad);
+  font-weight: 600;
+}
+
+/* A ruled block on the sheet for the forms that stand alone (create an organization, invite): ink rule on top */
+.paper {
   display: flex;
   flex-direction: column;
   gap: var(--sp-12);
+  max-width: var(--measure);
+  padding: var(--sp-16) var(--sp-20);
+  border: 1px solid var(--line-strong);
+  border-block-start: 2px solid var(--ink-rule);
+  border-radius: var(--r-sm);
+  background: var(--surface);
 }
 
-.cards {
-  display: none;
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  max-width: 46rem;
 }
 
-@media (max-width: 40rem) {
-  .tableWrap.swap {
-    display: none;
-  }
+/* ---- a form sheet: zones ruled apart, each with its number and title at the left and its controls at the right ---- */
 
-  .cards {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-12);
-  }
+.sheet {
+  display: flex;
+  flex-direction: column;
+  border-block-end: 1px solid var(--line);
 }
 
-/* ---- intake ---- */
-
-.split {
+.zone {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--sp-24);
+  gap: var(--sp-12) var(--sp-32);
+  min-width: 0;
+  padding-block: var(--sp-20);
+  border-block-start: 1px solid var(--line-strong);
 }
 
-@media (max-width: 52rem) {
-  .split {
-    grid-template-columns: minmax(0, 1fr);
+@media (min-width: 56rem) {
+  .zone {
+    grid-template-columns: 13rem minmax(0, 1fr);
+    align-items: start;
   }
+}
+
+.zoneHead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-12);
+}
+
+/* A zone's number is a ruled square, so it never reads as a balloon pointing at a source */
+.zoneNo {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1.5px solid var(--text);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.zoneTitle {
+  padding-block-start: var(--sp-2);
+  font-size: 1.0625rem;
+  font-stretch: var(--stretch-lettering);
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.zoneBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  min-width: 0;
+  max-width: 46rem;
+}
+
+/* the new-role form numbers its fields beside them, since each carries its own label */
+.numbered {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--sp-12);
+  align-items: start;
+}
+
+.numbered .zoneNo {
+  margin-block-start: var(--sp-2);
+}
+
+.fieldLabel {
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-12) var(--sp-16);
+  align-items: start;
+}
+
+/* three columns, so Country and City sit under Currency and the minimum */
+@media (min-width: 40rem) {
+  .fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.subhead {
+  padding-block-start: var(--sp-8);
+  border-block-start: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.choices {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* The same sizes as the record screens' option checkboxes; as tall as a field */
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  min-height: 2.5rem;
+  cursor: pointer;
+}
+
+.choice input {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--accent-strong);
 }
 
 .textarea {
@@ -207,6 +317,15 @@
   color: var(--text);
   font: inherit;
   resize: vertical;
+  transition: border-color var(--dur-fast) var(--ease-in);
+}
+
+.textarea[data-hovered] {
+  border-color: var(--text);
+}
+
+.textarea[data-focused] {
+  border-color: var(--focus);
 }
 
 .textarea[data-focus-visible] {
@@ -214,31 +333,150 @@
   outline-offset: 2px;
 }
 
+/* the posting as it was saved: a ruled sheet of paper, not a field */
 .source {
-  max-height: 12rem;
+  max-height: 14rem;
   overflow-y: auto;
-  padding: var(--sp-8) var(--sp-12);
+  padding: var(--sp-12) var(--sp-16);
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
+  background: var(--surface);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
+/* ---- the requirement list: ruled rows, the actions at the right edge in one size ---- */
+
+.items {
+  display: flex;
+  flex-direction: column;
+  border-block-start: 1px solid var(--line-strong);
+}
+
+.items > li {
+  border-block-end: 1px solid var(--line);
+}
+
+.item {
+  display: grid;
+  gap: var(--sp-8) var(--sp-24);
+  padding: var(--sp-12) var(--sp-8);
+}
+
+@media (min-width: 48rem) {
+  .item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+}
+
+.itemText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+/* Not confirmed yet is the thing that blocks publishing, and only the person can clear it */
+.itemState {
+  color: var(--muted);
+}
+
+.itemState[data-confirmed="false"] {
+  color: var(--redline);
+  font-weight: 600;
+}
+
+.itemActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+/* ---- the outside block: what the world sees (the anonymous counts) and the one button that acts on it ---- */
+
+.outside {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line-strong);
+  border-block-start: 2px solid var(--ink-rule);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding: var(--sp-16) var(--sp-20);
+  border: 1px solid var(--line-strong);
+  border-block-start: 2px solid var(--ink-rule);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.outside > section {
+  border: 0;
+  border-radius: 0;
+}
+
+.outside > section + section {
+  border-block-start: 1px solid var(--line-strong);
+}
+
 .counts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: var(--sp-12);
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  border-block-start: 1px solid var(--line-strong);
+  border-inline-start: 1px solid var(--line-strong);
 }
 
 .count {
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
+  min-width: 0;
+  padding: var(--sp-8) var(--sp-12) var(--sp-12);
+  border-block-end: 1px solid var(--line-strong);
+  border-inline-end: 1px solid var(--line-strong);
 }
 
 .countValue {
-  font-size: var(--fs-section);
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+/* "fewer than 5" is words, not a figure */
+.countValue[data-kind="text"] {
+  font-size: var(--fs-small);
+  line-height: 1.6;
+}
+
+.publish {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding: var(--sp-16) var(--sp-20);
+}
+
+.publishRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-12) var(--sp-24);
 }
 
 .blockers {
@@ -247,7 +485,92 @@
   gap: var(--sp-4) var(--sp-16);
 }
 
-/* ---- dialogs (the same look as the dismiss dialog) ---- */
+.blockers [data-state="missing"] {
+  color: var(--redline);
+  font-weight: 600;
+}
+
+.blockers [data-state="done"] {
+  color: var(--ok);
+}
+
+.consequence {
+  max-width: var(--measure);
+  color: var(--muted);
+}
+
+/* ---- ledgers (the rules come from components/ui/ledger.module.css) ---- */
+
+/* every column but the first takes only what it needs, so the figures sit together at the right */
+.tight th:not(:first-child),
+.tight td:not(:first-child) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+@media (max-width: 39.99rem) {
+  .tight th:not(:first-child),
+  .tight td:not(:first-child) {
+    width: auto;
+    white-space: normal;
+  }
+}
+
+.rowLink {
+  cursor: pointer;
+  outline-offset: -2px;
+}
+
+.rowLink[data-focus-visible] {
+  outline: 2px solid var(--focus);
+}
+
+/* answers owed that are overdue wait on the person */
+.owed[data-overdue] {
+  color: var(--redline);
+  font-weight: 600;
+}
+
+/* a select inside a ledger cell is named by the column head: the label is there for a screen reader */
+.cellField label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.inviteRow {
+  display: grid;
+  gap: var(--sp-12) var(--sp-16);
+  align-items: end;
+}
+
+@media (min-width: 48rem) {
+  .inviteRow {
+    grid-template-columns: minmax(14rem, 2fr) minmax(9rem, 1fr) auto;
+  }
+}
+
+.invited {
+  display: flex;
+  flex-direction: column;
+  border-block-start: 1px solid var(--line-strong);
+}
+
+.invited > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8) var(--sp-16);
+  padding: var(--sp-12) var(--sp-8);
+  border-block-end: 1px solid var(--line);
+}
+
+/* ---- dialogs ---- */
 
 .overlay {
   position: fixed;
@@ -264,8 +587,9 @@
   width: min(100%, 34rem);
   max-height: 100%;
   overflow-y: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--r-xl);
+  border: 1px solid var(--line-strong);
+  border-block-start: 2px solid var(--ink-rule);
+  border-radius: var(--r-lg);
   background: var(--surface);
   box-shadow: var(--shadow-2);
 }
@@ -278,28 +602,30 @@
   outline: none;
 }
 
+.dialog .textarea {
+  min-height: 8rem;
+}
+
 .presets {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-8);
 }
 
-/* ---- the answer clock ---- */
+/* ---- the answer clock: a figure on the sheet; overdue is stamped ---- */
 
 .clock {
   display: inline-flex;
   align-items: center;
-  padding: 0.2rem var(--sp-8);
-  border: 1px solid currentColor;
-  border-radius: var(--r-pill);
   font-family: var(--font-mono);
-  font-size: var(--fs-pill);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
   font-weight: 600;
   white-space: nowrap;
 }
 
 .clock[data-tone="neutral"] {
-  color: var(--muted);
+  color: var(--text);
 }
 
 .clock[data-tone="amber"] {
@@ -311,28 +637,150 @@
 }
 
 .clock[data-tone="overdue"] {
-  border-color: var(--bad);
-  background: var(--bad);
-  color: var(--bg);
+  padding: 0.1875rem var(--sp-8);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-sm);
+  color: var(--bad);
 }
 
-/* ---- shortlist ---- */
+/* ---- the shortlist: one ruled row per person, the answer and the signal at the right edge in one size ---- */
 
-.badge {
-  display: inline-flex;
-  padding: 0.2rem var(--sp-8);
-  border: 1px solid var(--accent-strong);
-  border-radius: var(--r-pill);
-  font-size: var(--fs-pill);
-  font-weight: 600;
+.candidates {
+  display: flex;
+  flex-direction: column;
+  border-block-start: 1px solid var(--line-strong);
+}
+
+.candidates > li {
+  border-block-end: 1px solid var(--line);
+}
+
+.candidate {
+  display: grid;
+  gap: var(--sp-16) var(--sp-32);
+  padding: var(--sp-20) var(--sp-8);
+  transition: background-color var(--dur-fast) var(--ease-in);
+}
+
+@media (min-width: 56rem) {
+  .candidate {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    align-items: start;
+  }
+}
+
+@media (hover: hover) {
+  .candidate:hover {
+    background: var(--surface);
+  }
+}
+
+.candidateMain {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-8);
+  min-width: 0;
+}
+
+.candidateName {
+  font-size: 1.0625rem;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-4) var(--sp-12);
+}
+
+.candidateSide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  min-width: 0;
+}
+
+.answerPair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-8);
+}
+
+/* the long signal button wraps instead of overflowing the edge */
+.candidateSide button {
+  justify-content: center;
+  padding-block: var(--sp-8);
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+}
+
+.verdicts {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  max-width: 44rem;
+  border-block-start: 1px solid var(--line);
+}
+
+.verdicts li {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: var(--sp-12);
+  align-items: start;
+  padding: var(--sp-4) 0;
+  border-block-end: 1px solid var(--line);
+}
+
+.verdicts li > :first-child {
+  justify-self: start;
+}
+
+@media (max-width: 30rem) {
+  .verdicts li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-4);
+  }
+}
+
+.answered {
+  align-self: stretch;
+  max-width: 44rem;
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.answered[data-answer="yes"] {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.disclosure {
+  align-self: stretch;
 }
 
 .shared {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-12);
+  gap: var(--sp-16);
+  margin-block-start: var(--sp-12);
+  padding-block-start: var(--sp-12);
+  border-block-start: 1px solid var(--line);
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  margin-block-start: var(--sp-4);
+  border-block-start: 1px solid var(--line);
 }
 
 .facts li {
+  padding: var(--sp-4) 0;
+  border-block-end: 1px solid var(--line);
   overflow-wrap: anywhere;
 }

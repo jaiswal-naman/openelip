@@ -22,8 +22,8 @@ const asOf = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle:
 export function PreviewPanel({ role }: { role: Pick<RoleView, "id" | "status"> }) {
   const preview = usePreview(role);
   return (
-    <section aria-labelledby="preview-heading" className={styles.card}>
-      <h2 id="preview-heading" className="t-label">
+    <section aria-labelledby="preview-heading" className={styles.preview}>
+      <h2 id="preview-heading" className={styles.zoneTitle}>
         Anonymous preview (counts only, no identities)
       </h2>
       {role.status === "draft" ? (
@@ -37,8 +37,10 @@ export function PreviewPanel({ role }: { role: Pick<RoleView, "id" | "status"> }
           <dl className={styles.counts}>
             {COUNTS.map(({ key, label }) => (
               <div key={key} className={styles.count}>
-                <dt className={styles.muted}>{label}</dt>
-                <dd className={styles.countValue}>{String(preview.data[key])}</dd>
+                <dt className={`t-label ${styles.muted}`}>{label}</dt>
+                <dd className={styles.countValue} data-kind={typeof preview.data[key] === "number" ? "figure" : "text"}>
+                  {String(preview.data[key])}
+                </dd>
               </div>
             ))}
           </dl>

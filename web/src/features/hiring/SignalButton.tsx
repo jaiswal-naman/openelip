@@ -21,9 +21,9 @@ export function SignalButton({ introductionId, roleId, orgId, alreadySent }: { i
   const left = quota ? Math.max(0, quota.limit - quota.used) : null;
   const exhausted = refused !== null || left === 0;
 
-  if (alreadySent || send.isSuccess) return <p className={styles.muted}>You sent serious interest for this candidate.</p>;
+  if (alreadySent || send.isSuccess) return <p className={`t-small ${styles.muted}`}>You sent serious interest for this candidate.</p>;
   return (
-    <div className={styles.shell}>
+    <div className={styles.stack}>
       <Button
         size="sm"
         isDisabled={exhausted || quota === undefined}
@@ -38,7 +38,7 @@ export function SignalButton({ introductionId, roleId, orgId, alreadySent }: { i
       >
         {quota ? `Send serious interest (${left} of ${quota.limit} left this week)` : "Send serious interest"}
       </Button>
-      {exhausted && quota && <p className={styles.muted}>{refused ?? `No serious-interest signals left this week. They reset on ${resetDate(quota.resets_at)} (UTC).`}</p>}
+      {exhausted && quota && <p className={`t-small ${styles.muted}`}>{refused ?? `No serious-interest signals left this week. They reset on ${resetDate(quota.resets_at)} (UTC).`}</p>}
       {send.isError && refused === null && (
         <p role="alert" className={styles.problem}>
           {messageFor(send.error as ApiFailure)}

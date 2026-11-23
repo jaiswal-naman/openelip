@@ -188,10 +188,13 @@ describe("/hire/answers", () => {
     expect(await screen.findByRole("heading", { name: "You owe no answers." })).toBeInTheDocument();
   });
 
-  it("gives phone widths a card per answer, overdue first", async () => {
+  it("stacks each answer for a phone with every cell named by its column, overdue first", async () => {
     renderWithApi(<Answers />, { "GET /v1/me": ok(me()), [`GET /v1/orgs/${ORG}/answer-clock`]: ok(owedTwo) });
-    const cards = within(await screen.findByRole("list", { name: "Answers owed, as cards" })).getAllByRole("listitem");
-    expect(cards[0]).toHaveTextContent("Demo Candidate A");
-    expect(cards[0]).toHaveTextContent("Overdue");
+    const table = await screen.findByRole("grid", { name: "Answers owed" });
+    const first = within(table).getAllByRole("row")[1]!;
+    expect(first).toHaveTextContent("Demo Candidate A");
+    expect(first).toHaveTextContent("Overdue");
+    expect(within(first).getAllByRole("gridcell").map((cell) => cell.getAttribute("data-label"))).toEqual(["Role", "Accepted", "Due", "Clock", "Answer"]);
+    expect(screen.queryByRole("list", { name: /Answers owed/ })).not.toBeInTheDocument();
   });
 });

@@ -132,7 +132,9 @@ describe("/hire/roles", () => {
     expect(within(rows[1]!).getByText("22 Nov")).toBeInTheDocument();
     expect(within(rows[2]!).getByText("Draft")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "New role" })).toHaveAttribute("href", "/hire/roles/new");
-    expect(screen.getByRole("list", { name: "Roles" })).toBeInTheDocument(); // the phone layout, hidden by CSS on a wide screen
+    // the phone layout is the same table, stacked by CSS: each cell after the role carries the name of its column
+    expect(within(rows[1]!).getAllByRole("gridcell").map((cell) => cell.getAttribute("data-label"))).toEqual(["Status", "Said yes", "Answers owed", "Updated"]);
+    expect(screen.queryByRole("list", { name: "Roles" })).not.toBeInTheDocument();
   });
 });
 
