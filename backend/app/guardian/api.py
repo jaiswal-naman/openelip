@@ -2,7 +2,7 @@
 public interface.
 
   SubjectGate, register_subject, register_citation_check   the registries a higher module fills when it is imported
-  open_run, close_run, record, timeline, entry, last_state_change   the flight recorder
+  open_run, close_run, record, timeline, entry, last_state_change, list_runs   the flight recorder
   propose_action                a proposed outside action: key one, key two, and the approval or the block
   approval_view, list_approvals, pending_counts, decide, undo       what the candidate sees and does (API login)
   release                       the worker's half of an approval (the `guardian.release` job)
@@ -38,7 +38,7 @@ from .budget import budget_ok, spent_microusd
 from .checks import GUARDIAN_VERSION, CheckResult, register_citation_check
 from .explain import explain
 from .policy import POLICY_VERSION, SubjectGate, register_subject
-from .recorder import close_run, entry, last_state_change, open_run, record, timeline
+from .recorder import RunRow, close_run, entry, last_state_change, list_runs, open_run, record, timeline
 from .scam import ScamSignal
 from .scam import signals as scam_signals
 
@@ -56,6 +56,7 @@ __all__ = [
     "Proposed",
     "ScamSignal",
     "SubjectGate",
+    "RunRow",
     "UndoResult",
     "approval_view",
     "budget_ok",
@@ -67,6 +68,7 @@ __all__ = [
     "get_autonomy",
     "hold",
     "last_state_change",
+    "list_runs",
     "list_approvals",
     "mark_executed",
     "open_run",
