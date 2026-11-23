@@ -1515,6 +1515,8 @@ CREATE TABLE chat_messages (
 CREATE INDEX chat_messages_session_idx ON chat_messages (session_id, created_at);
 ```
 
+What `refs` holds (Phase 5). A tool row: `{"reply_id", "aliases": {"d1": {"kind", "id"}}}`, the short names the model saw for real ids. An assistant row: `{"citations": [{alias, kind, <kind>_id}], "proposals": [<proposal event payloads>], "proposal_event_ids": [...], "unknown_citations": n, "last_event_id": n, "usage": {...}, "cost_usd": "...", "aliases": {...}}`; `aliases` appears only when the reply made a name no tool row holds (the job on screen). The session's alias table is rebuilt from the `aliases` of its tool and assistant rows. An assistant row's `content` is `''` unless `finish_reason = 'complete'`.
+
 ### 3.13 platform and evals: model registry, ledger, queue, evals
 
 <!-- ddl: 110_platform_evals.sql -->

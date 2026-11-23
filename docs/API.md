@@ -402,7 +402,7 @@ The brief email's `List-Unsubscribe` header names this `POST` URL. Its visible l
 | POST | `/v1/chat/sessions` | Open a session: `kind` is `onboarding` (the guided intake that proposes constraints and preferences) or `open` | C | REC-03, CHT-01 | 4 |
 | GET | `/v1/chat/sessions` | List sessions | C | CHT-01 | 4 |
 | GET | `/v1/chat/sessions/{session_id}/messages` | Transcript, including citations and proposal references | C | CHT-01 | 4 |
-| POST | `/v1/chat/sessions/{session_id}/messages` | Send a message: `content`, and optionally `context_job_id` (a job id; it becomes the agent's context for this message, so the panel's "context: Acme" reaches it). `202` with the reply's `message_id` and `stream_url`; generation starts at once | C | CHT-01, CHT-02, CHT-03, CHT-04 | 4 |
+| POST | `/v1/chat/sessions/{session_id}/messages` | Send a message: `text`, and optionally `context_job_id` (a job id; it becomes the agent's context for this message, so the panel's "context: Acme" reaches it). `202` with the reply's `message_id` and `stream_url`; generation starts at once | C | CHT-01, CHT-02, CHT-03, CHT-04 | 4 |
 | GET | `/v1/chat/sessions/{session_id}/messages/{message_id}/stream` | Server-sent events for one reply; reconnect with `Last-Event-ID` (section 4.2) | C | CHT-01 | 4 |
 | POST | `/v1/chat/sessions/{session_id}/messages/{message_id}/stop` | Stop generating; the partial reply is kept with `finish_reason: "stopped"` | C | CHT-01 | 4 |
 
@@ -1940,9 +1940,9 @@ data: {"message_id":"1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c02","finish_reason":"comp
 | `tool.result` | `call_id`, `tool`, `refs` | The tool returned. Only ids are sent, never tool output text |
 | `citation` | `kind` (`decision`, `job`, `fact`, `constraint`, `campaign`), the matching ids, and `alias` (Phase 5: the marker, such as `d1`, that the reply text carries as `[[d1]]`, so the client can place the chip) | A ledger entry the answer rests on (CHT-01) |
 | `proposal` | `event_id`, `entity`, `operation`, `before`, `after`, `statement` | A record change was proposed. The client shows confirm and decline, which call `/v1/me/events/{event_id}/confirm` or `/decline` (CHT-03) |
-| `message.snapshot` | `text` (everything so far), `citations`, `proposals` | Sent first on a reconnect, so the client can replace its partial copy |
-| `message.end` | `message_id`, `finish_reason` (`complete`, `length`, `stopped`, `interrupted`), `usage`, `cost_usd` | The reply is complete and stored |
-| `error` | `code`, `message`, `is_retryable` | The reply failed; what was written is kept with `finish_reason: "interrupted"` |
+| `message.snapshot` | `text` (everything so far), `citations`, `proposals` | Sent first on a reconnect, so the client can replace its partial copy. While the reply runs, its event `id` is the last event it covers; a snapshot built from the stored reply has no `id` |
+| `message.end` | `message_id`, `finish_reason` (`complete`, `length`, `stopped`, `interrupted`), `usage`, `cost_usd` | The reply is complete and stored. Always the last frame. `usage` and `cost_usd` are `null` only for a reply that was closed after the process running it died, so its cost is unknown |
+| `error` | `code`, `message`, `is_retryable` | The reply failed; what was written is kept with `finish_reason: "interrupted"`. Always followed by `message.end` with that reason |
 
 **Reconnection.** Event ids are a per-reply sequence. `EventSource` reconnects to the same URL with `Last-Event-ID: 5`. The server sends `message.snapshot` with all text so far, then live events with ids greater than 5. If the reply finished while the client was away, it sends `message.snapshot` and `message.end` and closes. If the backend restarted mid-reply, the reply is stored as `interrupted` and the client sees `message.end` with that reason. Sending a snapshot instead of every missed delta means text deltas need not be stored one by one.
 
