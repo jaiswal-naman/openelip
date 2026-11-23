@@ -59,7 +59,7 @@ def w(engine, monkeypatch):
 
 
 def call(user, args, aliases=None, message=""):
-    """Run the tool `args` names as `user`, the way the loop does: (user id, parsed input, the session's alias table)."""
+    """Run the tool `args` names as `user`, as the loop does: (user id, parsed input, the session's alias table)."""
     table = aliases if aliases is not None else AliasTable()
     return tools.build_tools(message)[args.tool](user, args, table), table
 
@@ -270,7 +270,11 @@ def test_get_decision_by_job_gives_the_newest_decision_else_the_check_the_ledger
         return call(w.ada, GetDecision(tool="get_decision", job=table.add("job", job)), table)[0].data
 
     stored = by_job(w.blocked.id)
-    assert (stored["outcome"], stored["is_on_request"], stored["violated_kinds"]) == ("filtered", False, ["excluded_company"])
+    assert (stored["outcome"], stored["is_on_request"], stored["violated_kinds"]) == (
+        "filtered",
+        False,
+        ["excluded_company"],
+    )
 
     abroad = by_job(w.abroad.id)  # no decision: the constraints are checked on the spot
     assert (abroad["outcome"], abroad["is_on_request"], abroad["decision"]) == ("filtered", True, None)
@@ -302,7 +306,10 @@ def test_get_job_returns_typed_fields_requirements_and_the_posting_as_an_untrust
         "open",
     )
     assert data["work_arrangements"] == ["remote"] and data["pay"] is None
-    assert [(r["text"], r["importance"]) for r in data["requirements"]] == [("Python", "required"), ("SQL", "preferred")]
+    assert [(r["text"], r["importance"]) for r in data["requirements"]] == [
+        ("Python", "required"),
+        ("SQL", "preferred"),
+    ]
     assert data["requirements_known"] is True
     assert data["posting_text"] == "Build nightly pipelines with Python and SQL." and data["posting_truncated"] is False
     assert "apply_url" not in data and "source" not in data  # nothing for the model to turn into a link

@@ -68,11 +68,11 @@ def reset_hub(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def make_world(engine: Engine, *, consent: bool = True) -> SimpleNamespace:
     """Ada and Bob, committed. Ada: the factory record (India, remote or hybrid), a constraint never to work for Globex
-    Demo, a target-title preference, one shown decision with its evidence and one the Globex constraint filtered, and
-    one application. Bob: a record, a shown decision on Ada's job and a withheld one on Ada's filtered job. Four more
-    postings: one Ada's constraints rule out by country, one by arrangement, one that passes them all and has no decision
-    (`fine`), and `abroad` and `onsite` are the first two. Call after use_provider: the consent is given under the
-    wording of the providers in force."""
+    Demo, a target-title preference, one shown decision with its evidence (on `ok`), one the Globex constraint
+    filtered (on `blocked`) and one application. Bob: a record, a shown decision on `ok` and a withheld one on
+    `blocked`. Five postings: `ok` passes Ada's constraints and has a decision; `abroad` (country) and `onsite`
+    (arrangement) break them and have none; `blocked` breaks the Globex one; `fine` passes them all and has no
+    decision. Call after use_provider: the consent is given under the wording of the providers in force."""
     w = SimpleNamespace()
     with engine.begin() as c:
         w.ada, w.bob = make_user(c), make_user(c)
@@ -165,7 +165,9 @@ def make_world(engine: Engine, *, consent: bool = True) -> SimpleNamespace:
     return w
 
 
-def start(engine: Engine, monkeypatch: pytest.MonkeyPatch, recording: Path | None = None, **env: str) -> SimpleNamespace:
+def start(
+    engine: Engine, monkeypatch: pytest.MonkeyPatch, recording: Path | None = None, **env: str
+) -> SimpleNamespace:
     """The provider first (the consent names it), then the world."""
     harness.empty_tables(engine)
     use_provider(monkeypatch, recording, **env)
