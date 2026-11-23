@@ -165,7 +165,8 @@ def gather(
     job = ingest.get_job(conn, gate.job_id) or {}
     decision = match.decision_for_job(conn, user_id, gate.job_id)
     constraints = profile.compiled_constraints(conn, user_id)
-    floor = (constraints.get("salary_floor") or {}).get("salary_floor")
+    stated = (constraints.get("salary_floor") or {}).get("salary_floor")
+    floor = stated.get("amount") if isinstance(stated, dict) else stated  # compiled as {"amount", "currency"}
     try:
         trust.require_consent(conn, user_id, "ai_processing")
         consent = True
