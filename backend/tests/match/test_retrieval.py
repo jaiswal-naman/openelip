@@ -226,6 +226,57 @@ def test_an_unknown_mode_is_refused(conn, person):
         retrieval.candidates(conn, person, mode="semantic")
 
 
+# --- retrieve: the same, for the person's own record ---------------------------------------------------------------
+
+
+def add_skill(conn, user, statement):
+    """A confirmed skill fact typed by the person (it needs its change-log row, as every record row does)."""
+    event = conn.execute(
+        text(
+            """INSERT INTO profile_events (user_id, event_type, entity, operation, after, source, record_version_after)
+               VALUES (:u, 'applied', 'fact', 'create', '{}', 'candidate_edit', 2) RETURNING id"""
+        ),
+        {"u": user},
+    ).scalar_one()
+    conn.execute(
+        text(
+            """INSERT INTO profile_facts (user_id, kind, statement, source, profile_event_id, confirmed_at)
+               VALUES (:u, 'skill', :s, 'candidate_edit', :e, now())"""
+        ),
+        {"u": user, "s": statement, "e": event},
+    )
+
+
+def test_retrieve_builds_the_keywords_and_the_vector_from_the_persons_own_record(conn, person, monkeypatch):
+    embedded = []
+
+    def embed(texts):
+        embedded.append(texts)
+        return [QUERY_VECTOR]
+
+    monkeypatch.setattr(retrieval, "embed_passages", embed)
+    add_skill(conn, person, "Python")
+    match = add_job(conn, "Python engineer", tilt=0.0)
+    other = add_job(
+        conn, "Plain role", description="Plain role. Nothing in common. You will do it every day.", tilt=1.0
+    )
+
+    assert ids(retrieval.retrieve(conn, person, mode="keyword")) == [match.id]  # the word python is in one posting
+    assert embedded == []  # keywords alone never load the model
+    assert ids(retrieval.retrieve(conn, person, mode="vector")) == [match.id, other.id]  # nearest first
+    assert len(embedded) == 1 and "Python" in embedded[0][0]  # the passage is the person's facts
+    assert ids(retrieval.retrieve(conn, person)) == [match.id, other.id]  # hybrid: the match leads both lists
+    assert retrieval.retrieve(conn, person, limit=1) == retrieval.retrieve(conn, person)[:1]
+
+
+def test_retrieve_for_a_person_with_no_facts_finds_nothing(conn, monkeypatch):
+    monkeypatch.setattr(retrieval, "embed_passages", lambda texts: pytest.fail("there is nothing to embed"))
+    free = make_user(conn)
+    add_job(conn, "Python engineer", tilt=0.0)
+
+    assert retrieval.retrieve(conn, free) == []
+
+
 # --- the jobs the constraints removed ---------------------------------------------------------------------------------
 
 
