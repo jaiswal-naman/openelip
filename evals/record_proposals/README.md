@@ -45,3 +45,10 @@ Files: `build.py` (authored scripts; writes the next two), `gold.jsonl`, `record
 ## Corrections after a run
 
 None.
+
+## Changes after a run (05-FIXES B3)
+
+After the baseline run the quote rule gained a second half: a quote must be at least 8 characters and carry the words the
+proposal writes (`app.chat.proposals._says`; a vague quote such as "this posting" is dropped as `quote_too_vague`). A clean
+replay of the 20 scripts on a scratch database still stores the same 12 proposals (precision 1.0, recall 1.0, `n_stored`
+12), so `baseline.json` is unchanged. No gold case, recording or bar was edited.
