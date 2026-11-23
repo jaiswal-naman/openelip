@@ -477,6 +477,8 @@ NOT_EXPORTED = {
     # Plan 07-01: the checkpoints of a campaign's graph hold ids, the next node and the resume cause, never personal
     # text (DATA_MODEL 3.15), and have no user column; they leave with the campaign by trigger. What the campaign did
     # is exported from campaigns and guardian.
+    # Plan 08-01: an attempt of the wind tunnel points at a synthetic account only; it holds ids, a seed and a status.
+    "sim_runs": "an attempt of a synthetic account in the wind tunnel; erasure only clears candidate_user_id",
     "langgraph.checkpoints": "graph state of ids only, keyed by campaign; erased with the campaign by trigger",
     "langgraph.checkpoint_blobs": "graph state of ids only, keyed by campaign; erased with the campaign by trigger",
     "langgraph.checkpoint_writes": "graph state of ids only, keyed by campaign; erased with the campaign by trigger",

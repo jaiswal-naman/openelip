@@ -1693,7 +1693,7 @@ CREATE TABLE sim_results (
 CREATE INDEX sim_results_run_idx ON sim_results (sim_run_id);
 
 -- EVL-04: a scenario passes in an eval run only if all five attempts finished and passed.
-CREATE VIEW sim_scenario_verdicts AS
+CREATE VIEW sim_scenario_verdicts WITH (security_invoker = true) AS
 SELECT r.eval_run_id,
        r.scenario_id,
        count(*)                                    AS attempts,
@@ -2878,6 +2878,19 @@ CREATE POLICY match_write ON match_evidence  TO app_match USING (true) WITH CHEC
 CREATE POLICY match_write ON llm_calls       TO app_match USING (true) WITH CHECK (true);
 CREATE POLICY match_write ON queue_jobs      TO app_match USING (true) WITH CHECK (true);
 
+-- Plan 08-01: the three wind-tunnel tables are public reference data (any signed-in login reads the scoreboard) and
+-- also carry row-level security, so every table has a policy. The view is security_invoker: the caller's grants and
+-- these policies apply to it. Writes stay with the worker and the append-only triggers (4.5).
+ALTER TABLE sim_scenarios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sim_runs      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sim_results   ENABLE ROW LEVEL SECURITY;
+CREATE POLICY reference_read ON sim_scenarios FOR SELECT TO app_api, app_match USING (true);
+CREATE POLICY reference_read ON sim_runs      FOR SELECT TO app_api, app_match USING (true);
+CREATE POLICY reference_read ON sim_results   FOR SELECT TO app_api, app_match USING (true);
+CREATE POLICY worker_all ON sim_scenarios TO app_worker USING (true) WITH CHECK (true);
+CREATE POLICY worker_all ON sim_runs      TO app_worker USING (true) WITH CHECK (true);
+CREATE POLICY worker_all ON sim_results   TO app_worker USING (true) WITH CHECK (true);
+
 -- The worker serves every person, so it sees every row; privileges below still bind it.
 DO $$
 DECLARE
@@ -3108,9 +3121,9 @@ Every table, and what erasure does to it. Erasure is `erase_user(user_id, reques
 | Deleted with the account (cascade from `users`) | `users`, `sessions`, `consents`, `documents` (including the file bytes), `profile_events`, `profile_facts`, `constraints`, `preferences`, `match_runs` (candidate runs), `match_decisions`, `match_evidence`, `feedback_events`, `briefs`, `brief_items`, `outbox` (the person's messages), `tailored_resumes`, `resume_edits`, `application_packets`, `applications`, `application_events`, `org_members` (their membership), `introductions` (as candidate), `shortlist_entries`, `interest_signals`, `campaigns`, `campaign_steps`, `company_dossiers`, `agent_runs`, `agent_actions`, `approvals`, `autonomy_settings`, `guardian_checks`, `twin_scopes`, `twin_sessions`, `twin_messages`, `agent_tokens`, `chat_sessions`, `chat_messages`, `queue_jobs` (the person's jobs), `idempotency_keys`, `audit_log` (rows about the person), `eval_items` (only rows built from this person's data) |
 | Deleted by email, no foreign key | `login_codes` |
 | Deleted by trigger, no foreign key (schema `langgraph`, owner module `guardian`) | `langgraph.checkpoints`, `langgraph.checkpoint_blobs`, `langgraph.checkpoint_writes`: thread `campaign:{id}` goes with its `campaigns` row, thread `twin:{id}` with its employer question row in `twin_messages` (section 3.15) |
-| Row kept, reference set to NULL | `audit_log.actor_user_id`, `llm_calls.user_id` (and `campaign_id`, `agent_run_id` as those rows go), `organizations.created_by`, `org_members.invited_by`, `roles.created_by`, `introductions.employer_answered_by`, `interest_signals.sent_by`, `twin_sessions.opened_by`, `sim_runs.candidate_user_id`, `data_requests.user_id` |
+| Row kept, reference set to NULL | `audit_log.actor_user_id`, `llm_calls.user_id` (and `campaign_id`, `agent_run_id` as those rows go), `organizations.created_by`, `org_members.invited_by`, `roles.created_by`, `introductions.employer_answered_by`, `interest_signals.sent_by`, `twin_sessions.opened_by`, `sim_runs.candidate_user_id` (a synthetic account; registered `set_null` by `app.evals.privacy`), `data_requests.user_id` |
 | Kept, by design | `data_requests.subject_user_id`: the bare id, so that a database restored from a backup taken before the erasure can be erased again (section 11, issue 9) |
-| Holds no personal data | `job_sources`, `jobs`, `fetch_runs`, `skills`, `job_requirements`, `organizations`, `roles`, `role_requirements`, `model_registry`, `eval_runs`, `sim_scenarios`, `sim_runs`, `sim_results`, `langgraph.checkpoint_migrations` |
+| Holds no personal data | `job_sources`, `jobs`, `fetch_runs`, `skills`, `job_requirements`, `organizations`, `roles`, `role_requirements`, `model_registry`, `eval_runs`, `sim_scenarios`, `sim_results` (registered `no_personal_data`; `sim_runs` is `set_null` above), `langgraph.checkpoint_migrations` |
 
 The deletion catalogue test (ARCHITECTURE.md 8.4) reads this registry and section 3.0: every table in schemas `public` and `langgraph` must appear in both, with its owner module. It also runs the orphan-thread check below and fails unless it returns 0, that is, unless every checkpoint `thread_id` has the form `campaign:{uuid}` or `twin:{uuid}` and names a campaign or employer question that still exists.
 
