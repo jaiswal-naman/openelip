@@ -34,15 +34,33 @@ export function todayQuery(api: Api, date: string | null = null) {
   });
 }
 
-// ponytail: the newest 100 withheld and filtered rows of the day. A day holds at most a few dozen; add paging (the API has a cursor) if that ever stops being true.
-export const WHY_NOT_LIMIT = 100;
+export const WHY_NOT_PAGE_SIZE = 100;
+// ponytail: stop after 1,000 rows. A day's runs store up to about 70 held-back rows each, so a real day is far below it; the bound only
+// keeps a ledger that never stops handing out a cursor from making the page ask for ever.
+export const WHY_NOT_MAX_PAGES = 10;
 
-/** Everything held back on one local date: withheld and filtered decisions, newest first (MAT-06). */
+/**
+ * Everything held back on one local date: withheld and filtered decisions, newest first (MAT-06). A day with several runs can hold
+ * more than one page, so this follows the cursor in the envelope's meta (which `unwrap` drops) until the ledger has no more.
+ */
 export function whyNotQuery(api: Api, date: string) {
   return queryOptions({
     queryKey: matchKeys.whyNot(date),
-    queryFn: ({ signal }) =>
-      unwrap(api.GET("/v1/decisions", { params: { query: { outcome: "withheld,filtered", from: date, to: date, limit: WHY_NOT_LIMIT } }, signal })),
+    queryFn: async ({ signal }) => {
+      const rows: DecisionView[] = [];
+      let cursor: string | undefined;
+      for (let page = 0; page < WHY_NOT_MAX_PAGES; page += 1) {
+        const pending = api.GET("/v1/decisions", {
+          params: { query: { outcome: "withheld,filtered", from: date, to: date, limit: WHY_NOT_PAGE_SIZE, cursor } },
+          signal,
+        });
+        rows.push(...(await unwrap(pending)));
+        const next = (await pending).data?.meta.next_cursor;
+        if (typeof next !== "string" || next === "") break;
+        cursor = next;
+      }
+      return rows;
+    },
   });
 }
 

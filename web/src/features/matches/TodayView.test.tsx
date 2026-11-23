@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { account } from "@/test/record";
 import { fail, ok, renderWithApi } from "@/test/render";
+import { type DecisionView, WHY_NOT_MAX_PAGES } from "./queries";
 import { TodayView } from "./TodayView";
 import { brief, briefDecision, DECISION_ID, decisionView, matchView, OTHER_DECISION_ID, todayMatches } from "./testing";
 
@@ -24,7 +25,7 @@ const BRIEF_ID = brief().id;
 const withModel = account({}, { capabilities: ["match.evidence.score"] });
 
 /** A signed-in person with a model, a brief and one match, unless a test says otherwise. */
-function routes(over: Record<string, Response> = {}) {
+function routes(over: Record<string, Response | ((request: Request) => Response)> = {}) {
   return {
     "GET /v1/me": ok(withModel),
     "GET /v1/matches": ok(todayMatches()),
@@ -258,6 +259,35 @@ describe("Today: why not", () => {
     expect(query.get("outcome")).toBe("withheld,filtered");
     expect(query.get("from")).toBe("2026-11-23");
     expect(query.get("to")).toBe("2026-11-23");
+  });
+
+  /** A ledger that hands out `size` rows a time, whatever limit was asked for; the cursor is an offset the page must treat as opaque. */
+  const ledgerOf = (all: DecisionView[], size: number) => (request: Request) => {
+    const query = new URL(request.url).searchParams;
+    const offset = Number(query.get("cursor")?.slice(1) ?? 0);
+    const page = all.slice(offset, offset + size);
+    return ok(page, 200, { count: page.length, limit: Number(query.get("limit")), next_cursor: offset + size < all.length ? `c${offset + size}` : null });
+  };
+  const ledgerCalls = (calls: Request[]) => calls.filter((call) => new URL(call.url).pathname === "/v1/decisions");
+
+  it("reads every page of what was held back, so a day with several runs is not undercounted", async () => {
+    const held = (id: number) =>
+      decisionView({ decision_id: `00000000-0000-4000-8000-${String(id).padStart(12, "0")}`, job: { ...decisionView().job, id, title: `Demo posting (invented): Held ${id}` } });
+    const { calls } = renderWithApi(<TodayView />, routes({ "GET /v1/decisions": ledgerOf([1, 2, 3, 4, 5].map(held), 2) }));
+
+    const group = await screen.findByRole("region", { name: "Filtered by your constraints (5)" });
+    expect(within(group).getAllByRole("listitem")).toHaveLength(5);
+    expect(within(group).queryByText(/best-ranked of/)).not.toBeInTheDocument(); // nothing is left out, so there is nothing to say about it
+
+    const asked = ledgerCalls(calls).map((call) => new URL(call.url).searchParams);
+    expect(asked.map((query) => query.get("cursor"))).toEqual([null, "c2", "c4"]);
+    expect(asked.every((query) => query.get("outcome") === "withheld,filtered" && query.get("from") === "2026-11-23" && query.get("to") === "2026-11-23")).toBe(true);
+  });
+
+  it("stops after a bounded number of pages, so a ledger that never ends cannot make the page ask for ever", async () => {
+    const { calls } = renderWithApi(<TodayView />, routes({ "GET /v1/decisions": () => ok([decisionView()], 200, { next_cursor: "again" }) }));
+    await screen.findByRole("region", { name: /Filtered by your constraints/ });
+    expect(ledgerCalls(calls)).toHaveLength(WHY_NOT_MAX_PAGES);
   });
 
   it("asks for the ledger only when its tab is the one shown", async () => {
