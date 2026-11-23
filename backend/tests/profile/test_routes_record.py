@@ -673,15 +673,15 @@ def test_the_profile_tables_are_registered_for_deletion_and_export():
     assert trust_privacy.exporters()["profile"] is profile_privacy.export_profile
 
 
-def test_the_worker_registers_the_profile_handlers_and_the_registry_in_its_own_process():
+def test_the_worker_registers_the_profile_handlers_and_the_registry_in_its_own_process(monkeypatch):
     import app.worker as worker
 
     assert worker.profile_jobs is jobs and worker.profile_privacy is profile_privacy
     calls = [n for n in ast.walk(ast.parse(inspect.getsource(worker.main))) if isinstance(n, ast.Call)]
     assert any(ast.unparse(call.func) == "profile_jobs.register" for call in calls)
-    before = dict(queue._handlers)
+    monkeypatch.setattr(queue, "_handlers", {})  # a fresh registry: register() meets no handler another test added
     jobs.register()
-    assert queue._handlers == before  # none yet: plan 03-05 adds profile.parse
+    assert list(queue._handlers) == ["profile.parse"]  # plan 03-05 added the parse handler
 
 
 def test_the_api_mounts_the_profile_router_and_imports_the_registration():
