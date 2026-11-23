@@ -14,9 +14,9 @@ describe("HeldDecision", () => {
     expect(screen.getByRole("link", { name: "See everything held back" })).toHaveAttribute("href", "/app/today?view=why-not");
   });
 
-  it("says a constraint that has since been removed is gone, instead of guessing which one it was", () => {
+  it("says a constraint that has since been removed or replaced is gone, instead of guessing which one it was", () => {
     render(<HeldDecision decision={decisionData({ constraint: { id: null, kind: "location", statement: null } })} />);
-    expect(screen.getByText(/The constraint that removed it is one you have since removed/)).toBeInTheDocument();
+    expect(screen.getByText(/The constraint that removed it is one you have since removed or changed/)).toBeInTheDocument();
   });
 
   it("explains a withheld job in plain words and lists where a scored one fell short", () => {

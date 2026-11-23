@@ -47,7 +47,7 @@ export function HeldDecision({ decision }: { decision: DecisionData }) {
         </ul>
         {filtered && (
           <p>
-            {decision.constraint?.statement ? <>Your rule: &ldquo;{decision.constraint.statement}&rdquo;</> : "The constraint that removed it is one you have since removed."}
+            {decision.constraint?.statement ? <>Your rule: &ldquo;{decision.constraint.statement}&rdquo;</> : "The constraint that removed it is one you have since removed or changed."}
             {decision.violated_kinds.length > 0 && <> ({decision.violated_kinds.map((kind) => CONSTRAINT_KIND_LABELS[kind]).join(", ")})</>}
           </p>
         )}

@@ -226,10 +226,10 @@ describe("Today: why not", () => {
     expect(within(group).getAllByRole("listitem")).toHaveLength(1);
   });
 
-  it("says a constraint the person has since removed is gone, instead of guessing it", async () => {
+  it("says a constraint the person has since removed or replaced is gone, instead of guessing it", async () => {
     const removed = decisionView({ constraint: { id: null, kind: "location", statement: null } });
     renderWithApi(<TodayView />, routes({ "GET /v1/decisions": ok([removed]) }));
-    expect(await screen.findByText(/a constraint you have since removed/)).toBeInTheDocument();
+    expect(await screen.findByText(/a constraint you have since removed or changed/)).toBeInTheDocument();
   });
 
   it("says so when nothing was held back, and when no run has finished", async () => {

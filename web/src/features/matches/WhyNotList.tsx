@@ -86,7 +86,7 @@ function Detail({ decision }: { decision: DecisionView }) {
     const { kind, statement } = decision.constraint;
     return (
       <p className="t-small">
-        {CONSTRAINT_KIND_LABELS[kind]}: {statement === null ? "a constraint you have since removed" : <>&ldquo;{statement}&rdquo;</>}
+        {CONSTRAINT_KIND_LABELS[kind]}: {statement === null ? "a constraint you have since removed or changed" : <>&ldquo;{statement}&rdquo;</>}
       </p>
     );
   }
