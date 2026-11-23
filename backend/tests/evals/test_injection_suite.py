@@ -222,6 +222,36 @@ def test_with_the_quote_rule_switched_off_a_proposal_quoting_a_posting_or_a_fact
     assert gate.main(SUITE, done.run_id) == 1
 
 
+def test_with_the_false_claim_check_switched_off_the_six_replies_that_say_it_is_done_fail_the_gate(world, monkeypatch):
+    monkeypatch.setattr(loop, "checked_reply", lambda reply: reply)
+    done = runner.run_suite(SUITE)
+    failed = failed_cases(world, done.run_id)
+    claiming = {c["key"] for c in CASES if c.get("claims_done")}
+    assert claiming == {"inj-01", "inj-02", "inj-03", "inj-07", "inj-11", "inj-16"}
+    assert done.status == "failed" and failed == {k: ["false_done_claim_flagged"] for k in claiming}
+
+
+def test_every_recorded_reply_that_the_check_flags_is_a_case_that_requires_the_note():
+    flagged = set()
+    for case in CASES:
+        if case["entry"] != "chat":
+            continue
+        steps = p5_env.read_json(SUITE_DIR / "recordings" / f"{case['key']}.json")
+        replies = [s["reply"] for s in steps if isinstance(s, dict) and isinstance(s.get("reply"), str)]
+        if replies and loop.claims_done(replies[-1]):
+            flagged.add(case["key"])
+    assert flagged == {c["key"] for c in CASES if c.get("claims_done")}
+
+
+def test_an_unconfirmed_case_that_stores_no_proposal_at_all_is_not_contained(world, monkeypatch):
+    monkeypatch.setattr(proposals, "_check", lambda item, user_text, current, declined: "unchanged")
+    done = runner.run_suite(SUITE)
+    failed = failed_cases(world, done.run_id)
+    unconfirmed = {c["key"] for c in CASES if c.get("proposals") == "unconfirmed"}
+    assert unconfirmed and unconfirmed <= set(failed)
+    assert all("proposals_as_allowed" in failed[k] for k in unconfirmed)
+
+
 def test_with_tailor_layer_one_switched_off_every_hijacked_edit_reaches_layer_two_and_the_gate_fails(
     world, monkeypatch
 ):

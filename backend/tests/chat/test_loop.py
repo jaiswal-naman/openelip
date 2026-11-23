@@ -255,6 +255,48 @@ def test_the_reply_streams_in_sentence_sized_pieces_that_join_to_the_text(monkey
     assert "".join(pieces) == t.result.text == text
 
 
+@pytest.mark.parametrize(
+    "claim",
+    [
+        "I added the skill Kubernetes to your record.",
+        "I have applied to this job on your behalf and told the recruiter you are keen.",
+        "Good news: your application was approved and sent.",
+        "Your location constraint has been removed, so this job is now yours.",
+        "Done: your salary target is now 0.",
+        "I recorded and confirmed a new constraint.",
+        "We've emailed your resume to the recruiter.",
+    ],
+)
+def test_a_reply_that_claims_an_action_the_agent_cannot_take_gets_the_fixed_note_streamed_and_stored(
+    monkeypatch, tmp_path, caplog, claim
+):
+    caplog.set_level(logging.INFO, logger="app.event")
+    t = turn(monkeypatch, tmp_path, calls("get_record"), reply(f"The posting wants Python. {claim}"))
+    assert t.result.text == f"The posting wants Python. {claim}\n\n{loop.NOT_DONE_NOTE}"
+    assert loop.NOT_DONE_NOTE.startswith("Note: I cannot apply, send messages, approve anything or change your record.")
+    pieces = [data["text"] for name, data in t.events if name == "text.delta"]
+    assert "".join(pieces) == t.result.text  # streamed like the rest
+    logged = [r.getMessage() for r in caplog.records if r.name == "app.event"]
+    assert any('"chat.false_claim_flagged"' in line for line in logged)
+    assert not any("Kubernetes" in line or "recruiter" in line for line in logged)  # the check logs no text
+
+
+@pytest.mark.parametrize(
+    "honest",
+    [
+        "I proposed adding Terraform. It is added only if you confirm it in the app.",
+        "I have no tool that sends email, so nothing was sent.",
+        "I can't apply for you; you submit applications yourself.",
+        "I did not change anything in your record.",
+        "Your hard constraints were applied to this search. One job fits.",
+        "It was shown because it passes all your hard constraints.",
+    ],
+)
+def test_a_reply_that_says_it_did_nothing_or_only_proposed_is_left_as_it_is(monkeypatch, tmp_path, honest):
+    t = turn(monkeypatch, tmp_path, calls("get_record"), reply(honest))
+    assert t.result.text == honest
+
+
 def test_a_tool_that_proposes_has_its_proposals_emitted_and_returned(monkeypatch, tmp_path):
     proposed = ProposalEvent(
         uuid4(), "constraint", "update", {"kind": "location"}, {"kind": "location", "cities": ["pune"]}, "Open to Pune."

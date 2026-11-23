@@ -67,6 +67,26 @@ def test_it_refuses_a_database_whose_name_does_not_end_in_test(engine, monkeypat
         demo.seed_tailor(email)
 
 
+@pytest.mark.parametrize("seed", ["seed_matches", "seed_tailor"])
+def test_it_refuses_a_login_connected_to_a_database_that_does_not_end_in_test_whatever_its_url_says(
+    engine, monkeypatch, seed
+):
+    """The URL check is switched off here, as if a url named a scratch database and reached another: the server's own
+    answer to current_database() still refuses, before a row is written."""
+    email = sign_in(engine)
+    url = config.get().database_url_migrate.rsplit("/", 1)[0] + "/postgres"
+    settings_with(monkeypatch, database_url_migrate=url)
+    monkeypatch.setattr(demo, "_refuse_unless_scratch_and_fake", lambda: None)
+    monkeypatch.setattr(db, "_engines", {})  # engines are made from the settings once: make this role's again
+    try:
+        with pytest.raises(demo.SeedRefused, match=r"connected to database 'postgres', which does not end in _test"):
+            getattr(demo, seed)(email)
+    finally:
+        for made in db._engines.values():
+            made.dispose()
+    assert scalar(engine, "SELECT count(*) FROM jobs") == 0
+
+
 def test_it_refuses_a_live_model_provider(engine, monkeypatch):
     email, _ = seeded_account(engine)
     settings_with(monkeypatch, llm_provider="anthropic")

@@ -14,7 +14,7 @@ from sqlalchemy.engine import URL, make_url
 from app.platform import config, db
 from app.platform.llm import fake
 
-DB_VARIABLES = ("DATABASE_URL_MIGRATE", "DATABASE_URL_API", "DATABASE_URL_WORKER")
+DB_VARIABLES = ("DATABASE_URL_MIGRATE", "DATABASE_URL_API", "DATABASE_URL_WORKER", "DATABASE_URL_MATCH")
 
 
 @pytest.fixture(scope="module")
