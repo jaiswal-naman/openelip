@@ -42,3 +42,15 @@ def _fake_is_clean() -> Iterator[None]:
     fake.replay_from(None)
     yield
     fake.replay_from(None)
+
+
+@pytest.fixture
+def fake_provider(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """The configured provider is the fake one for the test (the tunnel refuses a replay with any other)."""
+    from app.platform import config
+
+    monkeypatch.setenv("LLM_PROVIDER", "fake")
+    config.get.cache_clear()
+    yield
+    monkeypatch.undo()
+    config.get.cache_clear()
