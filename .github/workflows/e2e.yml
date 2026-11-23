@@ -1,11 +1,12 @@
 # Browser tests against the real stack (PLT-01, PLT-02, UI-03): docker compose builds and starts everything, then Playwright
 # signs in with a code read from the mail catcher, uses the app and scans every screen with axe in both themes.
-# It runs on pushes to main and every night, not on every pull request: it takes minutes, and ci.yml already gates pull
-# requests. No secret is used: every key in .env.example is a published development value.
+# It runs on pull requests, pushes to main and every night: phase branches are tested here, in the cloud, before they
+# merge, instead of on a developer machine. No secret is used: every key in .env.example is a published development value.
 # Every action is pinned to a commit SHA (the version is in the comment) and the token is read-only.
 name: e2e
 
 on:
+  pull_request:
   push:
     branches: [main]
   schedule:
