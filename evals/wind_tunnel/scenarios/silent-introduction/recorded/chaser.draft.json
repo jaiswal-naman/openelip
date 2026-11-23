@@ -1,0 +1,9 @@
+[
+  {"sentences": [
+     {"text": "I applied on 3 November 2026.", "facts": [], "dossier_claims": [], "events": ["e1"]},
+     {"text": "I built nightly Python and PostgreSQL pipelines.", "facts": ["f2"], "dossier_claims": [], "events": []},
+     {"text": "I remain very interested.", "facts": [], "dossier_claims": [], "events": []}]},
+  {"sentences": [
+     {"text": "I applied on 3 November 2026.", "facts": [], "dossier_claims": [], "events": ["e1"]},
+     {"text": "I built nightly Python and PostgreSQL pipelines.", "facts": ["f2"], "dossier_claims": [], "events": []}]}
+]
