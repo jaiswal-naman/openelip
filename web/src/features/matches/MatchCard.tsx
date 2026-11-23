@@ -46,8 +46,8 @@ export function MatchCard({ match, headingLevel = 2 }: { match: MatchView; headi
         )}
       </div>
       <div className={styles.cardSide}>
-        <p className="t-data">Source: {sourceLabel(job.source.ats)}</p>
-        <p className="t-data">
+        <p className="t-small muted">Source: {sourceLabel(job.source.ats)}</p>
+        <p className="t-small muted">
           Verified open <LocalTime iso={job.last_verified_at} />
         </p>
       </div>

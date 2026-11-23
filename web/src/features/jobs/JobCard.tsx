@@ -27,8 +27,8 @@ export function JobCard({ job }: { job: Job }) {
         </p>
       </div>
       <div className={styles.side}>
-        <p className="t-data">Source: {sourceLabel(job.source.ats)}</p>
-        <p className="t-data">
+        <p className="t-small muted">Source: {sourceLabel(job.source.ats)}</p>
+        <p className="t-small muted">
           Verified open <LocalTime iso={job.last_verified_at} />
         </p>
         {applyUrl === null ? (
