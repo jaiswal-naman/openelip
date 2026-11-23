@@ -1,0 +1,142 @@
+/* The chat panel: a side sheet on a desktop screen, the whole screen on a phone (FRONTEND_UI 3.11). Tokens only. */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+  background: rgb(0 0 0 / 0.45);
+}
+
+.modal {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  background: var(--surface);
+}
+
+@media (min-width: 40rem) {
+  .modal {
+    width: min(100%, 30rem);
+    border-inline-start: 1px solid var(--line);
+    box-shadow: var(--shadow-2);
+  }
+}
+
+.dialog {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--sp-12);
+  min-height: 0;
+  padding: var(--sp-16);
+  outline: none;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8);
+}
+
+.context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  padding: var(--sp-4) var(--sp-12);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  font-size: var(--fs-small);
+}
+
+.log {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--sp-12);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.user {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: var(--sp-8) var(--sp-12);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
+}
+
+.assistant {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  overflow-wrap: anywhere;
+}
+
+.text {
+  white-space: pre-wrap;
+}
+
+.status {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0 var(--sp-8);
+  border: 1px solid var(--info);
+  border-radius: var(--r-pill);
+  color: var(--info);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+.proposal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding: var(--sp-12);
+  border: 1px solid var(--line-strong);
+  border-inline-start: 4px solid var(--accent-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.values {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--sp-4) var(--sp-12);
+}
+
+.values dt {
+  color: var(--muted);
+}
+
+.values dd {
+  overflow-wrap: anywhere;
+}
+
+.problem {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8) var(--sp-12);
+}
