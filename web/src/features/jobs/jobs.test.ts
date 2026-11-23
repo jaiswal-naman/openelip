@@ -95,6 +95,10 @@ describe("payText", () => {
     expect(plain(payText({ min: 120000, max: 150000, currency: "USD" }, "en-US"))).toBe("USD 120,000 to USD 150,000 a year");
   });
 
+  it("states one amount, not a range, when both ends are the same", () => {
+    expect(plain(payText({ min: 100000, max: 100000, currency: "USD" }, "en-US"))).toBe("USD 100,000 a year");
+  });
+
   it("says From or Up to when only one end is stated, and groups digits the viewer's way", () => {
     expect(plain(payText({ min: 3000000, max: null, currency: "INR" }, "en-IN"))).toBe("From INR 30,00,000 a year");
     expect(plain(payText({ min: null, max: 150000, currency: "USD" }, "en-US"))).toBe("Up to USD 150,000 a year");
