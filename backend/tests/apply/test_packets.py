@@ -152,6 +152,7 @@ def test_a_tailored_resume_of_another_person_or_job_is_404_and_one_not_ready_is_
 def test_without_a_named_tailored_resume_the_newest_ready_one_is_used(w):
     with w.engine.begin() as c:
         make_tailored_resume(c, w.ada, w.job)
+    with w.engine.begin() as c:  # another transaction: rows of one transaction share their creation time
         newest = make_tailored_resume(c, w.ada, w.job)
     assert ok(ask(w), 202)["tailored_resume_id"] == str(newest)
 
