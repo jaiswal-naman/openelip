@@ -379,13 +379,11 @@ def test_with_no_baseline_the_second_bar_cannot_hold_and_the_run_scores_zero(eng
     )  # the numbers are still reported
 
 
-def test_a_pair_whose_answer_the_pipeline_changes_the_length_of_fails_the_pair_and_the_run_goes_on(engine, tmp_path):
+def test_a_pair_whose_answer_is_invalid_twice_fails_the_pair_and_the_run_goes_on(engine, tmp_path):
     folder = copy_recordings(tmp_path)
     key = "ti-001"
     answers = recording(key)
-    answers[0]["edits"].append(
-        dict(answers[0]["edits"][2])
-    )  # the same edit twice: invalid output, then the gateway gives up
+    answers[0]["edits"].append(dict(answers[0]["edits"][2]))  # the same edit twice: invalid, and again on the retry
     (folder / f"{key}.json").write_text(json.dumps([answers[0], answers[0], *answers[1:]]), encoding="utf-8")
     scored = score.run(folder)
     assert scored.results[0].is_passed is False and scored.results[0].actual["failed"] == "schema_invalid"
@@ -393,6 +391,48 @@ def test_a_pair_whose_answer_the_pipeline_changes_the_length_of_fails_the_pair_a
     assert (
         scored.metrics["supported_kept"] < 84 and scored.metrics["tailor_unsupported_passed"] == 0
     )  # nothing proposed, nothing passed
+
+
+def with_gold(monkeypatch, tmp_path, change):
+    """The suite on a copy of the gold set that change(items) has edited."""
+    items = json.loads(json.dumps(GOLD))
+    change(items)
+    path = tmp_path / "gold.jsonl"
+    path.write_text("".join(json.dumps(item) + "\n" for item in items), encoding="utf-8")
+    monkeypatch.setattr(score, "GOLD", path)
+
+
+def test_an_unsupported_edit_discarded_for_another_reason_than_labelled_lowers_only_the_reason_match_rate(
+    engine, monkeypatch, tmp_path
+):
+    def relabel(items):
+        items[0]["edits"][3]["reason"] = "changed_number"  # ti-001 edit 4 is a new_entity discard
+
+    with_gold(monkeypatch, tmp_path, relabel)
+    metrics = score.run(RECORDINGS).metrics
+    assert metrics["reason_match_rate"] == 86 / 87 and metrics["tailor_unsupported_passed"] == 0
+    assert metrics["score"] == 1.0  # the reason is reported, not a bar: the edit was discarded, which is what counts
+
+
+def test_a_pair_whose_returned_edits_do_not_line_up_with_its_labels_counts_none_of_them(engine, monkeypatch, tmp_path):
+    folder = copy_recordings(tmp_path)
+    noop = {"op": "rephrase", "target": "f6", "section": "experience", "supporting": ["f6"], "requirements": [],
+            "order": [], "after_text": "Shipped the invoice portal in March 2021"}  # fmt: skip
+
+    def one_more_label(items):  # the labels list an edit that the pipeline drops, because it changes nothing
+        items[0]["edits"].append(
+            {**noop, "ordinal": 7, "label": "supported", "kind": "clean_rephrase", "reason": None, "why": ""}
+        )
+
+    with_gold(monkeypatch, tmp_path, one_more_label)
+    answers = recording("ti-001")
+    answers[0]["edits"].append(noop)
+    (folder / "ti-001.json").write_text(json.dumps(answers), encoding="utf-8")
+    scored = score.run(folder)
+    assert scored.results[0].is_passed is False and scored.results[0].actual["failed"] == "edit_count"
+    assert {e["status"] for e in scored.results[0].actual["edits"]} == {"missing"}
+    assert scored.metrics["failed_pairs"] == 1 and all(r.is_passed for r in scored.results[1:])
+    assert scored.metrics["tailor_unsupported_passed"] == 0 and scored.metrics["n_edits"] == 172
 
 
 def test_a_recording_that_is_missing_ends_the_run_in_error_and_the_gate_refuses_it(engine, tmp_path, capsys):

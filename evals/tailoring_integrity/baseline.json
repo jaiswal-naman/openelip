@@ -1,5 +1,6 @@
 {
   "labels": "agent-drafted, maintainer review pending",
+  "score": 1.0,
   "supported_kept": 84,
   "supported_total": 84,
   "supported_kept_rate": 1.0,
@@ -11,5 +12,5 @@
     "recorded": "recordings",
     "date": "2026-11-23"
   },
-  "note": "The first clean replay of the committed recordings after the gold set's one label correction. A replay is deterministic, so a drop in supported_kept is a code change. Replay numbers are wiring checks, not model quality (README.md)."
+  "note": "The first clean replay of the committed recordings after the gold set's one label correction. Its own score was 0.0 only because this file did not exist yet; with it the replay scores 1.0 (run fa75b4ea-08e9-48a5-beb5-0b22e4af391b), which is the baseline score recorded here. A replay is deterministic, so a drop in supported_kept is a code change. Replay numbers are wiring checks, not model quality (README.md)."
 }
