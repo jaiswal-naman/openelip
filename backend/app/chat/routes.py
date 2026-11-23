@@ -1,10 +1,10 @@
-"""HTTP routes of the chat module (API.md 2.8: sessions, the transcript, messages and stop; the reply stream is in
-stream.py's route below).
+"""HTTP routes of the chat module (API.md 2.8: sessions, the transcript, messages, the reply stream and stop).
 
     POST /v1/chat/sessions                                         open a session (`open` or `onboarding`)
     GET  /v1/chat/sessions                                         the person's sessions, most recently active first
     GET  /v1/chat/sessions/{id}/messages                           the transcript, with citations and proposals
     POST /v1/chat/sessions/{id}/messages                           send a message: 202, the reply is written meanwhile
+    GET  /v1/chat/sessions/{id}/messages/{reply_id}/stream         the reply's events, as server-sent events
     POST /v1/chat/sessions/{id}/messages/{reply_id}/stop           stop a running reply
 
 The person is the session's, never a field of a path or a body (`extra="forbid"` refuses one): a session, message or
@@ -14,8 +14,8 @@ reply that is not theirs is a 404, the same as one that does not exist. Writes t
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import Response
+from fastapi import APIRouter, Depends, Header
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import Connection
 
@@ -23,7 +23,7 @@ from app.platform.api import Envelope, envelope
 from app.platform.idempotency import Write, idempotent
 from app.platform.sessions import Principal, current_user
 
-from . import service
+from . import hub, service, stream
 from .models import ChatSessionKind
 
 router = APIRouter()
@@ -88,6 +88,46 @@ def send_chat_message(session_id: UUID, body: MessageIn, write: Idempotent) -> R
     listens. 403 without the ai_processing consent, 503 with no model, 429 past 30 messages an hour, 409 while a
     reply of theirs is still being written."""
     return service.send(write, session_id, body.text, body.context_job_id)
+
+
+STREAM_RESPONSES: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": "Server-sent events (API.md 4.2)",
+        "content": {"text/event-stream": {"schema": {"type": "string"}}},
+    },
+    204: {"description": "The reply is finished and the client has its end: stop reconnecting"},
+}
+
+
+@router.get(
+    "/v1/chat/sessions/{session_id}/messages/{message_id}/stream",
+    response_class=StreamingResponse,
+    responses=STREAM_RESPONSES,
+)
+def stream_chat_reply(
+    session_id: UUID,
+    message_id: UUID,
+    principal: Signed,
+    last_event_id: Annotated[str | None, Header()] = None,
+) -> Response:
+    """The reply's events. A plain `def`: the ownership check and the database read run in the thread pool, then a
+    response whose body is an async generator takes over, so waiting for the next event holds no thread. 404 before the
+    first byte for a reply that is not the caller's."""
+    reply_row = service.get_reply(principal.user_id, session_id, message_id)  # 404; ends a reply nobody is writing
+    after = stream.parse_last_event_id(last_event_id)
+    reply = hub.get(message_id)
+    if reply is not None:
+        finished = reply.finished.is_set()
+        if after is not None and finished and after >= reply.last_id:
+            return Response(status_code=204)
+        body = stream.from_hub(reply, after)
+    else:
+        if after is not None and after == reply_row.refs.get("last_event_id"):
+            return Response(status_code=204)
+        body = stream.from_row(reply_row)
+    return StreamingResponse(
+        body, media_type="text/event-stream", headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"}
+    )
 
 
 @router.post("/v1/chat/sessions/{session_id}/messages/{message_id}/stop", response_model=Envelope[service.ReplyState])
