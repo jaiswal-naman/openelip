@@ -19,9 +19,12 @@ test.beforeAll(() => {
   seeded = seedJobs();
 });
 
-test("search in plain English, see where each result came from, load more, and open one", async ({ page, request }) => {
+test("search in plain English, see where each result came from, load more, and open one", async ({ page }) => {
   await page.goto("/jobs");
   await page.getByRole("searchbox", { name: "Search open jobs" }).fill(QUERY);
+  // The page's own first page of results, which the note is drawn from (a second request could land after the embed
+  // sweep reached the jobs and answer in another mode).
+  const firstPage = page.waitForResponse((r) => r.url().includes("/v1/jobs?") && r.url().includes("q=software") && !r.url().includes("cursor="));
   await page.getByRole("button", { name: "Search" }).click();
   await expect(page).toHaveURL(SEARCH_ADDRESS);
 
@@ -37,9 +40,9 @@ test("search in plain English, see where each result came from, load more, and o
     await expect(card.locator("time")).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}T/);
   }
 
-  // The note is there exactly when the API says only keywords were searched. Asked directly, so the test needs no
-  // knowledge of whether the embed sweep has reached the stack's jobs yet.
-  const answer = await request.get(`/v1/jobs?q=${encodeURIComponent(QUERY)}&limit=1`);
+  // The note is there exactly when the API said only keywords were searched, so the test needs no knowledge of whether
+  // the embed sweep has reached the stack's jobs yet.
+  const answer = await firstPage;
   expect(answer.ok()).toBe(true);
   const { meta } = (await answer.json()) as { meta: { mode: string } };
   const note = results.getByText("Keyword results only right now.");
