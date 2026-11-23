@@ -2,7 +2,8 @@
 chat.api.propose with a recorded record.propose answer, and fails the gate when a proposal control breaks (the quote
 rule, the equal-value check) or an expected proposal goes missing, or when anything is written without a confirmation.
 
-Agent-drafted labels and hand-written recordings: the numbers prove the checks and the wiring, not a model (invariant 8).
+Agent-drafted labels and hand-written recordings: the numbers prove the checks and the wiring, not a model
+(invariant 8).
 """
 
 import json
