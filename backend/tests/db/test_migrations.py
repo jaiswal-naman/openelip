@@ -541,9 +541,7 @@ def test_every_phase_9_enum_holds_the_data_model_values_in_order(engine, type_na
         assert list(labels) == _data_model_labels(type_name)
 
 
-def test_the_twin_revision_goes_down_to_local_mode_restoring_the_guard_and_up_again_twice(
-    make_database, alembic_run
-):
+def test_the_twin_revision_goes_down_to_local_mode_restoring_the_guard_and_up_again_twice(make_database, alembic_run):
     url = make_database("p9down_test")
     engine = _engine(url)
     guard = "SELECT md5(pg_get_functiondef('agent_actions_guard'::regproc))"
