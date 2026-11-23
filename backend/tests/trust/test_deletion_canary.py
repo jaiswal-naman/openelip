@@ -436,7 +436,8 @@ def test_the_scan_opens_sealed_files_and_zips_and_ignores_what_it_cannot_open():
     assert not leaks_in_bytes(b"not a token at all", needles)
 
 
-def test_every_cascade_table_is_seeded_or_skipped_with_a_reason(engine):
+def test_every_cascade_table_is_seeded_or_skipped_with_a_reason(engine, api_client):
+    # api_client is here only for its clean-up: the person below is committed, and it empties the tables afterwards.
     person = seed_person(engine)
     with engine.connect() as c:
         unseeded = [t for t in cascade_tables() if t not in SEED_SKIPPED and rows_of(c, t, person.user) == 0]
