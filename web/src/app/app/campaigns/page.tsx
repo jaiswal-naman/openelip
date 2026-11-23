@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { meQuery } from "@/features/auth/queries";
 import { Board } from "@/features/campaigns/Board";
+import { CampaignsTitle } from "@/features/campaigns/CampaignsTitle";
 import { ApplicationsSection } from "@/features/applications/ApplicationsSection";
 import { serverApi } from "@/lib/api/server";
 import { makeQueryClient } from "@/lib/query";
@@ -15,8 +16,7 @@ export default async function CampaignsRoute() {
   if (me === null) redirect(`/sign-in?next=${encodeURIComponent("/app/campaigns")}`);
   return (
     <div className="container page">
-      <h1 className="t-page">Applications</h1>
-      <p className="muted">Your agents research and prepare each application. Nothing leaves without your approval, and you record every change of status yourself.</p>
+      <CampaignsTitle />
       <Suspense fallback={<p role="status">Loading your campaigns...</p>}>
         <Board />
       </Suspense>

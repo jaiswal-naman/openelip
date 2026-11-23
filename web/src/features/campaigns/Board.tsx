@@ -2,20 +2,20 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Pill } from "@/components/ui/Pill";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { applicationsQuery } from "@/features/applications/queries";
 import { useApi } from "@/lib/api/context";
-import { CAMPAIGN_STAGE_LABELS, type CampaignStage } from "@/lib/labels";
+import { CAMPAIGN_STAGE_LABELS } from "@/lib/labels";
 import { CampaignCard } from "./CampaignCard";
 import { boardQuery } from "./queries";
 import styles from "./campaigns.module.css";
 
 
 /**
- * The board (FRONTEND_UI 3.6): six columns by stage, a seventh for closed ones when asked. "Show closed" and the filter are
- * URL state. On a phone one column shows at a time, chosen from a list; on a wider screen all of them show. Each card with
- * an application also carries the Phase 5 "Record status..." menu.
+ * The board (FRONTEND_UI 3.6): a ledger of ruled rows grouped under six stage stamps, a seventh group for closed ones when
+ * asked. "Show closed" and the filter are URL state. Every group shows on every width; a row is a campaign, and a row with an
+ * application also carries the Phase 5 "Record status..." menu.
  */
 export function Board() {
   const api = useApi();
@@ -26,7 +26,6 @@ export function Board() {
   const filter = params.get("filter") === "needs-you" ? "needs-you" : "all";
   const board = useQuery(boardQuery(api, showClosed));
   const applications = useQuery(applicationsQuery(api));
-  const [phoneStage, setPhoneStage] = useState<CampaignStage>("researching");
 
   function setParam(name: string, value: string | null) {
     const next = new URLSearchParams(params.toString());
@@ -63,39 +62,25 @@ export function Board() {
           <input type="checkbox" checked={showClosed} onChange={(event) => setParam("closed", event.target.checked ? "1" : null)} />
           <span>Show closed</span>
         </label>
-        <label className={`${styles.row} ${styles.phoneOnly}`}>
-          <span>Stage</span>
-          <select className={styles.select} value={phoneStage} onChange={(event) => setPhoneStage(event.target.value as CampaignStage)}>
-            {columns.map((column) => (
-              <option key={column.stage} value={column.stage}>
-                {CAMPAIGN_STAGE_LABELS[column.stage]} ({column.campaigns.length})
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
       {total === 0 ? (
         <EmptyState>No campaigns yet. Open a match and press Start campaign, and the agents research the company and prepare your application for your approval.</EmptyState>
       ) : (
-        <div className={styles.columns}>
+        <div className={styles.board}>
           {columns.map((column) => {
             const cards = column.campaigns.filter((card) => filter === "all" || card.pending_approvals > 0);
             return (
-              <section
-                key={column.stage}
-                aria-labelledby={`col-${column.stage}`}
-                className={`${styles.column} ${column.stage === phoneStage ? "" : styles.hiddenOnPhone}`}
-              >
-                <div className={styles.columnHead}>
-                  <h3 id={`col-${column.stage}`} className="t-card">
-                    {CAMPAIGN_STAGE_LABELS[column.stage]}
+              <section key={column.stage} aria-labelledby={`col-${column.stage}`} className={styles.group}>
+                <div className={styles.groupHead}>
+                  <h3 id={`col-${column.stage}`}>
+                    <Pill tone={column.stage === "closed" ? "unk" : column.stage === "needs_you" ? "warn" : "ok"}>{CAMPAIGN_STAGE_LABELS[column.stage]}</Pill>
                   </h3>
-                  <span className="muted">{column.total ?? cards.length}</span>
+                  <span className={styles.count}>{column.total ?? cards.length}</span>
                 </div>
                 {cards.length === 0 ? (
-                  <p className="t-small muted">Nothing here.</p>
+                  <p className={`t-small ${styles.empty}`}>Nothing here.</p>
                 ) : (
-                  <ul className={styles.list}>
+                  <ul className={styles.rows}>
                     {cards.map((card) => (
                       <li key={card.id}>
                         <CampaignCard card={card} stage={column.stage} applicationId={applicationFor(card.title, card.company_name)} />

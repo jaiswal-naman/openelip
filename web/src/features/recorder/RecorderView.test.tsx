@@ -38,8 +38,10 @@ describe("RecorderView", () => {
     expect(within(selected).getByText("hiring@globex.example (you typed)")).toBeInTheDocument();
     expect(within(selected).getByText("Not allowed")).toBeInTheDocument();
     expect(within(selected).getByText("USD 0.002000")).toBeInTheDocument();
-    expect(within(selected).getByText(/Only what you allowed: blocked/)).toBeInTheDocument();
-    expect(within(selected).getByText(/Budget: passed/)).toBeInTheDocument();
+    // The Guardian's checks are a small table: the scope check really covers the recipient, the employer and restricted data
+    const checks = within(selected).getByRole("table", { name: "Guardian checks and their verdicts" });
+    expect(within(checks).getByRole("row", { name: /Recipient, employer and data limits/ })).toHaveTextContent("Blocked");
+    expect(within(checks).getByRole("row", { name: /Budget/ })).toHaveTextContent("Passed");
     expect(within(selected).getByText("Show the draft")).toBeInTheDocument();
   });
 

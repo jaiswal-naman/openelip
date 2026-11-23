@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { Pill } from "@/components/ui/Pill";
 import { useViewer } from "@/lib/viewer";
 import { DELIVERY_LABELS, messageFor } from "@/lib/labels";
 import { ApiFailure } from "@/lib/api/errors";
@@ -24,30 +25,33 @@ export function UndoCountdown({ followUp, offsetMs }: { followUp: FollowUp; offs
   const undone = followUp.status === "cancelled" || delivery === "cancelled" || undo.data?.action.status === "cancelled";
 
   let state: string;
-  if (undone) state = "Undone";
-  else if (followUp.status === "executed" || delivery === "sent") state = "Sent";
-  else if (delivery === "unknown") state = DELIVERY_LABELS.unknown;
-  else if (delivery === "failed") state = "Failed";
-  else if (delivery === "sending" || (open && remaining <= 0)) state = "Sending";
-  else if (until !== null) state = `Scheduled, sends at ${clockTime(followUp.undo_until ?? "", viewer.locale)}`;
-  else state = "Scheduled";
+  let tone: "ok" | "warn" | "bad" | "unk";
+  if (undone) [state, tone] = ["Undone", "unk"];
+  else if (followUp.status === "executed" || delivery === "sent") [state, tone] = ["Sent", "ok"];
+  else if (delivery === "unknown") [state, tone] = [DELIVERY_LABELS.unknown, "warn"];
+  else if (delivery === "failed") [state, tone] = ["Failed", "bad"];
+  else if (delivery === "sending" || (open && remaining <= 0)) [state, tone] = ["Sending", "warn"];
+  else if (until !== null) [state, tone] = [`Scheduled, sends at ${clockTime(followUp.undo_until ?? "", viewer.locale)}`, "ok"];
+  else [state, tone] = ["Scheduled", "ok"];
 
   const canUndo = open && remaining > 0 && !undone;
   const refusal = undo.error instanceof ApiFailure ? messageFor(undo.error) : undo.error ? "Could not undo. Nothing was changed." : null;
   return (
     <div className={styles.stack}>
-      <p role="status">{state}</p>
+      <p role="status">
+        <Pill tone={tone}>{state}</Pill>
+      </p>
       {canUndo && (
         <>
-          <p className={styles.countdown} aria-hidden="true">
-            Undo within {countdownText(remaining)}
-          </p>
-          <div className={styles.row}>
+          <div className={styles.undoLine}>
             <Button size="sm" isPending={undo.isPending} onPress={() => undo.mutate(followUp.action_id)}>
               Undo
             </Button>
-            <span className="t-small muted">Closing this tab does not stop the send.</span>
+            <p className={styles.countdown} aria-hidden="true">
+              Undo within {countdownText(remaining)}
+            </p>
           </div>
+          <span className="t-small muted">Closing this tab does not stop the send.</span>
         </>
       )}
       {refusal !== null && (

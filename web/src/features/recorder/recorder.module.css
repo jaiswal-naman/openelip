@@ -1,0 +1,150 @@
+/*
+ * The flight recorder as a drawing register: the steps down the left as ruled rows with their crew marks, the selected step
+ * outlined in ink, and the selected step's facts on the right as a ruled list, its Guardian checks as a small ruled table.
+ */
+
+.recorder {
+  display: grid;
+  gap: var(--sp-24);
+}
+
+@media (min-width: 60rem) {
+  .recorder {
+    grid-template-columns: minmax(17rem, 24rem) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8) var(--sp-12);
+}
+
+/* ---- the steps ---- */
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  border-block-start: 1px solid var(--line-strong);
+}
+
+.entries > li {
+  border-block-end: 1px solid var(--line);
+}
+
+.entryLink {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: var(--sp-4) var(--sp-12);
+  padding: var(--sp-12) var(--sp-8);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease-in);
+}
+
+@media (hover: hover) {
+  .entryLink:hover {
+    background: var(--surface);
+  }
+}
+
+/* The selected step: outlined in ink, so it reads at a glance and not by colour alone */
+.entryLink[aria-current="true"] {
+  background: var(--surface);
+  outline: 2px solid var(--ink-rule);
+  outline-offset: -2px;
+}
+
+.entryLink:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.entryText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.entryHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4) var(--sp-8);
+}
+
+/* ---- the selected step ---- */
+
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8) var(--sp-16);
+  overflow-wrap: anywhere;
+}
+
+.defs {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border-block-start: 1px solid var(--line-strong);
+}
+
+.defs > div {
+  display: grid;
+  gap: var(--sp-2) var(--sp-16);
+  padding: var(--sp-8);
+  border-block-end: 1px solid var(--line);
+}
+
+@media (min-width: 40rem) {
+  .defs > div {
+    grid-template-columns: 9.5rem minmax(0, 1fr);
+  }
+}
+
+.defs dt {
+  color: var(--muted);
+  font-size: var(--fs-label);
+  font-stretch: var(--stretch-lettering);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.defs dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.figure {
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.draft {
+  margin: 0;
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  white-space: pre-wrap;
+}
+
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}

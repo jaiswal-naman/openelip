@@ -6,6 +6,7 @@ import { describeFailure } from "@/lib/api/problems";
 import { reasonText } from "@/lib/labels";
 import { useViewer } from "@/lib/viewer";
 import { ApprovalPanel } from "../ApprovalPanel";
+import { ApprovedStamp } from "../ApprovedStamp";
 import { type CampaignDetail, type FollowUp, usePatchCampaign, useUndo } from "../queries";
 import { clockTime } from "../time";
 import { UndoCountdown } from "../UndoCountdown";
@@ -14,6 +15,7 @@ import styles from "../campaigns.module.css";
 const TOAST_MS = 10_000;
 
 const ENDED: Record<string, string> = { rejected: "Skipped", cancelled: "Undone", blocked: "Blocked", failed: "Failed", expired: "Expired" };
+const ENDED_BAD = new Set(["blocked", "failed"]);
 
 /** How a follow-up that is no longer waiting ended, with the server's reason in words when there is one. */
 function endedText(item: FollowUp): string {
@@ -35,7 +37,7 @@ function AddressForm({ campaign }: { campaign: CampaignDetail }) {
     );
   }
   return (
-    <section aria-labelledby="address-heading" className={styles.item}>
+    <section aria-labelledby="address-heading" className={`${styles.stack} ${styles.addressBox}`}>
       <h2 id="address-heading" className="t-section">
         Where follow-ups go
       </h2>
@@ -79,11 +81,16 @@ function DraftView({ followUp }: { followUp: FollowUp }) {
   );
 }
 
-/** Follow-ups (CMP-04): the address the candidate typed, then each draft with Approve, Edit and Skip, the undo window, and how each one ended. */
+/**
+ * Follow-ups (CMP-04): the address the candidate typed, then each draft as a ruled row with Approve, Edit and Skip, the undo
+ * window with its countdown, and how each one ended. An approved follow-up carries the ink stamp; it lands once, in the row
+ * the person has just approved.
+ */
 export function FollowUpsTab({ campaign, offsetMs, onApproved }: { campaign: CampaignDetail; offsetMs: number; onApproved: () => void }) {
   const viewer = useViewer();
   const undo = useUndo();
   const [toast, setToast] = useState<number | null>(null); // the action id whose "sends at" toast shows
+  const [justApproved, setJustApproved] = useState<number | null>(null); // the action id whose stamp lands now
   useEffect(() => {
     if (toast === null) return;
     const timer = window.setTimeout(() => setToast(null), TOAST_MS);
@@ -99,38 +106,51 @@ export function FollowUpsTab({ campaign, offsetMs, onApproved }: { campaign: Cam
           {campaign.follow_up_email === null ? "Add the hiring contact's address and the agents will draft a follow-up after the quiet days." : "No follow-up has been drafted yet. One is drafted after the quiet days."}
         </p>
       ) : (
-        <ul className={styles.list} aria-label="Follow-ups">
-          {campaign.follow_ups.map((item) => (
-            <li key={item.action_id} className={styles.item}>
-              <h2 className="t-card">Follow-up {item.step_key?.split(":")[1]?.split(".")[0] ?? ""}</h2>
-              {item.status === "awaiting_approval" && item.approval_id !== null ? (
-                <>
-                  <DraftView followUp={item} />
-                  <ApprovalPanel
-                    campaignId={campaign.id}
-                    approvalId={item.approval_id}
-                    draft={{ subject: item.subject ?? "", body: item.body ?? "" }}
-                    approveLabel="Approve"
-                    declineLabel="Skip"
-                    onApproved={(result) => {
-                      setToast(result.actionId);
-                      onApproved();
-                    }}
-                  />
-                </>
-              ) : item.status === "scheduled" || item.status === "executed" ? (
-                <>
-                  <DraftView followUp={item} />
-                  <UndoCountdown followUp={item} offsetMs={offsetMs} />
-                </>
-              ) : (
-                <>
-                  {item.body !== null && <DraftView followUp={item} />}
-                  <p>{endedText(item)}</p>
-                </>
-              )}
-            </li>
-          ))}
+        <ul className={styles.rows} aria-label="Follow-ups">
+          {campaign.follow_ups.map((item) => {
+            const sent = item.status === "scheduled" || item.status === "executed";
+            // Approved in this view and the server has not caught up yet: the stamp is already down, the buttons are gone.
+            const settling = justApproved === item.action_id && item.status === "awaiting_approval";
+            const waiting = item.status === "awaiting_approval" && item.approval_id !== null && !settling;
+            return (
+              <li key={item.action_id} className={styles.item}>
+                <div className={styles.itemHead}>
+                  <h2 className="t-card">Follow-up {item.step_key?.split(":")[1]?.split(".")[0] ?? ""}</h2>
+                  {waiting && <span className={styles.needsYou}>Waiting for you</span>}
+                  {(sent || settling) && <ApprovedStamp landing={justApproved === item.action_id} />}
+                </div>
+                {waiting && item.approval_id !== null ? (
+                  <>
+                    <DraftView followUp={item} />
+                    <ApprovalPanel
+                      campaignId={campaign.id}
+                      approvalId={item.approval_id}
+                      draft={{ subject: item.subject ?? "", body: item.body ?? "" }}
+                      approveLabel="Approve"
+                      declineLabel="Skip"
+                      onApproved={(result) => {
+                        setToast(result.actionId);
+                        setJustApproved(result.actionId);
+                        onApproved();
+                      }}
+                    />
+                  </>
+                ) : sent || settling ? (
+                  <>
+                    <DraftView followUp={item} />
+                    {sent ? <UndoCountdown followUp={item} offsetMs={offsetMs} /> : <p role="status">Checking...</p>}
+                  </>
+                ) : (
+                  <>
+                    {item.body !== null && <DraftView followUp={item} />}
+                    <p className={styles.ended} data-tone={ENDED_BAD.has(item.status) ? "bad" : "muted"}>
+                      {endedText(item)}
+                    </p>
+                  </>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
       {toasted !== undefined && toasted.undo_until !== null && (

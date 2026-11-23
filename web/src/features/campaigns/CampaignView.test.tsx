@@ -26,7 +26,10 @@ describe("CampaignView header and controls", () => {
     renderWithApi(<CampaignView id="c1" />, routes() as never);
     expect(await screen.findByRole("heading", { name: "Platform Engineer", level: 1 })).toBeInTheDocument();
     expect(screen.getByText("Globex Demo")).toBeInTheDocument();
-    expect(screen.getByText("Cost so far USD 0.12 of USD 0.75 budget")).toBeInTheDocument();
+    // The cost is a cell of the title block: its label, the amount, and under it the budget
+    expect(screen.getByText("Cost so far")).toBeInTheDocument();
+    expect(screen.getByText("USD 0.12")).toBeInTheDocument();
+    expect(screen.getByText("of USD 0.75 budget")).toBeInTheDocument();
   });
 
   it("pauses a running campaign, and resumes a paused one", async () => {

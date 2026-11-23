@@ -1,35 +1,24 @@
-.head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--sp-12) var(--sp-32);
+/* The costs ledger: the total sits in the title block, each table is a ruled ledger with mono figures (ledger.module.css). */
+
+.sub {
+  display: block;
+  margin-block-start: var(--sp-2);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+  font-stretch: normal;
+  font-weight: 500;
 }
 
-.title {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
+/* A numeric column's head keeps the lettering of the other heads; only its figures are mono */
+table thead th.numHead {
+  font-family: var(--font-sans);
 }
 
-.total {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--sp-2);
-}
-
-@media (max-width: 39.99rem) {
-  .total {
-    align-items: flex-start;
+@media (min-width: 40rem) {
+  table thead th.numHead {
+    text-align: end;
   }
-}
-
-.totalFigure {
-  font-size: 1.25rem;
-  line-height: 1.1;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
 
 .section {

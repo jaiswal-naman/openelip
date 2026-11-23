@@ -364,7 +364,7 @@ export const AGENT_ROLE_LABELS: Record<string, string> = {
 export const CHECK_KIND_LABELS: Record<string, string> = {
   citations: "Every claim has a source",
   consent: "Your consent",
-  scope: "Only what you allowed",
+  scope: "Recipient, employer and data limits",
   budget: "Budget",
   injection: "No instructions hidden in text",
   rate_limit: "Follow-up limit",

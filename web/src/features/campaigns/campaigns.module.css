@@ -1,12 +1,81 @@
-/* The campaign board and page (CMP-01 to CMP-07). Tokens only. */
+/*
+ * The campaign board and the campaign sheet (CMP-01 to CMP-07). The board is a ledger of ruled rows grouped under their
+ * stage stamp; the campaign is a sheet with a title block, tabs with an ink underline, and every list a ruled table.
+ * Tokens only.
+ */
 
-.page { display: flex; flex-direction: column; gap: var(--sp-16); }
-.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8) var(--sp-12); }
-.stack { display: flex; flex-direction: column; gap: var(--sp-12); }
-.list { display: flex; flex-direction: column; gap: var(--sp-12); list-style: none; padding: 0; margin: 0; }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+}
 
-.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-12); }
-.select, .input {
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8) var(--sp-12);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+/* The regions of a tab (a packet, its approval, its kit) keep a sheet's gap between them */
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+}
+/* A plain list with a gap; the Autonomy section in settings lays its dials out with it */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+/* A setting's dial: a ruled box on the sheet */
+.dial {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.tag {
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+/* ---- the title block's own pieces ---- */
+
+.company {
+  color: var(--text);
+  font-size: 1.0625rem;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+
+.sub {
+  display: block;
+  margin-block-start: var(--sp-2);
+  color: var(--muted);
+  font-size: var(--fs-small);
+  font-stretch: normal;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+/* ---- controls ---- */
+
+.select,
+.input,
+.textarea {
   min-height: 2.5rem;
   padding: 0 var(--sp-12);
   border: 1px solid var(--line-strong);
@@ -16,54 +85,497 @@
   font: inherit;
 }
 
-.columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: var(--sp-12); align-items: start; }
-.column { display: flex; flex-direction: column; gap: var(--sp-8); padding: var(--sp-12); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
-.columnHead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-8); }
-.hiddenOnPhone { display: none; }
-@media (min-width: 48rem) { .hiddenOnPhone { display: block; } .phoneOnly { display: none; } }
+.textarea {
+  min-height: 8rem;
+  padding: var(--sp-8) var(--sp-12);
+}
 
-.card { display: flex; flex-direction: column; gap: var(--sp-8); padding: var(--sp-12); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
-.cardTitle { margin: 0; }
-.tags { display: flex; flex-wrap: wrap; gap: var(--sp-4) var(--sp-8); }
-.tag { font-size: var(--fs-small); color: var(--muted); }
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
 
-.head { display: flex; flex-direction: column; gap: var(--sp-8); }
-.banner { display: flex; flex-direction: column; gap: var(--sp-8); padding: var(--sp-12) var(--sp-16); border: 1px solid var(--warn); border-radius: var(--r-md); background: var(--surface); }
-.bannerBad { border-color: var(--bad); }
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-12) var(--sp-24);
+}
 
-.tabList { display: flex; flex-wrap: wrap; gap: var(--sp-4); border-bottom: 1px solid var(--line); }
-.tab { padding: var(--sp-8) var(--sp-12); border-bottom: 2px solid transparent; cursor: pointer; color: var(--muted); outline: none; }
-.tab[data-selected] { border-bottom-color: var(--accent-strong); color: var(--text); font-weight: 600; }
-.tab[data-focus-visible] { outline: 2px solid var(--focus); outline-offset: 2px; }
-.panel { padding-block: var(--sp-16); outline: none; }
-.panel[data-focus-visible] { outline: 2px solid var(--focus); }
+/* ---- notices on the sheet: ruled boxes, the label in the notice's colour ---- */
 
-.item { display: flex; flex-direction: column; gap: var(--sp-8); padding: var(--sp-12) var(--sp-16); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
-.draft { white-space: pre-wrap; padding: var(--sp-12); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); margin: 0; }
-.quote { margin: 0; padding-inline-start: var(--sp-12); border-inline-start: 3px solid var(--line-strong); color: var(--muted); }
-.chip { display: inline-flex; align-items: center; gap: var(--sp-4); padding: 0 var(--sp-8); border: 1px solid var(--info); border-radius: 999px; color: var(--info); font-size: var(--fs-small); }
-.problem { padding: var(--sp-8) var(--sp-12); border: 1px solid var(--bad); border-radius: var(--r-md); background: var(--surface); font-weight: 600; }
-.notice { padding: var(--sp-8) var(--sp-12); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); }
-.field { display: flex; flex-direction: column; gap: var(--sp-4); }
-.textarea { min-height: 8rem; padding: var(--sp-8) var(--sp-12); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--text); font: inherit; }
-.countdown { font-variant-numeric: tabular-nums; }
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  max-width: var(--measure);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--warn);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
 
-.overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: var(--sp-16); background: rgb(0 0 0 / 0.55); }
-.modal { width: min(100%, 30rem); border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-2); }
-.dialog { display: flex; flex-direction: column; gap: var(--sp-12); padding: var(--sp-24); outline: none; }
+.bannerBad {
+  border-color: var(--bad);
+}
 
-/* settings: the dial */
-.dial { display: flex; flex-direction: column; gap: var(--sp-8); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-12) var(--sp-16); background: var(--surface); }
-.radios { display: flex; flex-wrap: wrap; gap: var(--sp-8) var(--sp-16); }
-.radio { display: inline-flex; align-items: center; gap: var(--sp-8); cursor: pointer; }
+.problem {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-weight: 600;
+}
 
-/* recorder */
-.recorder { display: grid; gap: var(--sp-16); }
-@media (min-width: 60rem) { .recorder { grid-template-columns: minmax(16rem, 22rem) 1fr; align-items: start; } }
-.entries { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
-.entryLink { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-8) var(--sp-12); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); color: inherit; text-decoration: none; }
-.entryLink[aria-current="true"] { border-color: var(--accent-strong); }
-.blocked { display: inline-flex; align-items: center; padding: 0 var(--sp-8); border-radius: 999px; background: var(--bad); color: var(--on-accent); font-size: var(--fs-small); font-weight: 600; }
-.defs { display: grid; grid-template-columns: max-content 1fr; gap: var(--sp-4) var(--sp-16); margin: 0; }
-.defs dt { color: var(--muted); }
-.defs dd { margin: 0; }
+.notice {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+/* ---- tabs ---- */
+
+.tabList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.tab {
+  min-height: 2.5rem;
+  margin-block-end: -1px;
+  padding: var(--sp-8) var(--sp-16);
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  font-stretch: var(--stretch-lettering);
+  font-weight: 650;
+  cursor: pointer;
+  outline: none;
+  transition: color var(--dur-fast) var(--ease-in);
+}
+
+.tab[data-selected] {
+  border-bottom-color: var(--ink-rule);
+  color: var(--text);
+}
+
+@media (hover: hover) {
+  .tab[data-hovered] {
+    color: var(--text);
+  }
+}
+
+.tab[data-focus-visible] {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+  padding-block-start: var(--sp-16);
+  outline: none;
+}
+
+/* The tab rule is the top rule of a list that opens the panel, so the two never sit side by side */
+.panel > .rows:first-child,
+.panel > .stack:first-child > .rows:first-child,
+.panel > .sections:first-child > .rows:first-child {
+  margin-block-start: calc(-1 * var(--sp-16));
+  border-block-start: 0;
+}
+
+.panel[data-focus-visible] {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---- ruled rows: the heavy rule on top, a hairline under each ---- */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  border-block-start: 1px solid var(--line-strong);
+}
+
+.rows > li {
+  border-block-end: 1px solid var(--line);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding: var(--sp-16) var(--sp-8);
+}
+
+.itemHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8) var(--sp-16);
+}
+
+/* paper: a drafted text sits on a lighter surface with a hairline, not in a card */
+.draft {
+  margin: 0;
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  white-space: pre-wrap;
+}
+
+/* What only the person can do: the one place a row speaks in redline */
+.needsYou {
+  align-self: flex-start;
+  padding: var(--sp-4) var(--sp-8);
+  border: 1px solid var(--redline);
+  border-radius: var(--r-sm);
+  background: var(--redline-soft);
+  color: var(--redline);
+  font-size: var(--fs-pill);
+  font-stretch: var(--stretch-lettering);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.todo {
+  align-self: flex-start;
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--redline);
+  border-radius: var(--r-sm);
+  background: var(--redline-soft);
+  color: var(--redline);
+  font-weight: 600;
+}
+
+.ended {
+  font-weight: 600;
+}
+
+.ended[data-tone="bad"] {
+  color: var(--bad);
+}
+
+.ended[data-tone="muted"] {
+  color: var(--muted);
+}
+
+/* ---- the board: a ledger of ruled rows under each stage stamp ---- */
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-32);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.groupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8);
+}
+
+.count {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+}
+
+.empty {
+  padding: var(--sp-12) var(--sp-8);
+  border-block-start: 1px solid var(--line-strong);
+  border-block-end: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.card {
+  display: grid;
+  gap: var(--sp-8) var(--sp-24);
+  padding: var(--sp-16) var(--sp-8);
+  transition: background-color var(--dur-fast) var(--ease-in);
+}
+
+@media (min-width: 56rem) {
+  .card {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) minmax(0, 14rem);
+    align-items: start;
+  }
+}
+
+@media (hover: hover) {
+  .card:hover {
+    background: var(--surface);
+  }
+}
+
+.cardMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.cardTitle {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.cardTitle a {
+  color: var(--text);
+  text-decoration-color: var(--line-strong);
+}
+
+.cardTitle a:hover {
+  text-decoration-color: currentColor;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4) var(--sp-8);
+}
+
+.nextStep {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.cardSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-8);
+  min-width: 0;
+}
+
+/* ---- timeline rows ---- */
+
+.event {
+  display: grid;
+  gap: var(--sp-4) var(--sp-16);
+  padding: var(--sp-12) var(--sp-8);
+}
+
+@media (min-width: 48rem) {
+  .event {
+    grid-template-columns: 9.5rem 8.5rem minmax(0, 1fr) auto;
+    align-items: start;
+  }
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  min-width: 0;
+}
+
+.what {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.open {
+  white-space: nowrap;
+}
+
+/* ---- the crew tab ---- */
+
+.crewRow {
+  display: grid;
+  gap: var(--sp-8) var(--sp-24);
+  padding: var(--sp-16) var(--sp-8);
+}
+
+@media (min-width: 48rem) {
+  .crewRow {
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr) auto;
+    align-items: start;
+  }
+}
+
+.crewText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+/* ---- the dossier and the prep ---- */
+
+.claim {
+  display: grid;
+  gap: var(--sp-8) var(--sp-24);
+  padding: var(--sp-16) var(--sp-8);
+}
+
+@media (min-width: 48rem) {
+  .claim {
+    grid-template-columns: 8rem minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.claimBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  min-width: 0;
+}
+
+.callouts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+.number {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+}
+
+/* ---- the packet and its approval, kept apart ---- */
+
+.approval {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  max-width: var(--measure);
+  padding: var(--sp-16);
+  border: 1px solid var(--line-strong);
+  border-block-start: 2px solid var(--ink-rule);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.approval[data-state="waiting"] {
+  border-color: var(--redline);
+  background: var(--redline-soft);
+}
+
+.approvalHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8) var(--sp-16);
+}
+
+.youAnswer {
+  align-self: flex-start;
+  padding: var(--sp-4) var(--sp-8);
+  border: 1px solid var(--redline);
+  border-radius: var(--r-sm);
+  background: var(--redline-soft);
+  color: var(--redline);
+  font-weight: 650;
+}
+
+/* ---- follow-ups ---- */
+
+.defs {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--sp-4) var(--sp-16);
+  margin: 0;
+}
+
+.defs dt {
+  color: var(--muted);
+}
+
+.defs dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The undo window, readable at a glance: the time left in the sheet's mono figures, beside the button it belongs to */
+.countdown {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.addressBox {
+  max-width: var(--measure);
+  padding: var(--sp-16);
+  border: 1px solid var(--line-strong);
+  border-block-start: 2px solid var(--ink-rule);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.undoLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8) var(--sp-16);
+}
+
+/* ---- dialogs ---- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-16);
+  background: rgb(0 0 0 / 0.55);
+}
+
+.modal {
+  width: min(100%, 30rem);
+  border: 1px solid var(--line-strong);
+  border-block-start: 2px solid var(--ink-rule);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding: var(--sp-24);
+  outline: none;
+}
+
+.radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8) var(--sp-16);
+}
+
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  cursor: pointer;
+}

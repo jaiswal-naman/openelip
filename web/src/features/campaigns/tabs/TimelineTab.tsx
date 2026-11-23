@@ -2,6 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { CrewMark } from "@/components/ui/CrewPlate";
+import { Pill } from "@/components/ui/Pill";
 import { ErrorState } from "@/components/ui/States";
 import { LocalTime } from "@/components/ui/Viewer";
 import { type RecorderRow, blockedReasonCode, recorderQuery } from "@/features/recorder/queries";
@@ -15,7 +17,11 @@ function lineOf(row: RecorderRow): string {
   return row.summary;
 }
 
-/** Everything the agents did on this campaign, newest first, each row a link to its step in the flight recorder (GRD-03). */
+/**
+ * Everything the agents did on this campaign, newest first, each row a link to its step in the flight recorder (GRD-03).
+ * ponytail: no duration bars. A recorder row carries one moment (`created_at`), and the only second one an action has is
+ * `executed_at`, which includes the hours the action waited for the person; there is no start and end per step to draw to scale.
+ */
 export function TimelineTab({ campaignId }: { campaignId: string }) {
   const api = useApi();
   const rows = useQuery(recorderQuery(api, campaignId));
@@ -24,21 +30,26 @@ export function TimelineTab({ campaignId }: { campaignId: string }) {
   if (rows.data.length === 0) return <p className="muted">Nothing has happened yet.</p>;
   const newest = [...rows.data].reverse();
   return (
-    <ol className={styles.list} aria-label="Timeline, newest first">
+    <ol className={styles.rows} aria-label="Timeline, newest first">
       {newest.map((row) => {
         const reason = blockedReasonCode(row);
         return (
-          <li key={row.id} className={styles.item}>
-            <div className={styles.row}>
-              <span className="t-data muted">
-                <LocalTime iso={row.created_at} />
-              </span>
+          <li key={row.id} className={styles.event}>
+            <span className="t-data muted">
+              <LocalTime iso={row.created_at} />
+            </span>
+            <span className={styles.who}>
+              <CrewMark role={row.agent_role} />
               <span className="t-card">{AGENT_ROLE_LABELS[row.agent_role] ?? row.agent_role}</span>
-              {row.status === "blocked" && <span className={styles.blocked}>Blocked</span>}
+            </span>
+            <div className={styles.what}>
+              {row.status === "blocked" && <Pill tone="bad">Blocked</Pill>}
+              <p>{lineOf(row)}</p>
+              {reason !== null && <p>{reasonText(reason)}</p>}
             </div>
-            <p>{lineOf(row)}</p>
-            {reason !== null && <p>{reasonText(reason)}</p>}
-            <Link href={`/control/recorder?campaign_id=${campaignId}&step=${row.id}`}>Open this step in the recorder</Link>
+            <Link className={styles.open} href={`/control/recorder?campaign_id=${campaignId}&step=${row.id}`}>
+              Open this step in the recorder
+            </Link>
           </li>
         );
       })}

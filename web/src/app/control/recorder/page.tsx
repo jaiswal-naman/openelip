@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { TitleBlock } from "@/components/ui/TitleBlock";
 import { meQuery } from "@/features/auth/queries";
 import { RecorderView } from "@/features/recorder/RecorderView";
 import { serverApi } from "@/lib/api/server";
@@ -28,18 +29,15 @@ export default async function RecorderPage({ searchParams }: Props) {
   }
   return (
     <div className="container page">
-      <h1 className="t-page">Flight recorder</h1>
       {campaignId !== undefined && UUID.test(campaignId) ? (
-        <>
-          <p>
-            <Link href={`/app/campaigns/${campaignId}`}>Back to the campaign</Link>
-          </p>
-          <RecorderView campaignId={campaignId} />
-        </>
+        <RecorderView campaignId={campaignId} />
       ) : (
-        <p>
-          Open a campaign and choose a step from its Timeline. <Link href="/app/campaigns">Your campaigns</Link>
-        </p>
+        <>
+          <TitleBlock title="Flight recorder" />
+          <p>
+            Open a campaign and choose a step from its Timeline. <Link href="/app/campaigns">Your campaigns</Link>
+          </p>
+        </>
       )}
     </div>
   );

@@ -16,7 +16,7 @@ export function PrepTab({ prep }: { prep: CampaignDetail["prep"] }) {
         {pack.questions.length === 0 ? (
           <p className="muted">No supported questions were written.</p>
         ) : (
-          <ul className={styles.list}>
+          <ul className={styles.rows}>
             {pack.questions.map((question, index) => (
               <li key={`${index}:${question.text}`} className={styles.item}>
                 <p className="t-card">{question.text}</p>
@@ -35,7 +35,7 @@ export function PrepTab({ prep }: { prep: CampaignDetail["prep"] }) {
         {pack.ask_them.length === 0 ? (
           <p className="muted">Nothing to ask is supported by the company&apos;s pages.</p>
         ) : (
-          <ul className={styles.list}>
+          <ul className={styles.rows}>
             {pack.ask_them.map((item, index) => (
               <li key={`${index}:${item.text}`} className={styles.item}>
                 {item.text}

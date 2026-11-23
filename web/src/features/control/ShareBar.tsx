@@ -7,8 +7,8 @@ export function ShareBar({ fraction }: { fraction: number }) {
   const width = `${Math.min(100, Math.max(0, fraction * 100))}%`;
   return (
     <svg width="100%" height="8" aria-hidden="true" focusable="false">
-      <rect width="100%" height="8" rx="4" fill="var(--surface-2)" />
-      <rect width={width} height="8" rx="4" fill="var(--text)" />
+      <rect width="100%" height="8" fill="var(--surface-2)" />
+      <rect width={width} height="8" fill="var(--ink-rule)" />
     </svg>
   );
 }
