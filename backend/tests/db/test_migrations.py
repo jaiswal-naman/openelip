@@ -185,7 +185,7 @@ EXPECTED = {
     "chat_messages": """
         id uuid; session_id uuid; user_id uuid; role chat_role; content text?; tool_name text?; refs jsonb
         llm_call_id int8?; finish_reason text?; created_at timestamptz""",
-    # DATA_MODEL 3.10, the campaign and Guardian tables that plan 07-01 added (campaigns.follow_up_email is its amendment).
+    # DATA_MODEL 3.10, the campaign and Guardian tables that plan 07-01 added (follow_up_email is its amendment).
     "campaigns": """
         id uuid; user_id uuid; job_id int8; match_decision_id uuid?; introduction_id uuid?; stage campaign_stage
         paused_at timestamptz?; closed_reason campaign_closed_reason?; closed_at timestamptz?; budget_microusd int8

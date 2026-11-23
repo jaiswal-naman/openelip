@@ -82,8 +82,9 @@ def test_an_action_cannot_be_inserted_already_scheduled_or_executed(conn):
         with refused(conn) as caught:
             conn.execute(
                 text(
-                    """INSERT INTO agent_actions (agent_run_id, user_id, seq, kind, action_type, status, summary, payload,
-                                                  policy_decision, policy_version, outcome_code, executed_at, undo_until)
+                    """INSERT INTO agent_actions (agent_run_id, user_id, seq, kind, action_type, status, summary,
+                                                  payload, policy_decision, policy_version, outcome_code, executed_at,
+                                                  undo_until)
                        VALUES (:r, :u, 1, 'outside_action', 'submit_application', CAST(:s AS action_status), 's', '{}',
                                'ask', 'v', 'x', CASE WHEN :s = 'executed' THEN now() END, NULL)"""
                 ),
@@ -153,7 +154,9 @@ def test_a_policy_decision_of_deny_refuses_even_with_both_keys(conn):
 
 def test_a_denied_action_can_be_blocked_but_never_cleared(conn):
     action = proposed(conn, make_world(conn), policy_decision="deny")
-    conn.execute(text("UPDATE agent_actions SET status = 'blocked', outcome_code = 'policy_deny' WHERE id = :a"), {"a": action})
+    conn.execute(
+        text("UPDATE agent_actions SET status = 'blocked', outcome_code = 'policy_deny' WHERE id = :a"), {"a": action}
+    )
     assert status_of(conn, action) == "blocked"
 
 
@@ -266,14 +269,14 @@ def test_an_awaiting_action_can_end_four_ways_and_never_be_scheduled_afterwards(
     "column, value",
     [
         ("summary", "'rewritten'"),
-        ("payload", "'{\"to\": \"someone@else.example\"}'::jsonb"),
+        ("payload", '\'{"to": "someone@else.example"}\'::jsonb'),
         ("inputs", "'{\"x\": 1}'::jsonb"),
         ("evidence", "'[1]'::jsonb"),
         ("policy_decision", "'allow'"),
         ("policy_version", "'other'"),
         ("action_type", "'send_follow_up'"),
         ("seq", "99"),
-                ("created_at", "now() + interval '1 day'"),
+        ("created_at", "now() + interval '1 day'"),
     ],
 )
 def test_the_content_of_an_action_never_changes(conn, column, value):
@@ -412,9 +415,7 @@ def test_executing_before_the_undo_time_is_refused_and_after_it_is_allowed(conn)
 def test_a_submit_application_has_no_undo_window(conn):
     action = scheduled(conn, make_world(conn))
     assert one(conn, "SELECT undo_until FROM agent_actions WHERE id = :a", a=action) is None
-    conn.execute(
-        text("UPDATE agent_actions SET status = 'executed', executed_at = now() WHERE id = :a"), {"a": action}
-    )
+    conn.execute(text("UPDATE agent_actions SET status = 'executed', executed_at = now() WHERE id = :a"), {"a": action})
     assert status_of(conn, action) == "executed"
 
 

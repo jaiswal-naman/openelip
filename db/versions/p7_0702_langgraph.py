@@ -2,11 +2,12 @@
 
 Three steps, as DATA_MODEL 3.15 says:
 
-  1. p7_0702_schema.sql        creates schema langgraph and its grants, run as app_owner on an autocommit connection so the
-                               schema is committed before the library uses it
+  1. p7_0702_schema.sql        creates schema langgraph and its grants, run as app_owner on an autocommit connection
+                               so the schema is committed before the library uses it
   2. PostgresSaver.setup()     the library creates and owns checkpoints, checkpoint_blobs, checkpoint_writes and
-                               checkpoint_migrations (three of its indexes are built CONCURRENTLY, which cannot run inside a
-                               transaction), on a separate autocommit connection as app_owner with search_path langgraph
+                               checkpoint_migrations (three of its indexes are built CONCURRENTLY, which cannot run
+                               inside a transaction), on a separate autocommit connection as app_owner with
+                               search_path langgraph
   3. p7_0702_delete_thread.sql the deletion function and the trigger that removes a campaign's thread with the campaign
 
 LANGGRAPH_MIGRATION_COUNT and LANGGRAPH_MIGRATIONS_SHA256 record the library's migration list as this revision knew it

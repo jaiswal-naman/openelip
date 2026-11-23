@@ -201,7 +201,8 @@ def test_the_two_locked_action_types_refuse_tell_me_after(conn, action_type):
     for level in ("ask_first", "never"):
         conn.execute(
             text(
-                "INSERT INTO autonomy_settings (user_id, action_type, level) VALUES (:u, :t, CAST(:l AS autonomy_level)) "
+                "INSERT INTO autonomy_settings (user_id, action_type, level) "
+                "VALUES (:u, :t, CAST(:l AS autonomy_level)) "
                 "ON CONFLICT (user_id, action_type) DO UPDATE SET level = EXCLUDED.level"
             ),
             {"u": user, "t": action_type, "l": level},
@@ -262,7 +263,9 @@ def test_an_approval_is_decided_in_the_app_and_nowhere_else(conn):
                 {"a": approval, "v": via},
             )
     with refused(conn):  # approved with no way of deciding recorded
-        conn.execute(text("UPDATE approvals SET status = 'approved', decided_at = now() WHERE id = :a"), {"a": approval})
+        conn.execute(
+            text("UPDATE approvals SET status = 'approved', decided_at = now() WHERE id = :a"), {"a": approval}
+        )
 
 
 def test_one_approval_per_action(conn):
@@ -280,7 +283,9 @@ def test_an_approval_cannot_name_another_persons_action(conn):
     stranger = make_user(conn)
     with refused(conn):
         conn.execute(
-            text("INSERT INTO approvals (user_id, agent_action_id, expires_at) VALUES (:u, :a, now() + interval '1 day')"),
+            text(
+                "INSERT INTO approvals (user_id, agent_action_id, expires_at) VALUES (:u, :a, now() + interval '1 day')"
+            ),
             {"u": stranger, "a": action},
         )
 
@@ -364,7 +369,11 @@ def state_changes(conn: Connection, campaign: UUID) -> list:
 def test_record_state_change_writes_a_state_change_row_under_one_control_run(conn, role):
     world = make_world(conn)
     act_as(conn, role, world.user)
-    first = one(conn, "SELECT record_state_change(:c, 'paused by the candidate', 'paused', '{\"by\": \"candidate\"}')", c=world.campaign)
+    first = one(
+        conn,
+        "SELECT record_state_change(:c, 'paused by the candidate', 'paused', '{\"by\": \"candidate\"}')",
+        c=world.campaign,
+    )
     second = one(conn, "SELECT record_state_change(:c, 'resumed by the candidate', 'resumed')", c=world.campaign)
     assert second > first
     back_to_bootstrap(conn)
@@ -405,7 +414,9 @@ def test_record_state_change_refuses_another_persons_campaign(conn):
 
 def test_record_state_change_is_not_callable_by_public(conn):
     world = make_world(conn)
-    assert one(conn, "SELECT has_function_privilege('app_api', 'record_state_change(uuid, text, text, jsonb)', 'EXECUTE')")
+    assert one(
+        conn, "SELECT has_function_privilege('app_api', 'record_state_change(uuid, text, text, jsonb)', 'EXECUTE')"
+    )
     assert one(
         conn, "SELECT has_function_privilege('app_worker', 'record_state_change(uuid, text, text, jsonb)', 'EXECUTE')"
     )
@@ -485,7 +496,9 @@ def test_the_api_cannot_write_another_persons_rows(conn):
     seed_everything(conn, theirs)
     other_job = make_job_id(conn)
     act_as(conn, "app_api", mine.user)
-    result = conn.execute(text("UPDATE campaigns SET follow_up_email = 'x@y.example' WHERE id = :c"), {"c": theirs.campaign})
+    result = conn.execute(
+        text("UPDATE campaigns SET follow_up_email = 'x@y.example' WHERE id = :c"), {"c": theirs.campaign}
+    )
     assert result.rowcount == 0
     with refused(conn) as caught:  # a row for someone else fails the policy's WITH CHECK
         make_campaign(conn, theirs.user, other_job)
@@ -496,7 +509,9 @@ def test_the_api_may_update_actions_and_approvals_but_not_insert_them_or_delete_
     world = make_world(conn)
     action = seed_everything(conn, world)
     act_as(conn, "app_api", world.user)
-    assert conn.execute(text("UPDATE approvals SET note = NULL WHERE agent_action_id = :a"), {"a": action}).rowcount == 1
+    assert (
+        conn.execute(text("UPDATE approvals SET note = NULL WHERE agent_action_id = :a"), {"a": action}).rowcount == 1
+    )
     with refused(conn):
         conn.execute(text("DELETE FROM agent_actions WHERE id = :a"), {"a": action})
     with refused(conn):
@@ -520,7 +535,8 @@ def test_the_worker_may_insert_actions_and_checks(conn):
         conn,
         """INSERT INTO agent_actions (agent_run_id, user_id, campaign_id, seq, kind, action_type, status, summary,
                                       payload, policy_decision, policy_version)
-           VALUES (:r, :u, :c, 2, 'outside_action', 'send_follow_up', 'proposed', 's', '{}', 'ask', 'v') RETURNING id""",
+           VALUES (:r, :u, :c, 2, 'outside_action', 'send_follow_up', 'proposed', 's', '{}', 'ask', 'v')
+           RETURNING id""",
         r=run,
         u=world.user,
         c=world.campaign,
@@ -547,7 +563,9 @@ def test_an_agent_token_request_sees_no_campaign_rows(conn):
     world = make_world(conn)
     seed_everything(conn, world)
     act_as(conn, "app_api", world.user)
-    conn.execute(text("SELECT set_config('app.agent_token_id', :t, true)"), {"t": "00000000-0000-0000-0000-000000000001"})
+    conn.execute(
+        text("SELECT set_config('app.agent_token_id', :t, true)"), {"t": "00000000-0000-0000-0000-000000000001"}
+    )
     for table in CAMPAIGN_TABLES:
         assert count(conn, table) == 0, table
 
@@ -561,5 +579,3 @@ def test_erasing_the_campaign_takes_its_rows_with_it_but_the_recorder_needs_main
     conn.execute(text("DELETE FROM users WHERE id = :u"), {"u": world.user})
     for table in CAMPAIGN_TABLES:
         assert count(conn, f"{table} WHERE user_id = :u", u=world.user) == 0, table
-
-

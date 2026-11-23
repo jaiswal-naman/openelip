@@ -84,8 +84,8 @@ def make_campaign(
     _require_test_database(conn)
     return conn.execute(
         text(
-            """INSERT INTO campaigns (user_id, job_id, introduction_id, stage, closed_reason, closed_at, budget_microusd,
-                                      follow_up_email, follow_up_after_days, paused_at)
+            """INSERT INTO campaigns (user_id, job_id, introduction_id, stage, closed_reason, closed_at,
+                                      budget_microusd, follow_up_email, follow_up_after_days, paused_at)
                VALUES (:u, :j, :i, CAST(:stage AS campaign_stage),
                        CASE WHEN :stage = 'closed' THEN 'cancelled'::campaign_closed_reason END,
                        CASE WHEN :stage = 'closed' THEN now() END, :budget, :email, :days,
@@ -240,9 +240,15 @@ def _move(conn: Connection, action_id: int, status: str, undo_until: datetime | 
 
 
 def make_check(
-    conn: Connection, action_id: int, kind: str, passed: bool, reason_code: str | None = None, *, version: str = "test-1"
+    conn: Connection,
+    action_id: int,
+    kind: str,
+    passed: bool,
+    reason_code: str | None = None,
+    *,
+    version: str = "test-1",
 ) -> int:
-    """One Guardian verdict on an action. A failed one needs a reason code; `check_failed` is used when none is given."""
+    """One Guardian verdict on an action. A failed one needs a reason code: `check_failed` when none is given."""
     _require_test_database(conn)
     return conn.execute(
         text(
