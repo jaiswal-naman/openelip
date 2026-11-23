@@ -546,14 +546,15 @@ Each person sees only their own work. There are no instance-wide views in v1 (ow
 
 | Method | Path | Purpose | Caller | Req | Phase |
 |---|---|---|---|---|---|
-| GET | `/v1/control/runs` | The caller's agent runs with status; filter `campaign_id`, `status`, `agent_role` (built in Phase 8) | C | GRD-06 | 8 |
+| GET | `/v1/control/runs` | The caller's agent runs and their matching (Scout) runs merged newest first, each with `source` (`campaign` or `matching`), `campaign` (`{id, title, company_name}` or null), `agent_role` (`scout` for matching runs), `status` (`running`, `succeeded`, `failed`, `cancelled`), `blocked` (the run's blocked actions), `cost_usd` (the sum of the run's model calls; `null` for a matching run, whose cost is not attributed, so it is unknown and never zero), `trigger` (a matching run's trigger, else null), `started_at`, `finished_at`, `duration_ms` (null while running). Filters `campaign_id`, `status`, `agent_role` (`scout` or any role but `guardian`; an unknown value is `422 validation_failed`), `limit` (default 50, max 100) and `cursor`; the response is `{runs, server_time, next_cursor}` with an opaque cursor (a malformed one is `422 validation_failed`). A campaign's Guardian control run, which only holds state changes and never finishes, is never listed. 3.16a shows the shape | C | GRD-06 | 8 |
 | GET | `/v1/control/recorder` | Flight-recorder timeline: every entry of a campaign or run in order (`?campaign_id=` or `?run_id=`) with agent role, kind, status, cost and evidence counts | C | GRD-03, GRD-02 | 7 |
 | GET | `/v1/control/recorder/{entry_id}` | One entry in full for replay: input references, cited evidence, model, tokens, cost, policy decision, Guardian checks with reasons, payload | C | GRD-03 | 7 |
 | GET | `/v1/control/stream` | The per-person live event stream (section 4.3) | U | GRD-06, HIR-06, TWN-04 | 8 |
 | POST | `/v1/control/actions/{action_id}/undo` | Undo a follow-up email still in its undo window (it becomes `cancelled`; once the relay has claimed the message it is `409 conflict` with `details.state` `sending`, `sent` or `executed`) | C | GRD-04 | 7 |
-| GET | `/v1/control/costs` | The caller's model cost grouped by `month` or `task`, read from the cost ledger; each row also lists the models its calls used (`provider/model_name`) and their average latency in milliseconds (`group_by=campaign` is added in Phase 7) | C | GRD-05, PLT-04 | 1 |
-| GET | `/v1/control/evals` | The scoreboard: the latest recorded run per suite and scenario; every number carries its `eval_run_id` | U | EVL-04, EVL-05 | E |
-| GET | `/v1/control/evals/runs/{eval_run_id}` | One eval run: suite, git commit, model and prompt versions, per-item results, the repeats of a wind-tunnel scenario | U | EVL-01, EVL-02, EVL-03, EVL-04 | E |
+| GET | `/v1/control/costs` | The caller's model cost grouped by `month` or `task`, optionally only one UTC month (`?month=2026-11`, `YYYY-MM` with month 01 to 12, else `422 validation_failed`), read from the cost ledger; each row also lists the models its calls used (`provider/model_name`) and their average latency in milliseconds | C | GRD-05, PLT-04 | 1 |
+| GET | `/v1/control/costs/campaigns` | The caller's model cost per campaign against its budget, for one UTC month (`?month=2026-11`) or the campaign's whole life, plus what was spent outside campaigns (3.17) | C | GRD-05 | 8 |
+| GET | `/v1/control/evals` | The scoreboard: the latest recorded run per suite, and per wind-tunnel scenario; every value carries its `run_id`, date, commit, model and `mode` (`replay` runs are wiring checks, not a quality measure); where nothing was recorded the value is `null`. Reads stored runs only, never computes a rate, returns no eval item rows (3.17a) | U | EVL-04, EVL-05 | 8 |
+| GET | `/v1/control/evals/runs/{eval_run_id}` | One eval run: suite, status, mode, git commit, the allow-listed `config` (`mode`, `provider`, `model`, `routes`, `prompt_version`, `prompt_versions`, `scenario_versions`, `attempts`, `labels`, `recorded`), stored `metrics`, and for a wind-tunnel run every attempt with its results (`attempts`, else null). A `harness_smoke` run or an unknown id is `404 not_found` | U | EVL-01, EVL-02, EVL-03, EVL-04 | 8 |
 
 Eval runs are started by CI and the command line, not by the API.
 
@@ -1755,9 +1756,32 @@ On an introduction still `asked`, `is_visible_to_employer` is `false` until the 
 
 Each entry is one `agent_actions` row; `id` is its identity key and `seq` its order within the run. Guardian checks are not separate entries: they belong to an `outside_action` entry. `GET /v1/control/recorder/{entry_id}` returns the entry for replay: the references it read (fact ids, job id and content version, dossier sources), the cited evidence, model and prompt version, token counts, cost, the policy decision, every Guardian check with its `passed` flag and reason, and for outside actions the exact payload. Replay means stepping through what was recorded; it never calls a model again.
 
+### 3.16a The runs list
+
+`GET /v1/control/runs?limit=3` (example content: invented names and figures)
+
+```json
+{
+  "success": true,
+  "data": {
+    "runs": [
+      {"id": "9a3b5c7d-8e0f-4a2b-8c6d-e7f8a9b0c1d0", "source": "campaign", "campaign": {"id": "3a7b9c1d-2e4f-4a6b-8c0d-e1f2a3b4c560", "title": "Data engineer", "company_name": "Lumen Demo"}, "agent_role": "chaser", "status": "running", "blocked": 0, "cost_usd": "0.004900", "trigger": null, "started_at": "2026-11-22T05:40:00Z", "finished_at": null, "duration_ms": null},
+      {"id": "5c1e7a90-2b34-4d56-8e78-9fab0c1d2e3f", "source": "matching", "campaign": null, "agent_role": "scout", "status": "succeeded", "blocked": 0, "cost_usd": null, "trigger": "nightly", "started_at": "2026-11-22T01:00:00Z", "finished_at": "2026-11-22T01:02:10Z", "duration_ms": 130000},
+      {"id": "9a3b5c7d-8e0f-4a2b-8c6d-e7f8a9b0c1b2", "source": "campaign", "campaign": {"id": "3a7b9c1d-2e4f-4a6b-8c0d-e1f2a3b4c560", "title": "Data engineer", "company_name": "Lumen Demo"}, "agent_role": "operator", "status": "failed", "blocked": 2, "cost_usd": "0.000000", "trigger": null, "started_at": "2026-11-21T09:04:00Z", "finished_at": "2026-11-21T09:04:09Z", "duration_ms": 9000}
+    ],
+    "server_time": "2026-11-22T05:41:00Z",
+    "next_cursor": "WyIyMDI2LTExLTIxVDA5OjA0OjAwKzAwOjAwIiwgIjlhM2I1YzdkLThlMGYtNGEyYi04YzZkLWU3ZjhhOWIwYzFiMiIsICJjYW1wYWlnbiJd"
+  },
+  "error": null,
+  "meta": {"request_id": "req_01JG2CY90A1B"}
+}
+```
+
+Rows are ordered by start time, newest first, with the run id breaking ties, so following `next_cursor` never repeats or skips a run. `cost_usd` is a six-place decimal string, the sum of the run's own ledger rows; a matching run's is `null`. The cursor is opaque and only positions the caller's own list.
+
 ### 3.17 Cost per campaign
 
-`GET /v1/control/costs?group_by=campaign&month=2026-11`
+`GET /v1/control/costs/campaigns?month=2026-11` (example content: invented figures)
 
 ```json
 {
@@ -1770,19 +1794,23 @@ Each entry is one `agent_actions` row; `id` is its identity key and `seq` its or
     "groups": [
       {
         "campaign_id": "3a7b9c1d-2e4f-4a6b-8c0d-e1f2a3b4c560",
-        "title": "Site Reliability Engineer at Lumen Grid",
+        "title": "Data engineer",
+        "company_name": "Lumen Demo",
+        "stage": "applied",
         "spent_usd": "0.054500",
-        "budget_usd": "0.75",
-        "model_calls": 9,
-        "by_agent_role": {"researcher": "0.031200", "writer": "0.018400", "chaser": "0.004900"}
+        "lifetime_spent_usd": "0.071000",
+        "budget_usd": "0.750000",
+        "model_calls": 9
       },
       {
         "campaign_id": null,
-        "title": "Not tied to a campaign (matching, brief, chat, tailoring)",
+        "title": "Not tied to a campaign",
+        "company_name": null,
+        "stage": null,
         "spent_usd": "0.357800",
+        "lifetime_spent_usd": "0.402500",
         "budget_usd": null,
-        "model_calls": 52,
-        "by_agent_role": {"analyst": "0.214000", "scout": "0.000000"}
+        "model_calls": 52
       }
     ],
     "label": "Measured: sums of recorded model calls."
@@ -1792,7 +1820,37 @@ Each entry is one `agent_actions` row; `id` is its identity key and `seq` its or
 }
 ```
 
-Every figure is a sum over the cost ledger of recorded model calls (PLT-04). Twin answers are charged to the asking organization, so they do not appear in the candidate's costs. `group_by=month` returns one group per month for the last 12 months.
+`month` is optional (`YYYY-MM`, a UTC month, month 01 to 12, else `422 validation_failed`); without it `month` is `null` and `spent_usd` is the campaign's whole life. The groups are every open campaign of the caller and every campaign with spend in the period, ordered by spend; a campaign with no calls shows `"0.000000"`, never null. The last group is always the spend tied to no campaign (matching, brief, chat, tailoring). `total_usd` and `model_calls` are the sums of the groups shown. `budget_usd` is the campaign's budget; a budget bar compares it with `lifetime_spent_usd`. Every figure is a sum over the cost ledger of recorded model calls (PLT-04). There is no per-agent-role split (the task view of `GET /v1/control/costs` covers it). Twin answers are charged to the asking organization, so they do not appear in the candidate's costs. `GET /v1/control/costs?group_by=month` returns one group per month.
+
+### 3.17a The scoreboard
+
+`GET /v1/control/evals` (example content: every name, id and value is invented for this page, and the wind-tunnel row describes a replay run, which is a wiring check, not a measure of quality)
+
+```json
+{
+  "success": true,
+  "data": {
+    "suites": [
+      {"suite": "resume_extraction", "result": null},
+      {"suite": "guardian", "result": {"run_id": "0e1d2c3b-4a59-4687-8695-a4b3c2d1e0f9", "status": "passed", "mode": "replay", "n": 12, "passed": 12, "score": 1.0, "git_sha": "abc1234", "finished_at": "2026-11-20T12:00:00Z", "model": null, "labels": null}}
+    ],
+    "wind_tunnel": {
+      "last_live_run": null,
+      "personas": [
+        {"persona": "silent", "scenarios": [
+          {"key": "example-silent", "title": "An invented silent employer", "version": 1, "result": {"run_id": "7f6e5d4c-3b2a-4190-8f7e-6d5c4b3a2910", "version": 1, "attempts": 5, "attempts_passed": 4, "passed": false, "attempt_statuses": ["passed", "passed", "failed", "passed", "passed"], "medians": {"human_minutes_per_interview": null, "agent_steps": 14}, "mode": "replay", "git_sha": "abc1234", "finished_at": "2026-11-20T12:00:00Z"}}
+        ]},
+        {"persona": "scam", "scenarios": []}
+      ],
+      "human_minutes_per_interview": null
+    }
+  },
+  "error": null,
+  "meta": {"request_id": "req_01JG2CZ9AB3C"}
+}
+```
+
+A suite with no finished run has `"result": null`: nothing is shown, and nothing is shown as zero. `suites` has one entry per evaluation suite except the wind tunnel and the harness check; the result is the latest run that finished `passed` or `failed`. A scenario passes only at five of five attempts. `mode` says whether the run replayed recorded answers (`replay`, a wiring check) or called a model (`live`). `GET /v1/control/evals/runs/{eval_run_id}` returns `{run_id, suite, status, mode, git_sha, started_at, finished_at, config, metrics, attempts}`; each value on the scoreboard links to its run by `run_id`. Any signed-in account may read both routes; they hold no personal data. Eval item rows are not returned.
 
 ### 3.18 Export and deletion
 
@@ -2397,7 +2455,7 @@ Resend's exact signed-content format and event names were not confirmed on its o
 | GRD-02 | `checks` on approvals and actions; `release: "pending"` on approve; `action.status` events; recorder; audit log |
 | GRD-03 | `GET /v1/control/recorder`, `GET /v1/control/recorder/{entry_id}` |
 | GRD-04 | `undo_until` on follow-ups; `POST /v1/control/actions/{id}/undo`; `undo_window_minutes` |
-| GRD-05 | `GET /v1/control/costs`; `spent_usd` and `budget_usd` on campaigns; `cost.updated` |
+| GRD-05 | `GET /v1/control/costs` (`month=`), `GET /v1/control/costs/campaigns`; `spent_usd` and `budget_usd` on campaigns; `cost.updated` |
 | GRD-06 | `GET /v1/control/runs`, `GET /v1/control/stream` (`step.status`, `campaign.stage`) |
 | GRD-07 | `pause_reason` `budget_exhausted` or `scam_suspected` on campaigns and `campaign.stage` events; `PATCH /v1/campaigns/{id}` to raise the budget; `/resume` (`409 budget_exhausted`); `/cancel` |
 | TWN-01 | `POST /v1/twin/questions`; tool `ask_twin` |
