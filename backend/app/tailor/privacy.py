@@ -7,8 +7,13 @@ Both tables are erased by cascade from users (DATA_MODEL 7.2). The export holds 
 edits included: they are rows about the person, and the archive is their own data (05-01 deviation 10). The rendered
 resumes are added as files (DATA_MODEL 7.3): one DOCX for each tailored resume that has an approved edit, drawn from
 approved edits only, exactly as the download draws it.
+
+Each edit row carries an `archive_label` (05 fix A1, A6): `discarded` for an edit the verifier threw away (its text is
+kept, because it is the person's own data), `not_exported_fact_not_usable` for an approved edit that no export prints
+any more because a fact it rests on was retired or corrected, and `kept` otherwise. A README.txt says so.
 """
 
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import Connection, text
@@ -32,6 +37,26 @@ WITH_APPROVED_EDIT = text(
 )
 
 
+README = (
+    "Tailored resumes\n\n"
+    "resume_edits in tailor.json includes the text of edits the verifier DISCARDED (archive_label = 'discarded'). They\n"
+    "were never shown to you as suggestions and no resume file contains them; they are included because they are rows\n"
+    "about you. An approved edit whose supporting fact you have since retired or corrected is kept here with\n"
+    "archive_label = 'not_exported_fact_not_usable'; it is left out of every resume file.\n"
+)
+
+
+def label_edit(row: dict[str, Any], usable: set[str]) -> dict[str, Any]:
+    """The edit row with its archive label."""
+    if row["verifier_status"] == "discarded":
+        label = "discarded"
+    elif row["decision"] == "approved" and not service.edit_is_usable(row["supporting_fact_ids"], usable):
+        label = "not_exported_fact_not_usable"
+    else:
+        label = "kept"
+    return {**row, "archive_label": label}
+
+
 def export_tailor(conn: Connection, user_id: UUID) -> ModuleExport:
     """The person's tailored resumes and their edits as JSON-ready rows, and each approved resume as a DOCX. Rows are
     selected by the person's id whatever role runs this, so the worker exports what the API would show them."""
@@ -39,10 +64,12 @@ def export_tailor(conn: Connection, user_id: UUID) -> ModuleExport:
         f"files/tailored-resumes/tailored-resume-{found}.docx": render_docx(service.export_doc(conn, user_id, found))
         for found in conn.execute(WITH_APPROVED_EDIT, {"u": user_id}).scalars()
     }
-    return ModuleExport(
-        data={table: list(conn.execute(text(sql), {"u": user_id}).scalars()) for table, sql in ROWS.items()},
-        files=files,
-    )
+    data = {table: list(conn.execute(text(sql), {"u": user_id}).scalars()) for table, sql in ROWS.items()}
+    if data["resume_edits"]:
+        usable = service.usable_fact_ids(conn, user_id)
+        data["resume_edits"] = [label_edit(row, usable) for row in data["resume_edits"]]
+        files["files/tailored-resumes/README.txt"] = README.encode()
+    return ModuleExport(data=data, files=files)
 
 
 register("tailor", dict.fromkeys(ROWS, "cascade"), exporter=export_tailor)

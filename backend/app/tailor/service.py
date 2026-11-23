@@ -10,6 +10,7 @@ export, which draws only approved edits onto a base built from the person's conf
 
 import logging
 from datetime import datetime, timedelta, timezone
+from collections.abc import Iterable
 from typing import Any, Literal
 from uuid import UUID
 
@@ -91,6 +92,9 @@ EDIT_OF_RESUME = text(
 DECIDE = text(
     """UPDATE resume_edits SET decision = CAST(:decision AS edit_decision), decided_at = now()
         WHERE user_id = :u AND id = :id"""
+)
+SUPPORT_OF = text(
+    """SELECT supporting_fact_ids FROM resume_edits WHERE user_id = :u AND id = ANY(CAST(:ids AS uuid[]))"""
 )
 APPROVED_EDITS = text(
     """SELECT target_fact_id, before_text, after_text, supporting_fact_ids, section FROM resume_edits
@@ -396,6 +400,14 @@ def decide(conn: Connection, user_id: UUID, tailored_id: UUID, decisions: list[D
         raise not_found()
     if any(current[edit_id] != "pending" for edit_id in ids) or len(set(ids)) != len(ids):
         raise ApiError(409, "conflict", "An edit can be decided once.", {"state": "already_decided"})
+    approving = [d.edit_id for d in decisions if d.decision == "approved"]
+    if approving:
+        usable = usable_fact_ids(conn, user_id)
+        stored = conn.execute(SUPPORT_OF, {"u": user_id, "ids": approving})
+        if any(not {str(i) for i in row.supporting_fact_ids} <= usable for row in stored):
+            raise ApiError(
+                409, "conflict", "A fact this edit rests on is no longer in your record.", {"reason": "fact_not_usable"}
+            )
     for d in decisions:
         conn.execute(DECIDE, {"u": user_id, "id": d.edit_id, "decision": d.decision})
     return get(conn, user_id, tailored_id)
@@ -404,15 +416,32 @@ def decide(conn: Connection, user_id: UUID, tailored_id: UUID, decisions: list[D
 # ---- export ----------------------------------------
 
 
+def usable_fact_ids(conn: Connection, user_id: UUID) -> set[str]:
+    """The ids of the person's usable (confirmed, current) facts, as text."""
+    return {str(f["id"]) for f in profile.usable_facts(conn, user_id)}
+
+
+def edit_is_usable(supporting_fact_ids: Iterable[Any], usable: set[str]) -> bool:
+    """True while every fact an edit rests on is still usable (invariant 3: the record is the only source)."""
+    return {str(i) for i in supporting_fact_ids} <= usable
+
+
 def export_doc(conn: Connection, user_id: UUID, tailored_resume_id: UUID) -> ResumeDoc:
     """The resume as it stands with approved edits only: the base built from the person's confirmed facts now, then each
-    approved edit. A rejected, undecided or discarded edit never reaches it. An approved edit whose fact has since been
-    corrected or retired is dropped by apply_edits (the base shows the current fact), so an export never prints a
-    sentence the record no longer holds."""
+    approved edit. A rejected, undecided or discarded edit never reaches it. An approved edit is also dropped here when
+    any one of its supporting facts is no longer usable (retired, rejected or superseded since): apply_edits only drops
+    an edit whose target bullet left the base, which is not enough for an added fact or a second supporting fact. Every
+    export (the file, the packet PDF, the archive DOCX) goes through this function, so an export never prints a sentence
+    the record no longer holds."""
     if conn.execute(ONE, {"u": user_id, "id": tailored_resume_id}).one_or_none() is None:
         raise not_found()
     base = base_doc(conn, user_id)
-    edits = list(conn.execute(APPROVED_EDITS, {"u": user_id, "r": tailored_resume_id}))
+    usable = usable_fact_ids(conn, user_id)
+    edits = [
+        e
+        for e in conn.execute(APPROVED_EDITS, {"u": user_id, "r": tailored_resume_id})
+        if edit_is_usable(e.supporting_fact_ids, usable)
+    ]
     return apply_edits(base, [_Stored(e) for e in edits])
 
 
