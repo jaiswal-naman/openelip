@@ -4,7 +4,6 @@ Markers such as ZZapproved make a PDF's extracted text easy to search.
 """
 
 import io
-from types import SimpleNamespace
 
 import pdfplumber
 import pytest
@@ -13,7 +12,7 @@ from sqlalchemy import text
 
 from app.platform.llm import fake
 from app.tailor import privacy, service
-from tests.p5_factories import BULLET_A1, BULLET_B1, BULLET_B2, Edit, make_job, make_tailored_resume
+from tests.p5_factories import BULLET_A1, BULLET_B1, BULLET_B2, Edit, make_tailored_resume
 from tests.tailor.fixtures.service import harness
 from tests.tailor.fixtures.service.harness import key, sign_in
 
