@@ -20,7 +20,16 @@ from tests.match.factories import LOCAL_DATE
 
 IST = ZoneInfo("Asia/Kolkata")
 MORNING = datetime(2026, 11, 23, 6, 10, tzinfo=IST)
-SHAPE = {"id", "local_date", "status", "delivery", "decisions", "done_since_last_brief", "open_record_proposals"}
+SHAPE = {
+    "id",
+    "local_date",
+    "status",
+    "delivery",
+    "decisions",
+    "done_since_last_brief",
+    "open_record_proposals",
+    "undoable",
+}
 
 
 def morning_of(engine, email="ada@mail.test", *, earlier_days=(), prefix=""):

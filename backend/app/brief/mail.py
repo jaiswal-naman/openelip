@@ -34,6 +34,10 @@ class Links:
     def introduction(self, introduction_id: UUID) -> str:
         return f"{self.base}/app/today?decision={introduction_id}"
 
+    def campaign(self, link: str) -> str:
+        """A campaign page of the app (`link` is the app path campaigns.api gives); signing in is needed to open it."""
+        return f"{self.base}{link}"
+
     @property
     def today(self) -> str:
         return f"{self.base}/app/today"
@@ -104,6 +108,16 @@ def render(product_name: str, view: dict[str, Any], links: Links) -> tuple[str, 
         ]
     if proposals:
         out += ["Waiting for you", f"{_line(proposals['title'])}: {links.record}", ""]
+    approvals = [d for d in view["decisions"] if d["kind"] == "approval"]
+    activity = [d for d in view["decisions"] if d["kind"] == "activity"]
+    if approvals:  # one line and one link each; the decision is made in the app, never from the email
+        out += [f"Waiting for your approval ({len(approvals)})", "Open each one in the app to read it and decide.", ""]
+        for item in approvals:
+            out += [f"- {_line(item['text'])}", f"  {links.campaign(item['link'])}", ""]
+    if activity:
+        out += [f"What your agents did ({len(activity)})", ""]
+        for item in activity:
+            out += [f"- {_line(item['text'])}", f"  {links.campaign(item['link'])}", ""]
     if view["done_since_last_brief"]:
         out += [
             "Done since your last brief",

@@ -15,6 +15,7 @@ from uuid import UUID
 
 from sqlalchemy import Connection, Row, text
 
+from app.campaigns import api as campaigns
 from app.hiring import api as hiring
 from app.ingest import api as ingest
 from app.match import api as match
@@ -47,6 +48,7 @@ def brief_view(conn: Connection, brief_id: UUID, user_id: UUID) -> dict[str, Any
     waiting = int(profile.get_record(conn, user_id)["open_proposals"])
     if waiting:
         decisions.append(_proposals_item(waiting))
+    decisions += _campaign_items(conn, brief, user_id)
     return {
         "id": brief.id,
         "local_date": brief.local_date,
@@ -55,6 +57,7 @@ def brief_view(conn: Connection, brief_id: UUID, user_id: UUID) -> dict[str, Any
         "decisions": decisions,
         "done_since_last_brief": _done(conn, brief, user_id),
         "open_record_proposals": waiting,
+        "undoable": campaigns.undoable(conn, user_id),
     }
 
 
@@ -117,6 +120,39 @@ def _introduction_items(conn: Connection, brief: Row[Any], user_id: UUID) -> lis
         for ask in (named.get(i) for i in ids)
         if ask is not None
     ]
+
+
+def _campaign_items(conn: Connection, brief: Row[Any], user_id: UUID) -> list[dict[str, Any]]:
+    """The brief's approval and activity items in stored order, each as the approval or action reads now (an approval
+    decided since the brief was made says so, not "waiting"). The sentences and links come from campaigns.api; an item
+    whose row is gone is skipped. Every read filters by `user_id`, so the email's worker connection sees only theirs."""
+    stored = conn.execute(
+        text(
+            """SELECT kind::text AS kind, approval_id, agent_action_id FROM brief_items
+                WHERE brief_id = :b AND kind IN ('approval', 'activity') ORDER BY position"""
+        ),
+        {"b": brief.id},
+    ).all()
+    if not stored:
+        return []
+    approvals = campaigns.approval_lines(conn, user_id, [r.approval_id for r in stored if r.kind == "approval"])
+    actions = campaigns.action_lines(conn, user_id, [r.agent_action_id for r in stored if r.kind == "activity"])
+    items = []
+    for row in stored:
+        line = approvals.get(row.approval_id) if row.kind == "approval" else actions.get(row.agent_action_id)
+        if line is not None:
+            items.append(
+                {
+                    "kind": row.kind,
+                    "campaign_id": line.campaign_id,
+                    "text": line.text,
+                    "link": line.link,
+                    "status": line.status,
+                    "approval_id": row.approval_id,
+                    "agent_action_id": row.agent_action_id,
+                }
+            )
+    return items
 
 
 def _match_decisions(conn: Connection, brief: Row[Any], user_id: UUID) -> list[dict[str, Any]]:
