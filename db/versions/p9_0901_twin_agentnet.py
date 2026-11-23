@@ -8,7 +8,8 @@ policies) and 5.7 (grants), with the seven amendments of 09-INDEX "DDL amendment
   (a) twin_messages.topic is required only on a Twin message: an employer's question is stored without one
   (b) agent_actions_guard: a twin_answer whose payload kind is 'relay' (the candidate's own reply) is not stopped by the
       dial 'never', and always needs an approved approval; everything else is as Phase 7 left it
-  (c) four policies: agent_introductions, agent_shortlist, agent_roles (organization tokens, accepted introductions only)
+  (c) five policies: agent_introductions, agent_shortlist, agent_roles, agent_organizations (organization tokens, accepted
+      introductions only; agent_organizations is the token's own organization row, for the name in labels)
       and org_token_calls (admins read their organization's token calls in audit_log)
   (d) touch_agent_token, role_ask_bucket and twin_message_citations (SECURITY DEFINER; EXECUTE to app_api only)
   (e) queue_jobs keeps no row-level security; DATA_MODEL's agent_request_introduction policy is not created
@@ -560,6 +561,12 @@ POLICIES = [
         "AND (app_scope_ok('twin:ask') OR app_scope_ok('introductions:request')))",
     ),
     _policy(
+        "agent_organizations",
+        "organizations",
+        "FOR SELECT TO app_api USING (app_agent_token_id() IS NOT NULL AND app_is_org_member(id) "
+        "AND (app_scope_ok('twin:ask') OR app_scope_ok('introductions:request')))",
+    ),
+    _policy(
         "org_token_calls",
         "audit_log",
         "FOR SELECT TO app_api USING (app_agent_token_id() IS NULL AND organization_id IS NOT NULL "
@@ -602,6 +609,7 @@ DROP POLICY IF EXISTS agent_explanations ON profile_facts;
 DROP POLICY IF EXISTS agent_introductions ON introductions;
 DROP POLICY IF EXISTS agent_shortlist ON shortlist_entries;
 DROP POLICY IF EXISTS agent_roles ON roles;
+DROP POLICY IF EXISTS agent_organizations ON organizations;
 DROP POLICY IF EXISTS org_token_calls ON audit_log;
 
 ALTER TABLE audit_log DROP CONSTRAINT IF EXISTS audit_log_agent_token_id_fkey;

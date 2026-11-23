@@ -612,7 +612,7 @@ def test_an_organization_token_reads_accepted_introductions_their_shortlist_entr
         assert n(conn, "introductions WHERE status = 'asked'") == 0
         assert n(conn, "shortlist_entries") == 1
         assert n(conn, "roles") == 1
-        assert n(conn, "organizations") == 0 and n(conn, "org_members") == 0  # nothing else of the organization
+        assert n(conn, "organizations") == 1 and n(conn, "org_members") == 0  # its own row, nothing else
     as_bootstrap(conn)
     withdraw(conn, world.accepted.consent)
     act_as(conn, "app_api", world.org.owner, token=rls["twin_token"].id, scopes="twin:ask")
