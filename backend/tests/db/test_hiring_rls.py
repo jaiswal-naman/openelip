@@ -55,25 +55,35 @@ TOUCH = {
     "shortlist_entries": "contact_released_at = contact_released_at",
     "interest_signals": "slot = slot",
 }
-POLICIES = {
-    ("organizations", "member_read"),
-    ("organizations", "admin_update"),
-    ("org_members", "member_read"),
-    ("org_members", "admin_write"),
-    ("roles", "member_all"),
-    ("role_requirements", "member_all"),
-    ("introductions", "candidate_read"),
-    ("introductions", "candidate_answer"),
-    ("introductions", "employer_read"),
-    ("introductions", "employer_answer"),
-    ("shortlist_entries", "candidate_own"),
-    ("shortlist_entries", "candidate_insert"),
-    ("shortlist_entries", "employer_read"),
-    ("interest_signals", "candidate_read"),
-    ("interest_signals", "candidate_send"),
-    ("interest_signals", "employer_read"),
-    ("interest_signals", "employer_send"),
-} | {(table, "worker_all") for table in TABLES}
+POLICIES = (
+    {
+        ("organizations", "member_read"),
+        ("organizations", "admin_update"),
+        ("org_members", "member_read"),
+        ("org_members", "admin_write"),
+        ("roles", "member_all"),
+        ("role_requirements", "member_all"),
+        ("introductions", "candidate_read"),
+        ("introductions", "candidate_answer"),
+        ("introductions", "employer_read"),
+        ("introductions", "employer_answer"),
+        ("shortlist_entries", "candidate_own"),
+        ("shortlist_entries", "candidate_insert"),
+        ("shortlist_entries", "employer_read"),
+        ("interest_signals", "candidate_read"),
+        ("interest_signals", "candidate_send"),
+        ("interest_signals", "employer_read"),
+        ("interest_signals", "employer_send"),
+    }
+    | {(table, "worker_all") for table in TABLES}
+    | {
+    # plan 09-01: what an organization token reads of the hiring side (accepted introductions, active consent)
+        ("organizations", "agent_organizations"),
+        ("roles", "agent_roles"),
+        ("introductions", "agent_introductions"),
+        ("shortlist_entries", "agent_shortlist"),
+    }
+)
 FULL = {"SELECT", "INSERT", "UPDATE", "DELETE"}
 
 
