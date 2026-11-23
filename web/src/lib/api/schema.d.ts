@@ -509,7 +509,8 @@ export interface paths {
         };
         /**
          * Todays Matches
-         * @description The matches shown on a date, ranked, each with the requirement evidence table. Zero is a valid day.
+         * @description The matches shown on a date, ranked, each with the requirement evidence table. Zero is a valid day. A job the
+         *     caller's hard constraints exclude now, whatever they said when the run made the match, is not listed.
          */
         get: operations["todays_matches_v1_matches_get"];
         put?: never;
@@ -529,7 +530,8 @@ export interface paths {
         };
         /**
          * One Match
-         * @description One shown match with the posting's text (for the highlights) and a check of each hard constraint.
+         * @description One shown match with the posting's text (for the highlights) and a check of each hard constraint. 404 when the
+         *     job is one the caller's hard constraints now exclude: GET /v1/decisions/{id} reads it as filtered.
          */
         get: operations["one_match_v1_matches__decision_id__get"];
         put?: never;
@@ -591,7 +593,8 @@ export interface paths {
         };
         /**
          * One Decision
-         * @description One decision of any outcome, with its evidence, the constraint that filtered it or the gaps that withheld it.
+         * @description One decision of any outcome, with its evidence, the constraint that filtered it or the gaps that withheld it. A
+         *     shown match whose job the caller's hard constraints now exclude reads as filtered.
          */
         get: operations["one_decision_v1_decisions__decision_id__get"];
         put?: never;
@@ -914,7 +917,8 @@ export interface components {
         };
         /**
          * ConstraintRef
-         * @description The constraint that removed a job. id and statement are null when the person has since removed it.
+         * @description The constraint that removed a job. id and statement are null when the person has since removed it, or replaced it
+         *     with another of the same kind after the decision was made.
          */
         ConstraintRef: {
             /** Id */

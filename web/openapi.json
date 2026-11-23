@@ -1619,7 +1619,7 @@
     "/v1/matches": {
       "get": {
         "summary": "Todays Matches",
-        "description": "The matches shown on a date, ranked, each with the requirement evidence table. Zero is a valid day.",
+        "description": "The matches shown on a date, ranked, each with the requirement evidence table. Zero is a valid day. A job the\ncaller's hard constraints exclude now, whatever they said when the run made the match, is not listed.",
         "operationId": "todays_matches_v1_matches_get",
         "parameters": [
           {
@@ -1667,7 +1667,7 @@
     "/v1/matches/{decision_id}": {
       "get": {
         "summary": "One Match",
-        "description": "One shown match with the posting's text (for the highlights) and a check of each hard constraint.",
+        "description": "One shown match with the posting's text (for the highlights) and a check of each hard constraint. 404 when the\njob is one the caller's hard constraints now exclude: GET /v1/decisions/{id} reads it as filtered.",
         "operationId": "one_match_v1_matches__decision_id__get",
         "parameters": [
           {
@@ -1921,7 +1921,7 @@
     "/v1/decisions/{decision_id}": {
       "get": {
         "summary": "One Decision",
-        "description": "One decision of any outcome, with its evidence, the constraint that filtered it or the gaps that withheld it.",
+        "description": "One decision of any outcome, with its evidence, the constraint that filtered it or the gaps that withheld it. A\nshown match whose job the caller's hard constraints now exclude reads as filtered.",
         "operationId": "one_decision_v1_decisions__decision_id__get",
         "parameters": [
           {
@@ -2883,7 +2883,7 @@
           "statement"
         ],
         "title": "ConstraintRef",
-        "description": "The constraint that removed a job. id and statement are null when the person has since removed it."
+        "description": "The constraint that removed a job. id and statement are null when the person has since removed it, or replaced it\nwith another of the same kind after the decision was made."
       },
       "ConstraintWritten": {
         "properties": {

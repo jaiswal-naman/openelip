@@ -160,6 +160,8 @@ A refusal is `429 rate_limited` with `Retry-After` in seconds. Default limits, a
 | Public routes (`/v1/jobs`, `/v1/stats`, subprocessors, unsubscribe) | 60 per minute per client address |
 | Agent tokens at `/mcp` | Section 5.8 |
 
+No generic rate limiter exists yet: the limits above are enforced where a route has a check of its own (sign-in codes, resume uploads), and the rest are the design, not the code. In particular `POST /v1/briefs/unsubscribe` has no rate limit yet. The exposure is small: the route verifies the token's HMAC signature, in constant time, before it opens a database connection, so a request without a valid token costs one hash and no query, and a valid token can only withdraw the `brief_email` consent of the one person it was issued to. The route gets its limit with the first generic limiter for public routes.
+
 Product quotas (interest signals per week) are not rate limits; exceeding one returns `422 quota_exhausted` (1.11).
 
 ### 1.9 Long-running work
@@ -836,7 +838,9 @@ The client then posts `details.suggested_preference` to `POST /v1/me/preferences
 }
 ```
 
-`matches` holds zero to five items; zero is a valid day. Every `quote` is the stored text at the stored span. A `met` or `partly_met` verdict always has at least one record citation; a verdict whose citation does not resolve is never stored and its job is withheld with `citation_unresolved` (MAT-05). `checker: "passed"` reports that the independent constraint checker ran on this run (MAT-01). A job that does not state a value a constraint needs passes that constraint and carries the matching `unverified` flag, shown as "not stated".
+`matches` holds zero to five items; zero is a valid day. Every `quote` is the stored text at the stored span. A `met` or `partly_met` verdict always has at least one record citation; a verdict whose citation does not resolve is never stored and its job is withheld with `citation_unresolved` (MAT-05). `checker: "passed"` reports that the independent constraint checker ran on this run (MAT-01). A job that does not state a value a constraint needs passes that constraint and carries the matching `unverified` flag, shown as "not stated". The flags, like the checks below, are worked out when the match is read, from the posting and the candidate's constraints as they are then, not from what the run stored.
+
+A match is checked against the candidate's hard constraints every time it is read (invariant 1), not only when a run makes it. A job that a constraint confirmed after the run now excludes (a company the candidate has just excluded, a changed location) is left out of `GET /v1/matches`, and `GET /v1/matches/{decision_id}` answers it `404 not_found`. `GET /v1/decisions/{decision_id}` then reads that decision as `filtered`, with `reason_codes: ["hard_constraint"]`, its `violated_kinds`, the constraint that does it and no evidence: the page the web shows behind the link ("This job no longer meets your constraints"). The stored decision is not edited, and `run` stays the run's own record, so on such a day `run.shown` can be more than the length of `matches`.
 
 `run` is the latest run that finished on the date, or `null` when none did; `shown` and `filtered` are that run's own counts and `withheld` counts its withheld decisions. `checker` is `"disagreed"` only when the checker and the SQL filter differed on some job of that run (the job was filed as filtered and an alert was raised). Requirement `id` is the job requirement's integer id, and `quote` is the stored text at the stored span (code points into the job's description, or into the resume's extracted text). A fact the candidate has corrected or retired since the verdict was made still shows what it said, with `"is_current": false`; `source` is `null` for a fact the candidate wrote themselves, and then `quote` is their own words. Only `GET /v1/matches/{decision_id}` adds the job's plain-text `description` (the text the spans point into) and `constraint_checks`, one entry for each hard constraint the candidate has now:
 
@@ -847,7 +851,7 @@ The client then posts `details.suggested_preference` to `POST /v1/me/preferences
 ]
 ```
 
-`state` is `not_stated` when the decision carries the `unverified` flag for that constraint's field (the job passed it because the posting does not say), else `satisfied`. A decision that is not a shown match of the caller (withheld, filtered, someone else's) is `404 not_found`.
+`state` is `not_stated` when the posting does not state the field the constraint needs (the job passed it because the posting does not say, and the match carries the matching `unverified` flag), else `satisfied`. A job that breaks a constraint is not a match, so no check is ever `violated`. A decision that is not a shown match of the caller (withheld, filtered, one the constraints now exclude, someone else's) is `404 not_found`.
 
 `POST /v1/matches/{decision_id}/feedback` takes `{"kind": "save"}`, `{"kind": "unsave"}` or `{"kind": "dismiss", "reason": "not_interested_company", "comment": "optional, up to 500 characters"}`; a dismissal needs a `reason` and nothing else has one. It answers `201` with the state after the click and the proposal the reason made, if any (the id of a proposed change to the record, which `POST /v1/me/events/{id}/confirm` applies and nothing else does):
 
@@ -935,7 +939,7 @@ The client then posts `details.suggested_preference` to `POST /v1/me/preferences
 
 An on-request check runs only the hard-constraint filter, so it costs nothing and stores nothing. A job that passes every constraint and has never been scored returns `outcome: "not_evaluated"`.
 
-Rows are newest first (local date, then the time the decision was recorded). `outcome` and `reason` filter the list (`outcome` takes a comma list), `from` and `to` are local dates and include both ends, and a value outside a vocabulary is `400 invalid_request`. A filtered row's `constraint` is the active constraint of the first kind the job broke; its `id` and `statement` are `null` when the candidate has removed that constraint since. A withheld row that was scored carries `gaps`: its required requirements that were not met or had no evidence. `?job_id=` returns one row, the newest stored decision for that job if it has any, else the on-request check; a job that is not in the index is `404 not_found`. `GET /v1/decisions/{decision_id}` adds `violated_kinds`, `unverified`, `rank_position`, `summary`, `change_note` and the `evidence` table in the shape of 3.3.
+Rows are newest first (local date, then the time the decision was recorded). `outcome` and `reason` filter the list (`outcome` takes a comma list), `from` and `to` are local dates and include both ends, and a value outside a vocabulary is `400 invalid_request`. A filtered row's `constraint` is the active constraint of the first kind the job broke, if it already existed when the decision was made; its `id` and `statement` are `null` when the candidate has removed that constraint since, or replaced it with another of the same kind after the decision (the ledger does not say that a rule filtered a job it may not have). A check made on request (`?job_id=`) is made now, so it always names the active constraint. A withheld row that was scored carries `gaps`: its required requirements that were not met or had no evidence. `?job_id=` returns one row, the newest stored decision for that job if it has any, else the on-request check; a job that is not in the index is `404 not_found`. `GET /v1/decisions/{decision_id}` adds `violated_kinds`, `unverified`, `rank_position`, `summary`, `change_note` and the `evidence` table in the shape of 3.3. It reads a shown match whose job the candidate's constraints now exclude as `filtered` (3.3); every other decision is as it was recorded.
 
 ### 3.5 The morning brief with its decision items
 
@@ -1001,7 +1005,7 @@ Rows are newest first (local date, then the time the decision was recorded). `ou
 }
 ```
 
-Every decision item points at an ordinary endpoint; the brief adds no new way to act. Approvals and introductions are decided after opening them in the app (an email link opens the same page), because the decision must follow a look at the exact payload or preview. `delivery` values are brief statuses; `email` is `null` when the person has not given the `brief_email` consent. One brief is stored per person, date and channel, so a retry of the sender cannot produce a second one (BRF-01).
+Every decision item points at an ordinary endpoint; the brief adds no new way to act. Approvals and introductions are decided after opening them in the app (an email link opens the same page), because the decision must follow a look at the exact payload or preview. `delivery` values are brief statuses; `email` is `null` when the person has not given the `brief_email` consent. One brief is stored per person, date and channel, so a retry of the sender cannot produce a second one (BRF-01). A brief stores which matches it lists; whether each may still be listed is asked again whenever the brief is read and when its email is written: a job that has closed since, or that the candidate's hard constraints now exclude, is left out, so an email sent at 06:40 never carries what the candidate excluded at 06:00.
 
 ### 3.6 Approving, editing and rejecting an approval
 
