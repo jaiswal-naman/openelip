@@ -1,9 +1,11 @@
 """IDX-06: the location_accuracy suite scores the parser honestly, records a frozen run, and the gate agrees.
 
 Every test scores temporary samples written here, or the dev split. None scores the test split of
-evals/location/sample.jsonl: that is read once, by the recorded run (evals/location/baseline.json).
+evals/location/sample.jsonl: that is scored once, by the recorded run (evals/location/baseline.json). Two tests read its
+ids and input strings, never its labels or the parser's answers, to check which rows EXCLUDED leaves out.
 """
 
+import ast
 import importlib.util
 import json
 import re
@@ -207,6 +209,56 @@ def test_the_dev_split_meets_the_bars_the_parser_was_built_on():
     metrics = result["metrics"]
     assert metrics["n"] == 100 and metrics["location_guessed"] == 0
     assert metrics["bars_met"] is True, [i["key"] for i in result["items"] if not i["is_passed"]]
+
+
+# ---- which test rows are unseen data ----------------------------------------
+
+PARSER_TESTS = EVALS.parent / "backend" / "tests" / "ingest" / "test_location.py"
+GUIDELINE = EVALS / "location" / "GUIDELINE.md"
+
+
+def committed_rows():
+    return [json.loads(line) for line in suite.SAMPLE.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def written_out():
+    """Every string the parser's unit tests spell out, and every string the guideline quotes or sets in a table cell."""
+    tree = ast.parse(PARSER_TESTS.read_text(encoding="utf-8"))
+    strings = {node.value for node in ast.walk(tree) if isinstance(node, ast.Constant) and isinstance(node.value, str)}
+    guideline = GUIDELINE.read_text(encoding="utf-8")
+    strings |= set(re.findall(r'"([^"\n]+)"', guideline)) | set(re.findall(r"`([^`\n]+)`", guideline))
+    return strings | {cell.strip() for cell in re.findall(r"^\|\s*([^|]+?)\s*\|", guideline, flags=re.MULTILINE)}
+
+
+def test_the_excluded_rows_are_exactly_the_test_rows_whose_input_is_written_out_in_the_tests_or_the_guideline():
+    """The test split is frozen: its inputs are not to be read before the run. 40 of its rows have an input that the
+    parser's unit tests or the guideline spell out (and that no dev row carries, so that it is not a dev input either).
+    Quote another test input in either file and this fails until the row is listed in EXCLUDED and the run is redone."""
+    rows = committed_rows()
+    dev_inputs = {row["location_raw"] for row in rows if row["split"] == "dev"}
+    quoted = written_out()
+    leaked = {
+        row["id"]
+        for row in rows
+        if row["split"] == "test" and row["location_raw"] in quoted and row["location_raw"] not in dev_inputs
+    }
+    assert len(suite.EXCLUDED) == 40
+    assert leaked == suite.EXCLUDED
+
+
+def test_the_test_score_leaves_the_excluded_rows_out_and_the_dev_split_keeps_all_of_its_rows():
+    rows = committed_rows()
+    test_ids = {row["id"] for row in rows if row["split"] == "test"}
+    assert len(test_ids) == 300 and suite.EXCLUDED <= test_ids  # they stay in sample.jsonl, and only in the test split
+    scored = suite.load_sample(suite.SAMPLE, "test")
+    assert len(scored) == 260 and not {row["id"] for row in scored} & suite.EXCLUDED
+    assert len(suite.load_sample(suite.SAMPLE, "dev")) == 100
+
+
+def test_a_run_says_which_rows_it_left_out_and_why():
+    left_out = suite.run_config("test", SCORE_FILE)["excluded"]
+    assert left_out == {"why": suite.EXCLUDED_WHY, "ids": sorted(suite.EXCLUDED)}
+    assert suite.run_config("dev", SCORE_FILE)["excluded"] == {}
 
 
 # ---- the recorded run ----------------------------------------

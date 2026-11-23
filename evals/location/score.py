@@ -1,7 +1,7 @@
 """The location_accuracy suite (IDX-06): does parse_location read each posting's country and city, and leave unknown
 what the text does not say?
 
-    uv run --project backend python evals/location/score.py                  # the 300 test rows: print the numbers
+    uv run --project backend python evals/location/score.py                  # the test rows (260 of 300): the numbers
     uv run --project backend python evals/location/score.py --split dev      # the 100 development rows, with misses
     uv run --project backend python evals/location/score.py --sample PATH    # another file of the same shape
 
@@ -43,16 +43,31 @@ MAX_GUESSED = 0
 LABELS = "agent-drafted, maintainer review pending"  # recorded in the run's config
 REVIEW_NOTE = "labels drafted by an agent, review pending"  # printed beside every number
 FIELDS = ("id", "split", "location_raw", "country_hint", "remote_hint", "label_country", "label_city")
+# Test rows that are not unseen data, left out of every score and kept in sample.jsonl: the row's input is written out
+# in the parser's unit tests (backend/tests/ingest/test_location.py) or in GUIDELINE.md, and occurs in no dev row, so
+# the text and its label were in front of the people who wrote the guideline and the tests. The README says how this
+# was found; test_location_suite.py::test_the_excluded_rows_are_exactly_the_test_rows_whose_input_is_written_out finds
+# them again from those two files, so a new quotation there fails the test until the row is listed here.
+EXCLUDED_WHY = "its input is written out in the parser's unit tests or in the labelling guideline"
+EXCLUDED = frozenset(
+    {
+        "loc-101", "loc-110", "loc-113", "loc-119", "loc-137", "loc-143", "loc-144", "loc-145", "loc-149", "loc-158",
+        "loc-163", "loc-165", "loc-166", "loc-167", "loc-180", "loc-200", "loc-228", "loc-244", "loc-249", "loc-263",
+        "loc-266", "loc-269", "loc-270", "loc-271", "loc-295", "loc-310", "loc-315", "loc-316", "loc-322", "loc-327",
+        "loc-328", "loc-331", "loc-332", "loc-334", "loc-344", "loc-361", "loc-370", "loc-377", "loc-388", "loc-392",
+    }
+)  # fmt: skip
 
 Parser = Callable[[str | None, str | None, bool | None], tuple[str | None, str | None, bool | None]]
 
 
 def load_sample(path: Path, split: str) -> list[dict[str, Any]]:
+    """The rows of one split, without the EXCLUDED ones."""
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
     for row in rows:
         if missing := [f for f in FIELDS if f not in row]:
             raise ValueError(f"{path.name}: row {row.get('id')} lacks {', '.join(missing)}")
-    return [row for row in rows if row["split"] == split]
+    return [row for row in rows if row["split"] == split and row["id"] not in EXCLUDED]
 
 
 def fold(text: str) -> str:
@@ -174,6 +189,7 @@ def run_config(split: str, sample: Path) -> dict[str, Any]:
         "gazetteer": f"geonamescache {geonamescache.__version__}, GeoNames cities of 15,000 people or more",
         "labels": LABELS,
         "bars": {"location_accuracy": MIN_ACCURACY, "location_guessed": MAX_GUESSED},
+        "excluded": {"why": EXCLUDED_WHY, "ids": sorted(EXCLUDED)} if split == "test" else {},
     }
 
 
@@ -267,8 +283,9 @@ def recorded_report(run_id: str) -> dict[str, Any]:
 
 def describe(split: str, metrics: dict[str, Any]) -> str:
     nulls = metrics["null_labels"]
+    left_out = f"{len(EXCLUDED)} rows, because {EXCLUDED_WHY}" if split == "test" else "none"
     return (
-        f"{SUITE} on the {split} split ({REVIEW_NOTE})\n"
+        f"{SUITE} on the {split} split ({REVIEW_NOTE}); left out: {left_out}\n"
         f"  {metrics['correct']} of {metrics['n']} rows correct: location_accuracy {metrics['location_accuracy']:.4f}, "
         f"95% Wilson interval {metrics['wilson_low']:.4f} to {metrics['wilson_high']:.4f}\n"
         f"  location_guessed {metrics['location_guessed']} (rows with a null label: "

@@ -1,9 +1,13 @@
 """IDX-06: the location parser reads a place only when the text says it, and never guesses.
 
-Where the cases come from: the plan's behaviour list; the generic examples in evals/location/GUIDELINE.md (they are
-not rows of the sample); and the dev split of evals/location/sample.jsonl, cited by id in DEV_ROWS. No row of the test
-split was opened. An expectation for a dev row is what the parser returns, which the label accepts ("New York City" is
-the label "New York": the suite compares city names through GeoNames' alternate names).
+Where the cases come from: the plan's behaviour list; the examples in evals/location/GUIDELINE.md (the worked examples
+are generic, not rows of the sample, but the guideline's "Decisions made while labelling" quote real inputs); and the
+dev split of evals/location/sample.jsonl, cited by id in DEV_ROWS. No row of the test split was opened, yet 23 strings
+below are also inputs that only test rows carry: some by coincidence ("Toronto"), others through the guideline's
+quotations ("US-CA-Menlo Park"). The test rows with such an input, and those whose input only the guideline quotes, are
+left out of the test score (EXCLUDED in evals/location/score.py). An expectation for a dev row is what the parser
+returns, which the label accepts ("New York City" is the label "New York": the suite compares city names through
+GeoNames' alternate names).
 """
 
 import pytest
