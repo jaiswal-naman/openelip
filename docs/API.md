@@ -568,6 +568,16 @@ Eval runs are started by CI and the command line, not by the API.
 | GET | `/v1/privacy/audit-log` | Every automated decision and every agent or outside-agent action about the caller, including refused agent-token calls; filter `?agent_token_id=`, `?campaign_id=` | C | TRU-03, NET-03, GRD-02 | 2 |
 | GET | `/v1/privacy/subprocessors` | Model providers and sub-processors configured on this installation, with what each receives (read by the public `/trust` page) | P | TRU-04, TRU-05 | 1 |
 
+`GET /v1/privacy/audit-log` reads, on the caller's own API connection, the automated decisions and events about the caller, newest first, from sources each module registers at start-up (so `trust` imports nothing above it). Query: `agent_token_id` and `campaign_id` (UUIDs), `cursor` (an opaque string from the last page) and `limit` (1 to 100, default 50). The answer is `data: {entries, next_cursor}`; `meta` repeats `next_cursor` and `limit`. A cursor that is not ours is `400 invalid_request`. An entry is `{id, occurred_at, source, kind, actor_type, summary, outcome, reason_codes, agent_token_id, campaign_id, organization, link}`:
+
+| `source` | Entries | `kind` | `link` |
+|---|---|---|---|
+| `account` | `audit_log` rows whose subject is the caller: consents, sign-ins, introductions, and the calls of outside agents with their tokens, refused ones with the reason code | the row's `event_type` (for example `agentnet.agent_call_refused`) | none |
+| `matching` | one per finished candidate match run, with how many matches it showed, withheld and filtered out; a failed run shows its status and error code | `match.run_completed`, `match.run_failed` | `{kind: "decisions", href: "/v1/decisions?from=D&to=D"}` for the run's day |
+| `guardian` | outside actions that were executed, blocked, rejected, expired, cancelled or failed; a blocked one lists every failed check's reason code. Steps that only record a model or tool call are not entries | `guardian.action_blocked`, `guardian.action_executed`, `guardian.action_rejected`, `guardian.action_expired`, `guardian.action_cancelled`, `guardian.action_failed` | `{kind: "recorder", href: "/control/recorder?entry={id}"}` |
+
+`agent_token_id` keeps only `account` entries of that token; `campaign_id` keeps only `guardian` entries of that campaign (a source that cannot honour a filter returns nothing). `summary` is built by code from codes and counts and never holds a question, reply, message or draft text. `organization` is `{id, name}` with `name` null where the caller may not read the organization. Another person's entries never appear: every source reads under the caller's row-level security and by the caller's id. A source that fails makes the whole request `500`; there is no partial page.
+
 ### 2.21 `/v1/webhooks`
 
 | Method | Path | Purpose | Caller | Req | Phase |

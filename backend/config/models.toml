@@ -285,3 +285,29 @@ model = "claude-sonnet-5-5"
 input_usd_per_mtok = 2.00
 output_usd_per_mtok = 10.00
 price_checked_at = 2026-11-22
+
+# The Twin (AI_SYSTEM 8): the classifier reads the employer's own words, so its class is identified; the answerer reads
+# only de-identified facts from topics the candidate opened.
+[tasks."twin.classify"]
+description = "Twin: the topic of an employer's question and whether it asks for pay or contact details."
+data_class = "identified"
+max_tokens = 300        # AI_SYSTEM 2.2
+timeout_seconds = 10    # AI_SYSTEM 2.2
+
+[tasks."twin.classify".models.anthropic]
+model = "claude-haiku-5-5"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-22
+
+[tasks."twin.answer"]
+description = "Twin: a short answer to an employer's question, each sentence citing confirmed facts from open topics."
+data_class = "de-identified"
+max_tokens = 1500       # AI_SYSTEM 2.2
+timeout_seconds = 20    # AI_SYSTEM 2.2
+
+[tasks."twin.answer".models.anthropic]
+model = "claude-sonnet-5-5"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-22
