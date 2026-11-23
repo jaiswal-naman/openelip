@@ -6,6 +6,7 @@ Every test runs in the `conn` fixture's transaction on the main test database, w
 role is taken on with SET LOCAL ROLE when the test is about what that role may do.
 """
 
+import json
 from collections.abc import Sequence
 from contextlib import contextmanager
 from datetime import datetime
@@ -14,8 +15,16 @@ from uuid import UUID
 
 import pytest
 from sqlalchemy import Connection, text
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM
 from sqlalchemy.exc import DBAPIError
 
+from app.apply import models as apply_models
+from app.apply import privacy as apply_privacy
+from app.chat import models as chat_models
+from app.chat import privacy as chat_privacy
+from app.tailor import models as tailor_models
+from app.tailor import privacy as tailor_privacy
+from app.trust import privacy
 from tests.match.factories import RESUME_FACTS, RESUME_TEXT, Job, Record, make_job, make_record, make_user
 
 # The seven tables this revision made, each with a user_id and each erased by cascade.
@@ -652,3 +661,104 @@ def test_erase_user_removes_one_persons_rows_from_all_seven_tables_and_leaves_th
         assert count(conn, f"{table} WHERE user_id = :u", u=ada.user) == 0, table
         assert count(conn, f"{table} WHERE user_id = :u", u=bob.user) == 1, table
     assert count(conn, "jobs WHERE id = :j", j=job.id) == 1  # the job index holds nothing about her
+
+
+# ---- the registry, the export and the table definitions ---------------------------------------------------------
+
+
+def test_each_module_registers_its_tables_as_cascade_and_its_exporter_returns_only_the_persons_rows(conn):
+    job = make_posting(conn)
+    ada, bob = make_world(conn, job), make_world(conn, job)
+    adas = seed_all(conn, ada)
+    seed_all(conn, bob)
+
+    registered = privacy.registry()
+    assert registered["chat"] == {"chat_sessions": "cascade", "chat_messages": "cascade"}
+    assert registered["tailor"] == {"tailored_resumes": "cascade", "resume_edits": "cascade"}
+    assert registered["apply"] == dict.fromkeys(
+        ("application_packets", "applications", "application_events"), "cascade"
+    )
+    exporters = privacy.exporters()
+    assert exporters["chat"] is chat_privacy.export_chat
+    assert exporters["tailor"] is tailor_privacy.export_tailor
+    assert exporters["apply"] is apply_privacy.export_apply
+
+    chat = chat_privacy.export_chat(conn, ada.user)
+    tailor = tailor_privacy.export_tailor(conn, ada.user)
+    applied = apply_privacy.export_apply(conn, ada.user)
+    for export, tables in ((chat, 2), (tailor, 2), (applied, 3)):
+        assert len(export.data) == tables and export.files == {}
+        assert str(bob.user) not in json.dumps(export.data)  # JSON-ready as it stands, and nothing of the other person
+    assert [row["id"] for row in chat.data["chat_sessions"]] == [str(adas.session)]
+    assert [row["id"] for row in tailor.data["tailored_resumes"]] == [str(ada.resume)]
+    assert [row["id"] for row in tailor.data["resume_edits"]] == [str(adas.edit)]  # a discarded edit is a row about her
+    assert [row["id"] for row in applied.data["application_packets"]] == [str(adas.packet)]
+    assert [row["id"] for row in applied.data["applications"]] == [str(adas.application)]
+    assert len(applied.data["application_events"]) == 1 and len(chat.data["chat_messages"]) == 1
+
+
+MODELS = {"chat": chat_models, "tailor": tailor_models, "apply": apply_models}
+
+
+@pytest.mark.parametrize("name", MODELS)
+def test_the_table_definitions_list_the_columns_the_migration_made(conn, name):
+    for table in MODELS[name].metadata.tables.values():
+        rows = conn.execute(
+            text(
+                """SELECT column_name, is_nullable = 'YES', udt_name FROM information_schema.columns
+                   WHERE table_schema = 'public' AND table_name = :t"""
+            ),
+            {"t": table.name},
+        ).all()
+        assert {(r[0], r[1]) for r in rows} == {(c.name, bool(c.nullable)) for c in table.columns}, table.name
+        types = {(r[0], r[2]) for r in rows}
+        for column in table.columns:  # an enum column names the type the migration made
+            if isinstance(column.type, ENUM):
+                assert (column.name, column.type.name) in types, (table.name, column.name)
+            elif isinstance(column.type, ARRAY) and isinstance(column.type.item_type, ENUM):
+                assert (column.name, "_" + column.type.item_type.name) in types, (table.name, column.name)
+
+
+VOCABULARIES = {
+    "chat_session_kind": chat_models.CHAT_SESSION_KINDS,
+    "chat_role": chat_models.CHAT_ROLES,
+    "tailored_status": tailor_models.TAILORED_STATUSES,
+    "edit_verifier_status": tailor_models.EDIT_VERIFIER_STATUSES,
+    "edit_discard_reason": tailor_models.EDIT_DISCARD_REASONS,
+    "edit_decision": tailor_models.EDIT_DECISIONS,
+    "application_status": apply_models.APPLICATION_STATUSES,
+    "packet_status": apply_models.PACKET_STATUSES,
+}
+
+
+@pytest.mark.parametrize("type_name", VOCABULARIES)
+def test_each_vocabulary_in_the_models_is_the_enum_the_migration_made_in_the_same_order(conn, type_name):
+    labels = conn.execute(
+        text("SELECT enumlabel FROM pg_enum WHERE enumtypid = CAST(:t AS regtype) ORDER BY enumsortorder"),
+        {"t": type_name},
+    ).scalars()
+    assert tuple(labels) == VOCABULARIES[type_name]
+
+
+def test_the_finish_reasons_in_the_chat_models_are_the_ones_the_check_allows(conn):
+    user = make_user(conn)
+    session = one(conn, "INSERT INTO chat_sessions (user_id, kind) VALUES (:u, 'open') RETURNING id", u=user)
+
+    def accepted(reason: str) -> bool:
+        savepoint = conn.begin_nested()
+        try:
+            conn.execute(
+                text(
+                    """INSERT INTO chat_messages (session_id, user_id, role, content, finish_reason)
+                       VALUES (:s, :u, 'assistant', 'x', :r)"""
+                ),
+                {"s": session, "u": user, "r": reason},
+            )
+            return True
+        except DBAPIError:
+            return False
+        finally:
+            savepoint.rollback()  # leave nothing behind either way
+
+    tried = (*chat_models.FINISH_REASONS, "done", "error", "")
+    assert tuple(reason for reason in tried if accepted(reason)) == chat_models.FINISH_REASONS

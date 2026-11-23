@@ -20,7 +20,7 @@ from app.profile import documents
 from app.trust import api, export, jobs, privacy
 from app.trust.routes import API_STATUS
 
-FORMAT_MODULES = {"brief", "evals", "match", "platform", "profile", "trust"}
+FORMAT_MODULES = {"apply", "brief", "chat", "evals", "match", "platform", "profile", "tailor", "trust"}
 
 
 class Seeded:

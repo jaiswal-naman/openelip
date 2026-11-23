@@ -67,6 +67,12 @@ PLANTED = {
     ("match_decisions", "change_note"),
     ("match_evidence", "note"),
     ("feedback_events", "comment"),
+    ("chat_messages", "content"),
+    ("chat_messages", "refs"),  # jsonb
+    ("resume_edits", "before_text"),
+    ("resume_edits", "after_text"),
+    ("application_packets", "answers"),  # jsonb
+    ("application_packets", "cover_note"),
     ("eval_items", "expected"),
     ("eval_items", "actual"),
 }
@@ -303,6 +309,62 @@ def seed_person(engine) -> Person:
             b=brief,
             u=user,
             d=decision,
+        )
+        # The chat, tailoring and application tables (plan 05-01). They reuse the job and the resume above. The edit is
+        # discarded, so invariant 3 needs no supporting fact for it. The applications hold no free text, so only the
+        # person's id is looked for in them.
+        chat = run("INSERT INTO chat_sessions (user_id, kind) VALUES (:u, 'open') RETURNING id", u=user).scalar_one()
+        run(
+            "INSERT INTO chat_messages (session_id, user_id, role, content) VALUES (:s, :u, 'user', :c)",
+            s=chat,
+            u=user,
+            c=f"Question {CANARY}",
+        )
+        run(
+            """INSERT INTO chat_messages (session_id, user_id, role, tool_name, refs)
+               VALUES (:s, :u, 'tool', 'get_record', CAST(:r AS jsonb))""",
+            s=chat,
+            u=user,
+            r=json.dumps({"reply_id": str(uuid4()), "aliases": {"f1": {"kind": "fact", "id": CANARY}}}),
+        )
+        tailored = run(
+            """INSERT INTO tailored_resumes (user_id, job_id, job_content_version, base_document_id, record_version,
+                                            status)
+               VALUES (:u, :j, 1, :d, 1, 'ready') RETURNING id""",
+            u=user,
+            j=job,
+            d=document,
+        ).scalar_one()
+        run(
+            """INSERT INTO resume_edits (tailored_resume_id, user_id, ordinal, section, before_text, after_text,
+                                         verifier_status, discard_reason)
+               VALUES (:t, :u, 1, 'experience', :b, :a, 'discarded', 'new_entity')""",
+            t=tailored,
+            u=user,
+            b=f"Before {CANARY}",
+            a=f"After {CANARY}",
+        )
+        packet = run(
+            """INSERT INTO application_packets (user_id, job_id, tailored_resume_id, answers, cover_note, status)
+               VALUES (:u, :j, :t, CAST(:a AS jsonb), :n, 'ready') RETURNING id""",
+            u=user,
+            j=job,
+            t=tailored,
+            a=json.dumps([{"question": "Why this role?", "answer": f"Because {CANARY}", "fact_ids": []}]),
+            n=f"Note {CANARY}",
+        ).scalar_one()
+        application = run(
+            """INSERT INTO applications (user_id, job_id, application_packet_id, status, status_changed_at)
+               VALUES (:u, :j, :p, 'applied', now()) RETURNING id""",
+            u=user,
+            j=job,
+            p=packet,
+        ).scalar_one()
+        run(
+            """INSERT INTO application_events (application_id, user_id, status, occurred_at)
+               VALUES (:a, :u, 'applied', now())""",
+            a=application,
+            u=user,
         )
     return Person(user, ADDRESS)
 
