@@ -54,7 +54,10 @@ function Step([string]$name, [scriptblock]$body) {
 function Run([string]$exe, [string[]]$arguments) {
     $output = & $exe @arguments 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) {
+        $full = Join-Path ([IO.Path]::GetTempPath()) 'openelip-fresh-last-failure.log'
+        $output | Set-Content -Path $full -Encoding utf8
         ($output -split "`r?`n" | Select-Object -Last 30) -join "`n" | Write-Host
+        Write-Host "full output: $full"
         throw "$exe $($arguments -join ' ') exited with $LASTEXITCODE"
     }
     $output
