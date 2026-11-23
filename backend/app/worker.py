@@ -10,6 +10,7 @@ import threading
 from datetime import datetime, timezone
 from types import FrameType
 
+from app.agentnet import privacy as agentnet_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.apply import jobs as apply_jobs  # noqa: F401  (importing it registers the apply handlers)
 from app.apply import privacy as apply_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.brief import jobs as brief_jobs  # noqa: F401  (importing it registers the brief handlers)
@@ -35,6 +36,7 @@ from app.tailor import jobs as tailor_jobs  # noqa: F401  (importing it register
 from app.tailor import privacy as tailor_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.trust import jobs as trust_jobs  # noqa: F401  (importing it registers the export and erase jobs and the sweep)
 from app.twin import jobs as twin_jobs  # noqa: F401  (importing it registers the Twin handlers)
+from app.twin import privacy as twin_privacy  # noqa: F401  (the export job reads the registry in this process)
 
 POLL_SECONDS = 1
 

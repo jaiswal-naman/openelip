@@ -32,6 +32,7 @@ DATA_TABLES = (
     "organizations, org_members, roles, role_requirements, introductions, shortlist_entries, interest_signals, "
     "campaigns, campaign_steps, company_dossiers, agent_runs, agent_actions, approvals, autonomy_settings, "
     "guardian_checks, sim_results, sim_runs, sim_scenarios, "
+    "twin_scopes, twin_sessions, twin_messages, agent_tokens, "
     "langgraph.checkpoints, langgraph.checkpoint_blobs, langgraph.checkpoint_writes"
 )
 

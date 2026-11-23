@@ -101,6 +101,8 @@ PLANTED = {
     ("langgraph.checkpoints", "checkpoint"),  # the campaign's thread: ids only in production, a canary here
     ("langgraph.checkpoints", "metadata"),
     ("langgraph.checkpoint_writes", "blob"),
+    ("twin_messages", "body"),
+    ("agent_tokens", "client_name"),
 }
 AFTER_THE_EXPORT = {("data_requests", "export_archive")}  # a sealed ZIP of everything: the copy most easily forgotten
 
@@ -590,6 +592,57 @@ def seed_person(engine) -> Person:
                VALUES (:t, '', 'c1', 'task', 0, 'x', 'json', :b)""",
             t=thread,
             b=CANARY.encode(),
+        )
+        # The Twin and agent-token tables (plan 09-01): a scope row, a session on the accepted introduction above, an
+        # employer's question with its checkpoint thread, the Twin's answer and the person's own agent token, with the
+        # canary in each free-text field. Written by the migrate login, as the worker would, so the checks run.
+        run("INSERT INTO twin_scopes (user_id, topic, permission) VALUES (:u, 'projects', 'answer')", u=user)
+        twin_session = run(
+            """INSERT INTO twin_sessions (introduction_id, user_id, organization_id)
+               VALUES (:i, :u, :o) RETURNING id""",
+            i=introduction,
+            u=user,
+            o=hiring,
+        ).scalar_one()
+        question = run(
+            """INSERT INTO twin_messages (session_id, user_id, organization_id, author, body)
+               VALUES (:s, :u, :o, 'employer', :b) RETURNING id""",
+            s=twin_session,
+            u=user,
+            o=hiring,
+            b=f"Question {CANARY}",
+        ).scalar_one()
+        run(
+            """INSERT INTO twin_messages (session_id, user_id, organization_id, author, body, topic, answer_kind,
+                                          in_reply_to)
+               VALUES (:s, :u, :o, 'twin', :b, 'current_pay', 'declined', :q)""",
+            s=twin_session,
+            u=user,
+            o=hiring,
+            b=f"Declined {CANARY}",
+            q=question,
+        )
+        twin_thread = f"twin:{question}"
+        run(
+            """INSERT INTO langgraph.checkpoints (thread_id, checkpoint_ns, checkpoint_id, checkpoint, metadata)
+               VALUES (:t, '', 'c1', CAST(:cp AS jsonb), CAST(:m AS jsonb))""",
+            t=twin_thread,
+            cp=json.dumps({"seed": CANARY}),
+            m=json.dumps({"seed": CANARY}),
+        )
+        agent_consent = run(
+            """INSERT INTO consents (user_id, purpose, action, text_version)
+               VALUES (:u, 'agent_access', 'granted', 'v1') RETURNING id""",
+            u=user,
+        ).scalar_one()
+        run(
+            """INSERT INTO agent_tokens (principal, user_id, consent_id, client_name, token_sha256, scopes, expires_at)
+               VALUES ('candidate', :u, :c, :n, :h, ARRAY['matches:read']::token_scope[],
+                       now() + interval '30 days')""",
+            u=user,
+            c=agent_consent,
+            n=f"Client {CANARY}",
+            h=uuid4().bytes * 2,
         )
         # The nightly run and the morning brief of this person, queued by the match and brief schedules themselves (as
         # the parse job above is made by the upload): a job planted by hand with a user id would pass whatever the

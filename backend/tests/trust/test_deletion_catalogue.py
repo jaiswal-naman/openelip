@@ -183,7 +183,7 @@ def make_checkpoint_schema(conn) -> None:
 
 
 def orphan_query(conn) -> str:
-    """ORPHAN_THREADS, without its Twin branch while twin_messages does not exist (it arrives in Phase 9)."""
+    """ORPHAN_THREADS, without its Twin branch while twin_messages does not exist (before revision p9_0901)."""
     if conn.execute(text("SELECT to_regclass('twin_messages') IS NULL")).scalar_one():
         start = ORPHAN_THREADS.index("OR (t.thread_id ~ '^twin:")
         return ORPHAN_THREADS[:start].rstrip() + ")\n"
@@ -235,4 +235,31 @@ def test_the_orphan_check_counts_a_thread_whose_owner_is_gone(conn):
         conn.execute(text("INSERT INTO langgraph.checkpoints (thread_id) VALUES (:t)"), {"t": thread})
     assert conn.execute(text(ORPHAN_THREADS)).scalar_one() == 3  # only the live campaign's thread is accepted
     conn.execute(text("DELETE FROM langgraph.checkpoints WHERE thread_id <> :t"), {"t": f"campaign:{alive}"})
+    assert conn.execute(text(ORPHAN_THREADS)).scalar_one() == 0
+
+
+def test_the_orphan_check_accepts_a_live_twin_thread_and_counts_one_that_names_no_question(conn):
+    """Plan 09-01: `twin:{uuid}` is accepted while an employer's question with that id exists, and not otherwise."""
+    from tests.twin.factories import employer_question, twin_session, twin_world
+
+    world = twin_world(conn)
+    question = employer_question(conn, twin_session(conn, world))
+    answer_only = conn.execute(
+        text(
+            """INSERT INTO twin_messages (session_id, user_id, organization_id, author, body, topic, answer_kind,
+                                          in_reply_to)
+               SELECT session_id, user_id, organization_id, 'twin', 'Holding.', 'skills', 'unknown', id
+               FROM twin_messages WHERE id = :q RETURNING id"""
+        ),
+        {"q": question},
+    ).scalar_one()
+    add_thread(conn, f"twin:{question}")
+    assert conn.execute(text(ORPHAN_THREADS)).scalar_one() == 0
+    add_thread(conn, f"twin:{answer_only}")  # the Twin's own message is not a question
+    add_thread(conn, "twin:22222222-2222-2222-2222-222222222222")  # a question that never existed
+    assert conn.execute(text(ORPHAN_THREADS)).scalar_one() == 2
+    conn.execute(text("DELETE FROM langgraph.checkpoints WHERE thread_id <> :t"), {"t": f"twin:{question}"})
+    conn.execute(text("SELECT set_config('app.maintenance', 'on', true)"))
+    conn.execute(text("DELETE FROM twin_messages WHERE id = :q"), {"q": question})  # the trigger takes the thread
+    assert conn.execute(text("SELECT count(*) FROM langgraph.checkpoints")).scalar_one() == 0
     assert conn.execute(text(ORPHAN_THREADS)).scalar_one() == 0
