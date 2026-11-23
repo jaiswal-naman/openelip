@@ -284,6 +284,33 @@ def test_recording_needs_a_database_named_on_purpose_and_a_report_needs_a_record
     assert refused.value.code == 2
 
 
+def worker_at(monkeypatch, name):
+    monkeypatch.setenv("DATABASE_URL_WORKER", f"postgresql://app_worker:placeholder@127.0.0.1:5433/{name}")
+
+
+@pytest.mark.parametrize("name", ["app", "postgres", "app_test_backup"])
+def test_recording_to_a_database_that_is_not_a_scratch_one_is_refused_before_anything_is_written(
+    monkeypatch, tmp_path, capsys, name
+):
+    worker_at(monkeypatch, name)
+    monkeypatch.setattr(suite, "record", lambda *args: pytest.fail("a run was written"))
+    sample = str(write_sample(tmp_path, [make_row(1, "Berlin", "DE", "Berlin")]))
+    with pytest.raises(SystemExit) as refused:
+        suite.main(["--sample", sample, "--record"])
+    assert refused.value.code == 2 and repr(name) in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("name", "flags"), [("app", ["--live"]), ("evals", []), ("app_p2_fix_run_test", [])], ids=["live", "evals", "_test"]
+)
+def test_a_scratch_database_or_live_lets_the_run_be_recorded(monkeypatch, tmp_path, capsys, name, flags):
+    worker_at(monkeypatch, name)
+    monkeypatch.setattr(suite, "record", lambda result, config: "run-1")
+    sample = str(write_sample(tmp_path, [make_row(1, "Berlin", "DE", "Berlin")]))
+    assert suite.main(["--sample", sample, "--record", *flags]) == 0
+    assert "recorded as run run-1" in capsys.readouterr().out
+
+
 def test_the_floor_and_the_documentation_are_in_place():
     thresholds = (EVALS / "thresholds.toml").read_text(encoding="utf-8")
     assert "[location_accuracy]" in thresholds and "min_score = 0.95" in thresholds

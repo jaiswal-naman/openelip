@@ -5,14 +5,15 @@ what the text does not say?
     uv run --project backend python evals/location/score.py --split dev      # the 100 development rows, with misses
     uv run --project backend python evals/location/score.py --sample PATH    # another file of the same shape
 
-    DATABASE_URL_WORKER=... uv run --project backend python evals/location/score.py --record \
+    DATABASE_URL_WORKER=.../name_test uv run --project backend python evals/location/score.py --record \
         --report evals/location/baseline.json
 
 --record writes the run through the eval harness's tables (eval_runs and one eval_items row per sample row, as the
 worker role), so `python -m app.evals gate location_accuracy --run ID` can judge it, and --report writes that recorded
-run as JSON. The bars are in README.md, written before the first run: location_accuracy >= 0.95 and
-location_guessed == 0, on the test split. The labels are drafted by an agent and the maintainer's review is pending,
-so every report says so.
+run as JSON. A recorded run cannot be deleted, so --record refuses unless the database DATABASE_URL_WORKER names is a
+scratch one (its name ends in _test, or is `evals`, the CI eval job's); --live writes to any other. The bars are in
+README.md, written before the first run: location_accuracy >= 0.95 and location_guessed == 0, on the test split. The
+labels are drafted by an agent and the maintainer's review is pending, so every report says so.
 
 The harness's `run` command replays model answers; this suite calls no model, so it is run from here and gated there.
 """
@@ -22,7 +23,6 @@ import hashlib
 import inspect
 import json
 import math
-import os
 import re
 import sys
 import unicodedata
@@ -33,6 +33,7 @@ from typing import Any
 
 import geonamescache
 
+from app.evals import scratch
 from app.ingest.api import parse_location
 
 SUITE = "location_accuracy"
@@ -283,11 +284,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sample", type=Path, default=SAMPLE, help="rows of the same shape as sample.jsonl")
     parser.add_argument("--record", action="store_true", help="write the run to the database DATABASE_URL_WORKER names")
     parser.add_argument("--report", type=Path, help="write the recorded run here as JSON (needs --record)")
+    parser.add_argument("--live", action="store_true", help="let --record write to a database that is not a scratch one")
     args = parser.parse_args(argv)
     if args.report and not args.record:
         parser.error("--report publishes a recorded run: add --record")
-    if args.record and not os.environ.get("DATABASE_URL_WORKER"):
-        parser.error("--record writes to the database DATABASE_URL_WORKER names; set it (its default is the live one)")
+    if args.record and (why := scratch.refusal(args.live)):
+        parser.error(why)
     result = score(load_sample(args.sample, args.split))
     print(describe(args.split, result["metrics"]))
     wrong = [i for i in result["items"] if not i["is_passed"]]

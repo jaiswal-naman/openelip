@@ -149,7 +149,9 @@ A replay goes through the code a live extraction goes through: the gateway's fak
 `job.requirements.extract`, the validator computes every span, and the rows are scored. `request_sha256` is a hash of the
 exact messages the task sends for that posting, so a replay stops, and says to run `record_fixture.py`, when the prompt or
 the segmenter has changed since the recording was made. A replay needs `DATABASE_URL_WORKER` pointing at a migrated
-database (the gateway writes its ledger there); the rules method needs none unless `--record` is given.
+database (the gateway writes its ledger there); the rules method needs none unless `--record` is given. A recorded run
+cannot be deleted, so `--record` and a replay refuse unless that database's name ends in `_test` or is exactly `evals`
+(the CI eval job's database); `--live` writes to any other one, and is for use on purpose only.
 
 The suite is scored by code (span overlap), not by exact match, so it is not in the `SUITES` table of
 `backend/app/evals/runner.py`: that table replays answers and compares them whole. `score.py --record` writes the same

@@ -3,7 +3,7 @@ extractor find, with the right words and importance, and does every stored citat
 
     uv run --project backend python evals/requirement_extraction/score.py --method rules --split dev
 
-    DATABASE_URL_WORKER=... uv run --project backend python evals/requirement_extraction/score.py --split dev
+    DATABASE_URL_WORKER=.../name_test uv run --project backend python evals/requirement_extraction/score.py --split dev
 
 --method model (the default) replays recordings.jsonl through the real task path: the gateway's fake provider hands
 each recorded answer to the validator, which computes every span. The recordings are built from the heading rules by
@@ -12,11 +12,15 @@ record_fixture.py, so a replay proves that the code path works and guards it in 
 are in README.md, written before the first run. The labels are drafted by an agent and the maintainer's review is
 pending, so every report says so.
 
-    DATABASE_URL_WORKER=... uv run --project backend python evals/requirement_extraction/score.py --record
+    DATABASE_URL_WORKER=.../name_test uv run --project backend python evals/requirement_extraction/score.py --record
 
 --record writes the run through the eval harness's tables (eval_runs and one eval_items row per posting, as the worker
 role), prints its id as the last line and exits 0; `python -m app.evals gate requirement_extraction --run ID` judges
 it, as CI does. --report PATH also stores the recorded run in that baseline file (see baseline.json).
+
+--record, and a replay (which writes the gateway's cost ledger), write to the database DATABASE_URL_WORKER names, and a
+recorded run cannot be deleted: both refuse unless that is a scratch database (its name ends in _test, or is `evals`,
+the CI eval job's). --live writes to any other.
 """
 
 import argparse
@@ -33,6 +37,7 @@ from typing import Any
 
 from sqlalchemy import text
 
+from app.evals import scratch
 from app.evals.runner import git_sha
 from app.ingest.api import rules_extract, segments
 from app.ingest.requirements.task import PROMPT_VERSION, TASK, render
@@ -399,11 +404,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--split", choices=("dev", "test"), default="test")
     parser.add_argument("--record", action="store_true", help="write the run to the database DATABASE_URL_WORKER names")
     parser.add_argument("--report", type=Path, help="store the recorded run in this baseline file (needs --record)")
+    parser.add_argument("--live", action="store_true", help="let a write go to a database that is not a scratch one")
     args = parser.parse_args(argv)
     if args.report and not args.record:
         parser.error("--report stores a recorded run: add --record")
-    if (args.record or args.method == "model") and not os.environ.get("DATABASE_URL_WORKER"):
-        parser.error("this writes to the database DATABASE_URL_WORKER names; set it (its default is the live one)")
+    if (args.record or args.method == "model") and (why := scratch.refusal(args.live)):
+        parser.error(why)
     if args.method == "model" and config.get().llm_provider != "fake":
         parser.error("a replay needs LLM_PROVIDER=fake; this command never calls a real model")
     try:

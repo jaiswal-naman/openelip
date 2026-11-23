@@ -151,6 +151,9 @@ DATABASE_URL_WORKER=postgresql://app_worker:...@127.0.0.1:5433/<name>_test \
 cd backend && python -m app.evals gate location_accuracy --run <the run id it printed>
 ```
 
+A recorded run cannot be deleted, so `--record` refuses unless the database `DATABASE_URL_WORKER` names ends in `_test`
+or is exactly `evals` (the CI eval job's database). `--live` writes to any other one; use it only on purpose.
+
 `score.py` is not in the `SUITES` table of `backend/app/evals/runner.py`: that table is for suites replayed through a
 model, and this one calls none, so `python -m app.evals run` does not know it. `score.py --record` writes the same
 tables, and `gate` judges the run from them.

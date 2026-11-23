@@ -491,6 +491,41 @@ def test_recording_needs_a_database_named_on_purpose_and_a_report_needs_a_record
     assert refused.value.code == 2
 
 
+def worker_at(monkeypatch, name):
+    monkeypatch.setenv("DATABASE_URL_WORKER", f"postgresql://app_worker:placeholder@127.0.0.1:5433/{name}")
+
+
+@pytest.mark.parametrize("name", ["app", "postgres", "app_test_backup"])
+@pytest.mark.parametrize(
+    "argv", [["--method", "rules", "--record"], ["--method", "model", "--split", "dev"]], ids=["record", "replay"]
+)
+def test_a_write_to_a_database_that_is_not_a_scratch_one_is_refused_before_anything_runs(
+    monkeypatch, capsys, name, argv
+):
+    """A recorded run cannot be deleted, and a replay writes the gateway's cost ledger: both are writes."""
+    worker_at(monkeypatch, name)
+    monkeypatch.setattr(score, "run", lambda *args, **kwargs: pytest.fail("the suite ran"))
+    monkeypatch.setattr(score, "record", lambda *args, **kwargs: pytest.fail("a run was written"))
+    with pytest.raises(SystemExit) as refused:
+        score.main(argv)
+    assert refused.value.code == 2 and repr(name) in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("name", "flags"), [("app", ["--live"]), ("evals", []), ("app_p2_fix_run_test", [])], ids=["live", "evals", "_test"]
+)
+def test_a_scratch_database_or_live_lets_the_run_be_recorded(monkeypatch, capsys, name, flags):
+    worker_at(monkeypatch, name)
+    monkeypatch.setattr(score, "record", lambda result, settings: "run-1")
+    assert score.main(["--method", "rules", "--split", "dev", "--record", *flags]) == 0
+    assert capsys.readouterr().out.strip().splitlines()[-1] == "run-1"
+
+
+def test_a_rules_run_that_records_nothing_needs_no_database_at_all(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL_WORKER", raising=False)
+    assert score.main(["--method", "rules", "--split", "dev"]) == 0
+
+
 def test_a_replay_refuses_a_real_provider(engine, monkeypatch):
     real = replace(config.get(), llm_provider="anthropic")
     monkeypatch.setattr(config, "get", lambda: real)
