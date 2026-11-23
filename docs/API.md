@@ -513,7 +513,7 @@ Phase 6: members are addressed by `member_id` (not `user_id`) so a pending invit
 | GET | `/v1/roles/{role_id}/preview` | Anonymous preview: counts only, counts below 5 suppressed | E | HIR-03 | 6 |
 | GET | `/v1/roles/{role_id}/shortlist` | Candidates who accepted this role, each with the frozen payload they agreed to share, signals, and answer state | E | HIR-05, HIR-08 | 6 |
 
-Phase 6: a role has no `version` and no `ETag`; drafts are last write wins and `If-Match` is not honoured. An open or closed role is read-only (`PATCH` and `PUT .../requirements` return `409 conflict`, `details.state` `open` or `closed`); to change a role, close it and create another. Country, city, work arrangements, employment type, seniority and `visa_sponsorship` are what the employer sets; nothing is inferred from the description. `POST /v1/roles` and a `PATCH` that changes the description answer with `extraction` (`state` `extracted`, `empty`, `ai_disabled` or `failed`, and `dropped`). `PUT .../requirements` replaces the list, so requirement ids change on each save; read them again from the answer. The preview keys are `eligible_candidates`, `selected_to_ask`, `waiting_for_reply`, `said_yes`, `said_no_or_expired`, `as_of`, `suppressed_below` and `note`; a count of 1 to 4 is the string `"fewer than 5"`, except `said_yes`, which is exact because each of those people is on the shortlist. A draft has no counts. The shortlist has no `twin` field until Phase 9. The responses of the introduction, shortlist, answer-clock and signal routes are untyped objects in `web/openapi.json` (`dict[str, Any]`); the web app types them by hand from the examples below.
+Phase 6: a role has no `version` and no `ETag`; drafts are last write wins and `If-Match` is not honoured. An open or closed role is read-only (`PATCH` and `PUT .../requirements` return `409 conflict`, `details.state` `open` or `closed`); to change a role, close it and create another. Country, city, work arrangements, employment type, seniority and `visa_sponsorship` are what the employer sets; nothing is inferred from the description. `POST /v1/roles` and a `PATCH` that changes the description answer with `extraction` (`state` `extracted`, `empty`, `ai_disabled` or `failed`, and `dropped`). `PUT .../requirements` replaces the list, so requirement ids change on each save; read them again from the answer. The preview keys are `eligible_candidates`, `selected_to_ask`, `waiting_for_reply`, `said_yes`, `said_no_or_expired`, `as_of`, `suppressed_below` and `note`; a count of 1 to 4 is the string `"fewer than 5"`, except `said_yes`, which is exact because each of those people is on the shortlist; `waiting_for_reply` and `said_no_or_expired` read `"fewer than 5"` for 0 too, so one ask moving from waiting to declined changes nothing visible. A draft has no counts. The shortlist has no `twin` field until Phase 9. The responses of the introduction, shortlist, answer-clock and signal routes are untyped objects in `web/openapi.json` (`dict[str, Any]`); the web app types them by hand from the examples below.
 
 ### 2.17 `/v1/introductions`
 
@@ -1408,7 +1408,7 @@ After `PATCH /v1/roles/{role_id}` with `{"pay_range": {"min": 4500000, "max": 55
     "selected_to_ask": 7,
     "waiting_for_reply": "fewer than 5",
     "said_yes": 0,
-    "said_no_or_expired": 0,
+    "said_no_or_expired": "fewer than 5",
     "suppressed_below": 5,
     "note": "Counts only. Groups smaller than 5 are hidden. You see a person only after they accept."
   },
@@ -1417,7 +1417,7 @@ After `PATCH /v1/roles/{role_id}` with `{"pay_range": {"min": 4500000, "max": 55
 }
 ```
 
-Phase 6: the keys are those of the database function `role_preview` plus `as_of` (the latest finished role run, or `null`); `by_required_met`, `asked` and `accepted` were replaced. `eligible_candidates` counts candidates who are open to introductions and whose hard constraints the role does not break (including their excluded-company lists); `selected_to_ask` those who also meet every required item. Both describe the latest role run only, and a later run covers only candidates not asked before. 1 to 4 appear as the string `"fewer than 5"`. The threshold of 5 is the recommended answer to owner decision G6. No field identifies or describes an individual.
+Phase 6: the keys are those of the database function `role_preview` plus `as_of` (the latest finished role run, or `null`); `by_required_met`, `asked` and `accepted` were replaced. `eligible_candidates` counts candidates who are open to introductions and whose hard constraints the role does not break (including their excluded-company lists); `selected_to_ask` those who also meet every required item. Both describe the latest role run only, and a later run covers only candidates not asked before. 1 to 4 appear as the string `"fewer than 5"` (for `waiting_for_reply` and `said_no_or_expired`, 0 too). The threshold of 5 is the recommended answer to owner decision G6. No field identifies or describes an individual.
 
 ### 3.12 Accepting an introduction, and what the employer then sees
 

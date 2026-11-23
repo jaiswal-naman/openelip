@@ -2497,7 +2497,7 @@ A person's own request has no token, and the `candidate_own` policy requires tha
 | Caller | Sees |
 |---|---|
 | Candidate | Their own rows in every personal table. Introductions addressed to them. Their own Twin sessions and every message in them. |
-| Employer member | Their organization, members, roles and role requirements. Introductions only after the candidate accepted, and only to answer them once. Shortlist entries only while the candidate's consent for that organization and role is active. Employer questions and released Twin answers, never the candidate's private replies. Nothing from candidate tables. The anonymous preview through `role_preview()`: counts only, and any count from 1 to 4 reads "fewer than 5" (assumption: the threshold of 5). |
+| Employer member | Their organization, members, roles and role requirements. Introductions only after the candidate accepted, and only to answer them once. Shortlist entries only while the candidate's consent for that organization and role is active. Employer questions and released Twin answers, never the candidate's private replies. Nothing from candidate tables. The anonymous preview through `role_preview()`: counts only, and any count from 1 to 4 reads "fewer than 5" (assumption: the threshold of 5); `waiting_for_reply` and `said_no_or_expired` read "fewer than 5" for 0 as well, so that one ask moving from waiting to declined changes no visible count. |
 | Candidate's agent token | `matches:read`: completed runs and shown decisions. `explanations:read`: evidence and confirmed facts. Never campaigns, chat, documents, approvals. |
 | Organization's agent token | `twin:ask`: open Twin sessions inside the organization's accepted introductions, and only the messages an employer member sees. `introductions:request`: queues the role's ordinary ask (`agentnet.request_introduction`), which runs the same checks as an ask made in the app. |
 
@@ -2612,6 +2612,13 @@ LANGUAGE sql IMMUTABLE AS $$
   SELECT CASE WHEN n = 0 OR n >= 5 THEN to_jsonb(n) ELSE to_jsonb('fewer than 5'::text) END
 $$;
 
+-- W4: the counts of asks that can move (waiting, no) hide 0 as well, so a lone ask moving from waiting to declined does
+-- not show as a count change. said_yes stays exact: each of those people is on the shortlist.
+CREATE FUNCTION suppress_below_five(n bigint) RETURNS jsonb
+LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE WHEN n >= 5 THEN to_jsonb(n) ELSE to_jsonb('fewer than 5'::text) END
+$$;
+
 CREATE FUNCTION role_preview(p_role_id uuid) RETURNS jsonb
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   WITH r AS (
@@ -2635,9 +2642,9 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT jsonb_build_object(
            'eligible_candidates', suppress_small(d.eligible),
            'selected_to_ask',     suppress_small(d.selected),
-           'waiting_for_reply',   suppress_small(i.waiting),
+           'waiting_for_reply',   suppress_below_five(i.waiting),
            'said_yes',            i.accepted,              -- each of these is already on the shortlist
-           'said_no_or_expired',  suppress_small(i.said_no))
+           'said_no_or_expired',  suppress_below_five(i.said_no))
   FROM d, i
   WHERE EXISTS (SELECT 1 FROM r)
 $$;
@@ -3412,7 +3419,7 @@ Every v1 requirement in [REQUIREMENTS.md](REQUIREMENTS.md), with the tables and 
 | T7 | `app_api` calls `erase_user`; updates a decision | Both rejected, permission denied |
 | T8 | Eval run for suite `twin` (added by DDL-9); changing a finished eval run | Accepted; rejected |
 | T8b | Resume edit supported by a fact that is not the candidate's confirmed fact; with no supporting fact; with a confirmed fact | Rejected, `unsupported_edit`; rejected by CHECK; accepted |
-| T8b | `purge_expired()` as `app_worker`; `role_preview()` for own and other organization | Ran and returned counts; own organization saw counts with "fewer than 5" suppression, other organization saw nothing |
+| T8b | `purge_expired()` as `app_worker`; `role_preview()` for own and other organization | Ran and returned counts; own organization saw counts with "fewer than 5" suppression (0 included for the two ask counts), other organization saw nothing |
 | T8c | `app_worker` writes checkpoint rows (stand-in tables) for three campaign threads and one Twin question thread; `app_api` reads schema `langgraph` | Accepted, 4 rows; rejected, permission denied for schema `langgraph` |
 | T8c | Candidate deletes a campaign; checkpoint rows of that thread afterwards; `langgraph` tables with row-level security; the 7.2 orphan-thread check | Accepted; 0 rows in the three data tables; 0 tables; 0 orphans |
 | T9 | `erase_user` as `app_worker`, then a scan of every user-reference column of every table, then the checkpoint tables | No row references the erased candidate. All 51 foreign keys to `users` are `CASCADE` or `SET NULL`. The deletion request is `completed`. No checkpoint row remains for the candidate's campaign thread or Twin question thread, another candidate's campaign thread keeps its row, and the orphan-thread check returns 0. |

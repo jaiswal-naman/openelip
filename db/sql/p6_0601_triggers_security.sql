@@ -220,10 +220,17 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   WHERE m.organization_id = p_organization_id AND m.status <> 'removed' AND app_is_org_member(p_organization_id)
 $$;
 
--- HIR-03: the anonymous preview. Counts only; any count from 1 to 4 is reported as "fewer than 5" (assumption).
+-- HIR-03: the anonymous preview. Counts only; any count from 1 to 4 (and 0 for the asks in flight, see below) is reported as "fewer than 5" (assumption).
 CREATE OR REPLACE FUNCTION suppress_small(n bigint) RETURNS jsonb
 LANGUAGE sql IMMUTABLE AS $$
   SELECT CASE WHEN n = 0 OR n >= 5 THEN to_jsonb(n) ELSE to_jsonb('fewer than 5'::text) END
+$$;
+
+-- W4: the counts of asks that can move (waiting, no) hide 0 as well, so a lone ask moving from waiting to declined does
+-- not show as a count change. said_yes stays exact: each of those people is on the shortlist.
+CREATE OR REPLACE FUNCTION suppress_below_five(n bigint) RETURNS jsonb
+LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE WHEN n >= 5 THEN to_jsonb(n) ELSE to_jsonb('fewer than 5'::text) END
 $$;
 
 -- Phase 6 addition: the key as_of, the time the latest finished role run ended (NULL before the first one), so the
@@ -251,9 +258,9 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT jsonb_build_object(
            'eligible_candidates', suppress_small(d.eligible),
            'selected_to_ask',     suppress_small(d.selected),
-           'waiting_for_reply',   suppress_small(i.waiting),
+           'waiting_for_reply',   suppress_below_five(i.waiting),
            'said_yes',            i.accepted,              -- each of these is already on the shortlist
-           'said_no_or_expired',  suppress_small(i.said_no),
+           'said_no_or_expired',  suppress_below_five(i.said_no),
            'as_of',               (SELECT l.finished_at FROM latest l))
   FROM d, i
   WHERE EXISTS (SELECT 1 FROM r)

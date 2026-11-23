@@ -687,6 +687,25 @@ def test_counts_below_five_read_fewer_than_five_and_zero_stays_zero(conn, desk, 
     assert counts["eligible_candidates"] == eligible and counts["selected_to_ask"] == to_ask
 
 
+def test_one_ask_moving_from_waiting_to_declined_changes_no_visible_count(conn, desk):
+    """W4: a 0 beside a "fewer than 5" would tell the employer that the one person asked had just said no."""
+    person = candidate(conn)
+    intro = ask(conn, desk.role, person)
+    before = preview(conn, desk)
+    conn.execute(text("UPDATE introductions SET status = 'declined' WHERE id = :i"), {"i": intro})
+    after = preview(conn, desk)
+    for counts in (before, after):
+        assert counts["waiting_for_reply"] == "fewer than 5" and counts["said_no_or_expired"] == "fewer than 5"
+    assert {k: v for k, v in before.items() if k != "as_of"} == {k: v for k, v in after.items() if k != "as_of"}
+
+
+@pytest.mark.parametrize(
+    ("n", "shown"), [(0, "fewer than 5"), (1, "fewer than 5"), (4, "fewer than 5"), (5, 5), (9, 9)]
+)
+def test_suppress_below_five_hides_zero_as_well(conn, n, shown):
+    assert conn.execute(text("SELECT suppress_below_five(:n)"), {"n": n}).scalar_one() == shown
+
+
 def test_replies_are_counted_by_what_the_candidates_did_and_yes_is_never_suppressed(conn, desk):
     people = [candidate(conn) for _ in range(5)]
     intros = [ask(conn, desk.role, person) for person in people]

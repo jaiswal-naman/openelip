@@ -58,7 +58,7 @@ def test_the_preview_is_counts_only_with_one_to_four_shown_as_fewer_than_five(de
     assert data["selected_to_ask"] == 6
     assert data["waiting_for_reply"] == "fewer than 5"  # three are waiting
     assert data["said_yes"] == 1  # exact: each is already on the shortlist
-    assert data["said_no_or_expired"] == 0  # none is zero, not "fewer than 5"
+    assert data["said_no_or_expired"] == "fewer than 5"  # none is hidden too: 0 would show an ask that moved
     assert data["suppressed_below"] == 5 and "Counts only" in data["note"]
     assert data["as_of"] is not None
     assert set(data) == {

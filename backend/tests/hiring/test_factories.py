@@ -580,7 +580,11 @@ def test_the_counts_a_member_sees_come_from_these_rows(conn):
     world.act_as(conn, "app_api", org.owner)
     preview = conn.execute(text("SELECT role_preview(:r)"), {"r": role.id}).scalar_one()
     assert preview["eligible_candidates"] == "fewer than 5" and preview["selected_to_ask"] == "fewer than 5"
-    assert (preview["waiting_for_reply"], preview["said_yes"], preview["said_no_or_expired"]) == ("fewer than 5", 1, 0)
+    assert (preview["waiting_for_reply"], preview["said_yes"], preview["said_no_or_expired"]) == (
+        "fewer than 5",
+        1,
+        "fewer than 5",
+    )
     assert preview["as_of"] is not None
 
 
