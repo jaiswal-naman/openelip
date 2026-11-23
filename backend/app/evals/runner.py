@@ -1,8 +1,12 @@
 """Replay a gold set through the model gateway and record the run (AI_SYSTEM 12; requirement PLT-08).
 
-Replay only: the gateway's fake provider answers every item from a recorded file, in item order, so a pull request needs
-no model key and a run gives the same result every time. The run is one eval_runs row, one eval_items row per gold item,
-and a frozen verdict once it finishes. The regression gate (gate.py) reads those rows afterwards.
+A replay is the default: the gateway's fake provider answers every item from a recorded file, in item order, so a pull
+request needs no model key and a run gives the same result every time. The run is one eval_runs row, one eval_items row
+per gold item, and a frozen verdict once it finishes. The regression gate (gate.py) reads those rows afterwards.
+
+A live run (live=True) is the one run that calls a real model: the provider the environment configures answers every
+item, and the run records method "model" and the model's name, which is what a route gate asks for (a replay records
+neither, so it never proves a route). Only a suite whose scorer declares LIVE has one, and only an OwnScorer can.
 """
 
 import hashlib
@@ -33,6 +37,14 @@ class ReplayNeedsFake(Exception):
     """A replay with a real provider configured would call the model and ignore the recording (and cost money)."""
 
 
+class LiveNeedsRealProvider(Exception):
+    """A live run with the fake provider configured would answer from no recording and prove nothing about a model."""
+
+
+class LiveNotSupported(Exception):
+    """The suite has no live mode: its scorer does not declare LIVE (or it is not a scorer of its own)."""
+
+
 class SmokeLabel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: Literal["request", "thanks", "question", "statement", "greeting"]
@@ -53,7 +65,8 @@ class Suite:
 class OwnScorer:
     """A suite that scores itself, because an item needs several gateway calls or a score that is not an exact match.
     Its script (a path under evals/) defines TASK (a task of its route), CONFIG (facts for the run record), RECORDED
-    (its default recording) and run(recorded) -> Scored, and brings its own gold set and recording format."""
+    (its default recording) and run(recorded) -> Scored, and brings its own gold set and recording format. A script that
+    sets LIVE = True also takes run(None), which calls the real model instead of replaying a recording."""
 
     script: str
 
@@ -185,7 +198,7 @@ def _start(name: str, run_config: dict[str, Any]) -> UUID:
     return run_id
 
 
-def _run_own(name: str, own: OwnScorer, recorded: Path | None) -> Finished:
+def _run_own(name: str, own: OwnScorer, recorded: Path | None, live: bool) -> Finished:
     """The same refusals, run record and floor as any suite, with the items and metrics of the suite's own script."""
     spec = importlib.util.spec_from_file_location(f"evals_{name}", EVALS / own.script)
     assert spec is not None and spec.loader is not None
@@ -193,20 +206,23 @@ def _run_own(name: str, own: OwnScorer, recorded: Path | None) -> Finished:
     sys.modules[spec.name] = scorer
     spec.loader.exec_module(scorer)
     settings = config.get()
-    if settings.llm_provider != "fake":
-        raise ReplayNeedsFake()
-    route = registry.route(scorer.TASK, settings)
-    recorded = recorded or scorer.RECORDED
+    if live:
+        if not getattr(scorer, "LIVE", False):
+            raise LiveNotSupported(name)
+        if settings.llm_provider == "fake":
+            raise LiveNeedsRealProvider()
+        route = registry.route(scorer.TASK, settings)  # AIDisabled when there is no key: nothing is written
+        # method "model" and the model name are what a route gate reads (app.match.ai_gate): only this run has them
+        how: dict[str, Any] = {"mode": "live", "method": "model"}
+        recorded = None
+    else:
+        if settings.llm_provider != "fake":
+            raise ReplayNeedsFake()
+        route = registry.route(scorer.TASK, settings)
+        recorded = recorded or scorer.RECORDED
+        how = {"mode": "replay", "recorded": recorded.name}
     run_id = _start(
-        name,
-        {
-            "mode": "replay",
-            "recorded": recorded.name,
-            "task": scorer.TASK,
-            "provider": route.provider,
-            "model": route.model,
-            **scorer.CONFIG,
-        },
+        name, {**how, "task": scorer.TASK, "provider": route.provider, "model": route.model, **scorer.CONFIG}
     )
     results: list[Result] = []
     metrics: dict[str, Any] = {}
@@ -219,14 +235,20 @@ def _run_own(name: str, own: OwnScorer, recorded: Path | None) -> Finished:
     return _finish(run_id, name, results, error, metrics)
 
 
-def run_suite(name: str, recorded: Path | None = None) -> Finished:
-    """Replay the suite's recording through the gateway and record the run. Raises UnknownSuite, ReplayNeedsFake or
-    AIDisabled before anything is written; a failure while scoring ends the run with status "error"."""
+def run_suite(name: str, recorded: Path | None = None, *, live: bool = False) -> Finished:
+    """Replay the suite's recording through the gateway and record the run; with live=True call the real model the
+    environment configures instead, and record a model-method run. Raises UnknownSuite, ReplayNeedsFake,
+    LiveNeedsRealProvider, LiveNotSupported or AIDisabled before anything is written (ValueError for a live run given a
+    recording); a failure while scoring, such as a provider that stops answering, ends the run with status "error"."""
     if name not in SUITES:
         raise UnknownSuite(name)
+    if live and recorded is not None:
+        raise ValueError("a live run has no recording to replay")
     suite = SUITES[name]
     if isinstance(suite, OwnScorer):
-        return _run_own(name, suite, recorded)
+        return _run_own(name, suite, recorded, live)
+    if live:
+        raise LiveNotSupported(name)
     gold = load_gold(name)
     recorded = recorded or EVALS / "recorded" / f"{name}.json"
     settings = config.get()
