@@ -13,6 +13,7 @@ REAL_SECRETS = {
     "DATABASE_URL_MIGRATE": "postgresql://app:one-real-password@db/app",
     "DATABASE_URL_API": "postgresql://app_api:two-real-password@db/app",
     "DATABASE_URL_WORKER": "postgresql://app_worker:three-real-password@db/app",
+    "DATABASE_URL_MATCH": "postgresql://app_match:four-real-password@db/app",
 }
 
 
@@ -39,6 +40,7 @@ def test_every_development_secret_is_refused_off_localhost():
         "DATABASE_URL_MIGRATE",
         "DATABASE_URL_API",
         "DATABASE_URL_WORKER",
+        "DATABASE_URL_MATCH",
     ):
         assert name in str(refused.value)
 
@@ -72,3 +74,4 @@ def test_the_database_url_is_chosen_by_role():
     assert "one-real-password" in settings.database_url("migrate")
     assert "two-real-password" in settings.database_url("api")
     assert "three-real-password" in settings.database_url("worker")
+    assert "four-real-password" in settings.database_url("match")

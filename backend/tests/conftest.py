@@ -25,7 +25,8 @@ DEFAULT_TEST_URL = "postgresql://app:app_local_only@127.0.0.1:5433/app_test"
 # Everything the application writes or the tests insert; the job index is included because tests commit fixture rows.
 DATA_TABLES = (
     "users, sessions, login_codes, idempotency_keys, outbox, queue_jobs, llm_calls, model_registry, "
-    "eval_runs, eval_items, fetch_runs, jobs, job_sources"
+    "eval_runs, eval_items, fetch_runs, jobs, job_sources, "
+    "match_runs, match_decisions, match_evidence, feedback_events, briefs, brief_items"
 )
 
 
@@ -47,6 +48,7 @@ os.environ["APP_ENV"] = "test"
 os.environ["DATABASE_URL_MIGRATE"] = TEST_URL.render_as_string(hide_password=False)
 os.environ["DATABASE_URL_API"] = _as_login(TEST_URL, "app_api", "APP_DB_API_PASSWORD", "app_api_local_only")
 os.environ["DATABASE_URL_WORKER"] = _as_login(TEST_URL, "app_worker", "APP_DB_WORKER_PASSWORD", "app_worker_local_only")
+os.environ["DATABASE_URL_MATCH"] = _as_login(TEST_URL, "app_match", "APP_DB_MATCH_PASSWORD", "app_match_local_only")
 
 
 def _sa_url(url: URL) -> URL:

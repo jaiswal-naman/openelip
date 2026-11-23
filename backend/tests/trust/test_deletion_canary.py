@@ -63,6 +63,10 @@ PLANTED = {
     ("constraints", "company_names"),  # an array
     ("preferences", "value"),
     ("preferences", "statement"),
+    ("match_decisions", "summary"),
+    ("match_decisions", "change_note"),
+    ("match_evidence", "note"),
+    ("feedback_events", "comment"),
     ("eval_items", "expected"),
     ("eval_items", "actual"),
 }
@@ -235,6 +239,71 @@ def seed_person(engine) -> Person:
             v=f"value {CANARY}",
             s=f"I would like {CANARY}",
             e=constraint_event,
+        )
+        # The match and brief tables (plan 04-01). The job and its requirement are public index rows with no canary; the
+        # decision, its evidence, the feedback and the brief are about the person.
+        source = run(
+            """INSERT INTO job_sources (ats, token, company_name)
+               VALUES ('lever', 'canary-board', 'Initech') RETURNING id"""
+        ).scalar_one()
+        job = run(
+            """INSERT INTO jobs (source_id, external_id, title, company_name, description, apply_url, content_hash,
+                                 dedupe_key, requirements_version)
+               VALUES (:s, 'canary-job', 'Engineer', 'Initech', 'Python required.', 'https://example.test/apply', 'h',
+                       'canary-job', 1) RETURNING id""",
+            s=source,
+        ).scalar_one()
+        requirement = run(
+            """INSERT INTO job_requirements (job_id, content_version, ordinal, importance, kind, text, span,
+                                             prompt_version)
+               VALUES (:j, 1, 1, 'required', 'skill', 'Python', int4range(0, 6), 'seed-v1') RETURNING id""",
+            j=job,
+        ).scalar_one()
+        match_run = run(
+            """INSERT INTO match_runs (trigger, user_id, local_date, status, record_version, ranker_version,
+                                       finished_at)
+               VALUES ('nightly', :u, current_date, 'completed', 1, 'seed', now()) RETURNING id""",
+            u=user,
+        ).scalar_one()
+        decision = run(
+            """INSERT INTO match_decisions (match_run_id, user_id, job_id, job_content_version, local_date, outcome,
+                                            reason_codes, rank_position, summary, change_note)
+               VALUES (:r, :u, :j, 1, current_date, 'shown', '{top_ranked,material_change}', 1, :s, :n)
+               RETURNING id""",
+            r=match_run,
+            u=user,
+            j=job,
+            s=f"Summary {CANARY}",
+            n=f"Changed {CANARY}",
+        ).scalar_one()
+        run(
+            """INSERT INTO match_evidence (match_decision_id, user_id, job_requirement_id, verdict, note)
+               VALUES (:d, :u, :q, 'no_evidence', :n)""",
+            d=decision,
+            u=user,
+            q=requirement,
+            n=f"Note {CANARY}",
+        )
+        run(
+            """INSERT INTO feedback_events (user_id, job_id, match_decision_id, kind, dismiss_reason, comment)
+               VALUES (:u, :j, :d, 'dismiss', 'other', :c)""",
+            u=user,
+            j=job,
+            d=decision,
+            c=f"Comment {CANARY}",
+        )
+        brief = run(
+            """INSERT INTO briefs (user_id, local_date, channel, match_run_id)
+               VALUES (:u, current_date, 'email', :r) RETURNING id""",
+            u=user,
+            r=match_run,
+        ).scalar_one()
+        run(
+            """INSERT INTO brief_items (brief_id, position, user_id, kind, match_decision_id)
+               VALUES (:b, 1, :u, 'match', :d)""",
+            b=brief,
+            u=user,
+            d=decision,
         )
     return Person(user, ADDRESS)
 

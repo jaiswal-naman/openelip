@@ -7,8 +7,8 @@ from sqlalchemy.engine import make_url
 # What information_schema must show after `alembic upgrade head`, as "column udt_name" ("?" marks a nullable column).
 # Transcribed by hand from DATA_MODEL 3.3, 3.7 and 3.13 (the Phase 1 tables), 3.3 again for the trust tables that plan
 # 03-01 added (consents, audit_log, data_requests), 3.4 for the record tables of plan 03-04 and 3.5 (the job index,
-# converted in place by revision p2_0201_job_index), so a change to either side that the other does not follow fails
-# here.
+# converted in place by revision p2_0201_job_index), and 3.6 and 3.7 for the match and brief tables of plan 04-01
+# (outbox is 3.7's and Phase 1's), so a change to either side that the other does not follow fails here.
 # Not autogenerate.
 EXPECTED = {
     "users": """
@@ -103,6 +103,29 @@ EXPECTED = {
         id uuid; user_id uuid; kind preference_kind; value text; skill_id int4?; weight int2; statement text
         source record_source; profile_event_id uuid; created_at timestamptz; superseded_at timestamptz?
         superseded_by uuid?""",
+    # DATA_MODEL 3.6 and 3.7, the match and brief tables that plan 04-01 added.
+    "match_runs": """
+        id uuid; trigger match_trigger; user_id uuid?; role_id uuid?; local_date date; status match_run_status
+        record_version int8?; since timestamptz?; ranker_version text; evidence_prompt_version text?
+        retrieved_count int4; filtered_count int4; shown_count int2; error_code text?; started_at timestamptz
+        finished_at timestamptz?""",
+    "match_decisions": """
+        id uuid; match_run_id uuid; user_id uuid; job_id int8; job_content_version int4; local_date date
+        outcome match_outcome; reason_codes _match_reason; violated_kinds _constraint_kind
+        unverified _unverified_flag; retrieval_rank int4?; rrf_score float4?; fit_score float4?; rank_position int2?
+        summary text?; change_note text?; created_at timestamptz""",
+    "match_evidence": """
+        id int8; match_decision_id uuid; user_id uuid; job_requirement_id int8; verdict evidence_verdict
+        fact_ids _uuid; note text?; llm_call_id int8?; created_at timestamptz""",
+    "feedback_events": """
+        id uuid; user_id uuid; job_id int8; match_decision_id uuid?; kind feedback_kind
+        dismiss_reason dismiss_reason?; comment text?; created_at timestamptz""",
+    "briefs": """
+        id uuid; user_id uuid; local_date date; channel brief_channel; status brief_status; match_run_id uuid?
+        covers_since timestamptz?; send_after timestamptz?; sent_at timestamptz?; created_at timestamptz""",
+    "brief_items": """
+        brief_id uuid; position int2; user_id uuid; kind brief_item_kind; match_decision_id uuid?; approval_id uuid?
+        agent_action_id int8?; introduction_id uuid?""",
 }
 
 

@@ -10,8 +10,12 @@ import threading
 from datetime import datetime, timezone
 from types import FrameType
 
+from app.brief import jobs as brief_jobs  # noqa: F401  (importing it registers the brief handlers)
+from app.brief import privacy as brief_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.ingest import jobs  # noqa: F401  (importing it registers the ingest handlers)
 from app.ingest import privacy as ingest_privacy  # noqa: F401  (the export job reads the registry in this process)
+from app.match import jobs as match_jobs  # noqa: F401  (importing it registers the match handlers)
+from app.match import privacy as match_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.platform import config, db, log, queue, relay, scheduler
 from app.profile import jobs as profile_jobs
 from app.profile import privacy as profile_privacy  # noqa: F401  (the export job reads the registry in this process)
