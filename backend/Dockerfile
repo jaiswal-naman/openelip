@@ -32,6 +32,9 @@ RUN FASTEMBED_CACHE_PATH=/srv/models .venv/bin/python -c "import os; from fastem
  && chmod -R a+rX /srv/models
 COPY backend/ ./
 RUN uv sync --frozen --no-dev
+# The location parser reads GeoNames cities of 15,000 people or more (GeonamesCache's default); the three smaller-town
+# lists are 170 MB that nothing opens. No -f: if a new geonamescache renames them, the build says so.
+RUN cd .venv/lib/python3.11/site-packages/geonamescache/data && rm cities500.json cities1000.json cities5000.json
 
 # --- runtime: the same base image, the finished environment and the code, run by a user with no shell login
 FROM ${PYTHON_IMAGE} AS runtime
