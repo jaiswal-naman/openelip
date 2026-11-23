@@ -1,0 +1,16 @@
+{
+  "resume": [
+    "Backend engineer at Initech Demo, 2018 to 2024.",
+    "Skills: Python, SQL, Quillscript.",
+    "Led a team of three engineers.",
+    "BSc Computer Science, Example University Demo, 2018."
+  ],
+  "facts": [
+    {"kind": "role", "statement": "Backend engineer at Initech Demo, 2018 to 2024.",
+     "attributes": {"employer": "Initech Demo", "title": "Backend engineer", "start_date": "2018-01", "end_date": "2024-06"}},
+    {"kind": "skill", "statement": "Skills: Python, SQL, Quillscript.", "attributes": {}},
+    {"kind": "achievement", "statement": "Led a team of three engineers.", "attributes": {}},
+    {"kind": "education", "statement": "BSc Computer Science, Example University Demo, 2018.",
+     "attributes": {"institution": "Example University Demo", "degree": "BSc Computer Science"}}
+  ]
+}

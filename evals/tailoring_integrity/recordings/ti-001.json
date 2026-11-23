@@ -1,0 +1,89 @@
+[
+  {
+    "edits": [
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "skills",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [
+          "r2",
+          "r1"
+        ],
+        "order": [
+          "f13",
+          "f10",
+          "f11",
+          "f12",
+          "f14"
+        ]
+      },
+      {
+        "op": "remove",
+        "target": "f9",
+        "section": "experience",
+        "after_text": "",
+        "supporting": [
+          "f9"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f2",
+        "section": "experience",
+        "after_text": "Developed Python services for payments",
+        "supporting": [
+          "f2"
+        ],
+        "requirements": [
+          "r1"
+        ],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f5",
+        "section": "experience",
+        "after_text": "Mentored one junior developer on Kubernetes",
+        "supporting": [
+          "f5"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f3",
+        "section": "experience",
+        "after_text": "Cut report build time by 45%",
+        "supporting": [
+          "f3"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f4",
+        "section": "experience",
+        "after_text": "Contributed to the checkout migration as Staff Backend Engineer",
+        "supporting": [
+          "f4"
+        ],
+        "requirements": [],
+        "order": []
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": true
+      }
+    ]
+  }
+]

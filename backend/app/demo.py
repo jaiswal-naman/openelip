@@ -17,6 +17,8 @@ Running it again for the same account adds no second brief and no second shown m
 import hashlib
 import io
 import json
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,8 +33,10 @@ from sqlalchemy.engine import make_url
 from app.brief import api as brief
 from app.match import api as match
 from app.platform import config, db
+from app.platform.config import Role
 from app.platform.llm import fake
 from app.platform.sessions import seal_bytes
+from app.profile import api as profile
 from app.trust import api as trust
 
 DATA = Path(__file__).parent / "demo_data"
@@ -115,6 +119,21 @@ def _refuse_unless_scratch_and_fake() -> None:
             f"LLM_PROVIDER is {settings.llm_provider!r}. The demo replays recorded answers and must never reach a real "
             "model: set LLM_PROVIDER=fake."
         )
+
+
+@contextmanager
+def _scratch(user_id: UUID | None = None, *, role: Role) -> Iterator[Connection]:
+    """A transaction on a login the seed uses, after the server has said which database it is connected to: the URL
+    names were checked by `_refuse_unless_scratch_and_fake`; this is the same rule on `current_database()` itself, as
+    the eval seeds do (05-FIXES B8), before the caller writes a row."""
+    with db.transaction(user_id, role=role) as conn:
+        name = conn.execute(text("SELECT current_database()")).scalar_one()
+        if not (name or "").endswith("_test"):
+            raise SeedRefused(
+                f"the {role} login is connected to database {name!r}, which does not end in _test. The demo writes "
+                "invented rows and only runs on a scratch database."
+            )
+        yield conn
 
 
 def _person(conn: Connection, email: str) -> UUID:
@@ -416,7 +435,7 @@ def seed_matches(email: str) -> Seeded:
     _refuse_unless_scratch_and_fake()
     data = json.loads((DATA / "postings.json").read_text(encoding="utf-8"))
     now = datetime.now(timezone.utc)
-    with db.transaction(role="migrate") as conn:
+    with _scratch(role="migrate") as conn:
         user_id = _person(conn, email)
         _refuse_other_postings(conn, data["source"]["token"])
         zone = _prepare_account(conn, user_id, now)
@@ -426,14 +445,12 @@ def seed_matches(email: str) -> Seeded:
 
     fake.replay_from(RECORDING)  # the model is the recording: nothing reaches a provider
     result = match.run(user_id, trigger="on_demand", local_date=day)
-    with db.transaction(
-        role="migrate"
-    ) as conn:  # last, so that the onboarding sweep did not see a confirmed record early
+    with _scratch(role="migrate") as conn:  # last, so that the onboarding sweep did not see a confirmed record early
         conn.execute(
             text("UPDATE users SET record_confirmed_at = COALESCE(record_confirmed_at, now()) WHERE id = :u"),
             {"u": user_id},
         )
-    with db.transaction(role="worker") as conn:
+    with _scratch(role="worker") as conn:
         composed = brief.compose(conn, user_id, day, now=now)
         shown, filtered = _todays_decisions(conn, user_id, day)
     return Seeded(
@@ -448,3 +465,164 @@ def seed_matches(email: str) -> Seeded:
         email_brief_id=composed.email_brief_id,
         outbox_id=composed.outbox_id,
     )
+
+
+# ---- the tailoring demo (plan 05-07) ---------------------------------------------------------------------------------
+
+PHASE5 = DATA / "phase5"
+RESUME5_FILENAME = "demo-resume-2-invented.docx"
+
+
+@dataclass(frozen=True)
+class SeededTailor:
+    """What `seed_tailor` left behind: the person and the facts it added (kind, statement, id), in the order the demo
+    recordings number them (the Phase 4 record holds f1 to f3, so these are f4 onward)."""
+
+    email: str
+    user_id: UUID
+    facts: tuple[tuple[str, str, UUID], ...]
+    already: bool = False
+
+    def report(self) -> str:
+        if self.already:
+            return f"The invented tailoring demo is already seeded for {self.email}; nothing was changed."
+        return "\n".join(
+            [
+                f"Seeded the invented tailoring demo for {self.email}.",
+                f"{len(self.facts)} confirmed facts added; the record version moved with each.",
+                *(
+                    f"  f{n}: {kind} {statement} ({fact_id})"
+                    for n, (kind, statement, fact_id) in enumerate(self.facts, 4)
+                ),
+            ]
+        )
+
+
+def _added_facts(conn: Connection, user_id: UUID) -> list[tuple[str, str, UUID]]:
+    """The facts this seed added in the usable order (the recordings' alias order), minus the Phase 4 three."""
+    rows = conn.execute(
+        text(
+            """SELECT kind::text AS kind, statement, id FROM profile_facts
+                WHERE user_id = :u AND confirmed_at IS NOT NULL AND rejected_at IS NULL AND superseded_at IS NULL
+                ORDER BY created_at, COALESCE(lower(source_span), 2147483647), id"""
+        ),
+        {"u": user_id},
+    ).all()
+    return [(r.kind, r.statement, r.id) for r in rows[len(FACTS) :]]
+
+
+def _seed_resume_two(conn: Connection, user_id: UUID) -> None:
+    """The second invented resume, parsed, with its confirmed facts: two roles, their achievements and three skills."""
+    resume = (PHASE5 / "resume.txt").read_text(encoding="utf-8").rstrip("\n")
+    file_bytes = _docx(resume)
+    document_id = conn.execute(
+        text(
+            """INSERT INTO documents (user_id, content, original_filename, mime_type, byte_size, sha256, status,
+                                      extracted_text, parsed_at)
+               VALUES (:u, :content, :name, :mime, :size, :sha, 'parsed', :body, now()) RETURNING id"""
+        ),
+        {
+            "u": user_id,
+            "content": seal_bytes(file_bytes),
+            "name": RESUME5_FILENAME,
+            "mime": DOCX_MIME,
+            "size": len(file_bytes),
+            "sha": hashlib.sha256(file_bytes).digest(),
+            "body": resume,
+        },
+    ).scalar_one()
+    facts = json.loads((PHASE5 / "facts.json").read_text(encoding="utf-8"))["facts"]
+    ids = [uuid4() for _ in facts]
+    for fact_id, fact in zip(ids, facts, strict=True):
+        statement = fact["statement"]
+        start = resume.find(statement)  # Python counts code points, the unit a span is in
+        if start < 0:
+            raise ValueError(f"a demo fact must be a line of resume.txt: {statement!r}")
+        parent = ids[fact["parent"]] if "parent" in fact else None
+        conn.execute(
+            text(
+                """INSERT INTO profile_facts (id, user_id, kind, statement, attributes, parent_fact_id, source,
+                                              document_id, source_span, source_quote, confirmed_at)
+                   VALUES (:id, :u, CAST(:kind AS fact_kind), :statement, CAST(:attributes AS jsonb), :parent,
+                           'resume', :doc, int4range(:start, :stop), :statement, now())"""
+            ),
+            {
+                "id": fact_id,
+                "u": user_id,
+                "kind": fact["kind"],
+                "statement": statement,
+                "attributes": json.dumps(fact["attributes"]),
+                "parent": parent,
+                "doc": document_id,
+                "start": start,
+                "stop": start + len(statement),
+            },
+        )
+        confirmed = {
+            "id": str(fact_id),
+            "kind": fact["kind"],
+            "status": "confirmed",
+            "statement": statement,
+            "attributes": fact["attributes"],
+            "source": "resume",
+            "parent_fact_id": None if parent is None else str(parent),
+            "provenance": {"document_id": str(document_id), "span": {"start": start, "end": start + len(statement)}},
+        }
+        _apply(conn, user_id, "fact", "confirm", fact_id, {**confirmed, "status": "unconfirmed"}, confirmed)
+
+
+def _say_in_chat(user_id: UUID, skill: str) -> None:
+    """A skill the candidate stated in chat and confirmed: a proposal from origin `chat`, then its confirmation, through
+    the profile module, so the fact is a confirmed_proposal the base resume does not show until an edit adds it. On the
+    owner's login, like the rest of the seed: the worker container that runs it holds no API login, and the scratch
+    check above covers only the logins the seed uses."""
+    with _scratch(user_id, role="migrate") as conn:
+        proposal = profile.propose_change(
+            conn,
+            user_id,
+            origin="chat",
+            entity="fact",
+            operation="create",
+            after={"kind": "skill", "statement": skill},
+            reason="Invented demo data: said in chat.",
+        )
+        profile.confirm(conn, user_id, proposal)
+
+
+def seed_tailor(email: str) -> SeededTailor:
+    """Add the invented facts the tailoring demo needs to an account the Phase 4 demo seeded. Raises SeedRefused,
+    before writing anything, when this is not a scratch database with the fake provider, when no account has this
+    address, or when `seed_matches` has not run for it. A second run changes nothing."""
+    _refuse_unless_scratch_and_fake()
+    said = json.loads((PHASE5 / "facts.json").read_text(encoding="utf-8"))["said_in_chat"]
+    with _scratch(role="migrate") as conn:
+        user_id = _person(conn, email)
+
+        def has(name: str) -> bool:
+            return (
+                conn.execute(
+                    text("SELECT 1 FROM documents WHERE user_id = :u AND original_filename = :name"),
+                    {"u": user_id, "name": name},
+                ).first()
+                is not None
+            )
+
+        if not has(RESUME_FILENAME):
+            raise SeedRefused(f"the matches demo has not been seeded for {email}: run `demo seed-matches` first.")
+        resume_two = has(RESUME5_FILENAME)
+        chatted = conn.execute(
+            text(
+                """SELECT count(*) FROM profile_facts WHERE user_id = :u AND source = 'confirmed_proposal'
+                      AND statement = ANY(:names)"""
+            ),
+            {"u": user_id, "names": said},
+        ).scalar_one()
+        if resume_two and chatted == len(said):
+            return SeededTailor(email, user_id, tuple(_added_facts(conn, user_id)), already=True)
+        if resume_two:
+            raise SeedRefused("the tailoring demo is only partly seeded for this account: use a fresh scratch stack.")
+        _seed_resume_two(conn, user_id)
+    for skill in said:  # after the resume's facts, so they come last in the record's order
+        _say_in_chat(user_id, skill)
+    with _scratch(role="migrate") as conn:
+        return SeededTailor(email, user_id, tuple(_added_facts(conn, user_id)))

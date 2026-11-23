@@ -10,8 +10,13 @@ import threading
 from datetime import datetime, timezone
 from types import FrameType
 
+from app.apply import jobs as apply_jobs  # noqa: F401  (importing it registers the apply handlers)
+from app.apply import privacy as apply_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.brief import jobs as brief_jobs  # noqa: F401  (importing it registers the brief handlers)
 from app.brief import privacy as brief_privacy  # noqa: F401  (the export job reads the registry in this process)
+from app.chat import privacy as chat_privacy  # noqa: F401  (the export job reads the registry in this process)
+from app.hiring import jobs as hiring_jobs  # noqa: F401  (importing it registers the hiring handlers and mail templates)
+from app.hiring import privacy as hiring_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.ingest import jobs  # noqa: F401  (importing it registers the ingest handlers)
 from app.ingest import privacy as ingest_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.match import jobs as match_jobs  # noqa: F401  (importing it registers the match handlers)
@@ -19,6 +24,8 @@ from app.match import privacy as match_privacy  # noqa: F401  (the export job re
 from app.platform import config, db, log, queue, relay, scheduler
 from app.profile import jobs as profile_jobs
 from app.profile import privacy as profile_privacy  # noqa: F401  (the export job reads the registry in this process)
+from app.tailor import jobs as tailor_jobs  # noqa: F401  (importing it registers the tailor handlers)
+from app.tailor import privacy as tailor_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.trust import jobs as trust_jobs  # noqa: F401  (importing it registers the export and erase jobs and the sweep)
 
 POLL_SECONDS = 1

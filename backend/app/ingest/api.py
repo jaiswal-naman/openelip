@@ -4,18 +4,30 @@ Plans that add a public function (search, get_job, verify_live, the requirement 
 app.ingest is part of that interface.
 """
 
+from .direct import DirectRequirement, close_direct_job, publish_direct_job
 from .liveness import unchecked_apply_links, verify_live
 from .normalize import parse_location
 from .requirements.rules import extract as rules_extract
 from .requirements.segment import segments
-from .requirements.validate import to_rows
+from .requirements.task import PROMPT_VERSION as REQUIREMENTS_PROMPT_VERSION
+from .requirements.task import TASK as REQUIREMENTS_TASK
+from .requirements.task import run as extract_requirements
+from .requirements.validate import RequirementRow, ValidationResult, to_rows
 from .search import InvalidCursor, SearchPage, get_job, search
 
 __all__ = [
+    "REQUIREMENTS_PROMPT_VERSION",
+    "REQUIREMENTS_TASK",
+    "DirectRequirement",
     "InvalidCursor",
+    "RequirementRow",
     "SearchPage",
+    "ValidationResult",
+    "close_direct_job",
+    "extract_requirements",
     "get_job",
     "parse_location",
+    "publish_direct_job",
     "rules_extract",
     "search",
     "segments",

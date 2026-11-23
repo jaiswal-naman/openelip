@@ -1,0 +1,40 @@
+[
+ {
+  "verdicts": [
+   {
+    "requirement": "r1",
+    "verdict": "met",
+    "facts": []
+   },
+   {
+    "requirement": "r2",
+    "verdict": "met",
+    "facts": []
+   },
+   {
+    "requirement": "r3",
+    "verdict": "met",
+    "facts": []
+   }
+  ]
+ },
+ {
+  "verdicts": [
+   {
+    "requirement": "r1",
+    "verdict": "met",
+    "facts": []
+   },
+   {
+    "requirement": "r2",
+    "verdict": "met",
+    "facts": []
+   },
+   {
+    "requirement": "r3",
+    "verdict": "met",
+    "facts": []
+   }
+  ]
+ }
+]

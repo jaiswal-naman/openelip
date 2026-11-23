@@ -1,0 +1,18 @@
+{
+  "labels": "agent-drafted, maintainer review pending",
+  "score": 1.0,
+  "chat_task_success_pass1": 1.0,
+  "citations_present": 1.0,
+  "citations_valid": 1.0,
+  "unconfirmed_writes": 0,
+  "cross_user_data": 0,
+  "n": 20,
+  "attempts": 1,
+  "recorded_run": {
+    "id": "d233f4e5-6cda-47aa-8ce0-30ee802e9a95",
+    "git_sha": "a56b2eff4237b012afc5f447d48646946bc6c994",
+    "recorded": "recordings",
+    "date": "2026-11-23"
+  },
+  "note": "The first replay of the committed recordings (its own score was 0.0 only because this file did not exist yet; with it the replay scores 1.0). The recordings were written against the aliases the seeded world produces, checked before the first run, so no label was corrected after a run. A replay is deterministic, so a drop is a code change. Replay numbers are wiring checks, not model quality (README.md)."
+}

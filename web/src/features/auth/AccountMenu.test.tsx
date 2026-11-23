@@ -61,16 +61,17 @@ describe("when someone is signed in", () => {
     expect(within(account).getByRole("menuitem", { name: "Sign out" })).toBeInTheDocument();
   });
 
-  it("links to Today, the record and the privacy settings, before Sign out", async () => {
+  it("links to Today, the applications, the record and the privacy settings, before Sign out", async () => {
     const user = userEvent.setup();
     renderWithApi(<AccountMenu />, signedIn);
     await user.click(await screen.findByRole("button", { name: "Account: reader@example.test" }));
     const account = await screen.findByRole("menu", { name: "Account: reader@example.test" });
     const items = within(account).getAllByRole("menuitem");
-    expect(items.map((item) => item.textContent)).toEqual(["Today", "Your record", "Settings", "Sign out"]);
+    expect(items.map((item) => item.textContent)).toEqual(["Today", "Applications", "Your record", "Settings", "Sign out"]);
     expect(items[0]).toHaveAttribute("href", "/app/today");
-    expect(items[1]).toHaveAttribute("href", "/app/record");
-    expect(items[2]).toHaveAttribute("href", "/app/settings?section=privacy");
+    expect(items[1]).toHaveAttribute("href", "/app/campaigns");
+    expect(items[2]).toHaveAttribute("href", "/app/record");
+    expect(items[3]).toHaveAttribute("href", "/app/settings?section=privacy");
   });
 });
 
@@ -100,7 +101,7 @@ describe("signing out", () => {
     renderWithApi(<AccountMenu />, { ...signedIn, "DELETE /v1/auth/sessions/current": new Response(null, { status: 204 }) });
     (await screen.findByRole("button", { name: "Account: reader@example.test" })).focus();
     await user.keyboard("{Enter}");
-    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{Enter}"); // Today, Your record, Settings: Sign out is the fourth
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{Enter}"); // Today, Applications, Your record, Settings: Sign out is the fifth
     await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/"));
   });
 

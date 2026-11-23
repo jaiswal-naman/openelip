@@ -1,0 +1,9 @@
+[
+  {"items": [
+    {"edit": "e1", "entailed": true},
+    {"edit": "e2", "entailed": true},
+    {"edit": "e3", "entailed": true},
+    {"edit": "e4", "entailed": true},
+    {"edit": "e5", "entailed": true}
+  ]}
+]

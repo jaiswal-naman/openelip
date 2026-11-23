@@ -1,0 +1,15 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_job",
+    "job": "j1"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "The posting [[j1]] asks for Python (required) and SQL (preferred), to build nightly pipelines."
+ }
+]

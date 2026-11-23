@@ -1,0 +1,82 @@
+[
+  {
+    "edits": [
+      {
+        "op": "add_from_fact",
+        "target": null,
+        "section": "skills",
+        "after_text": "Ansible",
+        "supporting": [
+          "f18"
+        ],
+        "requirements": [
+          "r5"
+        ],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f7",
+        "section": "experience",
+        "after_text": "Managed 120 Linux servers on AWS",
+        "supporting": [
+          "f7"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f8",
+        "section": "experience",
+        "after_text": "Wrote backup scripts in Bash at Wexford Demo",
+        "supporting": [
+          "f8"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f9",
+        "section": "experience",
+        "after_text": "Helped the security team patch 300 servers",
+        "supporting": [
+          "f9"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f3",
+        "section": "experience",
+        "after_text": "Reduced deployment time from 40 minutes to 12 minutes",
+        "supporting": [
+          "f3"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "remove",
+        "target": "f5",
+        "section": "experience",
+        "after_text": "",
+        "supporting": [
+          "f5"
+        ],
+        "requirements": [],
+        "order": []
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": true
+      }
+    ]
+  }
+]

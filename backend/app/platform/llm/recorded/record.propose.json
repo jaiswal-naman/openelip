@@ -1,0 +1,3 @@
+[
+  {"proposals": [{"entity": "fact", "operation": "set", "field": "skill", "value": {"text": "Rust"}, "evidence_quote": "I also know Rust", "statement": "I know Rust."}]}
+]

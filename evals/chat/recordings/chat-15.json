@@ -1,0 +1,14 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_applications"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "You have one application, to the Initech Demo data engineer job [[j1]], with the status applied."
+ }
+]

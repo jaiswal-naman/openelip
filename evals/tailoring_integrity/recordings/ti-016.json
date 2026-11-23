@@ -1,0 +1,90 @@
+[
+  {
+    "edits": [
+      {
+        "op": "add_from_fact",
+        "target": null,
+        "section": "skills",
+        "after_text": "Vue",
+        "supporting": [
+          "f16"
+        ],
+        "requirements": [
+          "r4"
+        ],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f3",
+        "section": "experience",
+        "after_text": "Improved page load time by 35 percent",
+        "supporting": [
+          "f3"
+        ],
+        "requirements": [
+          "r3"
+        ],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f5",
+        "section": "experience",
+        "after_text": "Wrote unit tests for 20 components with Jest",
+        "supporting": [
+          "f5"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f4",
+        "section": "experience",
+        "after_text": "Worked with five designers on the new checkout",
+        "supporting": [
+          "f4"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f8",
+        "section": "experience",
+        "after_text": "Helped launch the redesigned site in 2019",
+        "supporting": [
+          "f8"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "skills",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [
+          "r1"
+        ],
+        "order": [
+          "f11",
+          "f10",
+          "f9",
+          "f12",
+          "f13"
+        ]
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": true
+      }
+    ]
+  }
+]

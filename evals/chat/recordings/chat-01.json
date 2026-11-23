@@ -1,0 +1,14 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_record"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "You have one role, senior data engineer at Initech Demo [[f1]]. Under it are two achievements: nightly Python and SQL pipelines that cut report time by 40 percent [[f2]], and leading a team of three engineers [[f3]]."
+ }
+]

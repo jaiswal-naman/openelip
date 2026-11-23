@@ -1,0 +1,84 @@
+[
+ {
+  "answers": [
+   {
+    "question_id": "why_role",
+    "status": "drafted",
+    "sentences": [
+     {
+      "text": "I built nightly Python and PostgreSQL pipelines.",
+      "facts": [
+       "f2"
+      ],
+      "dossier_claims": []
+     },
+     {
+      "text": "I am a US citizen.",
+      "facts": [
+       "f1"
+      ],
+      "dossier_claims": []
+     }
+    ]
+   },
+   {
+    "question_id": "relevant_experience",
+    "status": "drafted",
+    "sentences": [
+     {
+      "text": "I led a team of three engineers on the reporting platform.",
+      "facts": [
+       "f3"
+      ],
+      "dossier_claims": []
+     }
+    ]
+   },
+   {
+    "question_id": "work_authorization",
+    "status": "drafted",
+    "sentences": [
+     {
+      "text": "I am authorised to work in the US.",
+      "facts": [
+       "f1"
+      ],
+      "dossier_claims": []
+     }
+    ]
+   }
+  ],
+  "note": [
+   {
+    "text": "I wrote SQL reports for the finance team.",
+    "facts": [
+     "f5"
+    ],
+    "dossier_claims": []
+   },
+   {
+    "text": "I hold a US green card.",
+    "facts": [
+     "f1"
+    ],
+    "dossier_claims": []
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   },
+   {
+    "edit": "e2",
+    "entailed": true
+   },
+   {
+    "edit": "e3",
+    "entailed": true
+   }
+  ]
+ }
+]

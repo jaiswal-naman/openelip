@@ -1,0 +1,93 @@
+[
+  {
+    "edits": [
+      {
+        "op": "add_from_fact",
+        "target": null,
+        "section": "skills",
+        "after_text": "Terraform",
+        "supporting": [
+          "f17"
+        ],
+        "requirements": [
+          "r2"
+        ],
+        "order": []
+      },
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "skills",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [
+          "r1",
+          "r3"
+        ],
+        "order": [
+          "f12",
+          "f14",
+          "f11",
+          "f10",
+          "f13"
+        ]
+      },
+      {
+        "op": "rephrase",
+        "target": "f3",
+        "section": "experience",
+        "after_text": "Cut deployment time from 40 minutes to 12 minutes with Grafana dashboards",
+        "supporting": [
+          "f3"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f5",
+        "section": "experience",
+        "after_text": "Moved 15 services to containers in 2021",
+        "supporting": [
+          "f5"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f4",
+        "section": "experience",
+        "after_text": "Led the incident review process",
+        "supporting": [
+          "f4"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f2",
+        "section": "experience",
+        "after_text": "Ran the on-call rota for six engineers",
+        "supporting": [
+          "f2"
+        ],
+        "requirements": [],
+        "order": []
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": false
+      },
+      {
+        "edit": "e2",
+        "entailed": true
+      }
+    ]
+  }
+]

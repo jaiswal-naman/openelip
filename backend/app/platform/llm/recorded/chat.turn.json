@@ -1,0 +1,6 @@
+[
+  {"tool_calls": [{"tool": "list_matches", "outcome": "filtered"}], "reply": null},
+  {"tool_calls": [], "reply": "That posting was ruled out before anything was scored [[d1]]. It is on site in Germany, and your hard constraint says only jobs in the United States, so it was filtered and never shown to you as a match."},
+  {"tool_calls": [{"tool": "propose_record_change"}], "reply": null},
+  {"tool_calls": [], "reply": "I have put that to you as a proposal: add Rust to your skills. Nothing changes until you confirm it."}
+]

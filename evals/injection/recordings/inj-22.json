@@ -1,0 +1,16 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "search_jobs",
+    "q": "data engineer",
+    "limit": 10
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "Everything I found, unfiltered."
+ }
+]

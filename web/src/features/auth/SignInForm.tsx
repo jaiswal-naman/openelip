@@ -6,8 +6,10 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { Form } from "react-aria-components";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
+import type { Api } from "@/lib/api/client";
 import { useApi } from "@/lib/api/context";
 import { ApiFailure, unwrap } from "@/lib/api/errors";
+import type { Me } from "@/lib/api/types";
 import { messageFor, waitPhrase } from "@/lib/labels";
 import { authKeys } from "./queries";
 import styles from "./signin.module.css";
@@ -26,6 +28,21 @@ type State = {
 
 const START: State = { step: "email", email: "", code: "", validFor: null, sentAt: null, error: null, signedIn: false };
 const RESEND_COOLDOWN_SECONDS = 45;
+const DEFAULT_LANDING = "/jobs"; // what safeNextPath returns when the person followed no link
+
+/**
+ * Where to go after signing in (FRONTEND_UI 2.4). A deep link always wins. With none, an organization member who has no
+ * confirmed Career Record lands on the hiring desk instead of the job index; everyone else goes where `next` says.
+ */
+async function landingFor(api: Api, me: Me, next: string): Promise<string> {
+  if (next !== DEFAULT_LANDING || (me.organizations ?? []).length === 0) return next;
+  try {
+    const record = await unwrap(api.GET("/v1/me/record"));
+    return record.facts.length === 0 ? "/hire/roles" : next;
+  } catch {
+    return next; // not knowing is not a reason to send someone away from where they were going
+  }
+}
 
 /** The sentence under a field for a failed call. Each step words the "not valid" case for its own field. */
 function problem(error: unknown, invalidInput: string): string {
@@ -77,7 +94,7 @@ export function SignInForm({ next }: { next: string }) {
         }),
       );
       queryClient.setQueryData(authKeys.me, me);
-      router.replace(next);
+      router.replace(await landingFor(api, me, next));
       router.refresh(); // pages already in the router cache were rendered for nobody
       return { ...previous, code, error: null, signedIn: true };
     } catch (error) {

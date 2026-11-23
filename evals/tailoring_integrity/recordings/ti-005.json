@@ -1,0 +1,75 @@
+[
+  {
+    "edits": [
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "skills",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [
+          "r1",
+          "r3"
+        ],
+        "order": [
+          "f11",
+          "f10",
+          "f13",
+          "f12",
+          "f14"
+        ]
+      },
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "skills",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [],
+        "order": [
+          "f11",
+          "f10",
+          "f13",
+          "f12",
+          "f14",
+          "f17"
+        ]
+      },
+      {
+        "op": "remove",
+        "target": "f5",
+        "section": "experience",
+        "after_text": "",
+        "supporting": [
+          "f5"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "add_from_fact",
+        "target": null,
+        "section": "skills",
+        "after_text": "Terraform (infrastructure as code)",
+        "supporting": [
+          "f18"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "experience",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [],
+        "order": [
+          "f2",
+          "f3",
+          "f4"
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,14 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_record"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "Besides never Globex Demo [[c3]], you want remote or hybrid work [[c1]] in India [[c2]]."
+ }
+]

@@ -23,6 +23,13 @@ export const ERROR_MESSAGES = {
   dependency_unavailable: "A service this needs is unavailable. Try again shortly.",
   network_error: "Could not reach the server. Nothing was changed. Check your connection and try again.",
   unreadable_response: "The server's answer could not be read. Nothing was changed. Try again.",
+  // The hiring desk (FRONTEND_UI 6.4)
+  answers_overdue: "New introductions are paused until overdue answers are given.",
+  preview_changed: "What would be shared changed. Review it again.",
+  pay_range_required: "Publishing needs a pay range.",
+  requirements_unconfirmed: "Publishing needs every requirement confirmed.",
+  quota_exhausted: "No serious-interest signals left this week. They reset on Monday (UTC).",
+  already_resolved: "This changed in another tab or by an agent. Showing the latest.",
 } as const;
 
 export type KnownErrorCode = keyof typeof ERROR_MESSAGES;
@@ -36,9 +43,17 @@ export function waitPhrase(seconds: number): string {
 }
 
 /** The sentence a person reads for a failed call. Unknown codes get the generic one, with the request id for the operator. */
-export function messageFor(failure: Pick<ApiFailure, "code" | "requestId" | "retryAfterSeconds">): string {
+export function messageFor(failure: Pick<ApiFailure, "code" | "requestId" | "retryAfterSeconds"> & { details?: Record<string, unknown> }): string {
   if (failure.code === "rate_limited" && failure.retryAfterSeconds !== null) {
     return `Too many attempts. Try again in ${waitPhrase(failure.retryAfterSeconds)}.`;
+  }
+  if (failure.code === "conflict" && failure.details?.state === "answers_overdue") return ERROR_MESSAGES.answers_overdue;
+  if (failure.code === "quota_exhausted" && typeof failure.details?.resets_at === "string") {
+    const reset = new Date(failure.details.resets_at);
+    if (!Number.isNaN(reset.getTime())) {
+      const date = reset.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+      return `No serious-interest signals left this week. They reset on ${date} (UTC).`;
+    }
   }
   const known = (ERROR_MESSAGES as Record<string, string>)[failure.code];
   if (known !== undefined && failure.code !== "internal_error") return known;
@@ -167,4 +182,105 @@ export const BRIEF_FREQUENCY_LABELS: Record<Schemas["BriefSettings"]["frequency"
   daily: "Daily",
   weekly: "Weekly",
   paused: "Paused",
+};
+
+// ---- The hiring desk (HIR-01 to HIR-08) -----------------------------------------------------------------------------------
+// FRONTEND_UI 3.12 to 3.17, 4.7 and 6.4 word these. Typed from the generated schema where the API has an enum.
+
+export const ROLE_STATUS_LABELS: Record<Schemas["RoleView"]["status"], string> = {
+  draft: "Draft",
+  open: "Open",
+  closed: "Closed",
+};
+
+export const ORG_ROLE_LABELS: Record<Schemas["Member"]["role"], string> = {
+  owner: "Owner",
+  admin: "Admin",
+  member: "Member",
+};
+
+export const MEMBER_STATUS_LABELS: Record<Schemas["Member"]["status"], string> = {
+  active: "Active",
+  invited: "Invited (pending)",
+  removed: "Removed",
+};
+
+/** The introduction states an employer can meet. The shortlist holds only accepted ones. */
+export const INTRODUCTION_STATUS_LABELS = {
+  asked: "Asked",
+  accepted: "Accepted",
+  declined: "Declined",
+  expired: "Expired",
+  withdrawn: "Withdrawn",
+} as const;
+
+export const EMPLOYER_ANSWER_LABELS = { yes: "Answered yes", no: "Answered no" } as const;
+
+/** FRONTEND_UI 3.3, 4.6: the candidate's side of an introduction (Today card, accepted list, settings). */
+export const CANDIDATE_INTRODUCTION_LABELS = {
+  kind: "Introduction",
+  review: "Review and accept",
+  demo: "Demo (invented)",
+  waiting: "Waiting for their answer",
+  employerSignal: "Serious interest from the employer",
+  youSentSignal: "You sent serious interest",
+  acceptedHeading: "Introductions you accepted",
+  openToIntroductions: "Open to introductions from employers",
+} as const;
+
+/** FRONTEND_UI 3.14: the preset reasons, in the order shown. A preset fills the reason box, which stays editable. */
+export const ANSWER_PRESETS = [
+  { label: "Strong fit", text: "Strong fit for the role." },
+  { label: "Skills gap", text: "The skills the role needs are not shown clearly enough." },
+  { label: "Experience gap", text: "The role needs more experience than the record shows." },
+  { label: "Location mismatch", text: "The location or working arrangement does not match the role." },
+  { label: "Pay mismatch", text: "The pay range does not match what was shared." },
+  { label: "Role filled", text: "The role has been filled." },
+  { label: "Role on hold", text: "The role is on hold." },
+  { label: "Other", text: "Other: " },
+] as const;
+
+
+export const PUBLISH_BLOCKER_LABELS: Record<Schemas["RoleView"]["blockers"][number], string> = {
+  requirements_unconfirmed: "confirmed requirements",
+  pay_range_required: "pay range",
+};
+
+// ---- Chat, tailoring and applications (CHT-01 to CHT-04, TLR-01 to TLR-03, APP-01, APP-02) -------------------------------
+
+/** Why a proposed edit was discarded before the person saw it (TLR-02). The API sends counts under these codes only. */
+export const DISCARD_REASON_LABELS: Record<string, string> = {
+  no_supporting_fact: "Not backed by a fact in your record",
+  changed_employer: "Changed an employer",
+  changed_title: "Changed a job title",
+  changed_date: "Changed a date",
+  changed_number: "Changed or added a number",
+  new_entity: "Added a skill, tool or name your record does not hold",
+  not_entailed: "A second check did not find your facts support it",
+};
+
+export const APPLICATION_STATUS_LABELS: Record<Schemas["ApplicationView"]["status"], string> = {
+  applied: "Applied",
+  interview: "Interview",
+  offer: "Offer",
+  rejected: "Rejected",
+  no_response: "No response",
+};
+
+/** How a reply ended when it did not simply finish (API.md 4.2 `message.end`). */
+export const FINISH_REASON_LABELS: Record<Schemas["MessageView"]["finish_reason"] & string, string> = {
+  complete: "",
+  length: "The reply stopped early because it reached a limit. Ask again to continue.",
+  stopped: "You stopped this reply.",
+  interrupted: "This reply was interrupted and is incomplete. Ask again.",
+};
+
+/** The packet's fixed questions. Four are always left for the candidate to answer. */
+export const PACKET_QUESTION_LABELS: Record<string, string> = {
+  why_role: "Why are you interested in this role?",
+  relevant_experience: "What experience of yours is most relevant to this role?",
+  work_authorization: "Are you authorised to work in the country of this job?",
+  expected_pay: "What pay do you expect?",
+  notice_period: "What is your notice period?",
+  start_date: "When could you start?",
 };

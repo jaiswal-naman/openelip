@@ -30,7 +30,7 @@ from sqlalchemy import Connection, Row, text
 from app.platform.errors import ApiError
 from app.profile import api as profile
 
-from .queries import CURRENT_CONSTRAINTS, STILL_ALLOWED, UNVERIFIED_NOW
+from .queries import CURRENT_CONSTRAINTS, NOT_A_ROLE_RUN, STILL_ALLOWED, UNVERIFIED_NOW
 
 CHECKER_DISAGREED = "checker_disagreement"  # match_runs.error_code of a run whose two constraint checks differed
 
@@ -280,7 +280,8 @@ def shown_matches(conn: Connection, user_id: UUID, day: date) -> list[dict[str, 
     confirmed since holds at once (invariant 1). The stored decision is not touched."""
     sql = f"""{CURRENT_CONSTRAINTS}
               SELECT {MATCH_COLUMNS} FROM match_decisions d JOIN {JOB_FROM} ON j.id = d.job_id CROSS JOIN c
-              WHERE d.user_id = :u AND d.local_date = :day AND d.outcome = 'shown' AND {STILL_ALLOWED}
+              WHERE d.user_id = :u AND d.local_date = :day AND d.outcome = 'shown' AND {NOT_A_ROLE_RUN}
+                AND {STILL_ALLOWED}
               ORDER BY d.rank_position"""
     return _matches(conn, user_id, conn.execute(text(sql), {"u": user_id, "day": day}).all())
 
@@ -292,7 +293,8 @@ def match_by_id(conn: Connection, user_id: UUID, decision_id: UUID) -> dict[str,
     sql = f"""{CURRENT_CONSTRAINTS}
               SELECT {MATCH_COLUMNS}, j.description
               FROM match_decisions d JOIN {JOB_FROM} ON j.id = d.job_id CROSS JOIN c
-              WHERE d.id = :id AND d.user_id = :u AND d.outcome = 'shown' AND {STILL_ALLOWED}"""
+              WHERE d.id = :id AND d.user_id = :u AND d.outcome = 'shown' AND {NOT_A_ROLE_RUN}
+                AND {STILL_ALLOWED}"""
     row = conn.execute(text(sql), {"id": decision_id, "u": user_id}).one_or_none()
     if row is None:
         return None
@@ -385,7 +387,7 @@ def decisions_page(
     """The person's decisions, newest local date first and newest row first, one page by keyset cursor. The outcome and
     reason filters ask about what a decision reads as now (_decisions): a shown match the person's constraints now
     exclude is a filtered one for hard_constraint, and is no longer a shown one."""
-    where = ["d.user_id = :u"]
+    where = ["d.user_id = :u", NOT_A_ROLE_RUN]
     params: dict[str, Any] = {"u": user_id, "n": limit + 1}
     if outcomes:
         where.append(f"({OUTCOME_NOW}) = ANY(CAST(:outcomes AS text[]))")
@@ -428,7 +430,7 @@ def decision_by_id(conn: Connection, user_id: UUID, decision_id: UUID) -> dict[s
     filtered, with no evidence. This is the page the web falls back to when match_by_id has no match to open."""
     sql = f"""{CURRENT_CONSTRAINTS}
               SELECT {DECISION_COLUMNS} FROM match_decisions d JOIN {JOB_FROM} ON j.id = d.job_id CROSS JOIN c
-              WHERE d.id = :id AND d.user_id = :u"""
+              WHERE d.id = :id AND d.user_id = :u AND {NOT_A_ROLE_RUN}"""
     row = conn.execute(text(sql), {"id": decision_id, "u": user_id}).one_or_none()
     if row is None:
         return None
@@ -459,6 +461,7 @@ def check_job(conn: Connection, user_id: UUID, job_id: int, day: date) -> dict[s
         "gaps": [],
         "evaluated": "on_request",
         "job": _job_brief(row),
+        "violated_kinds": violated,  # every kind, for match.api; the route's model shows only the first (constraint)
     }
 
 

@@ -1,0 +1,71 @@
+[
+  {
+    "edits": [
+      {
+        "op": "rephrase",
+        "target": "f3",
+        "section": "experience",
+        "after_text": "Cut manual reporting time from 10 hours to 2 hours a week",
+        "supporting": [
+          "f3"
+        ],
+        "requirements": [
+          "r1"
+        ],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f5",
+        "section": "experience",
+        "after_text": "Presented monthly results to a team of eight managers using Google Analytics",
+        "supporting": [
+          "f5"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f7",
+        "section": "experience",
+        "after_text": "Maintained 400 SQL reports for the finance team",
+        "supporting": [
+          "f7"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "remove",
+        "target": "f8",
+        "section": "experience",
+        "after_text": "",
+        "supporting": [
+          "f8"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "add_from_fact",
+        "target": null,
+        "section": "skills",
+        "after_text": "Airflow",
+        "supporting": [
+          "f18"
+        ],
+        "requirements": [],
+        "order": []
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": true
+      }
+    ]
+  }
+]

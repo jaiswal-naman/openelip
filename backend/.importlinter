@@ -37,3 +37,37 @@ ignore_imports =
     app.platform.llm.** -> anthropic
     app.platform.llm.** -> openai
 unmatched_ignore_imports_alerting = none
+
+# ARCHITECTURE 5.9 item 14: only app.guardian.runtime, app.campaigns, app.twin and app.chat import langgraph.
+# Written in the form of model-sdks (source app, ignored edges), not as a list of source modules: import-linter counts
+# indirect chains, so app.main -> app.chat.routes -> app.chat.loop -> langgraph passes because its last edge is ignored,
+# and any other way to reach langgraph (a new module, or a chain through a module not listed) fails.
+# Only app.chat exists today; the other three are listed so their plans need no edit here.
+[importlinter:contract:langgraph-scope]
+name = Only the modules ARCHITECTURE 5.9 names import langgraph
+type = forbidden
+source_modules =
+    app
+forbidden_modules =
+    langgraph
+ignore_imports =
+    app.chat -> langgraph
+    app.chat.** -> langgraph
+    app.guardian.runtime -> langgraph
+    app.guardian.runtime.** -> langgraph
+    app.campaigns -> langgraph
+    app.campaigns.** -> langgraph
+    app.twin -> langgraph
+    app.twin.** -> langgraph
+unmatched_ignore_imports_alerting = none
+
+# ARCHITECTURE 5.9 item 12: nodes and loops call app.platform.llm, never a LangChain model class, and no langchain_*
+# provider package is installed. langchain_core and langgraph_sdk arrive as langgraph's own dependencies and stay inert.
+[importlinter:contract:langchain-out]
+name = langchain_core and langgraph_sdk stay out of app
+type = forbidden
+source_modules =
+    app
+forbidden_modules =
+    langchain_core
+    langgraph_sdk

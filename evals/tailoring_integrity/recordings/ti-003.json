@@ -1,0 +1,94 @@
+[
+  {
+    "edits": [
+      {
+        "op": "rephrase",
+        "target": "f8",
+        "section": "experience",
+        "after_text": "Wrote SQL reports every week for two teams",
+        "supporting": [
+          "f8"
+        ],
+        "requirements": [
+          "r3"
+        ],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f4",
+        "section": "experience",
+        "after_text": "Led the checkout migration",
+        "supporting": [
+          "f4"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f5",
+        "section": "experience",
+        "after_text": "Managed and mentored a team of junior developers",
+        "supporting": [
+          "f5"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f2",
+        "section": "experience",
+        "after_text": "Built Python services for payments, including message queues with Kafka",
+        "supporting": [
+          "f2"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "remove",
+        "target": "f9",
+        "section": "experience",
+        "after_text": "",
+        "supporting": [
+          "f9"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "experience",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [],
+        "order": [
+          "f2",
+          "f4",
+          "f6",
+          "f3",
+          "f5"
+        ]
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": true
+      },
+      {
+        "edit": "e2",
+        "entailed": false
+      },
+      {
+        "edit": "e3",
+        "entailed": false
+      }
+    ]
+  }
+]

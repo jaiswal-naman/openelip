@@ -20,7 +20,7 @@ from app.profile import documents
 from app.trust import api, export, jobs, privacy
 from app.trust.routes import API_STATUS
 
-FORMAT_MODULES = {"brief", "evals", "match", "platform", "profile", "trust"}
+FORMAT_MODULES = {"apply", "brief", "chat", "evals", "hiring", "match", "platform", "profile", "tailor", "trust"}
 
 
 class Seeded:
@@ -455,7 +455,13 @@ def test_a_new_module_with_an_exporter_is_in_the_archive_with_no_change_to_the_e
 
 
 # Registered tables that are deliberately not in the export, each with the reason.
-NOT_EXPORTED = {"login_codes": "no foreign key: sign-in codes are kept as keyed hashes for a day and describe no one"}
+NOT_EXPORTED = {
+    "login_codes": "no foreign key: sign-in codes are kept as keyed hashes for a day and describe no one",
+    # The hiring module registers them set_null, because the ownership test refuses "no personal data" for a table
+    # that points at users; what they hold is the employer's own record, which DATA_MODEL 7.3 leaves out of an export.
+    "organizations": "an employer's own record: erasure only clears created_by, and 7.3 excludes employer-side data",
+    "roles": "an employer's posting, not the person's data: erasure only clears created_by (7.3 excludes it)",
+}
 
 
 def test_every_registered_table_that_can_hold_a_person_is_exported_or_has_a_reason_not_to(conn):

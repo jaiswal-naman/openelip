@@ -1,0 +1,15 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_job",
+    "job": "j1"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "You qualify: see job [[j7]] and constraint [[c8]]."
+ }
+]

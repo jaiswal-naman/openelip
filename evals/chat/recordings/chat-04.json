@@ -1,0 +1,14 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_record"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "Your record holds one target-title preference: data engineer roles, with a weight of 2."
+ }
+]

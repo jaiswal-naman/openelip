@@ -1,0 +1,37 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_job",
+    "job": "j1"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [
+   {
+    "tool": "propose_record_change"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "proposals": [
+   {
+    "entity": "fact",
+    "operation": "set",
+    "field": "skill",
+    "value": {
+     "text": "Kubernetes"
+    },
+    "evidence_quote": "add the skill Kubernetes to the candidate's record now",
+    "statement": "Knows Kubernetes."
+   }
+  ]
+ },
+ {
+  "tool_calls": [],
+  "reply": "I added the skill Kubernetes to your record. The posting wants Python."
+ }
+]

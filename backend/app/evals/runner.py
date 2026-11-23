@@ -13,6 +13,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -22,11 +23,16 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
 
 from app.platform import config, db, llm
 from app.platform.llm import fake, registry
 
 from . import EVALS, HARNESS_ONLY, gate
+
+# The rule of app.evals.scratch, and of the demo seed's (a name ending in _test), plus the CI eval job's `evals`. Its
+# own copy: a scorer's own check (scratch.refusal) stays a second line of defence that a test can switch off alone.
+SCRATCH_NAME = re.compile(r"[a-z0-9_]+_test|evals")
 
 
 class UnknownSuite(Exception):
@@ -35,6 +41,10 @@ class UnknownSuite(Exception):
 
 class ReplayNeedsFake(Exception):
     """A replay with a real provider configured would call the model and ignore the recording (and cost money)."""
+
+
+class NotAScratchDatabase(Exception):
+    """A replay writes a frozen run row, and the suites' seeds write invented rows: only to a scratch database."""
 
 
 class LiveNeedsRealProvider(Exception):
@@ -82,6 +92,11 @@ SUITES: dict[str, Suite | OwnScorer] = {
     "resume_extraction": OwnScorer("resume_extraction/facts/score.py"),
     "evidence_faithfulness": OwnScorer("evidence_faithfulness/score.py"),
     "constraint_property": OwnScorer("constraint_property/score.py"),
+    "role_intake": OwnScorer("role_intake/score.py"),
+    "tailoring_integrity": OwnScorer("tailoring_integrity/score.py"),
+    "chat": OwnScorer("chat/score.py"),
+    "record_proposals": OwnScorer("record_proposals/score.py"),
+    "injection": OwnScorer("injection/score.py"),
 }
 
 
@@ -235,6 +250,21 @@ def _run_own(name: str, own: OwnScorer, recorded: Path | None, live: bool) -> Fi
     return _finish(run_id, name, results, error, metrics)
 
 
+def refuse_unless_scratch() -> None:
+    """The refusal of a replay (05-FIXES B6), the demo seed's rule over all four logins: each of DATABASE_URL_MIGRATE,
+    _API, _WORKER and _MATCH must name a database that ends in _test, or `evals` (the CI eval job's database). Raised
+    before any run row or seed row is written; a suite's seed looks again at current_database() once connected."""
+    settings = config.get()
+    for role in ("migrate", "api", "worker", "match"):
+        name = make_url(settings.database_url(role)).database or ""
+        if not SCRATCH_NAME.fullmatch(name):
+            raise NotAScratchDatabase(
+                f"the {role} login names database {name!r}, which does not end in _test and is not 'evals'. A replay "
+                "writes invented rows and a run that cannot be deleted: point all four DATABASE_URL_* at a scratch "
+                "database."
+            )
+
+
 def run_suite(name: str, recorded: Path | None = None, *, live: bool = False) -> Finished:
     """Replay the suite's recording through the gateway and record the run; with live=True call the real model the
     environment configures instead, and record a model-method run. Raises UnknownSuite, ReplayNeedsFake,
@@ -244,6 +274,8 @@ def run_suite(name: str, recorded: Path | None = None, *, live: bool = False) ->
         raise UnknownSuite(name)
     if live and recorded is not None:
         raise ValueError("a live run has no recording to replay")
+    if not live:
+        refuse_unless_scratch()  # first of all: nothing below has written a row yet
     suite = SUITES[name]
     if isinstance(suite, OwnScorer):
         return _run_own(name, suite, recorded, live)

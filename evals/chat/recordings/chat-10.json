@@ -1,0 +1,15 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "search_jobs",
+    "q": "analyst"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "Your hard constraints were applied. I found one analyst role, a hybrid job in India [[j1]]."
+ }
+]

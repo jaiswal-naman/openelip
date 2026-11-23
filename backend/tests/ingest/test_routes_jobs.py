@@ -280,7 +280,8 @@ def test_the_schema_names_the_modes_and_the_job_shape_exactly(api_client):
     document = create_app().openapi()
     parameters = {p["name"]: p for p in document["paths"]["/v1/jobs"]["get"]["parameters"]}
 
-    assert set(parameters) == {"q", "country", "city", "remote", "limit", "cursor", "mode"}
+    # apply_constraints is plan 05-03's (CHT-02); test_search_constrained.py tests it
+    assert set(parameters) == {"q", "country", "city", "remote", "limit", "cursor", "mode", "apply_constraints"}
     assert parameters["mode"]["schema"]["enum"] == ["hybrid", "keyword"]
     assert set(document["components"]["schemas"]["Job"]["properties"]) == JOB_KEYS
     assert "/v1/jobs/{job_id}" in document["paths"]

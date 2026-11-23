@@ -1,0 +1,10 @@
+[
+  {"verdicts": [{"requirement": "r1", "verdict": "met", "facts": ["f9"]}, {"requirement": "r2", "verdict": "met", "facts": ["f2"]}, {"requirement": "r3", "verdict": "no_evidence", "facts": []}]},
+  {"verdicts": [{"requirement": "r1", "verdict": "met", "facts": ["f9"]}, {"requirement": "r2", "verdict": "met", "facts": ["f2"]}, {"requirement": "r3", "verdict": "no_evidence", "facts": []}]},
+  {"verdicts": [{"requirement": "r1", "verdict": "met", "facts": ["f9"]}, {"requirement": "r2", "verdict": "met", "facts": ["f2"]}, {"requirement": "r3", "verdict": "no_evidence", "facts": []}]},
+  {"verdicts": [{"requirement": "r1", "verdict": "met", "facts": ["f9"]}, {"requirement": "r2", "verdict": "met", "facts": ["f2"]}, {"requirement": "r3", "verdict": "no_evidence", "facts": []}]},
+  {"verdicts": [{"requirement": "r1", "verdict": "met", "facts": ["f9"]}, {"requirement": "r2", "verdict": "met", "facts": ["f2"]}, {"requirement": "r3", "verdict": "no_evidence", "facts": []}]},
+  {"verdicts": [{"requirement": "r1", "verdict": "met", "facts": ["f9"]}, {"requirement": "r2", "verdict": "met", "facts": ["f2"]}, {"requirement": "r3", "verdict": "no_evidence", "facts": []}]},
+  {"verdicts": [{"requirement": "r1", "verdict": "met", "facts": ["f9"]}, {"requirement": "r2", "verdict": "met", "facts": ["f2"]}, {"requirement": "r3", "verdict": "no_evidence", "facts": []}]},
+  {"verdicts": [{"requirement": "r1", "verdict": "met", "facts": ["f9"]}, {"requirement": "r2", "verdict": "met", "facts": ["f2"]}, {"requirement": "r3", "verdict": "no_evidence", "facts": []}]}
+]

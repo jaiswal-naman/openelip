@@ -6,6 +6,7 @@ the api without a check here. A second test fails when any other module imports 
 """
 
 import ast
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -13,7 +14,7 @@ import pytest
 from sqlalchemy import text
 
 import app
-from app.profile import api, events, service
+from app.profile import api, events, protected, service
 
 TEXT = (
     "Senior Backend Engineer, Northwind Logistics (Mar 2021 - Present)\n"
@@ -154,12 +155,62 @@ def check_facts_by_ids(conn, ada: Person, bob: Person) -> None:
     assert api.facts_by_ids(conn, ada.id, []) == []
 
 
-# Reads are checked for the usable rule. The two writers return no rows of the record: an id, or ids.
+def check_declined_since(conn, ada: Person, bob: Person) -> None:
+    """Not a read of the record: the log of proposals the person said no to (plan 05-03), so a proposer does not offer
+    them again. Declined ones only, from the time asked for on, the person's own, with entity, field and value."""
+    employment = {"kind": "employment_type", "statement": "Full time only.", "employment_types": ["full_time"]}
+    industry = {"kind": "industry", "statement": "Open to fintech.", "value": "fintech", "weight": 1}
+    never = events.propose_change(
+        conn, ada.id, origin="chat", entity="constraint", operation="create", after=employment
+    )
+    stale = events.propose_change(conn, ada.id, origin="chat", entity="preference", operation="create", after=industry)
+    removal = events.propose_change(
+        conn, ada.id, origin="feedback", entity="fact", operation="remove", entity_id=ada.written
+    )
+    for proposal in (never, stale, removal):
+        events.decline(conn, ada.id, proposal)
+    zig = {"kind": "skill", "statement": "Zig"}
+    events.decline(
+        conn, bob.id, events.propose_change(conn, bob.id, origin="chat", entity="fact", operation="create", after=zig)
+    )
+    # Ada's own `proposal` (made in Person) is still waiting for an answer: it is never in the result.
+    conn.execute(text("SELECT set_config('app.maintenance', 'on', true)"))  # the log is append-only
+    conn.execute(
+        text("UPDATE profile_events SET created_at = now() - interval '40 days' WHERE proposal_event_id = :p"),
+        {"p": stale},
+    )
+    conn.execute(text("SELECT set_config('app.maintenance', 'off', true)"))
+
+    since = datetime.now(timezone.utc) - timedelta(days=30)
+    found = api.declined_since(conn, ada.id, since)
+    assert [(d.entity, d.operation, d.field) for d in found] == [
+        ("fact", "remove", "skill"),  # newest first; a removal is described by the row it would have removed
+        ("constraint", "create", "employment_type"),
+    ]
+    assert found[1].value["employment_types"] == ["full_time"] and found[0].value["statement"] == "Kubernetes"
+    assert all(isinstance(d.declined_at, datetime) for d in found)
+    older = {d.field for d in api.declined_since(conn, ada.id, since - timedelta(days=30))}
+    assert older == {"skill", "employment_type", "industry"}  # the 40 day old one is there when asked for further back
+    assert [d.value["statement"] for d in api.declined_since(conn, bob.id, since)] == ["Zig"]  # nothing of Ada's
+    assert api.declined_since(conn, make_user(conn, "new"), since) == []
+
+
+def check_screen(conn, ada: Person, bob: Person) -> None:
+    """The protected-characteristic screen is re-exported, not copied: the same function, so the same answers."""
+    assert api.screen is protected.screen
+    assert api.screen("Marital status: married") == "marital_status"
+    assert api.screen("Built order pipelines in Python.") is None
+
+
+# Reads are checked for the usable rule. The two writers return no rows of the record: an id, or ids. declined_since
+# reads the change log of declined proposals and screen reads nothing: both are checked for what they return.
 CHECKS = {
     "usable_facts": check_usable_facts,
     "get_record": check_get_record,
     "compiled_constraints": check_compiled_constraints,
     "facts_by_ids": check_facts_by_ids,
+    "declined_since": check_declined_since,
+    "screen": check_screen,
 }
 WRITERS = {"propose_change", "confirm"}
 

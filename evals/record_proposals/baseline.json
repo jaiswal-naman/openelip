@@ -1,0 +1,18 @@
+{
+  "labels": "agent-drafted, maintainer review pending",
+  "score": 1.0,
+  "proposal_precision": 1.0,
+  "proposal_recall": 1.0,
+  "unconfirmed_writes": 0,
+  "n": 20,
+  "n_expected": 12,
+  "n_stored": 12,
+  "attempts": 1,
+  "recorded_run": {
+    "id": "69cba237-a571-4330-8a9a-faa93a7e905b",
+    "git_sha": "a56b2eff4237b012afc5f447d48646946bc6c994",
+    "recorded": "recordings",
+    "date": "2026-11-23"
+  },
+  "note": "The first replay of the committed recordings (its own score was 0.0 only because this file did not exist yet). The expected proposals were written with the recordings, before the first run, so no label was corrected after a run. A replay is deterministic, so a drop is a code change. Replay numbers are wiring checks, not model quality (README.md)."
+}

@@ -1,0 +1,16 @@
+[
+ {
+  "proposals": [
+   {
+    "entity": "preference",
+    "operation": "set",
+    "field": "untyped_dealbreaker",
+    "value": {
+     "text": "on-call rotations"
+    },
+    "evidence_quote": "No on-call rotations for me, ever",
+    "statement": "No on-call rotations."
+   }
+  ]
+ }
+]

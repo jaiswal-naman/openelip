@@ -9,6 +9,7 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy import text
 
 from .. import config, db, log, telemetry
+from ..config import Role
 from . import adapters, fake, registry
 from .adapters import Reply
 from .failures import AIDisabled, ProviderUnavailable, SchemaInvalid
@@ -58,7 +59,8 @@ def _record(
     tokens_in, tokens_out = (reply.input_tokens, reply.output_tokens) if reply else (0, 0)
     cost = cost_microusd(tokens_in, tokens_out, route.input_microusd_per_mtok, route.output_microusd_per_mtok)
     latency_ms = int((time.monotonic() - started) * 1000)
-    with db.transaction(role="worker") as conn:
+    # on the API login the row must be the signed-in person's own (the candidate_own policy of llm_calls)
+    with db.transaction(principal, role=registry.LEDGER.get()) as conn:
         conn.execute(
             _INSERT_CALL,
             {
@@ -96,12 +98,25 @@ def complete(
     *,
     principal: UUID | None,
     prompt_version: str,
+    ledger: Role = "worker",
 ) -> BaseModel:
     """Run a task and return its answer validated against schema.
 
     Raises AIDisabled (nothing configured, nothing called), ProviderUnavailable (timeout or provider failure),
     or SchemaInvalid (invalid twice). Every provider request leaves one llm_calls row, except AIDisabled's.
+    `ledger` is the login that writes that row: the worker's, or "api" for a call made in the API process (the chat
+    reply), where the row must belong to `principal`.
     """
+    token = registry.LEDGER.set(ledger)
+    try:
+        return _complete(task, schema, messages, principal=principal, prompt_version=prompt_version)
+    finally:
+        registry.LEDGER.reset(token)
+
+
+def _complete(
+    task: str, schema: type[BaseModel], messages: list[dict[str, Any]], *, principal: UUID | None, prompt_version: str
+) -> BaseModel:
     settings = config.get()
     with telemetry.span("llm.complete", task=task, provider=settings.llm_provider):
         try:

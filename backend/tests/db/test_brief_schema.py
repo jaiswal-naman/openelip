@@ -15,6 +15,7 @@ from sqlalchemy.exc import DBAPIError
 
 from app.brief import privacy as brief_privacy
 from app.trust import privacy
+from tests.hiring.world import ask, candidate, make_org, open_role
 from tests.match.factories import LOCAL_DATE, make_decision, make_job, make_run, make_user
 
 
@@ -85,15 +86,15 @@ def test_a_new_brief_starts_composed_and_a_deleted_run_leaves_it_standing(conn):
 
 
 def test_an_item_names_exactly_the_one_thing_its_kind_says(conn):
-    ada = make_user(conn)
+    ada = candidate(conn)  # open to introductions, so the introduction below is a real ask (plan 06-01 added its key)
     job = make_job(conn, title="Role", description="Skill.", requirements=[("Skill.", "required")])
     decision = make_decision(conn, make_run(conn, ada), ada, job)
     brief = make_brief(conn, ada)
     add_item(conn, brief, ada, 1, "match", match_decision_id=decision)
-    # the other three kinds point at tables of later phases: the ids are plain columns until those tables exist
+    # approvals and agent actions are tables of later phases: those ids are plain columns until the tables exist
     add_item(conn, brief, ada, 2, "approval", approval_id=ada)
     add_item(conn, brief, ada, 3, "activity", agent_action_id=7)
-    add_item(conn, brief, ada, 4, "introduction", introduction_id=ada)
+    add_item(conn, brief, ada, 4, "introduction", introduction_id=ask(conn, open_role(conn, make_org(conn)), ada))
     assert count(conn, "brief_items WHERE brief_id = :b", b=brief) == 4
 
 

@@ -1,0 +1,27 @@
+[
+ {
+  "proposals": [
+   {
+    "entity": "fact",
+    "operation": "set",
+    "field": "skill",
+    "value": {
+     "text": "Kubernetes"
+    },
+    "evidence_quote": "I also know Kubernetes",
+    "statement": "Knows Kubernetes."
+   },
+   {
+    "entity": "preference",
+    "operation": "set",
+    "field": "location",
+    "value": {
+     "text": "Mumbai",
+     "weight": 1
+    },
+    "evidence_quote": "I would consider Mumbai",
+    "statement": "Would consider Mumbai."
+   }
+  ]
+ }
+]

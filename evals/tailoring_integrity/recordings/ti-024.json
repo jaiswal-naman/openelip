@@ -1,0 +1,89 @@
+[
+  {
+    "edits": [
+      {
+        "op": "rephrase",
+        "target": "f2",
+        "section": "experience",
+        "after_text": "Managed the roadmap for the payments product, including API strategy",
+        "supporting": [
+          "f2"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f8",
+        "section": "experience",
+        "after_text": "Ran customer interviews",
+        "supporting": [
+          "f8"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f5",
+        "section": "experience",
+        "after_text": "Increased weekly active users by 18%",
+        "supporting": [
+          "f5"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "add_from_fact",
+        "target": null,
+        "section": "skills",
+        "after_text": "Amplitude",
+        "supporting": [
+          "f17"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "experience",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [
+          "r1"
+        ],
+        "order": [
+          "f4",
+          "f2",
+          "f5",
+          "f3"
+        ]
+      },
+      {
+        "op": "rephrase",
+        "target": "f3",
+        "section": "experience",
+        "after_text": "Launched the referral feature in March 2021",
+        "supporting": [
+          "f3"
+        ],
+        "requirements": [],
+        "order": []
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": false
+      },
+      {
+        "edit": "e2",
+        "entailed": true
+      }
+    ]
+  }
+]

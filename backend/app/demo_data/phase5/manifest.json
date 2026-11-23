@@ -1,0 +1,17 @@
+{
+  "chat.turn.json": {
+    "chat.turn": "2c02ef16604d"
+  },
+  "record.propose.json": {
+    "record.propose": "ec99b98adcf6"
+  },
+  "tailor.propose.json": {
+    "tailor.propose": "3309c398592d"
+  },
+  "verify.entail.json": {
+    "verify.entail": "40dbc09c623e"
+  },
+  "writer.packet.json": {
+    "writer.packet": "9f826ac9454e"
+  }
+}

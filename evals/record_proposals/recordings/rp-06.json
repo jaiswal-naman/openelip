@@ -1,0 +1,18 @@
+[
+ {
+  "proposals": [
+   {
+    "entity": "constraint",
+    "operation": "set",
+    "field": "remote_policy",
+    "value": {
+     "arrangements": [
+      "remote"
+     ]
+    },
+    "evidence_quote": "I only want remote work now",
+    "statement": "Remote work only."
+   }
+  ]
+ }
+]

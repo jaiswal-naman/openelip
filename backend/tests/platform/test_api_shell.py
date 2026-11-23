@@ -67,8 +67,19 @@ CONTRACT = [
     ("get", "/healthz"),
 ]
 FIELDS = {
-    # consents: plan 03-01 (TRU-05); brief and capabilities: plan 04-05 (BRF-03, API.md 2.3)
-    "Me": {"id", "email", "timezone", "created_at", "consents", "brief", "capabilities"},
+    # consents: plan 03-01 (TRU-05); brief and capabilities: plan 04-05 (BRF-03, API.md 2.3); organizations and
+    # invitations: plan 06-01 (HIR-01)
+    "Me": {
+        "id",
+        "email",
+        "timezone",
+        "created_at",
+        "consents",
+        "brief",
+        "capabilities",
+        "organizations",
+        "invitations",
+    },
     "CostRow": {"period", "task", "calls", "cost_usd", "input_tokens", "output_tokens", "avg_latency_ms", "models"},
     "Subprocessor": {"name", "kind", "purpose", "receives", "tasks"},
 }

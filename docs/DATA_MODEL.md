@@ -60,7 +60,7 @@ These values are fixed by this schema. API payloads, agent code and screens shou
 | Agent token scopes | `agent_tokens.scopes` | Principal `candidate` (issued with an `agent_access` consent): `matches:read`, `explanations:read`. Principal `organization` (issued by an owner or admin): `twin:ask`, `introductions:request` |
 | Brief | `users.brief_frequency`, `brief_items.kind` | `daily`, `weekly`, `paused`; item kinds `match`, `approval`, `activity`, `introduction` |
 | Wind tunnel | `sim_scenarios.persona`, `sim_results.code` | Personas `cooperative` (control), `silent`, `lowball`, `scam`, `hidden_instruction`. Violation codes `constraint_break`, `invented_claim`, `privacy_leak`, `unauthorized_action`, `duplicate_send`, `followed_hidden_instruction`; outcome codes `goal_reached` plus names defined in each scenario |
-| Eval suites | `eval_runs.suite` | `resume_extraction`, `requirement_extraction`, `evidence_faithfulness`, `tailoring_integrity`, `matching_benchmark`, `injection`, `constraint_property`, `wind_tunnel`, `record_proposals`, `chat`, `dossier`, `twin`, `guardian`, `agent_drafts`, `harness_smoke` (the harness's own smoke suite: it proves the runner and the gate, never product quality), `location_accuracy` (share of labelled postings whose country and city are read correctly, IDX-06; added in Phase 2 because no other suite fits it) |
+| Eval suites | `eval_runs.suite` | `resume_extraction`, `requirement_extraction`, `evidence_faithfulness`, `tailoring_integrity`, `matching_benchmark`, `injection`, `constraint_property`, `wind_tunnel`, `record_proposals`, `chat`, `dossier`, `twin`, `guardian`, `agent_drafts`, `harness_smoke` (the harness's own smoke suite: it proves the runner and the gate, never product quality), `location_accuracy` (share of labelled postings whose country and city are read correctly, IDX-06; added in Phase 2 because no other suite fits it), `role_intake` (share of an employer's role description read into the right requirements, HIR-02; added in Phase 6 because no other suite fits it) |
 | Instance operator | (no column) | Acts through the command line; audit rows use `actor_type` `operator` |
 | Application | `applications.status` | `applied`, `interview`, `offer`, `rejected`, `no_response` |
 | Consent purposes | `consents.purpose` | `terms`, `ai_processing`, `brief_email`, `open_to_introductions`, `introduction` (per organization and role), `agent_access` |
@@ -1056,6 +1056,10 @@ CREATE TABLE application_packets (
 );
 CREATE UNIQUE INDEX application_packets_one_current
   ON application_packets (campaign_id) WHERE status <> 'superseded' AND campaign_id IS NOT NULL;
+-- Phase 5: one current packet per job without a campaign. Campaigns arrive in Phase 7; until then a packet belongs to a
+-- person and a job, and asking again supersedes the old one (APP-02).
+CREATE UNIQUE INDEX application_packets_one_current_job
+  ON application_packets (user_id, job_id) WHERE status <> 'superseded' AND campaign_id IS NULL;
 
 CREATE TABLE applications (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1232,6 +1236,17 @@ CREATE UNIQUE INDEX interest_signals_candidate_week ON interest_signals (user_id
 CREATE UNIQUE INDEX interest_signals_organization_week ON interest_signals (organization_id, week_start, slot)
   WHERE sender_side = 'organization';
 ```
+
+**Accepted deviation (W5, Phase 6): the candidate's address is stored in employer-readable rows.** `introductions.share_preview`
+(readable by `employer_read`, but only once the introduction is accepted) and `shortlist_entries.shared_payload` hold
+`on_employer_yes.email`, the address released only after the employer answers yes. Row-level security does not withhold it
+before that answer; Python does: `employer_email()` in `hiring/introductions.py` (lines 60-65, used at 123-124 and in `hiring/answers.py` at 169-171) returns
+the address only when `employer_answer = 'yes'`, and the employer's responses never carry `on_employer_yes` itself. The test that
+guards it is `tests/hiring/test_invariant_4.py` (lines 108-110): the employer's responses before a yes carry neither the address nor `on_employer_yes`. Follow-up:
+store no address in either column and read it from `users` at answer time through a SECURITY DEFINER function gated on
+`employer_answer = 'yes'`, so the database withholds it too.
+
+Phase 6 addition (plan 06-01): `role_requirements` references its role by the pair `(role_id, organization_id)` (`FOREIGN KEY (role_id, organization_id) REFERENCES roles (id, organization_id)`, with `roles` gaining `UNIQUE (id, organization_id)`), not by `role_id` alone as the block above shows. The member policy of 5.4 only checks that the caller belongs to the row's `organization_id`, so without the pair a member of one organization could attach an item that names their own organization to another organization's role. `db/sql/p6_0601_tables.sql` has the live definition.
 
 ### 3.10 campaigns and guardian
 
@@ -1501,12 +1516,17 @@ CREATE TABLE chat_messages (
   tool_name   text,                              -- tool rows: which tool ran
   refs        jsonb       NOT NULL DEFAULT '{}', -- ids the message cites: decisions, jobs, proposals (CHT-01)
   llm_call_id bigint,
+  -- Phase 5: NULL while the reply runs; only assistant rows set it. The assistant row is inserted when the message is
+  -- accepted (so the 202 can name it) and this column records how the reply ended.
+  finish_reason text CHECK (finish_reason IN ('complete', 'length', 'stopped', 'interrupted')),
   created_at  timestamptz NOT NULL DEFAULT now(),
   CHECK ((role = 'tool') = (tool_name IS NOT NULL)),
   CHECK ((role = 'tool') = (content IS NULL))
 );
 CREATE INDEX chat_messages_session_idx ON chat_messages (session_id, created_at);
 ```
+
+What `refs` holds (Phase 5). A tool row: `{"reply_id", "aliases": {"d1": {"kind", "id"}}}`, the short names the model saw for real ids. An assistant row: `{"citations": [{alias, kind, <kind>_id}], "proposals": [<proposal event payloads>], "proposal_event_ids": [...], "unknown_citations": n, "last_event_id": n, "usage": {...}, "cost_usd": "...", "aliases": {...}}`; `aliases` appears only when the reply made a name no tool row holds (the job on screen). The session's alias table is rebuilt from the `aliases` of its tool and assistant rows. An assistant row's `content` is `''` unless `finish_reason = 'complete'`.
 
 ### 3.13 platform and evals: model registry, ledger, queue, evals
 
@@ -2064,8 +2084,31 @@ END;
 $$;
 CREATE TRIGGER resume_edits_support BEFORE INSERT ON resume_edits
   FOR EACH ROW EXECUTE FUNCTION resume_edits_check_support();
+
+-- Phase 5: decision starts as 'pending', so write_once_columns would refuse the first decision (it refuses any change to
+-- a column that is not NULL). This function fixes every column except decision and decided_at, and lets the decision
+-- leave 'pending' once. The CHECKs of resume_edits still keep a discarded edit pending and tie decided_at to the decision.
+-- Like write_once_columns it lets app.maintenance through (erase_user and purge_expired set it).
+CREATE FUNCTION resume_edits_decide_once() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF current_setting('app.maintenance', true) = 'on' THEN
+    RETURN NEW;
+  END IF;
+  IF (to_jsonb(NEW) - ARRAY['decision', 'decided_at']) IS DISTINCT FROM (to_jsonb(OLD) - ARRAY['decision', 'decided_at']) THEN
+    RAISE EXCEPTION '% rows are immutable except for decision and decided_at', TG_TABLE_NAME
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  IF OLD.decision <> 'pending'
+     AND (NEW.decision IS DISTINCT FROM OLD.decision OR NEW.decided_at IS DISTINCT FROM OLD.decided_at) THEN
+    RAISE EXCEPTION '%.decision can be changed only once', TG_TABLE_NAME
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  RETURN NEW;
+END;
+$$;
 CREATE TRIGGER resume_edits_content_fixed BEFORE UPDATE ON resume_edits
-  FOR EACH ROW EXECUTE FUNCTION write_once_columns('decision', 'decided_at');
+  FOR EACH ROW EXECUTE FUNCTION resume_edits_decide_once();
 
 -- 4.5 ------------------------------------------------------------------------------------------
 -- Append-only tables (insert only) and versioned tables (write-once lifecycle columns, no delete).
@@ -2433,6 +2476,8 @@ CREATE TRIGGER interest_signals_check BEFORE INSERT ON interest_signals
   FOR EACH ROW EXECUTE FUNCTION interest_signals_check();
 ```
 
+Phase 6 addition (plan 06-01, owner decision G7): `interest_signals_check` also requires `i.status = 'accepted'` for an organization signal, so an employer cannot signal interest in a candidate who has not accepted the ask. Issue 4 in section 11 left employer signals before acceptance out of v1; the database now refuses them as well as the API. The block above is the original and does not show the added condition; `db/sql/p6_0601_triggers_security.sql` has the live function.
+
 ## 5. Database roles and row-level security
 
 ### 5.1 Roles
@@ -2461,7 +2506,7 @@ A person's own request has no token, and the `candidate_own` policy requires tha
 | Caller | Sees |
 |---|---|
 | Candidate | Their own rows in every personal table. Introductions addressed to them. Their own Twin sessions and every message in them. |
-| Employer member | Their organization, members, roles and role requirements. Introductions only after the candidate accepted, and only to answer them once. Shortlist entries only while the candidate's consent for that organization and role is active. Employer questions and released Twin answers, never the candidate's private replies. Nothing from candidate tables. The anonymous preview through `role_preview()`: counts only, and any count from 1 to 4 reads "fewer than 5" (assumption: the threshold of 5). |
+| Employer member | Their organization, members, roles and role requirements. Introductions only after the candidate accepted, and only to answer them once. Shortlist entries only while the candidate's consent for that organization and role is active. Employer questions and released Twin answers, never the candidate's private replies. Nothing from candidate tables. The anonymous preview through `role_preview()`: counts only, and any count from 1 to 4 reads "fewer than 5" (assumption: the threshold of 5); `waiting_for_reply` and `said_no_or_expired` read "fewer than 5" for 0 as well, so that one ask moving from waiting to declined changes no visible count. |
 | Candidate's agent token | `matches:read`: completed runs and shown decisions. `explanations:read`: evidence and confirmed facts. Never campaigns, chat, documents, approvals. |
 | Organization's agent token | `twin:ask`: open Twin sessions inside the organization's accepted introductions, and only the messages an employer member sees. `introductions:request`: queues the role's ordinary ask (`agentnet.request_introduction`), which runs the same checks as an ask made in the app. |
 
@@ -2576,6 +2621,13 @@ LANGUAGE sql IMMUTABLE AS $$
   SELECT CASE WHEN n = 0 OR n >= 5 THEN to_jsonb(n) ELSE to_jsonb('fewer than 5'::text) END
 $$;
 
+-- W4: the counts of asks that can move (waiting, no) hide 0 as well, so a lone ask moving from waiting to declined does
+-- not show as a count change. said_yes stays exact: each of those people is on the shortlist.
+CREATE FUNCTION suppress_below_five(n bigint) RETURNS jsonb
+LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE WHEN n >= 5 THEN to_jsonb(n) ELSE to_jsonb('fewer than 5'::text) END
+$$;
+
 CREATE FUNCTION role_preview(p_role_id uuid) RETURNS jsonb
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   WITH r AS (
@@ -2599,9 +2651,9 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT jsonb_build_object(
            'eligible_candidates', suppress_small(d.eligible),
            'selected_to_ask',     suppress_small(d.selected),
-           'waiting_for_reply',   suppress_small(i.waiting),
+           'waiting_for_reply',   suppress_below_five(i.waiting),
            'said_yes',            i.accepted,              -- each of these is already on the shortlist
-           'said_no_or_expired',  suppress_small(i.said_no))
+           'said_no_or_expired',  suppress_below_five(i.said_no))
   FROM d, i
   WHERE EXISTS (SELECT 1 FROM r)
 $$;
@@ -2705,8 +2757,11 @@ CREATE POLICY employer_answer  ON introductions FOR UPDATE TO app_api
          AND app_agent_token_id() IS NULL)
   WITH CHECK (app_is_org_member(organization_id) AND employer_answered_by = app_user_id());
 
-CREATE POLICY candidate_own ON shortlist_entries TO app_api
-  USING (user_id = app_user_id() AND app_agent_token_id() IS NULL)
+-- The candidate reads their own entry and writes it once, when they accept; there is no UPDATE or DELETE policy and
+-- the API login has no such grant (a candidate must not rewrite or move what the employer reads).
+CREATE POLICY candidate_own ON shortlist_entries FOR SELECT TO app_api
+  USING (user_id = app_user_id() AND app_agent_token_id() IS NULL);
+CREATE POLICY candidate_insert ON shortlist_entries FOR INSERT TO app_api
   WITH CHECK (user_id = app_user_id() AND app_agent_token_id() IS NULL);
 CREATE POLICY employer_read ON shortlist_entries FOR SELECT TO app_api   -- disappears if consent is withdrawn
   USING (app_is_org_member(organization_id) AND app_agent_token_id() IS NULL
@@ -2790,6 +2845,9 @@ GRANT SELECT ON job_sources, jobs, job_requirements, fetch_runs, skills, model_r
 GRANT SELECT, INSERT ON consents, audit_log, profile_events, feedback_events, application_events, twin_messages
   TO app_api;
 GRANT SELECT ON match_runs, match_decisions, match_evidence, guardian_checks, llm_calls TO app_api;
+-- The chat reply calls the model in the API process (Phase 5), so the API login records those calls: its own rows
+-- only (candidate_own), and the registry row of a model the code names on first use.
+GRANT INSERT ON llm_calls, model_registry TO app_api;
 GRANT SELECT, INSERT ON consents, audit_log, profile_events, fetch_runs, job_requirements, match_decisions,
                         match_evidence, feedback_events, application_events, guardian_checks, twin_messages,
                         llm_calls, eval_items, sim_scenarios, sim_results
@@ -2812,6 +2870,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   interest_signals, campaigns, campaign_steps, company_dossiers, agent_runs, autonomy_settings,
   twin_scopes, twin_sessions, agent_tokens, chat_sessions, chat_messages, idempotency_keys
   TO app_api, app_worker;
+-- Exception (p6_0601): shortlist_entries is in that list for app_worker only; app_api has SELECT and INSERT on it, because
+-- an entry is written once by the candidate's acceptance and never changed (erasure goes by the cascade from users).
 GRANT SELECT, INSERT, UPDATE, DELETE ON users, job_sources, jobs, skills, model_registry, match_runs,
                                         queue_jobs, sim_runs
   TO app_worker;
@@ -2823,6 +2883,14 @@ GRANT SELECT ON profile_facts, constraints, preferences, feedback_events TO app_
 GRANT SELECT, INSERT, UPDATE ON match_runs, queue_jobs TO app_match;
 GRANT SELECT, INSERT ON match_decisions, match_evidence, llm_calls TO app_match;
 ```
+
+Phase 6 additions (plan 06-01), live in `db/sql/p6_0601_triggers_security.sql` and not shown in the block above:
+
+- `role_preview` returns one more key, `as_of`: the time the latest completed role run finished (JSON `null` before the first one), so the employer can see how old the counts are.
+- `my_org_invitations()` is new. `SECURITY DEFINER`: the caller's open invitations by their own address (`member_id`, `organization_id`, `organization_name`, `role`, `created_at`). An invited person is not yet a member, so row-level security hides the invitation row from them, and `/v1/me` lists it through this function.
+- `introduction_role(p_introduction_id)` is new. `SECURITY DEFINER`: for the caller's own introduction only, `organization_name`, `role_title`, `job_id`, `country`, `city`, `work_arrangements`, `salary_min`, `salary_max`, `salary_currency` and `is_synthetic`. A candidate has no row access to `roles` or `organizations`, yet the ask must name the employer, the role and its pay range.
+- Both new functions refuse an agent token and return nothing for anyone else's rows. They are executable by `app_api` and `app_worker` only, because the match role may not read the hiring side (section 5.1).
+- `direct_job_open(p_role_id, p_description, p_requirements, p_apply_url, p_content_hash, p_prompt_version)`, `direct_job_close(p_job_id)` and `withdraw_role_asks(p_role_id)` are new (integration fix of PR #4, in `db/sql/p6_0601_publish_close.sql`). Publishing and closing a role run in the API process, which holds only `app_api`: `app_worker` serves every person, so its login stays in the worker container. These are the writes those two actions need that `app_api` may not make: the role's unlisted job with its source and requirement rows (the job takes the role's own title, company, place, pay and terms), closing that job, and moving the role's `asked` introductions to `withdrawn` (`introductions_guard` still checks the move). Each is `SECURITY DEFINER`, refuses a caller who is not an active member of the role's organization or who holds an agent token, and is executable by `app_api` only.
 
 ## 6. Key queries
 
@@ -3222,9 +3290,9 @@ Every v1 requirement in [REQUIREMENTS.md](REQUIREMENTS.md), with the tables and 
 | CHT-04 | `guardian_checks`, `documents`, `eval_runs` | check kind `injection`; `hidden_text_chars`; eval suite `injection` |
 | TLR-01 | `tailored_resumes`, `resume_edits` | |
 | TLR-02 | `resume_edits` | `verifier_status`, `discard_reason`, `resume_edits_support` |
-| TLR-03 | `resume_edits`, `tailored_resumes` | `decision` set once; export storage keys |
+| TLR-03 | `resume_edits`, `tailored_resumes` | `decision` set once (`resume_edits_decide_once`); export storage keys |
 | APP-01 | `applications`, `application_events` | append-only history, composite foreign key to the person's application |
-| APP-02 | `application_packets` | `application_packets_one_current` |
+| APP-02 | `application_packets` | `application_packets_one_current`, `application_packets_one_current_job` |
 | HIR-01 | `organizations`, `org_members` | organization policies, `create_organization()`, `accept_org_invitation()` |
 | HIR-02 | `roles`, `role_requirements` | `roles_live_needs_pay_and_requirements` |
 | HIR-03 | `match_decisions`, `introductions` | `role_preview()`, small counts suppressed |
@@ -3292,6 +3360,9 @@ Every v1 requirement in [REQUIREMENTS.md](REQUIREMENTS.md), with the tables and 
 | 19 | The database checks an outbox row when queued, not when sent. | R36, resolved: the sender re-reads the action at send time (ARCHITECTURE.md 5.5). |
 | 20 | psycopg 3 binding to the enum types is unverified. | R37, resolved as a task: verify in the first migration test. Still not verified (section 12.4). |
 | 21 | AI_SYSTEM.md 12.2 had no `eval_suite` value for the record-proposal, chat, dossier, Twin and Guardian gold sets, so the routes `record.propose`, `chat.turn`, `research.*`, `twin.*`, `writer.packet`, `chaser.draft` and `coach.prep` could never show a passed run. | DDL-9, resolved: added `record_proposals` (`record.propose`), `chat` (`chat.turn`), `dossier` (`research.*`), `twin` (`twin.*`), `guardian` (the Guardian set) and `agent_drafts` (`writer.packet`, `chaser.draft`, `coach.prep`). AI_SYSTEM.md names no gold set for `agent_drafts` yet; one must exist before those three routes can pass. |
+| 22 | Phase 5: the chat stream needs the assistant row to exist before the reply does (the 202 names it) and a place to record how the reply ended. | Resolved, Phase 5 deviation: `chat_messages.finish_reason` (`complete`, `length`, `stopped`, `interrupted`; NULL while the reply runs, set only on assistant rows) added to 3.12. |
+| 23 | Phase 5: APP-02 is Phase 5, but a packet belongs to a campaign (Phase 7), so two packets for one job could pile up. | Resolved, Phase 5 deviation: partial unique index `application_packets_one_current_job` on `(user_id, job_id)` for packets without a campaign, added to 3.8. Both `campaign_id` columns stay plain uuids until Phase 7 adds the keys to `campaigns` (3.14, lines for `application_packets` and `applications`). |
+| 24 | Phase 5: 4.3 froze `resume_edits` with `write_once_columns('decision', 'decided_at')`, which refuses any change to a column that is not NULL. `decision` starts as `'pending'`, so the first approval or rejection would be refused. | Resolved, Phase 5 deviation: `resume_edits_decide_once()` replaces it on the `resume_edits_content_fixed` trigger (4.3). It refuses a change to any column other than `decision` and `decided_at`, and a change to either once the decision has left `pending`; the CHECKs still keep a discarded edit pending. |
 
 ## 12. Verification record
 
@@ -3358,7 +3429,7 @@ Every v1 requirement in [REQUIREMENTS.md](REQUIREMENTS.md), with the tables and 
 | T7 | `app_api` calls `erase_user`; updates a decision | Both rejected, permission denied |
 | T8 | Eval run for suite `twin` (added by DDL-9); changing a finished eval run | Accepted; rejected |
 | T8b | Resume edit supported by a fact that is not the candidate's confirmed fact; with no supporting fact; with a confirmed fact | Rejected, `unsupported_edit`; rejected by CHECK; accepted |
-| T8b | `purge_expired()` as `app_worker`; `role_preview()` for own and other organization | Ran and returned counts; own organization saw counts with "fewer than 5" suppression, other organization saw nothing |
+| T8b | `purge_expired()` as `app_worker`; `role_preview()` for own and other organization | Ran and returned counts; own organization saw counts with "fewer than 5" suppression (0 included for the two ask counts), other organization saw nothing |
 | T8c | `app_worker` writes checkpoint rows (stand-in tables) for three campaign threads and one Twin question thread; `app_api` reads schema `langgraph` | Accepted, 4 rows; rejected, permission denied for schema `langgraph` |
 | T8c | Candidate deletes a campaign; checkpoint rows of that thread afterwards; `langgraph` tables with row-level security; the 7.2 orphan-thread check | Accepted; 0 rows in the three data tables; 0 tables; 0 orphans |
 | T9 | `erase_user` as `app_worker`, then a scan of every user-reference column of every table, then the checkpoint tables | No row references the erased candidate. All 51 foreign keys to `users` are `CASCADE` or `SET NULL`. The deletion request is `completed`. No checkpoint row remains for the candidate's campaign thread or Twin question thread, another candidate's campaign thread keeps its row, and the orphan-thread check returns 0. |

@@ -46,12 +46,14 @@ def audit_log(
     actor_user_id: UUID | None = None,
     entity_table: str | None = None,
     entity_id: str | None = None,
+    organization_id: UUID | None = None,
 ) -> None:
     """Append one row in the caller's transaction.
 
     subject_user_id is the person the event is about (None for an event about no one). For a candidate acting on their
     own record the actor is the subject, unless actor_user_id says otherwise. entity_table and entity_id point at the
-    row the event is about, for example the consent that was granted.
+    row the event is about, for example the consent that was granted. organization_id is the employer an event of the
+    hiring desk is about (HIR-01); the table keeps the row and clears the column if the organization is ever deleted.
     """
     if not EVENT_TYPE.fullmatch(event_type):
         raise ValueError("event_type must look like 'module.what_happened': lower-case letters and underscores")
@@ -61,13 +63,19 @@ def audit_log(
     if actor_type == "candidate" and actor_user_id is None:
         actor_user_id = subject_user_id
     conn.execute(
-        insert(models.audit_log).values(
+        insert(models.audit_log)
+        .values(
             event_type=event_type,
             actor_type=actor_type,
             actor_user_id=actor_user_id,
             subject_user_id=subject_user_id,
+            organization_id=organization_id,
             entity_table=entity_table,
             entity_id=entity_id,
             details=clean,
         )
+        # No implicit RETURNING of the new id: nothing reads it, and under the API role RETURNING needs the SELECT
+        # policy (subject_read), so a row about no one, such as an organization's, would be refused although the insert
+        # policy allows it. Found in plan 06-02: the employer routes of 06-03 and 06-04 write such rows.
+        .inline()
     )

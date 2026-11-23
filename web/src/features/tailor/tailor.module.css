@@ -1,0 +1,145 @@
+/* The tailoring review: the edits, the export and the packet (FRONTEND_UI 3.5 and 4.3). Tokens only. */
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8) var(--sp-12);
+}
+
+.problem {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.why {
+  max-width: var(--measure);
+}
+
+.why summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.edits,
+.answers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  list-style: none;
+  padding: 0;
+}
+
+.edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding: var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.diff {
+  max-width: var(--measure);
+  overflow-wrap: anywhere;
+}
+
+.removed {
+  text-decoration: line-through;
+  color: var(--bad);
+}
+
+.added {
+  text-decoration: underline;
+  color: var(--ok);
+}
+
+.lines {
+  padding-inline-start: var(--sp-20);
+}
+
+/* Two versions side by side only where there is room; on a phone they stack. */
+.sides {
+  display: grid;
+  gap: var(--sp-12);
+}
+
+@media (min-width: 48rem) {
+  .sides {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.chip {
+  display: inline-block;
+  margin-inline-end: var(--sp-4);
+  padding: 0 var(--sp-8);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-small);
+}
+
+.decision {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8) var(--sp-12);
+}
+
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  min-height: 2.5rem;
+  padding: var(--sp-4) var(--sp-12);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+
+.radio[data-selected] {
+  border-color: var(--accent-strong);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.radio[data-focus-visible] {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.radio[data-disabled] {
+  cursor: default;
+}
+
+.packet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+}
+
+.answer {
+  max-width: var(--measure);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mine {
+  font-weight: 600;
+}

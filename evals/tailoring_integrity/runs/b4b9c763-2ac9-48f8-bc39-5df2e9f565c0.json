@@ -1,0 +1,134 @@
+{
+  "date": "2026-11-23",
+  "git_sha": "874cf49d071cac65f037c5321230e47d65707ceb",
+  "is_gate_passed": false,
+  "kind": "degraded_entail",
+  "labels": "agent-drafted, maintainer review pending",
+  "metrics": {
+    "bars": {
+      "supported_kept_rate": true,
+      "tailor_unsupported_passed": false
+    },
+    "bars_met": false,
+    "baseline": {
+      "supported_kept": 84,
+      "supported_total": 84
+    },
+    "by_kind": {
+      "changed_date": {
+        "n": 9,
+        "passed": 0
+      },
+      "clean_add": {
+        "n": 20,
+        "passed": 20
+      },
+      "clean_remove": {
+        "n": 16,
+        "passed": 16
+      },
+      "clean_reorder": {
+        "n": 24,
+        "passed": 24
+      },
+      "clean_rephrase": {
+        "n": 24,
+        "passed": 24
+      },
+      "inflated_number": {
+        "n": 11,
+        "passed": 0
+      },
+      "inflated_scope": {
+        "n": 11,
+        "passed": 11
+      },
+      "layer1_gap": {
+        "n": 4,
+        "passed": 4
+      },
+      "new_skill": {
+        "n": 15,
+        "passed": 0
+      },
+      "no_support_named": {
+        "n": 2,
+        "passed": 0
+      },
+      "paraphrased_add": {
+        "n": 7,
+        "passed": 0
+      },
+      "promoted_title": {
+        "n": 11,
+        "passed": 0
+      },
+      "reorder_adds_item": {
+        "n": 6,
+        "passed": 0
+      },
+      "reorder_drops_item": {
+        "n": 5,
+        "passed": 0
+      },
+      "swapped_employer": {
+        "n": 6,
+        "passed": 0
+      }
+    },
+    "discarded_by_reason": {
+      "changed_date": 9,
+      "changed_employer": 6,
+      "changed_number": 11,
+      "changed_title": 11,
+      "new_entity": 21,
+      "no_supporting_fact": 14
+    },
+    "failed_pairs": 0,
+    "harness_check_only": true,
+    "intervals": {
+      "unsupported_passed_rate": [
+        0.1074,
+        0.2652
+      ]
+    },
+    "n": 30,
+    "n_edits": 171,
+    "n_supported": 84,
+    "n_unsupported": 87,
+    "passed": 17,
+    "reason_match_rate": 0.8275862068965517,
+    "score": 0.0,
+    "supported_kept": 84,
+    "supported_kept_rate": 1.0,
+    "tailor_discard_rate": 0.42105263157894735,
+    "tailor_unsupported_passed": 15,
+    "unsupported_passed_edits": [
+      "ti-003#2",
+      "ti-003#3",
+      "ti-004#6",
+      "ti-007#2",
+      "ti-009#2",
+      "ti-009#3",
+      "ti-011#5",
+      "ti-014#1",
+      "ti-017#1",
+      "ti-021#2",
+      "ti-022#5",
+      "ti-024#2",
+      "ti-027#2",
+      "ti-028#6",
+      "ti-029#5"
+    ]
+  },
+  "mode": "replay",
+  "prompt_versions": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "provider": "fake",
+  "recorded": "degraded_entail.json",
+  "run_id": "b4b9c763-2ac9-48f8-bc39-5df2e9f565c0",
+  "status": "failed",
+  "suite": "tailoring_integrity"
+}

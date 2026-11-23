@@ -1,0 +1,24 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "list_matches",
+    "outcome": "shown"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [
+   {
+    "tool": "get_decision",
+    "decision": "d1"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "The decision [[d1]] marks the Python requirement as met, and the fact behind it is your nightly Python and SQL pipelines achievement [[f1]]."
+ }
+]

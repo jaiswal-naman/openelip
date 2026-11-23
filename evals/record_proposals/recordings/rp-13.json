@@ -1,0 +1,17 @@
+[
+ {
+  "proposals": [
+   {
+    "entity": "preference",
+    "operation": "set",
+    "field": "location",
+    "value": {
+     "text": "Pune",
+     "weight": 2
+    },
+    "evidence_quote": "I would also take jobs in Pune",
+    "statement": "Open to jobs in Pune."
+   }
+  ]
+ }
+]
