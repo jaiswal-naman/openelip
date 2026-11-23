@@ -5,6 +5,11 @@
 -- nature: the requirement and skill rows are dropped, and is_remote is rebuilt from work_arrangements. Never run it
 -- against a database whose rows matter. eval_suite keeps the location_accuracy value, because PostgreSQL cannot remove
 -- an enum value; the upgrade skips a value that already exists.
+--
+-- The first statement refuses the live database, which is called app. The migration check in CI and the tests use
+-- other names (migration_check, names ending in _test).
+
+DO $$ BEGIN IF current_database() = 'app' THEN RAISE EXCEPTION 'refusing a lossy downgrade on app'; END IF; END $$;
 
 DROP TRIGGER jobs_version_guard ON jobs;
 DROP TRIGGER fetch_runs_append_only ON fetch_runs;

@@ -7,6 +7,7 @@ id, so two runs at once never drop each other's database.
 
 import os
 from contextlib import contextmanager
+from pathlib import Path
 
 import pytest
 from sqlalchemy import Connection, create_engine, text
@@ -15,6 +16,7 @@ from sqlalchemy.exc import DBAPIError
 REVISION = "p2_0201_job_index"
 PHASE_1_HEAD = "0002_platform"
 EMBEDDING_MODEL = "test-embedding-model"
+DOWNGRADE_SQL = Path(__file__).resolve().parents[3] / "db" / "sql" / "p2_0201_downgrade.sql"
 
 # The columns DATA_MODEL 3.5 adds to jobs (it also removes is_remote).
 NEW_JOB_COLUMNS = {
@@ -271,6 +273,30 @@ def test_the_eval_suite_accepts_the_suites_of_this_phase(conn):
             text("INSERT INTO eval_runs (suite, git_sha) VALUES (CAST(:s AS eval_suite), 'abc')"), {"s": suite}
         )
     assert conn.execute(text("SELECT count(*) FROM eval_runs")).scalar_one() == 2
+
+
+def test_the_downgrade_refuses_to_run_on_the_live_database_before_it_changes_anything(conn):
+    """The downgrade drops the requirement table and collapses work_arrangements, so its first statement refuses the
+    live database, which is called app. A database of that name must not be made here (the real one may be on this
+    server), so current_database() is stood in for by a function of that name first on the search path."""
+    lines = DOWNGRADE_SQL.read_text(encoding="utf-8").splitlines()
+    code = "\n".join(line for line in lines if not line.startswith("--")).strip()
+    assert code.startswith("DO $$")  # the guard comes before every DROP
+    guard = code.split("END $$;", 1)[0] + "END $$;"
+
+    conn.execute(text("CREATE SCHEMA live_stand_in"))
+    conn.execute(
+        text("CREATE FUNCTION live_stand_in.current_database() RETURNS name LANGUAGE sql AS $$ SELECT 'app'::name $$")
+    )
+    conn.execute(text("SET LOCAL search_path = live_stand_in, pg_catalog, public"))
+    with refused(conn) as caught:
+        conn.execute(text(guard))
+    assert message(caught) == "refusing a lossy downgrade on app"
+
+    conn.execute(text("RESET search_path"))  # a scratch database, as the CI migration check and every test use
+    conn.execute(text(guard))  # raises nothing
+    still_there = conn.execute(text("SELECT to_regclass('job_requirements')")).scalar_one()
+    assert still_there is not None
 
 
 def test_the_downgrade_puts_the_phase_1_shape_back_with_every_row(make_database, alembic_run):
