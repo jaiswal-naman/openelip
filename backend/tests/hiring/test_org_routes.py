@@ -2,8 +2,8 @@
 
 The API opens its own connections as the real app_api role, so row-level security and the grants are in force and what
 a test commits stays: these tests use api_client, build rows with the 06-02 factories on a committing connection and
-sign a person in by overriding the session dependency. The membership rules the database cannot state (last owner, who may
-make an owner, claiming) are checked here against the real tables. Everything is invented.
+sign a person in by overriding the session dependency. The membership rules the database cannot state (last owner,
+who may make an owner, claiming) are checked here against the real tables. Everything is invented.
 """
 
 from types import SimpleNamespace
