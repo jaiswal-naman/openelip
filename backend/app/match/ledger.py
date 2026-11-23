@@ -279,7 +279,7 @@ def decode_cursor(cursor: str, *parsers: Callable[[str], Any]) -> list[Any]:
     """The values a cursor holds, parsed; a cursor this API did not issue is a 400."""
     try:
         parts = json.loads(base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)))
-        if not isinstance(parts, list) or len(parts) != len(parsers):
+        if not isinstance(parts, list) or len(parts) != len(parsers) or not all(isinstance(p, str) for p in parts):
             raise ValueError
         return [parse(part) for parse, part in zip(parsers, parts, strict=True)]
     except (ValueError, TypeError, binascii.Error) as error:

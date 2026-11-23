@@ -4,6 +4,8 @@ Rows are invented and built by hand with the 04-01 factories (the run pipeline o
 them as the real app_api role, so row-level security is in force. A second person has rows of her own throughout.
 """
 
+import base64
+import json
 from datetime import timedelta
 from types import SimpleNamespace
 from uuid import UUID, uuid4
@@ -249,6 +251,9 @@ def test_an_unknown_filter_value_or_a_cursor_nobody_issued_is_a_400_and_a_bad_li
     refused(get("/v1/decisions", params={"outcome": "shown,bogus"}), 400, "invalid_request")
     refused(get("/v1/decisions", params={"reason": "bogus"}), 400, "invalid_request")
     refused(get("/v1/decisions", params={"cursor": "not-a-cursor"}), 400, "invalid_request")
+    for parts in (["2026-11-23", "2026-11-23T06:00:00+00:00", 5], ["2026-11-23"], {"a": "b"}, ["x", "y", "z"]):
+        forged = base64.urlsafe_b64encode(json.dumps(parts).encode()).decode()  # decodes, but this API never issued it
+        refused(get("/v1/decisions", params={"cursor": forged}), 400, "invalid_request")
     refused(get("/v1/decisions", params={"limit": 0}), 422, "validation_failed")
     refused(get("/v1/decisions", params={"from": "soon"}), 422, "validation_failed")
 
