@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-const EVENTS = ["message.start", "text.delta", "tool.start", "tool.result", "citation", "proposal", "message.snapshot", "message.end", "error"];
+const EVENTS = ["message.start", "text.delta", "tool.start", "tool.result", "citation", "proposal", "campaign_proposal", "message.snapshot", "message.end", "error"];
 
 /**
  * Open one EventSource for a reply and pass each event to `onEvent`, closing on `message.end` or `error`. The browser

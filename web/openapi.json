@@ -468,6 +468,23 @@
         }
       }
     },
+    "/v1/control/stream": {
+      "get": {
+        "summary": "Control Stream",
+        "description": "current_user answers 401 with the usual envelope before any stream byte. It runs in the threadpool itself.",
+        "operationId": "control_stream_v1_control_stream_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/privacy/subprocessors": {
       "get": {
         "summary": "Subprocessors",
@@ -3004,6 +3021,988 @@
         }
       }
     },
+    "/v1/campaigns": {
+      "post": {
+        "summary": "Start Campaign",
+        "description": "Approve a match: start a campaign at `researching`. A second start for the job is 409 with the open campaign's\nid, a closed job 410, a job that breaks a hard constraint 422, no AI-processing consent 403.",
+        "operationId": "start_campaign_v1_campaigns_post",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Read Board",
+        "description": "One column per stage (the closed one only when asked); each card has its pause, next step and approvals.",
+        "operationId": "read_board_v1_campaigns_get",
+        "parameters": [
+          {
+            "name": "include_closed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Closed"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Board_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/campaigns/{campaign_id}": {
+      "patch": {
+        "summary": "Change Campaign",
+        "description": "Change the budget, `follow_up_after_days` or `follow_up_email`. A closed campaign is 409.",
+        "operationId": "change_campaign_v1_campaigns__campaign_id__patch",
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Campaign Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Read Campaign",
+        "operationId": "read_campaign_v1_campaigns__campaign_id__get",
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Campaign Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CampaignDetail_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/campaigns/{campaign_id}/pause": {
+      "post": {
+        "summary": "Pause Campaign",
+        "operationId": "pause_campaign_v1_campaigns__campaign_id__pause_post",
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Campaign Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EmptyIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/campaigns/{campaign_id}/resume": {
+      "post": {
+        "summary": "Resume Campaign",
+        "description": "Resume. A campaign paused at its budget is 409 `budget_exhausted` until `PATCH` raises the budget.",
+        "operationId": "resume_campaign_v1_campaigns__campaign_id__resume_post",
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Campaign Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EmptyIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/campaigns/{campaign_id}/cancel": {
+      "post": {
+        "summary": "Cancel Campaign",
+        "description": "Cancel. `reason` offer_accepted or offer_declined only at the offer stage.",
+        "operationId": "cancel_campaign_v1_campaigns__campaign_id__cancel_post",
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Campaign Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CancelIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/approvals": {
+      "get": {
+        "summary": "Approvals",
+        "description": "The person's approvals of one status, the soonest to expire first (pending) or the newest decided.",
+        "operationId": "approvals_v1_approvals_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "pending",
+                "approved",
+                "rejected",
+                "expired"
+              ],
+              "type": "string",
+              "default": "pending",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Campaign Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "submit_application",
+                    "send_follow_up",
+                    "twin_answer"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Approvals V1 Approvals Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/approvals/{approval_id}": {
+      "get": {
+        "summary": "Read Approval",
+        "operationId": "read_approval_v1_approvals__approval_id__get",
+        "parameters": [
+          {
+            "name": "approval_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Approval Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Read Approval V1 Approvals  Approval Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/approvals/{approval_id}/approve": {
+      "post": {
+        "summary": "Approve",
+        "description": "Say yes to exactly the payload the person saw. The answer is recorded now and `release` is `pending`: the worker\nruns both keys again and schedules or blocks the action, and the page polls until it is `scheduled` or `blocked`.\nWith `edits` this approval is `rejected` (note `edited`) and the replacement action follows the same way.",
+        "operationId": "approve_v1_approvals__approval_id__approve_post",
+        "parameters": [
+          {
+            "name": "approval_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Approval Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/approvals/{approval_id}/reject": {
+      "post": {
+        "summary": "Reject",
+        "description": "Say no, with an optional note. Nothing leaves.",
+        "operationId": "reject_v1_approvals__approval_id__reject_post",
+        "parameters": [
+          {
+            "name": "approval_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Approval Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RejectIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/autonomy": {
+      "get": {
+        "summary": "Read Autonomy",
+        "operationId": "read_autonomy_v1_autonomy_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Put Autonomy",
+        "description": "Replace the given levels and the undo window. A level the type does not allow refuses the whole body (422\n`autonomy_not_allowed`) and saves nothing; a stale `If-Match` is 412 `version_conflict`.",
+        "operationId": "put_autonomy_v1_autonomy_put",
+        "parameters": [
+          {
+            "name": "if-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutonomyIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/recorder": {
+      "get": {
+        "summary": "Recorder",
+        "description": "Every entry of a campaign or a run in order (exactly one of the two ids). Each entry is one recorded step; the\nGuardian's checks, the approval and the outcome belong to its row.",
+        "operationId": "recorder_v1_control_recorder_get",
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Campaign Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Recorder V1 Control Recorder Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/recorder/{entry_id}": {
+      "get": {
+        "summary": "Recorder Entry",
+        "description": "One entry in full: inputs, evidence, model calls, the policy decision, every check with its reason and the\npayload. Reading it calls no model.",
+        "operationId": "recorder_entry_v1_control_recorder__entry_id__get",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Recorder Entry V1 Control Recorder  Entry Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/actions/{action_id}/undo": {
+      "post": {
+        "summary": "Undo",
+        "description": "Take back a follow-up still waiting in its undo window. After the relay claimed the message it is `409 conflict`\nwith the state (`sending`, `sent`, `executed`).",
+        "operationId": "undo_v1_control_actions__action_id__undo_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/orgs": {
       "post": {
         "summary": "Create Org",
@@ -4657,6 +5656,85 @@
         "title": "ApplicationView",
         "description": "One application as the tracker shows it, and as the chat tool reads it."
       },
+      "ApproveIn": {
+        "properties": {
+          "payload_hash": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Payload Hash"
+          },
+          "edits": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edits"
+          },
+          "reply": {
+            "title": "Reply"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "payload_hash"
+        ],
+        "title": "ApproveIn"
+      },
+      "AutonomyIn": {
+        "properties": {
+          "actions": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/LevelIn"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actions"
+          },
+          "undo_window_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Undo Window Minutes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AutonomyIn"
+      },
+      "Board": {
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/Column"
+            },
+            "type": "array",
+            "title": "Columns"
+          }
+        },
+        "type": "object",
+        "required": [
+          "columns"
+        ],
+        "title": "Board"
+      },
       "Body_unsubscribe_one_click_v1_briefs_unsubscribe_post": {
         "properties": {
           "List-Unsubscribe": {
@@ -4717,6 +5795,68 @@
         ],
         "title": "BriefAction",
         "description": "An ordinary endpoint to call. A dismissal also needs a reason, which the person chooses when they dismiss."
+      },
+      "BriefCampaignItem": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "approval",
+              "activity"
+            ],
+            "title": "Kind"
+          },
+          "campaign_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Campaign Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "link": {
+            "type": "string",
+            "title": "Link"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "approval_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Id"
+          },
+          "agent_action_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Action Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "campaign_id",
+          "text",
+          "link",
+          "status"
+        ],
+        "title": "BriefCampaignItem",
+        "description": "Something the agents wait on or did (plan 07-06): `approval` is a pending (or since decided) approval, `activity`\nan action executed, blocked or failed. `text` is written by code and `link` is a page of the app: nothing is decided\nfrom the brief or its email."
       },
       "BriefDecision": {
         "properties": {
@@ -4875,11 +6015,16 @@
                 },
                 {
                   "$ref": "#/components/schemas/BriefDecision"
+                },
+                {
+                  "$ref": "#/components/schemas/BriefCampaignItem"
                 }
               ],
               "discriminator": {
                 "propertyName": "kind",
                 "mapping": {
+                  "activity": "#/components/schemas/BriefCampaignItem",
+                  "approval": "#/components/schemas/BriefCampaignItem",
                   "introduction": "#/components/schemas/BriefIntroduction",
                   "match": "#/components/schemas/BriefDecision",
                   "record_proposals": "#/components/schemas/BriefDecision"
@@ -4899,6 +6044,13 @@
           "open_record_proposals": {
             "type": "integer",
             "title": "Open Record Proposals"
+          },
+          "undoable": {
+            "items": {
+              "$ref": "#/components/schemas/BriefUndoable"
+            },
+            "type": "array",
+            "title": "Undoable"
           }
         },
         "type": "object",
@@ -4909,7 +6061,8 @@
           "delivery",
           "decisions",
           "done_since_last_brief",
-          "open_record_proposals"
+          "open_record_proposals",
+          "undoable"
         ],
         "title": "BriefDetail"
       },
@@ -5083,6 +6236,455 @@
         ],
         "title": "BriefSettingsChange"
       },
+      "BriefUndoable": {
+        "properties": {
+          "action_id": {
+            "type": "integer",
+            "title": "Action Id"
+          },
+          "campaign_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Campaign Id"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name",
+            "x-untrusted-text": true
+          },
+          "undo_until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Undo Until"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action_id",
+          "campaign_id",
+          "company_name",
+          "undo_until"
+        ],
+        "title": "BriefUndoable"
+      },
+      "CampaignDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobRef"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "researching",
+              "needs_you",
+              "applied",
+              "talking",
+              "interview",
+              "offer",
+              "closed"
+            ],
+            "title": "Stage"
+          },
+          "from_introduction": {
+            "type": "boolean",
+            "title": "From Introduction"
+          },
+          "introduction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntroductionRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paused_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused At"
+          },
+          "pause_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "candidate",
+                  "budget_exhausted",
+                  "scam_suspected"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pause Reason"
+          },
+          "pause_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pause Text"
+          },
+          "scam_signals": {
+            "items": {
+              "$ref": "#/components/schemas/ScamSignal"
+            },
+            "type": "array",
+            "title": "Scam Signals"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "closed_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed Reason"
+          },
+          "budget_usd": {
+            "type": "string",
+            "title": "Budget Usd"
+          },
+          "spent_usd": {
+            "type": "string",
+            "title": "Spent Usd"
+          },
+          "follow_up_after_days": {
+            "type": "integer",
+            "title": "Follow Up After Days"
+          },
+          "follow_up_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Follow Up Email"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "server_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Server Time"
+          },
+          "next_step": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextStep"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/Step"
+            },
+            "type": "array",
+            "title": "Steps"
+          },
+          "dossier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Dossier"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fit": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fit"
+          },
+          "packet": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Packet"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "prep": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prep",
+            "x-untrusted-text": true
+          },
+          "follow_ups": {
+            "items": {
+              "$ref": "#/components/schemas/FollowUp"
+            },
+            "type": "array",
+            "title": "Follow Ups"
+          },
+          "pending_approvals": {
+            "items": {
+              "$ref": "#/components/schemas/PendingApproval"
+            },
+            "type": "array",
+            "title": "Pending Approvals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "job",
+          "stage",
+          "from_introduction",
+          "introduction",
+          "paused_at",
+          "pause_reason",
+          "pause_text",
+          "scam_signals",
+          "closed_at",
+          "closed_reason",
+          "budget_usd",
+          "spent_usd",
+          "follow_up_after_days",
+          "follow_up_email",
+          "created_at",
+          "server_time",
+          "next_step",
+          "steps",
+          "dossier",
+          "fit",
+          "packet",
+          "prep",
+          "follow_ups",
+          "pending_approvals"
+        ],
+        "title": "CampaignDetail"
+      },
+      "CampaignProposalView": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "x-untrusted-text": true
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name",
+            "x-untrusted-text": true
+          },
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "title",
+          "company_name",
+          "campaign_id"
+        ],
+        "title": "CampaignProposalView",
+        "description": "An offer to start a campaign for a job (plan 07-06). Nothing is started until the candidate clicks the card."
+      },
+      "CancelIn": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(cancelled|offer_accepted|offer_declined)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CancelIn"
+      },
+      "Card": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "x-untrusted-text": true
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name",
+            "x-untrusted-text": true
+          },
+          "from_introduction": {
+            "type": "boolean",
+            "title": "From Introduction"
+          },
+          "paused_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused At"
+          },
+          "pause_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "candidate",
+                  "budget_exhausted",
+                  "scam_suspected"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pause Reason"
+          },
+          "closed_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed Reason"
+          },
+          "next_step": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextStep"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending_approvals": {
+            "type": "integer",
+            "title": "Pending Approvals"
+          },
+          "last_activity_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Activity At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "company_name",
+          "from_introduction",
+          "paused_at",
+          "pause_reason",
+          "closed_reason",
+          "next_step",
+          "pending_approvals",
+          "last_activity_at"
+        ],
+        "title": "Card"
+      },
       "CharSpan": {
         "properties": {
           "start": {
@@ -5202,6 +6804,47 @@
         ],
         "title": "CodeRequested",
         "description": "The same for every address, so the endpoint does not reveal whether an account exists."
+      },
+      "Column": {
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "researching",
+              "needs_you",
+              "applied",
+              "talking",
+              "interview",
+              "offer",
+              "closed"
+            ],
+            "title": "Stage"
+          },
+          "campaigns": {
+            "items": {
+              "$ref": "#/components/schemas/Card"
+            },
+            "type": "array",
+            "title": "Campaigns"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stage",
+          "campaigns"
+        ],
+        "title": "Column"
       },
       "ConsentChange": {
         "properties": {
@@ -6261,6 +7904,48 @@
         "title": "DocumentView",
         "description": "parse_error_code says why a document failed (or, on a succeeded one, that part of it could not be read:\npartial_extraction); message is the same in words. hidden_text_flags is null until the document is parsed."
       },
+      "Dossier": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "incomplete": {
+            "type": "boolean",
+            "title": "Incomplete"
+          },
+          "claims": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Claims",
+            "x-untrusted-text": true
+          },
+          "missing_topics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Topics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "version",
+          "incomplete",
+          "claims",
+          "missing_topics"
+        ],
+        "title": "Dossier"
+      },
       "EditView": {
         "properties": {
           "id": {
@@ -6327,6 +8012,12 @@
         ],
         "title": "EditView",
         "description": "One passed edit, as the person sees it. A discarded edit has no view."
+      },
+      "EmptyIn": {
+        "properties": {},
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EmptyIn"
       },
       "Envelope_Accepted_": {
         "properties": {
@@ -6451,6 +8142,47 @@
         ],
         "title": "Envelope[ApplicationView]"
       },
+      "Envelope_Board_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Board"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[Board]"
+      },
       "Envelope_BriefDetail_": {
         "properties": {
           "success": {
@@ -6491,6 +8223,47 @@
           "meta"
         ],
         "title": "Envelope[BriefDetail]"
+      },
+      "Envelope_CampaignDetail_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampaignDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[CampaignDetail]"
       },
       "Envelope_CodeRequested_": {
         "properties": {
@@ -8826,6 +10599,136 @@
         ],
         "title": "FeedbackRecorded"
       },
+      "FollowUp": {
+        "properties": {
+          "step_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Key"
+          },
+          "action_id": {
+            "type": "integer",
+            "title": "Action Id"
+          },
+          "approval_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "delivery": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject",
+            "x-untrusted-text": true
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body",
+            "x-untrusted-text": true
+          },
+          "undo_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Undo Until"
+          },
+          "outcome_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome Code"
+          },
+          "outcome_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step_key",
+          "action_id",
+          "approval_id",
+          "status",
+          "delivery",
+          "to",
+          "subject",
+          "body",
+          "undo_until",
+          "outcome_code",
+          "outcome_text"
+        ],
+        "title": "FollowUp"
+      },
       "Gap": {
         "properties": {
           "requirement": {
@@ -8889,6 +10792,45 @@
           "shared"
         ],
         "title": "IntroductionAccepted"
+      },
+      "IntroductionRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "employer_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employer Answer"
+          },
+          "answer_due_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer Due At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "employer_answer",
+          "answer_due_at"
+        ],
+        "title": "IntroductionRef"
       },
       "InviteBody": {
         "properties": {
@@ -9348,6 +11290,44 @@
         ],
         "title": "JobDetail"
       },
+      "JobRef": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "x-untrusted-text": true
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name",
+            "x-untrusted-text": true
+          },
+          "apply_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apply Url",
+            "x-untrusted-text": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "company_name",
+          "apply_url"
+        ],
+        "title": "JobRef"
+      },
       "JobSource": {
         "properties": {
           "ats": {
@@ -9371,6 +11351,22 @@
           "board"
         ],
         "title": "JobSource"
+      },
+      "LevelIn": {
+        "properties": {
+          "level": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Level"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "level"
+        ],
+        "title": "LevelIn"
       },
       "MatchDetail": {
         "properties": {
@@ -10006,6 +12002,13 @@
             "type": "array",
             "title": "Proposals"
           },
+          "campaign_proposals": {
+            "items": {
+              "$ref": "#/components/schemas/CampaignProposalView"
+            },
+            "type": "array",
+            "title": "Campaign Proposals"
+          },
           "finish_reason": {
             "anyOf": [
               {
@@ -10037,6 +12040,7 @@
           "tool_name",
           "citations",
           "proposals",
+          "campaign_proposals",
           "finish_reason",
           "created_at"
         ],
@@ -10271,6 +12275,29 @@
         "title": "NewPreference",
         "description": "value defaults to the statement for kind other and untyped_dealbreaker and is required for the others; weight is\nrequired (-3 to 3, never 0) except for a dealbreaker, which is always -3 (REC-04)."
       },
+      "NextStep": {
+        "properties": {
+          "step_key": {
+            "type": "string",
+            "title": "Step Key"
+          },
+          "agent_role": {
+            "type": "string",
+            "title": "Agent Role"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step_key",
+          "agent_role",
+          "text"
+        ],
+        "title": "NextStep"
+      },
       "OrgCreate": {
         "properties": {
           "name": {
@@ -10412,6 +12439,50 @@
         "title": "OrganizationMembership",
         "description": "An employer organization the person is an active member of, with their role in it (HIR-01)."
       },
+      "Packet": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "approval_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Id"
+          },
+          "action_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "approval_id",
+          "action_status"
+        ],
+        "title": "Packet"
+      },
       "PacketIn": {
         "properties": {
           "job_id": {
@@ -10524,6 +12595,51 @@
         ],
         "title": "PacketView"
       },
+      "PatchIn": {
+        "properties": {
+          "budget_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Usd"
+          },
+          "follow_up_after_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 60.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Follow Up After Days"
+          },
+          "follow_up_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Follow Up Email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PatchIn"
+      },
       "Pay": {
         "properties": {
           "min": {
@@ -10590,6 +12706,25 @@
         ],
         "title": "PayRange",
         "description": "Annual pay in whole currency units (API.md 1.4)."
+      },
+      "PendingApproval": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind"
+        ],
+        "title": "PendingApproval"
       },
       "PreferenceChange": {
         "properties": {
@@ -11784,6 +13919,25 @@
         "title": "RecordView",
         "description": "The confirmed record on one page. Facts waiting for review are counted here; GET /v1/me/facts lists them."
       },
+      "RejectIn": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RejectIn"
+      },
       "ReplacedBy": {
         "properties": {
           "fact_id": {
@@ -12802,6 +14956,25 @@
         ],
         "title": "SalaryFloor"
       },
+      "ScamSignal": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "quote": {
+            "type": "string",
+            "title": "Quote",
+            "x-untrusted-text": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "quote"
+        ],
+        "title": "ScamSignal"
+      },
       "SessionIn": {
         "properties": {
           "kind": {
@@ -12947,6 +15120,36 @@
         ],
         "title": "SpanIn"
       },
+      "StartIn": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
+            "title": "Job Id"
+          },
+          "budget_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Usd"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "StartIn"
+      },
       "StatusIn": {
         "properties": {
           "status": {
@@ -12972,6 +15175,71 @@
           "occurred_at"
         ],
         "title": "StatusIn"
+      },
+      "Step": {
+        "properties": {
+          "step_key": {
+            "type": "string",
+            "title": "Step Key"
+          },
+          "agent_role": {
+            "type": "string",
+            "title": "Agent Role"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "todo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Todo"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step_key",
+          "agent_role",
+          "status",
+          "due_at",
+          "error_code",
+          "todo",
+          "text"
+        ],
+        "title": "Step"
       },
       "Subprocessor": {
         "properties": {

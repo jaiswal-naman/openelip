@@ -172,6 +172,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/control/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Control Stream
+         * @description current_user answers 401 with the usual envelope before any stream byte. It runs in the threadpool itself.
+         */
+        get: operations["control_stream_v1_control_stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/privacy/subprocessors": {
         parameters: {
             query?: never;
@@ -942,6 +962,273 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Board
+         * @description One column per stage (the closed one only when asked); each card has its pause, next step and approvals.
+         */
+        get: operations["read_board_v1_campaigns_get"];
+        put?: never;
+        /**
+         * Start Campaign
+         * @description Approve a match: start a campaign at `researching`. A second start for the job is 409 with the open campaign's
+         *     id, a closed job 410, a job that breaks a hard constraint 422, no AI-processing consent 403.
+         */
+        post: operations["start_campaign_v1_campaigns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/campaigns/{campaign_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Campaign */
+        get: operations["read_campaign_v1_campaigns__campaign_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change Campaign
+         * @description Change the budget, `follow_up_after_days` or `follow_up_email`. A closed campaign is 409.
+         */
+        patch: operations["change_campaign_v1_campaigns__campaign_id__patch"];
+        trace?: never;
+    };
+    "/v1/campaigns/{campaign_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause Campaign */
+        post: operations["pause_campaign_v1_campaigns__campaign_id__pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/campaigns/{campaign_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume Campaign
+         * @description Resume. A campaign paused at its budget is 409 `budget_exhausted` until `PATCH` raises the budget.
+         */
+        post: operations["resume_campaign_v1_campaigns__campaign_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/campaigns/{campaign_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Campaign
+         * @description Cancel. `reason` offer_accepted or offer_declined only at the offer stage.
+         */
+        post: operations["cancel_campaign_v1_campaigns__campaign_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Approvals
+         * @description The person's approvals of one status, the soonest to expire first (pending) or the newest decided.
+         */
+        get: operations["approvals_v1_approvals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/approvals/{approval_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Approval */
+        get: operations["read_approval_v1_approvals__approval_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/approvals/{approval_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve
+         * @description Say yes to exactly the payload the person saw. The answer is recorded now and `release` is `pending`: the worker
+         *     runs both keys again and schedules or blocks the action, and the page polls until it is `scheduled` or `blocked`.
+         *     With `edits` this approval is `rejected` (note `edited`) and the replacement action follows the same way.
+         */
+        post: operations["approve_v1_approvals__approval_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/approvals/{approval_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject
+         * @description Say no, with an optional note. Nothing leaves.
+         */
+        post: operations["reject_v1_approvals__approval_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/autonomy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Autonomy */
+        get: operations["read_autonomy_v1_autonomy_get"];
+        /**
+         * Put Autonomy
+         * @description Replace the given levels and the undo window. A level the type does not allow refuses the whole body (422
+         *     `autonomy_not_allowed`) and saves nothing; a stale `If-Match` is 412 `version_conflict`.
+         */
+        put: operations["put_autonomy_v1_autonomy_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/control/recorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recorder
+         * @description Every entry of a campaign or a run in order (exactly one of the two ids). Each entry is one recorded step; the
+         *     Guardian's checks, the approval and the outcome belong to its row.
+         */
+        get: operations["recorder_v1_control_recorder_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/control/recorder/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recorder Entry
+         * @description One entry in full: inputs, evidence, model calls, the policy decision, every check with its reason and the
+         *     payload. Reading it calls no model.
+         */
+        get: operations["recorder_entry_v1_control_recorder__entry_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/control/actions/{action_id}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Undo
+         * @description Take back a follow-up still waiting in its undo window. After the relay claimed the message it is `409 conflict`
+         *     with the state (`sending`, `sent`, `executed`).
+         */
+        post: operations["undo_v1_control_actions__action_id__undo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs": {
         parameters: {
             query?: never;
@@ -1439,6 +1726,31 @@ export interface components {
             /** Events */
             events: components["schemas"]["EventView"][];
         };
+        /** ApproveIn */
+        ApproveIn: {
+            /** Payload Hash */
+            payload_hash: string;
+            /** Edits */
+            edits?: {
+                [key: string]: unknown;
+            } | null;
+            /** Reply */
+            reply?: unknown;
+        };
+        /** AutonomyIn */
+        AutonomyIn: {
+            /** Actions */
+            actions?: {
+                [key: string]: components["schemas"]["LevelIn"];
+            } | null;
+            /** Undo Window Minutes */
+            undo_window_minutes?: number | null;
+        };
+        /** Board */
+        Board: {
+            /** Columns */
+            columns: components["schemas"]["Column"][];
+        };
         /** Body_unsubscribe_one_click_v1_briefs_unsubscribe_post */
         Body_unsubscribe_one_click_v1_briefs_unsubscribe_post: {
             /** List-Unsubscribe */
@@ -1465,6 +1777,34 @@ export interface components {
             body?: {
                 [key: string]: string;
             } | null;
+        };
+        /**
+         * BriefCampaignItem
+         * @description Something the agents wait on or did (plan 07-06): `approval` is a pending (or since decided) approval, `activity`
+         *     an action executed, blocked or failed. `text` is written by code and `link` is a page of the app: nothing is decided
+         *     from the brief or its email.
+         */
+        BriefCampaignItem: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "activity" | "approval";
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /** Text */
+            text: string;
+            /** Link */
+            link: string;
+            /** Status */
+            status: string;
+            /** Approval Id */
+            approval_id?: string | null;
+            /** Agent Action Id */
+            agent_action_id?: number | null;
         };
         /**
          * BriefDecision
@@ -1529,11 +1869,13 @@ export interface components {
             status: "composed" | "suppressed" | "queued" | "sent" | "failed";
             delivery: components["schemas"]["BriefDelivery"];
             /** Decisions */
-            decisions: (components["schemas"]["BriefIntroduction"] | components["schemas"]["BriefDecision"])[];
+            decisions: (components["schemas"]["BriefIntroduction"] | components["schemas"]["BriefDecision"] | components["schemas"]["BriefCampaignItem"])[];
             /** Done Since Last Brief */
             done_since_last_brief: components["schemas"]["BriefDone"][];
             /** Open Record Proposals */
             open_record_proposals: number;
+            /** Undoable */
+            undoable: components["schemas"]["BriefUndoable"][];
         };
         /** BriefDone */
         BriefDone: {
@@ -1619,6 +1961,133 @@ export interface components {
             /** Weekday */
             weekday?: number | null;
         };
+        /** BriefUndoable */
+        BriefUndoable: {
+            /** Action Id */
+            action_id: number;
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /** Company Name */
+            company_name: string;
+            /**
+             * Undo Until
+             * Format: date-time
+             */
+            undo_until: string;
+        };
+        /** CampaignDetail */
+        CampaignDetail: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            job: components["schemas"]["JobRef"];
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "researching" | "needs_you" | "applied" | "talking" | "interview" | "offer" | "closed";
+            /** From Introduction */
+            from_introduction: boolean;
+            introduction: components["schemas"]["IntroductionRef"] | null;
+            /** Paused At */
+            paused_at: string | null;
+            /** Pause Reason */
+            pause_reason: ("candidate" | "budget_exhausted" | "scam_suspected") | null;
+            /** Pause Text */
+            pause_text: string | null;
+            /** Scam Signals */
+            scam_signals: components["schemas"]["ScamSignal"][];
+            /** Closed At */
+            closed_at: string | null;
+            /** Closed Reason */
+            closed_reason: string | null;
+            /** Budget Usd */
+            budget_usd: string;
+            /** Spent Usd */
+            spent_usd: string;
+            /** Follow Up After Days */
+            follow_up_after_days: number;
+            /** Follow Up Email */
+            follow_up_email: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            next_step: components["schemas"]["NextStep"] | null;
+            /** Steps */
+            steps: components["schemas"]["Step"][];
+            dossier: components["schemas"]["Dossier"] | null;
+            /** Fit */
+            fit: {
+                [key: string]: unknown;
+            } | null;
+            packet: components["schemas"]["Packet"] | null;
+            /** Prep */
+            prep: {
+                [key: string]: unknown;
+            } | null;
+            /** Follow Ups */
+            follow_ups: components["schemas"]["FollowUp"][];
+            /** Pending Approvals */
+            pending_approvals: components["schemas"]["PendingApproval"][];
+        };
+        /**
+         * CampaignProposalView
+         * @description An offer to start a campaign for a job (plan 07-06). Nothing is started until the candidate clicks the card.
+         */
+        CampaignProposalView: {
+            /** Job Id */
+            job_id: number;
+            /** Title */
+            title: string;
+            /** Company Name */
+            company_name: string;
+            /** Campaign Id */
+            campaign_id: string | null;
+        };
+        /** CancelIn */
+        CancelIn: {
+            /** Note */
+            note?: string | null;
+            /** Reason */
+            reason?: string | null;
+        };
+        /** Card */
+        Card: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /** Company Name */
+            company_name: string;
+            /** From Introduction */
+            from_introduction: boolean;
+            /** Paused At */
+            paused_at: string | null;
+            /** Pause Reason */
+            pause_reason: ("candidate" | "budget_exhausted" | "scam_suspected") | null;
+            /** Closed Reason */
+            closed_reason: string | null;
+            next_step: components["schemas"]["NextStep"] | null;
+            /** Pending Approvals */
+            pending_approvals: number;
+            /** Last Activity At */
+            last_activity_at: string | null;
+        };
         /** CharSpan */
         CharSpan: {
             /** Start */
@@ -1659,6 +2128,18 @@ export interface components {
         CodeRequested: {
             /** Expires In Seconds */
             expires_in_seconds: number;
+        };
+        /** Column */
+        Column: {
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "researching" | "needs_you" | "applied" | "talking" | "interview" | "offer" | "closed";
+            /** Campaigns */
+            campaigns: components["schemas"]["Card"][];
+            /** Total */
+            total?: number | null;
         };
         /**
          * ConsentChange
@@ -1960,6 +2441,24 @@ export interface components {
             /** Lines */
             lines?: components["schemas"]["DocumentLine"][] | null;
         };
+        /** Dossier */
+        Dossier: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Version */
+            version: number;
+            /** Incomplete */
+            incomplete: boolean;
+            /** Claims */
+            claims: {
+                [key: string]: unknown;
+            }[];
+            /** Missing Topics */
+            missing_topics: string[];
+        };
         /**
          * EditView
          * @description One passed edit, as the person sees it. A discarded edit has no view.
@@ -1987,6 +2486,8 @@ export interface components {
             /** Decided At */
             decided_at: string | null;
         };
+        /** EmptyIn */
+        EmptyIn: Record<string, never>;
         /** Envelope[Accepted] */
         Envelope_Accepted_: {
             /** Success */
@@ -2020,11 +2521,33 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[Board] */
+        Envelope_Board_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["Board"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[BriefDetail] */
         Envelope_BriefDetail_: {
             /** Success */
             success: boolean;
             data: components["schemas"]["BriefDetail"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[CampaignDetail] */
+        Envelope_CampaignDetail_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["CampaignDetail"] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -2696,6 +3219,31 @@ export interface components {
             /** Proposal Event Id */
             proposal_event_id: string | null;
         };
+        /** FollowUp */
+        FollowUp: {
+            /** Step Key */
+            step_key: string | null;
+            /** Action Id */
+            action_id: number;
+            /** Approval Id */
+            approval_id: string | null;
+            /** Status */
+            status: string;
+            /** Delivery */
+            delivery: string | null;
+            /** To */
+            to: string | null;
+            /** Subject */
+            subject: string | null;
+            /** Body */
+            body: string | null;
+            /** Undo Until */
+            undo_until: string | null;
+            /** Outcome Code */
+            outcome_code: string | null;
+            /** Outcome Text */
+            outcome_text: string | null;
+        };
         /** Gap */
         Gap: {
             /** Requirement */
@@ -2721,6 +3269,18 @@ export interface components {
             introduction: components["schemas"]["Resolved"];
             /** Shared */
             shared: string;
+        };
+        /** IntroductionRef */
+        IntroductionRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Employer Answer */
+            employer_answer: string | null;
+            /** Answer Due At */
+            answer_due_at: string | null;
         };
         /** InviteBody */
         InviteBody: {
@@ -2867,6 +3427,17 @@ export interface components {
             /** Requirements */
             requirements: components["schemas"]["Requirement"][];
         };
+        /** JobRef */
+        JobRef: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Company Name */
+            company_name: string;
+            /** Apply Url */
+            apply_url: string | null;
+        };
         /** JobSource */
         JobSource: {
             /**
@@ -2876,6 +3447,11 @@ export interface components {
             ats: "greenhouse" | "lever" | "ashby" | "direct";
             /** Board */
             board: string;
+        };
+        /** LevelIn */
+        LevelIn: {
+            /** Level */
+            level: string;
         };
         /** MatchDetail */
         MatchDetail: {
@@ -3071,6 +3647,8 @@ export interface components {
             citations: components["schemas"]["CitationView"][];
             /** Proposals */
             proposals: components["schemas"]["ProposalView"][];
+            /** Campaign Proposals */
+            campaign_proposals: components["schemas"]["CampaignProposalView"][];
             /** Finish Reason */
             finish_reason: ("complete" | "length" | "stopped" | "interrupted") | null;
             /**
@@ -3130,6 +3708,15 @@ export interface components {
             value?: string | null;
             /** Weight */
             weight?: number | null;
+        };
+        /** NextStep */
+        NextStep: {
+            /** Step Key */
+            step_key: string;
+            /** Agent Role */
+            agent_role: string;
+            /** Text */
+            text: string;
         };
         /** OrgCreate */
         OrgCreate: {
@@ -3202,6 +3789,20 @@ export interface components {
             /** Is Synthetic */
             is_synthetic: boolean;
         };
+        /** Packet */
+        Packet: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Status */
+            status: string;
+            /** Approval Id */
+            approval_id: string | null;
+            /** Action Status */
+            action_status: string | null;
+        };
         /** PacketIn */
         PacketIn: {
             /** Job Id */
@@ -3241,6 +3842,15 @@ export interface components {
              */
             created_at: string;
         };
+        /** PatchIn */
+        PatchIn: {
+            /** Budget Usd */
+            budget_usd?: number | string | null;
+            /** Follow Up After Days */
+            follow_up_after_days?: number | null;
+            /** Follow Up Email */
+            follow_up_email?: string | null;
+        };
         /** Pay */
         Pay: {
             /** Min */
@@ -3261,6 +3871,16 @@ export interface components {
             max: number;
             /** Currency */
             currency: string;
+        };
+        /** PendingApproval */
+        PendingApproval: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
         };
         /** PreferenceChange */
         PreferenceChange: {
@@ -3674,6 +4294,11 @@ export interface components {
             /** Documents */
             documents: components["schemas"]["RecordDocument"][];
         };
+        /** RejectIn */
+        RejectIn: {
+            /** Note */
+            note?: string | null;
+        };
         /** ReplacedBy */
         ReplacedBy: {
             /**
@@ -3995,6 +4620,13 @@ export interface components {
             /** Currency */
             currency: string;
         };
+        /** ScamSignal */
+        ScamSignal: {
+            /** Kind */
+            kind: string;
+            /** Quote */
+            quote: string;
+        };
         /** SessionIn */
         SessionIn: {
             /**
@@ -4055,6 +4687,13 @@ export interface components {
             /** End */
             end: number;
         };
+        /** StartIn */
+        StartIn: {
+            /** Job Id */
+            job_id: number;
+            /** Budget Usd */
+            budget_usd?: number | string | null;
+        };
         /** StatusIn */
         StatusIn: {
             /**
@@ -4067,6 +4706,23 @@ export interface components {
              * Format: date-time
              */
             occurred_at: string;
+        };
+        /** Step */
+        Step: {
+            /** Step Key */
+            step_key: string;
+            /** Agent Role */
+            agent_role: string;
+            /** Status */
+            status: string;
+            /** Due At */
+            due_at: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Todo */
+            todo: string | null;
+            /** Text */
+            text: string;
         };
         /** Subprocessor */
         Subprocessor: {
@@ -4486,6 +5142,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_stream_v1_control_stream_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -6024,6 +6700,553 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_ReplyState_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_board_v1_campaigns_get: {
+        parameters: {
+            query?: {
+                include_closed?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Board_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_campaign_v1_campaigns_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_campaign_v1_campaigns__campaign_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_CampaignDetail_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_campaign_v1_campaigns__campaign_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pause_campaign_v1_campaigns__campaign_id__pause_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EmptyIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_campaign_v1_campaigns__campaign_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EmptyIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_campaign_v1_campaigns__campaign_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CancelIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approvals_v1_approvals_get: {
+        parameters: {
+            query?: {
+                status?: "pending" | "approved" | "rejected" | "expired";
+                campaign_id?: string | null;
+                kind?: ("submit_application" | "send_follow_up" | "twin_answer") | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_approval_v1_approvals__approval_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_v1_approvals__approval_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_v1_approvals__approval_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RejectIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_autonomy_v1_autonomy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    put_autonomy_v1_autonomy_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutonomyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recorder_v1_control_recorder_get: {
+        parameters: {
+            query?: {
+                campaign_id?: string | null;
+                run_id?: string | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recorder_entry_v1_control_recorder__entry_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    undo_v1_control_actions__action_id__undo_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                action_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

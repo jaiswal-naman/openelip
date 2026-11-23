@@ -137,6 +137,7 @@ export function brief(over: Partial<BriefData> = {}): BriefData {
       { at: "2026-11-23T01:00:00Z", text: "Checked the index on request: 1 shown, 2 held back, 3 filtered by your constraints", ref: { match_run_id: "5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9" } },
     ],
     open_record_proposals: 0,
+    undoable: [],
     ...over,
   };
 }

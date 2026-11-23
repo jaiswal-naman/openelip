@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { buttonClass } from "@/components/ui/buttonStyles";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { Pill } from "@/components/ui/Pill";
+import { StartCampaignButton } from "@/features/campaigns/StartCampaignButton";
 import { ChatContext } from "@/features/chat/ChatContext";
 import { ErrorState } from "@/components/ui/States";
 import { LocalTime } from "@/components/ui/Viewer";
@@ -131,6 +132,7 @@ export function MatchDetail({ match }: { match: MatchData }) {
               <ExternalLinkIcon />
             </a>
           )}
+          {!closed && <StartCampaignButton jobId={job.id} />}
           <LinkButton href={`/app/matches/${match.decision_id}/tailor`}>Tailor resume</LinkButton>
           <Button isPending={feedback.isPending} onPress={feedback.toggleSave}>
             {feedback.isSaved ? "Unsave" : "Save"}

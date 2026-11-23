@@ -9,6 +9,7 @@ import { LinkButton } from "@/components/ui/LinkButton";
 import { AiOffNotice, EmptyState, ErrorState } from "@/components/ui/States";
 import { LocalTime } from "@/components/ui/Viewer";
 import { useMe } from "@/features/auth/queries";
+import { BriefCampaignItems, campaignItems, matchDecisions } from "@/features/brief/BriefCampaignItems";
 import { BriefIntroductions, introductionItems } from "@/features/brief/BriefIntroductions";
 import { isOpenAsk, useIntroductions } from "@/features/introductions/api";
 import { TodayIntroductions } from "@/features/introductions/TodayIntroductions";
@@ -50,11 +51,12 @@ export function TodayView() {
   const date = day.data?.local_date ?? null;
   // Introductions (Phase 6): each open ask is a card of its own, read from the introductions, not the brief; the brief's
   // introduction items are listed as lines only when their ask is no longer open, so nothing shows twice.
-  const decisions = (brief.data?.decisions ?? []).filter((decision) => decision.kind !== "introduction");
+  const decisions = matchDecisions(brief.data?.decisions ?? []);
+  const agentItems = campaignItems(brief.data?.decisions ?? []);
   const introductions = useIntroductions();
   const openAsks = (introductions.data ?? []).filter((item) => isOpenAsk(item));
   const briefAsks = introductionItems(brief.data?.decisions ?? []).filter((item) => !openAsks.some((ask) => ask.id === item.introduction_id));
-  const waiting = decisions.length + openAsks.length;
+  const waiting = decisions.length + openAsks.length + agentItems.filter((item) => item.kind === "approval").length;
   const asked = params.get("view");
   const openId = params.get("decision");
   // Decisions come first when there are any, while the brief is still loading, and when it could not be loaded (so the
@@ -130,7 +132,7 @@ export function TodayView() {
           ) : (
             <>
               {decisions.length === 0 ? (
-                openAsks.length === 0 && <EmptyState>Nothing needs you today.</EmptyState>
+                openAsks.length === 0 && agentItems.length === 0 && <EmptyState>Nothing needs you today.</EmptyState>
               ) : (
                 <ul className={styles.list}>
                   {decisions.map((decision) => {
@@ -148,6 +150,7 @@ export function TodayView() {
                 </ul>
               )}
               <BriefIntroductions items={briefAsks} />
+              <BriefCampaignItems items={agentItems} undoable={brief.data.undoable} />
               {brief.data.done_since_last_brief.length > 0 && (
                 <section aria-labelledby="done-heading" className={styles.done}>
                   <h2 id="done-heading" className="t-section">

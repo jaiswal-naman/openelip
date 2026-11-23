@@ -1,0 +1,9 @@
+[
+  {"claims": [
+     {"topic": "product", "quote": "Initech Demo builds the Quillscript billing platform for small utilities."},
+     {"topic": "size", "quote": "The company has 120 employees."}],
+   "links": ["/careers"], "injection_suspected": false},
+  {"claims": [
+     {"topic": "hiring_process", "quote": "We hire through a short process: a call with the team, then a paired working session."}],
+   "links": [], "injection_suspected": false}
+]
