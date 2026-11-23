@@ -256,16 +256,16 @@ def test_retrieve_builds_the_keywords_and_the_vector_from_the_persons_own_record
 
     monkeypatch.setattr(retrieval, "embed_passages", embed)
     add_skill(conn, person, "Python")
-    match = add_job(conn, "Python engineer", tilt=0.0)
-    other = add_job(
-        conn, "Plain role", description="Plain role. Nothing in common. You will do it every day.", tilt=1.0
-    )
+    keyword = add_job(conn, "Python engineer", tilt=5.0)  # the only posting with the word python, and far in meaning
+    plain = "Nothing in common with the person. You will do it every day."
+    near = add_job(conn, "Plain role", description=f"Plain role. {plain}", tilt=0.0)
+    mid = add_job(conn, "Another plain role", description=f"Another plain role. {plain}", tilt=1.0)
 
-    assert ids(retrieval.retrieve(conn, person, mode="keyword")) == [match.id]  # the word python is in one posting
+    assert ids(retrieval.retrieve(conn, person, mode="keyword")) == [keyword.id]
     assert embedded == []  # keywords alone never load the model
-    assert ids(retrieval.retrieve(conn, person, mode="vector")) == [match.id, other.id]  # nearest first
+    assert ids(retrieval.retrieve(conn, person, mode="vector")) == [near.id, mid.id, keyword.id]  # nearest first
     assert len(embedded) == 1 and "Python" in embedded[0][0]  # the passage is the person's facts
-    assert ids(retrieval.retrieve(conn, person)) == [match.id, other.id]  # hybrid: the match leads both lists
+    assert ids(retrieval.retrieve(conn, person)) == [keyword.id, near.id, mid.id]  # hybrid: both lists, fused
     assert retrieval.retrieve(conn, person, limit=1) == retrieval.retrieve(conn, person)[:1]
 
 
