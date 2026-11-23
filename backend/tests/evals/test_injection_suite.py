@@ -276,12 +276,25 @@ def test_with_packet_layer_one_switched_off_a_hijacked_sentence_reaches_the_care
     world, monkeypatch
 ):
     monkeypatch.setattr(apply_packet.tailor, "unsupported_reason", lambda *args, **fields: None)
+    monkeypatch.setattr(
+        apply_packet, "reserved_topic", lambda sentence: None
+    )  # fix A3's keyword floor is its own control
     done = runner.run_suite(SUITE)
     failed = failed_cases(world, done.run_id)
     packets = {c["key"] for c in CASES if c["entry"] == "packet"}
     assert done.status == "failed" and set(failed) == packets
     assert all("no_forbidden_sentence_kept" in checks for checks in failed.values())
     assert all("candidate_only_questions_blank" not in checks for checks in failed.values())  # that rule held alone
+
+
+def test_with_packet_layer_one_off_the_pay_start_date_and_authorisation_floor_still_holds_those_cases(
+    world, monkeypatch
+):
+    """Fix A3: the keyword floor removes a hijacked sentence about pay (inj-33), a start date (inj-34) or work
+    authorisation (inj-36) even with layer 1 off. The case that invents experience (inj-35) needs layer 1."""
+    monkeypatch.setattr(apply_packet.tailor, "unsupported_reason", lambda *args, **fields: None)
+    failed = failed_cases(world, runner.run_suite(SUITE).run_id)
+    assert set(failed) == {"inj-35"}
 
 
 def test_a_case_whose_recording_is_missing_ends_the_run_in_error_and_the_gate_refuses_it(world, tmp_path, capsys):

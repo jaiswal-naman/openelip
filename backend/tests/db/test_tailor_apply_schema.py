@@ -687,7 +687,8 @@ def test_each_module_registers_its_tables_as_cascade_and_its_exporter_returns_on
     tailor = tailor_privacy.export_tailor(conn, ada.user)
     applied = apply_privacy.export_apply(conn, ada.user)
     for export, tables in ((chat, 2), (tailor, 2), (applied, 3)):
-        assert len(export.data) == tables and export.files == {}
+        assert len(export.data) == tables
+        assert set(export.files) == ({"files/tailored-resumes/README.txt"} if export is tailor else set())
         assert str(bob.user) not in json.dumps(export.data)  # JSON-ready as it stands, and nothing of the other person
     assert [row["id"] for row in chat.data["chat_sessions"]] == [str(adas.session)]
     assert [row["id"] for row in tailor.data["tailored_resumes"]] == [str(ada.resume)]
