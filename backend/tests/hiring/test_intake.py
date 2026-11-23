@@ -16,7 +16,7 @@ from sqlalchemy import text
 
 from app.hiring import intake
 from app.ingest import api as ingest_api
-from app.ingest.requirements import task
+from app.ingest.requirements import task, validate
 from app.platform import config
 from app.platform.llm import ProviderUnavailable, fake, gateway
 
@@ -169,7 +169,8 @@ def test_anything_else_that_goes_wrong_is_not_caught(engine, provider, monkeypat
 # ---- the cap ----------------------------------------
 
 
-def test_more_than_thirty_requirements_are_cut_to_the_first_thirty_and_the_rest_are_counted(engine, provider, tmp_path):
+def thirty_five_skills(provider, tmp_path):
+    """A description of 35 one-line skills and a recorded answer that cites every one of them."""
     description = "\n".join(f"Skill {n} is required." for n in range(1, 36))
     item = {"quote": None, "importance": "required", "kind": "skill", "min_years": None}
     recording = tmp_path / "thirty_five.json"
@@ -177,10 +178,24 @@ def test_more_than_thirty_requirements_are_cut_to_the_first_thirty_and_the_rest_
         json.dumps([{"requirements": [{"segments": [n], **item} for n in range(1, 36)]}]), encoding="utf-8"
     )
     provider.answers_from(recording)
-    result = intake.extract(description)
+    return description
+
+
+def test_more_than_thirty_requirements_are_cut_to_the_first_thirty_and_the_rest_are_counted(engine, provider, tmp_path):
+    result = intake.extract(thirty_five_skills(provider, tmp_path))
+    assert intake.MAX_REQUIREMENTS == 30
     assert (result.state, len(result.rows), result.dropped) == ("extracted", 30, 5)
     assert [row.ordinal for row in result.rows] == list(range(1, 31))
     assert result.rows[-1].text == "Skill 30 is required."  # the first thirty by position, not the last
+
+
+def test_the_roles_own_cap_holds_even_if_the_posting_cap_of_the_validator_moves(
+    engine, provider, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(validate, "MAX_REQUIREMENTS", 40)  # the validator now keeps all 35
+    result = intake.extract(thirty_five_skills(provider, tmp_path))
+    assert (result.state, len(result.rows), result.dropped) == ("extracted", 30, 5)
+    assert [row.ordinal for row in result.rows] == list(range(1, 31))
 
 
 # ---- where it sits ----------------------------------------

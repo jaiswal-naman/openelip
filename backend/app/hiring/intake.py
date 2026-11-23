@@ -23,6 +23,10 @@ from typing import Literal
 from app.ingest.api import RequirementRow, extract_requirements
 from app.platform.llm import AIDisabled, ProviderUnavailable, SchemaInvalid
 
+# assumption: a role has at most 30 requirements (06-INDEX). The validator caps a posting at 30 as well, which is a
+# limit of its own; this one is the role's, so it holds if the posting cap ever moves. Plan 06-03 applies it to edits.
+MAX_REQUIREMENTS = 30
+
 State = Literal["extracted", "empty", "ai_disabled", "failed"]
 
 
@@ -30,7 +34,7 @@ State = Literal["extracted", "empty", "ai_disabled", "failed"]
 class Intake:
     rows: list[RequirementRow]
     state: State
-    dropped: int = 0  # items beyond the cap the validator keeps (30 per role); the first 30 by position are in rows
+    dropped: int = 0  # items beyond the role's cap: the first MAX_REQUIREMENTS by position are in rows
 
 
 def extract(description: str) -> Intake:
@@ -42,4 +46,5 @@ def extract(description: str) -> Intake:
         return Intake([], "ai_disabled")
     except (ProviderUnavailable, SchemaInvalid):
         return Intake([], "failed")
-    return Intake(result.rows, "extracted", result.rejected.get("over_cap", 0))
+    rows = result.rows[:MAX_REQUIREMENTS]
+    return Intake(rows, "extracted", result.rejected.get("over_cap", 0) + len(result.rows) - len(rows))
