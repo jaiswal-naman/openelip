@@ -25,9 +25,11 @@ COPY backend/pyproject.toml backend/uv.lock ./
 # --frozen: install exactly what uv.lock says, never re-resolve. --no-dev: no test or lint tools in the image.
 RUN uv sync --frozen --no-dev --no-install-project
 # The embedding model goes into /srv/models. This layer comes before the code, so it is reused until the model name or the
-# locked dependencies change, and the 65 MB download is not repeated on every code change.
+# locked dependencies change, and the 65 MB download is not repeated on every code change. The download leaves one file
+# readable by root only, and the app user must read all of them.
 ARG EMBEDDING_MODEL
-RUN FASTEMBED_CACHE_PATH=/srv/models .venv/bin/python -c "import os; from fastembed import TextEmbedding; TextEmbedding(os.environ['EMBEDDING_MODEL'])"
+RUN FASTEMBED_CACHE_PATH=/srv/models .venv/bin/python -c "import os; from fastembed import TextEmbedding; TextEmbedding(os.environ['EMBEDDING_MODEL'])" \
+ && chmod -R a+rX /srv/models
 COPY backend/ ./
 RUN uv sync --frozen --no-dev
 
