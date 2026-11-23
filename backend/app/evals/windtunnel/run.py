@@ -280,9 +280,10 @@ class _Driver:
             due = attempt.deadlines()
             if attempt.campaign_id is not None:
                 with db.transaction(role="migrate") as conn:
-                    campaign_due = next_due(conn, attempt.campaign_id, after=now)
+                    # the tables hold real times (earlier ones shifted back); the clock is real time plus its offset
+                    campaign_due = next_due(conn, attempt.campaign_id, after=now - attempt.clock.offset)
                 if campaign_due is not None:
-                    due.append(campaign_due)
+                    due.append(campaign_due + attempt.clock.offset)
             due = [moment for moment in due if moment > now]
             if self.real_wait(attempt):
                 continue
