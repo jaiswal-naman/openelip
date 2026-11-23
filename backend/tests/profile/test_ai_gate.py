@@ -7,6 +7,7 @@ replays recordings and calls no model, needs no proof. Nothing here calls a mode
 """
 
 import json
+import logging
 from dataclasses import replace
 from uuid import uuid4
 
@@ -62,6 +63,14 @@ def keyed(monkeypatch):
 
 def test_a_key_alone_does_not_let_a_real_model_read_resumes(conn, keyed):
     assert reason_of(conn) == "unproven"
+
+
+def test_a_closed_gate_says_why_in_the_log_with_the_code_and_the_model_and_nothing_else(conn, keyed, caplog):
+    caplog.set_level(logging.INFO, logger="app.event")
+    assert reason_of(conn) == "unproven"
+    (line,) = [json.loads(r.getMessage()) for r in caplog.records if "profile.ai_gate" in r.getMessage()]
+    assert (line["level"], line["error_code"], line["model"]) == ("warning", "unproven", ROUTE_MODEL)
+    assert set(line) - {"ts", "level", "event", "request_id"} == {"error_code", "model"}
 
 
 def test_a_passed_run_that_names_the_model_and_the_prompts_in_use_opens_the_gate(conn, keyed):

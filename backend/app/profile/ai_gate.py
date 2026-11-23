@@ -13,10 +13,11 @@ guards job.requirements.extract in app.ingest.extraction (the two modules cannot
 """
 
 import json
+import logging
 
 from sqlalchemy import Connection, text
 
-from app.platform import config
+from app.platform import config, log
 from app.platform.llm import AIDisabled, registry
 
 from .extract import workflow
@@ -47,4 +48,6 @@ def require_available(conn: Connection) -> None:
         found = {"model": next(iter(models)), "versions": json.dumps(workflow.prompt_versions())}
         proven = bool(conn.execute(ROUTE_IS_PROVEN, found).scalar_one())
     if not proven:
+        # Without this line a person sees "AI is off" while the operator has set a key, and nothing says why.
+        log.event("profile.ai_gate", level=logging.WARNING, error_code="unproven", model=", ".join(sorted(models)))
         raise AIDisabled("unproven")
