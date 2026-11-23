@@ -124,8 +124,8 @@ def _refuse_unless_scratch_and_fake() -> None:
 @contextmanager
 def _scratch(user_id: UUID | None = None, *, role: Role) -> Iterator[Connection]:
     """A transaction on a login the seed uses, after the server has said which database it is connected to: the URL
-    names were checked by `_refuse_unless_scratch_and_fake`, this is the same rule on `current_database()` itself, as the
-    eval seeds do (05-FIXES B8), before the caller writes a row."""
+    names were checked by `_refuse_unless_scratch_and_fake`; this is the same rule on `current_database()` itself, as
+    the eval seeds do (05-FIXES B8), before the caller writes a row."""
     with db.transaction(user_id, role=role) as conn:
         name = conn.execute(text("SELECT current_database()")).scalar_one()
         if not (name or "").endswith("_test"):
