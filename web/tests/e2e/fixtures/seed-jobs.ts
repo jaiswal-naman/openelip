@@ -9,14 +9,17 @@ import fixture from "./jobs-index.json";
  *
  * It runs `psql` inside the stack's db container, the way phase1.spec.ts runs a command in the worker container, and it
  * signs in as the database's own superuser, because no API route writes jobs and the worker's login may not write
- * requirement rows by hand. COMPOSE_PROJECT_NAME in the environment picks the stack, as it does anywhere.
+ * requirement rows by hand. COMPOSE_PROJECT_NAME in the environment picks the stack, as it does anywhere, and the seed
+ * refuses to run unless it names a stack other than the default one, which holds the real index (see seedRefusal).
  *
- *   E2E_DB_NAME      the database to seed, default `app`
- *   E2E_COMPOSE_DIR  where `docker compose` runs, default the repository root
- *   E2E_SEED_JOBS    `always` to seed an index that holds real jobs too; the default refuses (see below)
+ *   COMPOSE_PROJECT_NAME  the throwaway stack's Compose project; required, and never `openelip`
+ *   E2E_DB_NAME           the database to seed, default `app`; a name ending in _test is a scratch one, no project needed
+ *   E2E_COMPOSE_DIR       where `docker compose` runs, default the repository root
+ *   E2E_SEED_JOBS         `always` to seed an index that holds real jobs too; the default refuses (see below)
  */
 const COMPOSE_DIR = process.env.E2E_COMPOSE_DIR ?? path.resolve(__dirname, "../../../..");
 const DB_NAME = process.env.E2E_DB_NAME ?? "app";
+const DEFAULT_PROJECT = "openelip"; // the project of the stack that holds the real index, when Compose is run in the repository
 
 const FIXTURE_BOARD_PREFIX = "e2e-fixture-"; // every invented board token starts with this
 const REAL_INDEX_THRESHOLD = 1000; // an index with this many jobs from other boards is a real one, not a throwaway stack
@@ -153,7 +156,25 @@ function psql(sql: string): string {
 /** The invented jobs' ids by external id (for example `inv-quokka-closed`), or null when the index is a real one and was left alone. */
 export type SeededJobs = Record<string, number>;
 
+/**
+ * Why the seed must not run against this stack, or null when it may. It writes as the database's superuser into the
+ * stack `docker compose` picks from COMPOSE_PROJECT_NAME, which defaults to `openelip`, the stack that holds the real
+ * index. So it runs only when the project is named and is a different one, or when the target database is a scratch
+ * one (its name ends in _test).
+ */
+export function seedRefusal(project: string | undefined, database: string): string | null {
+  if (database.endsWith("_test")) return null;
+  if (project && project !== DEFAULT_PROJECT) return null;
+  return (
+    `refusing to seed invented jobs into database "${database}" of the Compose project "${project || DEFAULT_PROJECT}", ` +
+    `which may hold the real index. Start a throwaway stack under its own project name and set COMPOSE_PROJECT_NAME to ` +
+    `it (and E2E_COMPOSE_DIR to its folder), or point E2E_DB_NAME at a database whose name ends in _test.`
+  );
+}
+
 export function seedJobs(): SeededJobs | null {
+  const refusal = seedRefusal(process.env.COMPOSE_PROJECT_NAME, DB_NAME);
+  if (refusal) throw new Error(refusal);
   const counted = psql(
     `SELECT count(*) FILTER (WHERE s.token NOT LIKE '${FIXTURE_BOARD_PREFIX}%'), count(*) FILTER (WHERE s.token LIKE '${FIXTURE_BOARD_PREFIX}%')
        FROM jobs j JOIN job_sources s ON s.id = j.source_id;`,
