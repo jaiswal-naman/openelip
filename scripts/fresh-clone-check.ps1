@@ -173,9 +173,11 @@ ThreadingHTTPServer(("0.0.0.0", 8000), Handler).serve_forever()
                 $env:MAILPIT_URL = "http://localhost:$MailPort"
                 $env:COMPOSE_PROJECT_NAME = $Project
                 $env:E2E_COMPOSE_DIR = $clone
+                # A throwaway stack: seed the invented jobs even after its worker has imported real boards, or the job specs skip.
+                $env:E2E_SEED_JOBS = 'always'
                 Run pnpm @('exec', 'playwright', 'test', 'tests/e2e', '--project=chromium') | Select-Object -Last 3 | Write-Host
             } finally {
-                'BASE_URL', 'MAILPIT_URL', 'COMPOSE_PROJECT_NAME', 'E2E_COMPOSE_DIR' | ForEach-Object { Remove-Item "Env:$_" -ErrorAction SilentlyContinue }
+                'BASE_URL', 'MAILPIT_URL', 'COMPOSE_PROJECT_NAME', 'E2E_COMPOSE_DIR', 'E2E_SEED_JOBS' | ForEach-Object { Remove-Item "Env:$_" -ErrorAction SilentlyContinue }
                 Pop-Location
             }
         }

@@ -28,6 +28,8 @@ jobs:
       # The job specs add invented jobs to the stack and refuse one whose Compose project is called openelip, the name the
       # repository folder gives by default. Every step uses this name: docker compose for the stack, Playwright to find it.
       COMPOSE_PROJECT_NAME: openelip_e2e
+      # A throwaway stack: seed the invented jobs even after its worker has imported real boards, or the job specs skip.
+      E2E_SEED_JOBS: always
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
