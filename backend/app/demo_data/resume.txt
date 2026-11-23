@@ -1,0 +1,4 @@
+Demo Candidate (invented: this resume is made up for the OpenElip demo and describes no real person)
+Backend engineer at Initech Demo, 2019 to 2024.
+Skills: Quillscript, PostgreSQL.
+Led a team of three engineers.
