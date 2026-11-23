@@ -7,7 +7,9 @@ import { useMemo, useState } from "react";
 import { ExternalLinkIcon } from "@/components/icons/icons";
 import { Button } from "@/components/ui/Button";
 import { buttonClass } from "@/components/ui/buttonStyles";
+import { LinkButton } from "@/components/ui/LinkButton";
 import { Pill } from "@/components/ui/Pill";
+import { ChatContext } from "@/features/chat/ChatContext";
 import { ErrorState } from "@/components/ui/States";
 import { LocalTime } from "@/components/ui/Viewer";
 import { arrangementsText, locationText, payText, safeHttpUrl, sourceLabel, unplacedWords } from "@/features/jobs/jobs";
@@ -86,6 +88,7 @@ export function MatchDetail({ match }: { match: MatchData }) {
 
   return (
     <article className={styles.detail}>
+      <ChatContext jobId={job.id} company={job.company_name} />
       <header className={styles.head}>
         <h1 className={`t-page ${styles.title}`}>{job.title}</h1>
         <p className={styles.company}>{job.company_name.trim() === "" ? "Company not stated" : job.company_name}</p>
@@ -128,6 +131,7 @@ export function MatchDetail({ match }: { match: MatchData }) {
               <ExternalLinkIcon />
             </a>
           )}
+          <LinkButton href={`/app/matches/${match.decision_id}/tailor`}>Tailor resume</LinkButton>
           <Button isPending={feedback.isPending} onPress={feedback.toggleSave}>
             {feedback.isSaved ? "Unsave" : "Save"}
           </Button>

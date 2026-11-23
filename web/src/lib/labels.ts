@@ -168,3 +168,42 @@ export const BRIEF_FREQUENCY_LABELS: Record<Schemas["BriefSettings"]["frequency"
   weekly: "Weekly",
   paused: "Paused",
 };
+
+// ---- Chat, tailoring and applications (CHT-01 to CHT-04, TLR-01 to TLR-03, APP-01, APP-02) -------------------------------
+
+/** Why a proposed edit was discarded before the person saw it (TLR-02). The API sends counts under these codes only. */
+export const DISCARD_REASON_LABELS: Record<string, string> = {
+  no_supporting_fact: "Not backed by a fact in your record",
+  changed_employer: "Changed an employer",
+  changed_title: "Changed a job title",
+  changed_date: "Changed a date",
+  changed_number: "Changed or added a number",
+  new_entity: "Added a skill, tool or name your record does not hold",
+  not_entailed: "A second check did not find your facts support it",
+};
+
+export const APPLICATION_STATUS_LABELS: Record<Schemas["ApplicationView"]["status"], string> = {
+  applied: "Applied",
+  interview: "Interview",
+  offer: "Offer",
+  rejected: "Rejected",
+  no_response: "No response",
+};
+
+/** How a reply ended when it did not simply finish (API.md 4.2 `message.end`). */
+export const FINISH_REASON_LABELS: Record<Schemas["MessageView"]["finish_reason"] & string, string> = {
+  complete: "",
+  length: "The reply stopped early because it reached a limit. Ask again to continue.",
+  stopped: "You stopped this reply.",
+  interrupted: "This reply was interrupted and is incomplete. Ask again.",
+};
+
+/** The packet's fixed questions. Four are always left for the candidate to answer. */
+export const PACKET_QUESTION_LABELS: Record<string, string> = {
+  why_role: "Why are you interested in this role?",
+  relevant_experience: "What experience of yours is most relevant to this role?",
+  work_authorization: "Are you authorised to work in the country of this job?",
+  expected_pay: "What pay do you expect?",
+  notice_period: "What is your notice period?",
+  start_date: "When could you start?",
+};
