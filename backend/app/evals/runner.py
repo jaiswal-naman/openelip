@@ -203,6 +203,15 @@ def _finish(
 
 def _start(name: str, run_config: dict[str, Any]) -> UUID:
     with db.transaction(role="worker") as conn:
+        if run_config["mode"] == "replay":
+            # A `dbname` query parameter overrides the URL's path, so refuse_unless_scratch's name check is not the
+            # whole story: the server's own answer decides before the run row, which cannot be deleted, is written.
+            where = conn.execute(text("SELECT current_database()")).scalar_one() or ""
+            if not SCRATCH_NAME.fullmatch(where):
+                raise NotAScratchDatabase(
+                    f"the worker login is connected to database {where!r}, which does not end in _test and is not "
+                    "'evals'. A replay writes a run that cannot be deleted: point it at a scratch database."
+                )
         run_id: UUID = conn.execute(
             text(
                 "INSERT INTO eval_runs (suite, git_sha, config) "
