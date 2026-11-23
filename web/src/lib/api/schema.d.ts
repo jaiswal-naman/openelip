@@ -50,6 +50,8 @@ export interface paths {
          * @description Search open, de-duplicated, listed jobs by keywords and by meaning. Results carry no fit claims.
          *
          *     meta.mode says what ran: hybrid falls back to keyword when no job has a vector yet or the model is unavailable.
+         *     With apply_constraints the caller's own hard constraints are applied (CHT-02) and meta.constraints_applied is true;
+         *     it needs a session (401 otherwise) and the person is always the session's, never a parameter.
          */
         get: operations["search_jobs_v1_jobs_get"];
         put?: never;
@@ -664,10 +666,364 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tailored-resumes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tailored */
+        get: operations["list_tailored_v1_tailored_resumes_get"];
+        put?: never;
+        /**
+         * Request Tailored
+         * @description Ask for a tailored resume. It is built in the background: poll the read until its status is ready or failed.
+         */
+        post: operations["request_tailored_v1_tailored_resumes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tailored-resumes/{tailored_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Tailored */
+        get: operations["read_tailored_v1_tailored_resumes__tailored_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tailored-resumes/{tailored_id}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide
+         * @description Approve or reject passed edits. An edit already decided is 409 `already_decided`; an id that is not a passed edit
+         *     of this tailored resume is 404.
+         */
+        post: operations["decide_v1_tailored_resumes__tailored_id__decisions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tailored-resumes/{tailored_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download
+         * @description The resume with approved edits only. Rendered on every request and stored nowhere.
+         */
+        get: operations["download_v1_tailored_resumes__tailored_id__file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Applications
+         * @description The tracker: every application with its whole status history, the most recently changed first.
+         */
+        get: operations["applications_v1_applications_get"];
+        put?: never;
+        /**
+         * Record Application
+         * @description Record that the person applied. One application per job: a second is 409 with state `application_exists`.
+         */
+        post: operations["record_application_v1_applications_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/applications/{application_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Status
+         * @description Record a new status (interview, offer, rejected, no response, or applied again) and when it happened. The same
+         *     status as the current one is 409 `same_status`; a time before the current status or in the future is 422.
+         */
+        post: operations["record_status_v1_applications__application_id__status_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/applications/packets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Packets
+         * @description The person's current packets, newest first; `job_id` limits them to one job.
+         */
+        get: operations["packets_v1_applications_packets_get"];
+        put?: never;
+        /**
+         * Request Packet
+         * @description Prepare the packet for a job. It is drafted in the background: poll the read until its status is ready or failed.
+         *     A second request for the job supersedes the first.
+         */
+        post: operations["request_packet_v1_applications_packets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/applications/packets/{packet_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Packet */
+        get: operations["read_packet_v1_applications_packets__packet_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/applications/packets/{packet_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Packet File
+         * @description The packet as a PDF (the only format). Rendered on every request and stored nowhere.
+         */
+        get: operations["packet_file_v1_applications_packets__packet_id__file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/chat/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Chat Sessions */
+        get: operations["list_chat_sessions_v1_chat_sessions_get"];
+        put?: never;
+        /**
+         * Open Chat Session
+         * @description Open a session. `onboarding` is accepted and stored and runs the same agent (decision 22).
+         */
+        post: operations["open_chat_session_v1_chat_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/chat/sessions/{session_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Chat Transcript
+         * @description The person's messages in order: their own, the agent's tool rows and its replies, each reply with the ledger rows
+         *     it cites and the record changes it proposed. `finish_reason` is null while a reply is still being written.
+         */
+        get: operations["chat_transcript_v1_chat_sessions__session_id__messages_get"];
+        put?: never;
+        /**
+         * Send Chat Message
+         * @description Send a message. 202 with the reply's id and where to stream it; the reply is written whether or not anyone
+         *     listens. 403 without the ai_processing consent, 503 with no model, 429 past 30 messages an hour, 409 while a
+         *     reply of theirs is still being written.
+         */
+        post: operations["send_chat_message_v1_chat_sessions__session_id__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/chat/sessions/{session_id}/messages/{message_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream Chat Reply
+         * @description The reply's events. A plain `def`: the ownership check and the database read run in the thread pool, then a
+         *     response whose body is an async generator takes over, so waiting for the next event holds no thread. 404 before the
+         *     first byte for a reply that is not the caller's.
+         */
+        get: operations["stream_chat_reply_v1_chat_sessions__session_id__messages__message_id__stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/chat/sessions/{session_id}/messages/{message_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop Chat Reply
+         * @description Stop a reply: it ends as `stopped` at the next model turn or tool call. A reply that has ended stays as it is.
+         */
+        post: operations["stop_chat_reply_v1_chat_sessions__session_id__messages__message_id__stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Accepted */
+        Accepted: {
+            /**
+             * User Message Id
+             * Format: uuid
+             */
+            user_message_id: string;
+            /**
+             * Message Id
+             * Format: uuid
+             */
+            message_id: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "running";
+            /** Stream Url */
+            stream_url: string;
+        };
+        /** AnswerView */
+        AnswerView: {
+            /** Question Id */
+            question_id: string;
+            /** Question */
+            question: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "drafted" | "candidate_must_answer";
+            /** Answer */
+            answer: string;
+            /** Fact Ids */
+            fact_ids: string[];
+            /** Removed Sentences */
+            removed_sentences: number;
+        };
+        /** ApplicationIn */
+        ApplicationIn: {
+            /** Job Id */
+            job_id: number;
+            /** Application Packet Id */
+            application_packet_id?: string | null;
+            /** Occurred At */
+            occurred_at?: string | null;
+        };
+        /**
+         * ApplicationView
+         * @description One application as the tracker shows it, and as the chat tool reads it.
+         */
+        ApplicationView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Job Id */
+            job_id: number;
+            /** Job Title */
+            job_title: string;
+            /** Company Name */
+            company_name: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "applied" | "interview" | "offer" | "rejected" | "no_response";
+            /**
+             * Status Changed At
+             * Format: date-time
+             */
+            status_changed_at: string;
+            /** Application Packet Id */
+            application_packet_id: string | null;
+            /** Events */
+            events: components["schemas"]["EventView"][];
+        };
         /** Body_unsubscribe_one_click_v1_briefs_unsubscribe_post */
         Body_unsubscribe_one_click_v1_briefs_unsubscribe_post: {
             /** List-Unsubscribe */
@@ -828,6 +1184,27 @@ export interface components {
             start: number;
             /** End */
             end: number;
+        };
+        /**
+         * CitationView
+         * @description A ledger row a reply rests on: the alias its text carries as [[d1]], and the real id of that kind.
+         */
+        CitationView: {
+            /** Alias */
+            alias: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "decision" | "job" | "fact" | "constraint";
+            /** Decision Id */
+            decision_id?: string | null;
+            /** Job Id */
+            job_id?: number | null;
+            /** Fact Id */
+            fact_id?: string | null;
+            /** Constraint Id */
+            constraint_id?: string | null;
         };
         /** CodeRequest */
         CodeRequest: {
@@ -1010,6 +1387,19 @@ export interface components {
             /** Evidence */
             evidence: components["schemas"]["EvidenceItem"][];
         };
+        /** DecisionIn */
+        DecisionIn: {
+            /**
+             * Edit Id
+             * Format: uuid
+             */
+            edit_id: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approved" | "rejected";
+        };
         /** DecisionView */
         DecisionView: {
             /** Decision Id */
@@ -1029,6 +1419,11 @@ export interface components {
             /** Evaluated */
             evaluated?: "on_request" | null;
             job: components["schemas"]["JobBrief"];
+        };
+        /** DecisionsIn */
+        DecisionsIn: {
+            /** Decisions */
+            decisions: components["schemas"]["DecisionIn"][];
         };
         /**
          * DocumentFacts
@@ -1119,6 +1514,55 @@ export interface components {
             text?: string | null;
             /** Lines */
             lines?: components["schemas"]["DocumentLine"][] | null;
+        };
+        /**
+         * EditView
+         * @description One passed edit, as the person sees it. A discarded edit has no view.
+         */
+        EditView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Ordinal */
+            ordinal: number;
+            /** Op */
+            op: string;
+            /** Section */
+            section: string;
+            /** Before Text */
+            before_text: string;
+            /** After Text */
+            after_text: string;
+            /** Supporting Fact Ids */
+            supporting_fact_ids: string[];
+            /** Decision */
+            decision: string;
+            /** Decided At */
+            decided_at: string | null;
+        };
+        /** Envelope[Accepted] */
+        Envelope_Accepted_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["Accepted"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[ApplicationView] */
+        Envelope_ApplicationView_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["ApplicationView"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
         };
         /** Envelope[BriefDetail] */
         Envelope_BriefDetail_: {
@@ -1263,6 +1707,17 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[PacketView] */
+        Envelope_PacketView_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["PacketView"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[PreferenceWritten] */
         Envelope_PreferenceWritten_: {
             /** Success */
@@ -1329,11 +1784,44 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[ReplyState] */
+        Envelope_ReplyState_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["ReplyState"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[SessionView] */
+        Envelope_SessionView_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["SessionView"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[Subprocessors] */
         Envelope_Subprocessors_: {
             /** Success */
             success: boolean;
             data: components["schemas"]["Subprocessors"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[TailoredView] */
+        Envelope_TailoredView_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["TailoredView"] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -1373,6 +1861,18 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[list[ApplicationView]] */
+        Envelope_list_ApplicationView__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: components["schemas"]["ApplicationView"][] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[list[BriefListItem]] */
         Envelope_list_BriefListItem__: {
             /** Success */
@@ -1403,6 +1903,30 @@ export interface components {
             success: boolean;
             /** Data */
             data: components["schemas"]["Job"][] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[list[MessageView]] */
+        Envelope_list_MessageView__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: components["schemas"]["MessageView"][] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[list[PacketView]] */
+        Envelope_list_PacketView__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: components["schemas"]["PacketView"][] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -1457,6 +1981,30 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[list[SessionView]] */
+        Envelope_list_SessionView__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: components["schemas"]["SessionView"][] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[list[TailoredView]] */
+        Envelope_list_TailoredView__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: components["schemas"]["TailoredView"][] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** ErrorBody */
         ErrorBody: {
             /** Code */
@@ -1467,6 +2015,24 @@ export interface components {
             details: {
                 [key: string]: unknown;
             };
+        };
+        /** EventView */
+        EventView: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "applied" | "interview" | "offer" | "rejected" | "no_response";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** EvidenceItem */
         EvidenceItem: {
@@ -1855,6 +2421,41 @@ export interface components {
             timezone?: string | null;
             brief?: components["schemas"]["BriefSettingsChange"] | null;
         };
+        /** MessageIn */
+        MessageIn: {
+            /** Text */
+            text: string;
+            /** Context Job Id */
+            context_job_id?: number | null;
+        };
+        /** MessageView */
+        MessageView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant" | "tool";
+            /** Text */
+            text: string | null;
+            /** Tool Name */
+            tool_name: string | null;
+            /** Citations */
+            citations: components["schemas"]["CitationView"][];
+            /** Proposals */
+            proposals: components["schemas"]["ProposalView"][];
+            /** Finish Reason */
+            finish_reason: ("complete" | "length" | "stopped" | "interrupted") | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /**
          * NewConstraint
          * @description kind is a plain string, not the enum: a kind the matcher cannot enforce is 422 constraint_not_enforceable with a
@@ -1906,6 +2507,45 @@ export interface components {
             value?: string | null;
             /** Weight */
             weight?: number | null;
+        };
+        /** PacketIn */
+        PacketIn: {
+            /** Job Id */
+            job_id: number;
+            /** Tailored Resume Id */
+            tailored_resume_id?: string | null;
+        };
+        /** PacketView */
+        PacketView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Job Id */
+            job_id: number;
+            /** Job Title */
+            job_title: string;
+            /** Company Name */
+            company_name: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "ready" | "failed" | "approved" | "superseded";
+            /** Tailored Resume Id */
+            tailored_resume_id: string | null;
+            /** Answers */
+            answers: components["schemas"]["AnswerView"][];
+            /** Cover Note */
+            cover_note: string | null;
+            /** Removed Sentences */
+            removed_sentences: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** Pay */
         Pay: {
@@ -2049,6 +2689,31 @@ export interface components {
              * Format: uuid
              */
             event_id: string;
+        };
+        /**
+         * ProposalView
+         * @description A record change the agent proposed. It is only a proposal until the candidate confirms event_id in the app.
+         */
+        ProposalView: {
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /** Entity */
+            entity: string;
+            /** Operation */
+            operation: string;
+            /** Before */
+            before: {
+                [key: string]: unknown;
+            } | null;
+            /** After */
+            after: {
+                [key: string]: unknown;
+            } | null;
+            /** Statement */
+            statement: string;
         };
         /**
          * RecordCitation
@@ -2302,6 +2967,16 @@ export interface components {
              */
             source: "resume" | "candidate_edit" | "confirmed_proposal";
         };
+        /** ReplyState */
+        ReplyState: {
+            /**
+             * Message Id
+             * Format: uuid
+             */
+            message_id: string;
+            /** Finish Reason */
+            finish_reason: ("complete" | "length" | "stopped" | "interrupted") | null;
+        };
         /** Requirement */
         Requirement: {
             /** Id */
@@ -2379,6 +3054,15 @@ export interface components {
             /** Currency */
             currency: string;
         };
+        /** SessionIn */
+        SessionIn: {
+            /**
+             * Kind
+             * @default open
+             * @enum {string}
+             */
+            kind: "onboarding" | "open";
+        };
         /** SessionRequest */
         SessionRequest: {
             /** Email */
@@ -2388,12 +3072,45 @@ export interface components {
             /** Timezone */
             timezone?: string | null;
         };
+        /** SessionView */
+        SessionView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "onboarding" | "open";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Last Message At */
+            last_message_at: string | null;
+        };
         /** Span */
         Span: {
             /** Start */
             start: number;
             /** End */
             end: number;
+        };
+        /** StatusIn */
+        StatusIn: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "applied" | "interview" | "offer" | "rejected" | "no_response";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
         };
         /** Subprocessor */
         Subprocessor: {
@@ -2414,6 +3131,47 @@ export interface components {
             items: components["schemas"]["Subprocessor"][];
             /** Outside Copies Statement */
             outside_copies_statement: string;
+        };
+        /** TailoredIn */
+        TailoredIn: {
+            /** Job Id */
+            job_id: number;
+        };
+        /** TailoredView */
+        TailoredView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Job Id */
+            job_id: number;
+            /** Job Title */
+            job_title: string;
+            /** Company Name */
+            company_name: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "generating" | "ready" | "failed";
+            /** Discarded Count */
+            discarded_count: number;
+            /** Discarded By Reason */
+            discarded_by_reason: {
+                [key: string]: number;
+            };
+            /** Prompt Version */
+            prompt_version: string | null;
+            /** Record Version */
+            record_version: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Edits */
+            edits: components["schemas"]["EditView"][];
         };
         /** TodayMatches */
         TodayMatches: {
@@ -2514,6 +3272,8 @@ export interface operations {
                 limit?: number;
                 cursor?: string | null;
                 mode?: "hybrid" | "keyword";
+                /** @description Signed in only: leave out jobs that break your hard constraints. */
+                apply_constraints?: boolean;
             };
             header?: never;
             path?: never;
@@ -3711,6 +4471,582 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_Unsubscribed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tailored_v1_tailored_resumes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_TailoredView__"];
+                };
+            };
+        };
+    };
+    request_tailored_v1_tailored_resumes_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TailoredIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_TailoredView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_tailored_v1_tailored_resumes__tailored_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tailored_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_TailoredView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_v1_tailored_resumes__tailored_id__decisions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                tailored_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_TailoredView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_v1_tailored_resumes__tailored_id__file_get: {
+        parameters: {
+            query: {
+                format: "pdf" | "docx";
+            };
+            header?: never;
+            path: {
+                tailored_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    applications_v1_applications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_ApplicationView__"];
+                };
+            };
+        };
+    };
+    record_application_v1_applications_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ApplicationView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_status_v1_applications__application_id__status_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatusIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ApplicationView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    packets_v1_applications_packets_get: {
+        parameters: {
+            query?: {
+                job_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_PacketView__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_packet_v1_applications_packets_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PacketIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PacketView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_packet_v1_applications_packets__packet_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                packet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PacketView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    packet_file_v1_applications_packets__packet_id__file_get: {
+        parameters: {
+            query: {
+                format: "pdf";
+            };
+            header?: never;
+            path: {
+                packet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_chat_sessions_v1_chat_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_SessionView__"];
+                };
+            };
+        };
+    };
+    open_chat_session_v1_chat_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_SessionView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    chat_transcript_v1_chat_sessions__session_id__messages_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_MessageView__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_chat_message_v1_chat_sessions__session_id__messages_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MessageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Accepted_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_chat_reply_v1_chat_sessions__session_id__messages__message_id__stream_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "last-event-id"?: string | null;
+            };
+            path: {
+                session_id: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server-sent events (API.md 4.2) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description The reply is finished and the client has its end: stop reconnecting */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_chat_reply_v1_chat_sessions__session_id__messages__message_id__stop_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                session_id: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ReplyState_"];
                 };
             };
             /** @description Validation Error */
