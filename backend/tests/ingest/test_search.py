@@ -19,7 +19,7 @@ from sqlalchemy import text
 
 from app.ingest import embedding, search
 from app.platform import log
-from app.platform.llm.embed import EmbeddingUnavailable
+from app.platform.llm.embed import MODEL_ID, EmbeddingUnavailable
 
 CORPUS = json.loads((Path(__file__).parent / "fixtures" / "semantic_corpus.json").read_text(encoding="utf-8"))
 NOW = datetime(2030, 1, 1, 10, 30, tzinfo=timezone.utc)
@@ -39,8 +39,9 @@ def literal(vector):
     return embedding.vector_literal(vector)
 
 
-def embedded(vector):
-    return {"embedding": literal(vector), "embedding_model": "test-model"}
+def embedded(vector, model=MODEL_ID):
+    """Columns for a job that already has a vector, labelled with the model that made it."""
+    return {"embedding": literal(vector), "embedding_model": model}
 
 
 @pytest.fixture
@@ -298,6 +299,22 @@ def test_embedded_jobs_that_cannot_be_searched_do_not_count_as_embeddings(conn, 
     add_job(conn, source, 2, title="Alpha", is_listed=False, **embedded(vec()))
 
     assert run(conn, q="alpha", mode="hybrid").mode == "keyword"
+
+
+def test_vectors_made_by_another_model_are_never_compared_with_the_query(conn, query_vector):
+    """One model serves an instance. If EMBEDDING_MODEL changed and the rows were not re-embedded, their vectors and the
+    query's would live in different spaces, so those rows are left out of the vector list instead of ranked as noise."""
+    source = add_source(conn)
+    ours = add_job(conn, source, 1, title="Gamma", **embedded(vec(0.5)))
+    add_job(
+        conn, source, 2, title="Delta", **embedded(vec(0.0), model="some-other-model")
+    )  # nearer, but not comparable
+
+    assert ids(run(conn, q="unmatched words", mode="hybrid")) == [ours]
+
+    conn.execute(text("UPDATE jobs SET embedding_model = 'some-other-model'"))
+    page = run(conn, q="unmatched words", mode="hybrid")
+    assert (page.mode, ids(page)) == ("keyword", [])  # no vector of this model: honest keyword mode
 
 
 def test_when_the_model_is_unavailable_a_hybrid_request_falls_back_to_keywords(conn, monkeypatch):

@@ -24,7 +24,7 @@ from typing import Any
 from sqlalchemy import Connection, Row, TextClause, text
 
 from app.platform import log
-from app.platform.llm.embed import EmbeddingUnavailable, embed_query
+from app.platform.llm.embed import MODEL_ID, EmbeddingUnavailable, embed_query
 
 from .embedding import vector_literal
 
@@ -51,7 +51,7 @@ JOB_COLUMNS = f"""j.id, j.title, j.company_name, j.location_raw, j.country, j.ci
 DENSE = f"""dense AS (
     SELECT id, row_number() OVER (ORDER BY distance, id) AS r
       FROM (SELECT e.id, e.embedding <=> CAST(:vector AS vector) AS distance
-              FROM eligible e WHERE e.embedding IS NOT NULL
+              FROM eligible e WHERE e.embedding IS NOT NULL AND e.embedding_model = :model
              ORDER BY distance, e.id LIMIT {LIST_DEPTH}) nearest
 )"""
 SPARSE = f"""sparse AS (
@@ -137,10 +137,11 @@ def _eligible(country: str | None, city: str | None, remote: bool | None) -> tup
 
 
 def _query_vector(conn: Connection, where: str, values: dict[str, Any], query: str) -> list[float] | None:
-    """The query's vector, or None when meaning cannot be searched: nothing eligible is embedded yet (the model is not
-    even loaded then), or the model is not available here."""
+    """The query's vector, or None when meaning cannot be searched: no eligible job has a vector of this model yet (the
+    model is not even loaded then), or the model is not available here."""
     embedded = conn.execute(
-        text(f"SELECT EXISTS (SELECT 1 FROM jobs j WHERE {where} AND j.embedding IS NOT NULL)"), values
+        text(f"SELECT EXISTS (SELECT 1 FROM jobs j WHERE {where} AND j.embedding_model = :model)"),
+        {**values, "model": MODEL_ID},
     ).scalar_one()
     if not embedded:
         return None
@@ -153,7 +154,7 @@ def _query_vector(conn: Connection, where: str, values: dict[str, Any], query: s
 def _ranked(where: str, *, dense: bool, after: bool) -> TextClause:
     lists = ["dense", "sparse"] if dense else ["sparse"]
     union = " UNION ALL ".join(f"SELECT id, r FROM {name}" for name in lists)
-    columns = "j.id, j.search, j.embedding" if dense else "j.id, j.search"
+    columns = "j.id, j.search, j.embedding, j.embedding_model" if dense else "j.id, j.search"
     ctes = [f"eligible AS MATERIALIZED (SELECT {columns} FROM jobs j WHERE {where})"]
     if dense:
         ctes.append(DENSE)
@@ -247,7 +248,7 @@ def search(
     else:
         values["query"] = query
         if vector is not None:
-            values["vector"] = vector_literal(vector)
+            values["vector"], values["model"] = vector_literal(vector), MODEL_ID
         statement = _ranked(where, dense=vector is not None, after=after is not None)
     rows = conn.execute(statement, values).all()
 

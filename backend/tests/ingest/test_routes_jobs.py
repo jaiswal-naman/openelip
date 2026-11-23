@@ -12,6 +12,7 @@ from sqlalchemy import text
 
 from app.ingest import embedding, search
 from app.main import create_app
+from app.platform.llm.embed import MODEL_ID
 
 NOW = datetime(2030, 1, 1, 10, 30, tzinfo=timezone.utc)
 OLD_JOB_KEYS = {
@@ -64,8 +65,8 @@ def add_job(c, source, n, **over):
 
 def embed_by_hand(c, job_id, vector):
     c.execute(
-        text("UPDATE jobs SET embedding = CAST(:v AS vector), embedding_model = 'test-model' WHERE id = :id"),
-        {"v": embedding.vector_literal(vector), "id": job_id},
+        text("UPDATE jobs SET embedding = CAST(:v AS vector), embedding_model = :model WHERE id = :id"),
+        {"v": embedding.vector_literal(vector), "model": MODEL_ID, "id": job_id},
     )
 
 
