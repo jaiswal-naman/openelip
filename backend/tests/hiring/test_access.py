@@ -40,8 +40,13 @@ def staff(conn: Connection):
     return org, people
 
 
-def request_as(conn: Connection, person) -> None:
-    act_as(conn, "app_api", person)  # the API role, whose row-level security applies to what the helpers read
+def request_as(conn: Connection, person, *, rls: bool = True) -> None:
+    """Act as the person. With rls the API role is taken, so row-level security limits what the helpers can read;
+    without it only the person is set, so the helpers' own filters are all that stand between a caller and the rows."""
+    if rls:
+        act_as(conn, "app_api", person)
+    else:
+        conn.execute(text("SELECT set_config('app.user_id', :u, true)"), {"u": str(person) if person else ""})
 
 
 @pytest.mark.parametrize("role", ["owner", "admin", "member"])
@@ -51,8 +56,9 @@ def test_a_member_is_told_their_role(conn, staff, role):
     assert access.require_member(conn, org) == role
 
 
+@pytest.mark.parametrize("rls", [True, False], ids=["under row-level security", "on their own"])
 @pytest.mark.parametrize("who", ["a stranger", "an invited person", "a removed member", "nobody signed in"])
-def test_anyone_who_is_not_an_active_member_finds_no_such_organization(conn, staff, who):
+def test_anyone_who_is_not_an_active_member_finds_no_such_organization(conn, staff, who, rls):
     org, people = staff
     person = {
         "a stranger": lambda: make_user(conn),
@@ -60,13 +66,17 @@ def test_anyone_who_is_not_an_active_member_finds_no_such_organization(conn, sta
         "a removed member": lambda: people["member"],
         "nobody signed in": lambda: None,
     }[who]()
-    if who == "an invited person":
+    if who == "an invited person":  # the address is invited, and a row names the person too without being a membership
         invite(conn, org, "invited@example.test", "admin")
+        conn.execute(
+            text("INSERT INTO org_members (organization_id, user_id, status) VALUES (:o, :u, 'invited')"),
+            {"o": org, "u": person},
+        )
     if who == "a removed member":
         conn.execute(
             text("UPDATE org_members SET status = 'removed', removed_at = now() WHERE user_id = :u"), {"u": person}
         )
-    request_as(conn, person)
+    request_as(conn, person, rls=rls)
     for check in (access.require_member, access.require_admin):
         with pytest.raises(ApiError) as caught:
             check(conn, org)

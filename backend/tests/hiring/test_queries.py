@@ -48,10 +48,16 @@ def build_world(conn: Connection) -> AnnsWorld:
     return AnnsWorld(ann, halden, birch, elm, elm_invitation)
 
 
-def test_my_organizations_lists_the_active_memberships_and_the_open_invitations_of_the_person(conn):
+@pytest.mark.parametrize("rls", [True, False], ids=["under row-level security", "on its own filters"])
+def test_my_organizations_lists_the_active_memberships_and_the_open_invitations_of_the_person(conn, rls):
+    """Run both ways: row-level security alone would hide a removed membership, so without it the query's own
+    `status = 'active'` is what keeps Cedar Demo out of the list."""
     world = build_world(conn)
     conn.execute(text("UPDATE organizations SET is_synthetic = true WHERE id = :o"), {"o": world.halden})
-    act_as(conn, "app_api", world.person)
+    if rls:
+        act_as(conn, "app_api", world.person)
+    else:
+        conn.execute(text("SELECT set_config('app.user_id', :u, true)"), {"u": str(world.person)})
     memberships, invitations = hiring.my_organizations(conn, world.person)
     assert memberships == [
         Membership(world.birch, "Birch Demo", "admin", False),
