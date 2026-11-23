@@ -1,0 +1,17 @@
+[
+  {
+    "answers": [
+      {
+        "question_id": "why_role",
+        "status": "drafted",
+        "sentences": [{"text": "I cut report time by 90 percent.", "facts": ["f2"], "dossier_claims": []}]
+      },
+      {
+        "question_id": "relevant_experience",
+        "status": "drafted",
+        "sentences": [{"text": "I wrote SQL reports.", "facts": ["f99"], "dossier_claims": []}]
+      }
+    ],
+    "note": [{"text": "I have used Terraform at scale.", "facts": [], "dossier_claims": []}]
+  }
+]

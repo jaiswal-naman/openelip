@@ -311,8 +311,17 @@ def test_the_chat_tool_reads_the_same_views_the_route_serialises(world):
         assert apply_api.list_applications(conn, uuid4()) == []
 
 
-def test_the_interface_other_modules_may_import_is_the_two_names_the_chat_tool_needs():
-    assert set(apply_api.__all__) == {"ApplicationView", "list_applications"}
+def test_the_interface_other_modules_may_import_keeps_the_names_the_chat_tool_needs():
+    assert set(apply_api.__all__) == {
+        "ApplicationView",
+        "list_applications",
+        # appended by plan 05-05: the packet functions and view
+        "PacketView",
+        "current_for_job",
+        "draft_packet",
+        "get_packet",
+        "request_packet",
+    }
 
 
 # ---- who may call --------------------------------------------------------------------------------------------------

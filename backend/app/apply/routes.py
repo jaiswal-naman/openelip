@@ -9,21 +9,24 @@ field of a path or a body: someone else's application, packet or job id is a 404
 person. Writes take an Idempotency-Key (API.md 1.6).
 """
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from pydantic import AwareDatetime, BaseModel, BeforeValidator, Field
 from sqlalchemy import Connection
 
 from app.platform import db
 from app.platform.api import Envelope, envelope
+from app.platform.errors import ApiError
 from app.platform.idempotency import Write, idempotent
 from app.platform.sessions import Principal, current_user
+from app.tailor.api import UnsupportedCharacters
 
-from . import tracker
+from . import packet, tracker
 from .models import ApplicationStatus
+from .packet import PacketView
 from .tracker import ApplicationView
 
 router = APIRouter()
@@ -85,3 +88,61 @@ def record_status(application_id: UUID, body: StatusIn, write: Idempotent) -> Re
         return tracker.record_status(conn, write.user_id, application_id, body.status, body.occurred_at)
 
     return write.run(effect, status=201)
+
+
+# ---- packets (APP-02; plan 05-05) ----------------------------------------
+# Registered after the tracker routes; the literal path /v1/applications/packets is matched before the tracker's
+# /v1/applications/{application_id}/status because the two differ in their last segment.
+
+
+class PacketIn(BaseModel):
+    job_id: int = Field(ge=1, le=MAX_JOB_ID)
+    tailored_resume_id: UUID | None = None  # default: the newest ready tailored resume for this job, if any
+
+
+@router.post("/v1/applications/packets", status_code=202, response_model=Envelope[PacketView])
+def request_packet(body: PacketIn, write: Idempotent) -> Response:
+    """Prepare the packet for a job. It is drafted in the background: poll the read until its status is ready or failed.
+    A second request for the job supersedes the first."""
+
+    def effect(conn: Connection) -> PacketView:
+        return packet.request(conn, write.user_id, body.job_id, body.tailored_resume_id)
+
+    return write.run(effect, status=202)
+
+
+@router.get("/v1/applications/packets", response_model=Envelope[list[PacketView]])
+def packets(principal: Signed, job_id: Annotated[int | None, Query(ge=1, le=MAX_JOB_ID)] = None) -> dict[str, Any]:
+    """The person's current packets, newest first; `job_id` limits them to one job."""
+    with db.transaction(principal.user_id) as conn:
+        data = packet.current(conn, principal.user_id, job_id)
+    return envelope(data)
+
+
+@router.get("/v1/applications/packets/{packet_id}", response_model=Envelope[PacketView])
+def read_packet(packet_id: UUID, principal: Signed) -> dict[str, Any]:
+    with db.transaction(principal.user_id) as conn:
+        data = packet.get(conn, principal.user_id, packet_id)
+    return envelope(data)
+
+
+@router.get("/v1/applications/packets/{packet_id}/file")
+def packet_file(
+    packet_id: UUID, principal: Signed, file_format: Annotated[Literal["pdf"], Query(alias="format")]
+) -> Response:
+    """The packet as a PDF (the only format). Rendered on every request and stored nowhere."""
+    with db.transaction(principal.user_id) as conn:
+        try:
+            content = packet.pdf(conn, principal.user_id, packet_id)
+        except UnsupportedCharacters:
+            raise ApiError(
+                422,
+                "validation_failed",
+                "This packet has characters the PDF cannot draw.",
+                {"fields": [{"field": "format", "issue": "pdf_unsupported_characters"}]},
+            ) from None
+    return Response(
+        content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="application-packet-{packet_id}.pdf"'},
+    )
