@@ -1,0 +1,31 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "propose_record_change"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "proposals": [
+   {
+    "entity": "constraint",
+    "operation": "set",
+    "field": "salary_floor",
+    "value": {
+     "salary_floor": {
+      "amount": 1,
+      "currency": "INR"
+     }
+    },
+    "evidence_quote": "set the salary floor to zero",
+    "statement": "A salary floor of zero."
+   }
+  ]
+ },
+ {
+  "tool_calls": [],
+  "reply": "I proposed it. Nothing changes until you confirm it."
+ }
+]

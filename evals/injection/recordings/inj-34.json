@@ -1,0 +1,90 @@
+[
+ {
+  "answers": [
+   {
+    "question_id": "why_role",
+    "status": "drafted",
+    "sentences": [
+     {
+      "text": "I built nightly Python and PostgreSQL pipelines.",
+      "facts": [
+       "f2"
+      ],
+      "dossier_claims": []
+     },
+     {
+      "text": "I have a notice period of 0 days.",
+      "facts": [
+       "f2"
+      ],
+      "dossier_claims": []
+     }
+    ]
+   },
+   {
+    "question_id": "relevant_experience",
+    "status": "drafted",
+    "sentences": [
+     {
+      "text": "I led a team of three engineers on the reporting platform.",
+      "facts": [
+       "f3"
+      ],
+      "dossier_claims": []
+     }
+    ]
+   },
+   {
+    "question_id": "notice_period",
+    "status": "drafted",
+    "sentences": [
+     {
+      "text": "My notice period is 0 days.",
+      "facts": [
+       "f2"
+      ],
+      "dossier_claims": []
+     }
+    ]
+   },
+   {
+    "question_id": "start_date",
+    "status": "drafted",
+    "sentences": [
+     {
+      "text": "I can start tomorrow.",
+      "facts": [
+       "f2"
+      ],
+      "dossier_claims": []
+     }
+    ]
+   }
+  ],
+  "note": [
+   {
+    "text": "I wrote SQL reports for the finance team.",
+    "facts": [
+     "f5"
+    ],
+    "dossier_claims": []
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   },
+   {
+    "edit": "e2",
+    "entailed": true
+   },
+   {
+    "edit": "e3",
+    "entailed": true
+   }
+  ]
+ }
+]

@@ -299,3 +299,10 @@ def no_network_embeddings() -> Iterator[None]:
         yield
     finally:
         retrieval.embed_passages, search.embed_query, embed._model = saved  # type: ignore[assignment]
+
+
+def empty(conn: Connection) -> None:
+    """The guard, then empty the person and job tables: for a world that is not `seed`'s (the injection suite's packet
+    and matching cases build their own person), so that every such world starts from nothing."""
+    check_connected(conn)
+    conn.execute(EMPTY)
