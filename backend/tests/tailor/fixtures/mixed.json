@@ -1,0 +1,14 @@
+[
+  {
+    "edits": [
+      {"op": "reorder", "target": null, "section": "skills", "after_text": "", "supporting": [], "requirements": ["r1"], "order": ["f11", "f9", "f10"]},
+      {"op": "remove", "target": "f5", "section": "experience", "after_text": "", "supporting": ["f5"], "requirements": [], "order": []},
+      {"op": "add_from_fact", "target": null, "section": "skills", "after_text": "Quillscript", "supporting": ["f14"], "requirements": [], "order": []},
+      {"op": "rephrase", "target": "f2", "section": "experience", "after_text": "Built and ran Python services for payments", "supporting": ["f2"], "requirements": ["r1"], "order": []},
+      {"op": "rephrase", "target": "f3", "section": "experience", "after_text": "Cut report build time by 40%", "supporting": ["f3"], "requirements": [], "order": []},
+      {"op": "rephrase", "target": "f4", "section": "experience", "after_text": "Led the checkout migration", "supporting": ["f4"], "requirements": [], "order": []},
+      {"op": "rephrase", "target": "f7", "section": "experience", "after_text": "Wrote weekly SQL reports for two teams using Kubernetes", "supporting": ["f7"], "requirements": ["r2"], "order": []}
+    ]
+  },
+  {"items": [{"edit": "e1", "entailed": true}, {"edit": "e2", "entailed": false}]}
+]
