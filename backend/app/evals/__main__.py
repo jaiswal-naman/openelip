@@ -50,6 +50,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     except runner.ReplayNeedsFake:
         print("run: a replay needs LLM_PROVIDER=fake; this command never calls a real model", file=sys.stderr)
         return 2
+    except runner.NotAScratchDatabase as refusal:
+        print(f"run: {refusal}", file=sys.stderr)
+        return 2
     except runner.LiveNotSupported:
         print(f"run: {args.suite} has no live mode", file=sys.stderr)
         return 2

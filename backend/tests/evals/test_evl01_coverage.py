@@ -239,9 +239,10 @@ def test_the_stored_prompt_versions_of_the_three_older_suites_are_the_current_pr
     # every task the current code sends is listed: a new prompt cannot slip in without a recording
     assert {t for suite, tasks in manifest.items() if suite != "note" for t in tasks} == set(older_current_versions())
     baseline = json.loads((EVALS / "requirement_extraction/baseline.json").read_text(encoding="utf-8"))
-    assert baseline["runs"]["replay"]["config"]["prompt_version"] == manifest["requirement_extraction"][
-        "job.requirements.extract"
-    ]
+    assert (
+        baseline["runs"]["replay"]["config"]["prompt_version"]
+        == manifest["requirement_extraction"]["job.requirements.extract"]
+    )
 
 
 @pytest.mark.parametrize("task", ["resume.facts.roles", "job.requirements.extract", "match.evidence.score"])
