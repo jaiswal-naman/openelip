@@ -489,3 +489,23 @@ def test_the_bars_are_dated_written_before_any_run_and_say_what_a_replay_does_no
     assert "not a model quality number" in flat and MARKER in flat and "invariant 8" in flat
     guideline = (SUITE_DIR / "GUIDELINE.md").read_text(encoding="utf-8")
     assert MARKER in guideline and "Decisions made while labelling" in guideline
+
+
+# ---- every run the README cites is a committed file (05 fix A5) ----------------------------------------
+
+
+def test_every_run_id_the_readme_links_is_a_committed_file_with_its_figures():
+    suite = EVALS / "tailoring_integrity"
+    readme = (suite / "README.md").read_text(encoding="utf-8")
+    linked = re.findall(r"\(runs/([0-9a-f-]{36})\.json\)", readme)
+    assert len(linked) == 3
+    expected = {"clean": (0, 84, 30), "degraded_entail": (15, 84, 17), "verifier_check_off": (32, 70, 9)}
+    seen = {}
+    for run_id in linked:
+        run = json.loads((suite / "runs" / f"{run_id}.json").read_text(encoding="utf-8"))
+        metrics = run["metrics"]
+        seen[run["kind"]] = (metrics["tailor_unsupported_passed"], metrics["supported_kept"], metrics["passed"])
+        assert run["run_id"] == run_id and run["suite"] == "tailoring_integrity" and run["git_sha"]
+        assert run["prompt_versions"] == {"tailor.propose": "3309c398592d", "verify.entail": "40dbc09c623e"}
+        assert "after_text" not in json.dumps(run) and "before_text" not in json.dumps(run)  # no text of any resume
+    assert seen == expected
