@@ -81,7 +81,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [harness_smoke, resume_extraction, requirement_extraction, evidence_faithfulness, constraint_property, tailoring_integrity, chat, record_proposals, injection, role_intake, dossier, agent_drafts] # later phases add their gold sets here
+        suite: [harness_smoke, resume_extraction, requirement_extraction, evidence_faithfulness, constraint_property, tailoring_integrity, chat, record_proposals, injection, role_intake, dossier, agent_drafts, guardian] # later phases add their gold sets here
     services:
       db:
         image: pgvector/pgvector:pg17
