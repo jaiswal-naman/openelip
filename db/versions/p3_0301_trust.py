@@ -9,15 +9,19 @@ login_codes) never made it. The five enums are guarded the same way. Foreign key
 (consents.organization_id and role_id, audit_log.organization_id and agent_token_id) are plain nullable columns until
 the phase that creates the target table adds the constraint (DATA_MODEL 3.14).
 
-Additive only. The downgrade drops what this revision made; at the Phase 1 head none of it exists, so it restores
-that state.
+Additive only. The downgrade drops what this revision made, so it restores the state of the revision below it.
+
+Phase 2 (the job index) and Phase 3 were built side by side, both starting at 0002_platform. They are joined in one
+straight line, with this revision on top of p2_0201_job_index, and not by an Alembic merge revision: with two branches
+Alembic does not fix the order in which it downgrades them, and the job index's downgrade can drop its shared types
+only after the record tables that use them are gone. In a line the order is always the same.
 """
 
 import sqlalchemy as sa
 from alembic import op
 
 revision = "p3_0301_trust"
-down_revision = "0002_platform"
+down_revision = "p2_0201_job_index"
 branch_labels = None
 depends_on = None
 
