@@ -1,6 +1,7 @@
 """Queue handlers for the job index: ingest.fetch (one source), ingest.dedupe, ingest.discover (ARCHITECTURE 12.4),
-ingest.fetch_sweep, which queues the refresh every six hours (IDX-07), and ingest.embed_sweep, which gives every new or
-changed job its vector every five minutes (IDX-04).
+ingest.fetch_sweep, which queues the refresh every six hours (IDX-07), ingest.embed_sweep, which gives every new or
+changed job its vector every five minutes (IDX-04), and ingest.extract with its 15-minute ingest.extract_sweep, which
+read each job's requirements once per content version when a model can be called (IDX-08, see extraction.py).
 
 Each source is its own job, so a slow or failing board delays only itself and a repeat of the same slot is a no-op
 (unique key ingest.fetch:{source_id}:{slot}). A fetch that fails or comes back empty is not a failed job: it is a
