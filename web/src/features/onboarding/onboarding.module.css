@@ -1,0 +1,101 @@
+/* Onboarding: one step per screen, with the Back and Continue bar kept in reach on a phone (FRONTEND_UI 3.2). Tokens only. */
+
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+  max-width: 56rem;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* The heading takes focus when the step changes, so a screen reader starts at the top of the new step; it is not a control */
+.title:focus {
+  outline: none;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  align-items: flex-start;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-12);
+}
+
+.note {
+  max-width: var(--measure);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.drop {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-8);
+  width: min(100%, var(--measure));
+  padding: var(--sp-24);
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  width: min(100%, var(--measure));
+}
+
+.problem {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+/* Back and Continue. On a phone the bar sticks to the bottom of the screen; the page reserves room for it. */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-12);
+  padding-block: var(--sp-12);
+  border-block-start: 1px solid var(--line);
+}
+
+@media (max-width: 39.99rem) {
+  .bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding-inline: var(--sp-16);
+    margin-inline: calc(-1 * var(--sp-16));
+    background: var(--bg);
+  }
+}
+
+.counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8) var(--sp-24);
+}
