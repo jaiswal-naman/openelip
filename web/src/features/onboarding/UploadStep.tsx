@@ -69,7 +69,8 @@ export function UploadStep({ documentId, onDocumentChange, onDone, onSkip, pollM
   const reading = useQuery({
     ...documentQuery(api, documentId ?? ""),
     enabled: documentId !== null,
-    refetchInterval: (query) => (["succeeded", "failed"].includes(query.state.data?.status ?? "") ? false : pollMs),
+    // keep asking until it is read or has failed; a call that itself failed is shown with Retry, not hammered every few seconds
+    refetchInterval: (query) => (query.state.status === "error" || ["succeeded", "failed"].includes(query.state.data?.status ?? "") ? false : pollMs),
   });
 
   function pick(file: File | undefined) {

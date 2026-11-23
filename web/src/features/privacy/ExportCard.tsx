@@ -25,7 +25,8 @@ export function ExportCard({ pollMs = POLL_MS }: { pollMs?: number }) {
   const request = useQuery({
     ...requestQuery(api, requestId ?? ""),
     enabled: requestId !== null,
-    refetchInterval: (query) => (["succeeded", "failed"].includes(query.state.data?.status ?? "") ? false : pollMs),
+    // keep asking until it is read or has failed; a call that itself failed is shown with Retry, not hammered every few seconds
+    refetchInterval: (query) => (query.state.status === "error" || ["succeeded", "failed"].includes(query.state.data?.status ?? "") ? false : pollMs),
   });
 
   const status = request.data?.status;
