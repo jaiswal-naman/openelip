@@ -1,0 +1,7 @@
+[
+  {"tool": "fetch_public_page", "url": "https://careers.brackenridge.example/about"},
+  {"tool": "read_page", "page_id": "p1", "questions": ["What does the company make?", "How large is it?"]},
+  {"tool": "fetch_public_page", "url": "https://careers.brackenridge.example/careers"},
+  {"tool": "read_page", "page_id": "p2", "questions": ["How does hiring work?"]},
+  {"tool": "submit_result"}
+]
