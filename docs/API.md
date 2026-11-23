@@ -549,7 +549,7 @@ Each person sees only their own work. There are no instance-wide views in v1 (ow
 | GET | `/v1/control/runs` | The caller's agent runs with status; filter `campaign_id`, `status`, `agent_role` | C | GRD-06 | 7 |
 | GET | `/v1/control/recorder` | Flight-recorder timeline: every entry of a campaign or run in order (`?campaign_id=` or `?run_id=`) with agent role, kind, status, cost and evidence counts | C | GRD-03, GRD-02 | 7 |
 | GET | `/v1/control/recorder/{entry_id}` | One entry in full for replay: input references, cited evidence, model, tokens, cost, policy decision, Guardian checks with reasons, payload | C | GRD-03 | 7 |
-| GET | `/v1/control/stream` | The per-person live event stream (section 4.3) | U | GRD-06, HIR-06, TWN-04 | 7 |
+| GET | `/v1/control/stream` | The per-person live event stream (section 4.3) | U | GRD-06, HIR-06, TWN-04 | 8 |
 | POST | `/v1/control/actions/{action_id}/undo` | Undo a follow-up email still in its undo window (it becomes `cancelled`) | C | GRD-04 | 7 |
 | GET | `/v1/control/costs` | The caller's model cost grouped by `month` or `task`, read from the cost ledger; each row also lists the models its calls used (`provider/model_name`) and their average latency in milliseconds (`group_by=campaign` is added in Phase 7) | C | GRD-05, PLT-04 | 1 |
 | GET | `/v1/control/evals` | The scoreboard: the latest recorded run per suite and scenario; every number carries its `eval_run_id` | U | EVL-04, EVL-05 | E |
@@ -1998,7 +1998,9 @@ data: {"approval_id":"a9b8c7d6-5e4f-4a3b-9c2d-1e0f9a8b7c63","campaign_id":"3a7b9
 | `twin.message` | `session_id`, `message_id`, `author`, `answer_kind` | A new Twin question or answer (TWN-04) |
 | `error` | `code`, `message`, `is_retryable` | The stream failed |
 
-**Ids and reconnection.** Events that come from a flight-recorder row (`recorder.step` and `campaign.stage`) carry `id:` set to that row's `agent_actions.id`, so the client can drop an entry it already holds. Other events carry no id. The server keeps no replay buffer and ignores `Last-Event-ID` on this stream: every connect and reconnect starts with `snapshot`, and a screen that shows a list (the recorder, approvals, introductions) refetches it. Identity values can commit out of order, so replaying "everything after this id" would not be reliable anyway.
+**Ids and reconnection.** `recorder.step` carries `id:` set to the `agent_actions.id` of its row, so the client can drop an entry it already holds. `campaign.stage` and every other event carry no id (Phase 8: a stage change has no row id of its own to send). A `campaign.stage` for a campaign created after the snapshot has `from: null`. The server keeps no replay buffer and ignores `Last-Event-ID` on this stream: every connect and reconnect starts with `snapshot`, and a screen that shows a list (the recorder, approvals, introductions) refetches it. Identity values can commit out of order, so replaying "everything after this id" would not be reliable anyway.
+
+**How fresh it is (Phase 8).** The server reads the caller's own rows every two seconds (an assumption, `POLL_SECONDS`), so an event arrives within about two seconds of the change, never instantly. It sends `: ping` when nothing was sent for 15 seconds. A failure ends the stream with an `error` event of fixed text (`internal_error`, retryable), and a session that ends mid-stream ends it with `error` code `unauthenticated` (not retryable). Money values are decimal strings with six places. `introduction.status` follows the caller's own introduction lists: a candidate sees their own, an employer member sees the accepted introductions of their organizations (their list), so a candidate's private decline is never sent to the employer. `twin.message` arrives with Phase 9.
 
 **Polled, not streamed.** Brief ready, match run finished, document extraction progress, export ready and eval run finished are read by polling the resource while a screen waits (1.9).
 

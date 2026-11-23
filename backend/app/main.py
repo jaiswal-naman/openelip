@@ -11,23 +11,26 @@ from app.brief import privacy as brief_privacy  # noqa: F401  (importing it regi
 from app.brief import routes as brief_routes
 from app.campaigns import privacy as campaign_privacy  # noqa: F401  (importing it registers the campaign tables)
 from app.campaigns import routes as campaign_routes
+from app.campaigns import stream as campaign_stream  # noqa: F401  (importing it registers the campaigns stream source)
 from app.campaigns import subscribers as campaign_subscribers  # noqa: F401  (importing it fills the event registry)
 from app.campaigns import view_routes as campaign_view_routes
 from app.chat import privacy as chat_privacy  # noqa: F401  (importing it registers the chat tables and exporter)
 from app.chat import routes as chat_routes
 from app.guardian import privacy as guardian_privacy  # noqa: F401  (importing it registers the Guardian tables)
 from app.guardian import routes as guardian_routes
+from app.guardian import stream as guardian_stream  # noqa: F401  (importing it registers the Guardian stream source)
 from app.hiring import api as hiring_api
 from app.hiring import introduction_routes as hiring_introduction_routes
 from app.hiring import org_routes as hiring_org_routes
 from app.hiring import privacy as hiring_privacy  # noqa: F401  (importing it registers the hiring tables and exporter)
 from app.hiring import role_routes as hiring_role_routes
 from app.hiring import signal_routes as hiring_signal_routes
+from app.hiring import stream as hiring_stream  # noqa: F401  (importing it registers the hiring stream source)
 from app.ingest import privacy as ingest_privacy  # noqa: F401  (importing it registers the ingest tables)
 from app.ingest import routes as ingest_routes
 from app.match import privacy as match_privacy  # noqa: F401  (importing it registers the match tables and exporter)
 from app.match import routes as match_routes
-from app.platform import api, auth, control_routes, errors, telemetry
+from app.platform import api, auth, control_routes, errors, stream, telemetry
 from app.profile import privacy as profile_privacy  # noqa: F401  (importing it registers the profile tables and exporter)
 from app.profile import routes as profile_routes
 from app.tailor import privacy as tailor_privacy  # noqa: F401  (importing it registers the tailor tables and exporter)
@@ -53,6 +56,7 @@ def create_app() -> FastAPI:
         ingest_routes.router,
         auth.router,
         control_routes.router,
+        stream.router,
         trust_routes.router,
         profile_routes.router,
         match_routes.router,
