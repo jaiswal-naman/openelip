@@ -25,6 +25,7 @@ dependencies = [
   "geonamescache==3.0.2",  # offline place-name gazetteer for the location parser (plan 02-04)
   "langgraph==1.2.24",
   "reportlab==5.1.0",
+  "langgraph-checkpoint-postgres==3.2.1",
 ]
 
 [dependency-groups]

@@ -29,7 +29,9 @@ DATA_TABLES = (
     "match_runs, match_decisions, match_evidence, feedback_events, briefs, brief_items, "
     "tailored_resumes, resume_edits, application_packets, applications, application_events, "
     "chat_sessions, chat_messages, "
-    "organizations, org_members, roles, role_requirements, introductions, shortlist_entries, interest_signals"
+    "organizations, org_members, roles, role_requirements, introductions, shortlist_entries, interest_signals, "
+    "campaigns, campaign_steps, company_dossiers, agent_runs, agent_actions, approvals, autonomy_settings, "
+    "guardian_checks, langgraph.checkpoints, langgraph.checkpoint_blobs, langgraph.checkpoint_writes"
 )
 
 
