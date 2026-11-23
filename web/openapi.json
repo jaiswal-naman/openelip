@@ -36,7 +36,11 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Stats V1 Stats Get"
+                }
               }
             }
           }
@@ -46,7 +50,7 @@
     "/v1/jobs": {
       "get": {
         "summary": "Search Jobs",
-        "description": "Keyword search over open, de-duplicated jobs. Results carry no fit claims.",
+        "description": "Search open, de-duplicated, listed jobs by keywords and by meaning. Results carry no fit claims.\n\nmeta.mode says what ran: hybrid falls back to keyword when no job has a vector yet or the model is unavailable.",
         "operationId": "search_jobs_v1_jobs_get",
         "parameters": [
           {
@@ -68,14 +72,30 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "minLength": 2,
-                  "maxLength": 2
+                  "pattern": "^[A-Za-z]{2}$"
                 },
                 {
                   "type": "null"
                 }
               ],
               "title": "Country"
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "City"
             }
           },
           {
@@ -105,6 +125,37 @@
               "default": 20,
               "title": "Limit"
             }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "hybrid",
+                "keyword"
+              ],
+              "default": "hybrid",
+              "title": "Mode"
+            }
           }
         ],
         "responses": {
@@ -112,7 +163,51 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_Job__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/jobs/{job_id}": {
+      "get": {
+        "summary": "Read Job",
+        "description": "One listed job, open or closed, with its plain-text description and its requirements with character spans.",
+        "operationId": "read_job_v1_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_JobDetail_"
+                }
               }
             }
           },
@@ -537,6 +632,47 @@
         ],
         "title": "Envelope[Costs]"
       },
+      "Envelope_JobDetail_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[JobDetail]"
+      },
       "Envelope_Me_": {
         "properties": {
           "success": {
@@ -619,6 +755,51 @@
         ],
         "title": "Envelope[Subprocessors]"
       },
+      "Envelope_list_Job__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Job"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[list[Job]]"
+      },
       "ErrorBody": {
         "properties": {
           "code": {
@@ -656,6 +837,369 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "Job": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "location_raw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Raw"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "work_arrangements": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "onsite",
+                "hybrid",
+                "remote"
+              ]
+            },
+            "type": "array",
+            "title": "Work Arrangements"
+          },
+          "is_remote": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Remote"
+          },
+          "employment_type": {
+            "type": "string",
+            "enum": [
+              "full_time",
+              "part_time",
+              "contract",
+              "internship",
+              "temporary",
+              "unknown"
+            ],
+            "title": "Employment Type"
+          },
+          "pay": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Pay"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "apply_url": {
+            "type": "string",
+            "title": "Apply Url"
+          },
+          "source": {
+            "$ref": "#/components/schemas/JobSource"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "title": "Status"
+          },
+          "posted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Posted At"
+          },
+          "last_verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Verified At"
+          },
+          "content_version": {
+            "type": "integer",
+            "title": "Content Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "company_name",
+          "location_raw",
+          "country",
+          "city",
+          "work_arrangements",
+          "is_remote",
+          "employment_type",
+          "pay",
+          "apply_url",
+          "source",
+          "status",
+          "posted_at",
+          "last_verified_at",
+          "content_version"
+        ],
+        "title": "Job"
+      },
+      "JobDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "location_raw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Raw"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "work_arrangements": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "onsite",
+                "hybrid",
+                "remote"
+              ]
+            },
+            "type": "array",
+            "title": "Work Arrangements"
+          },
+          "is_remote": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Remote"
+          },
+          "employment_type": {
+            "type": "string",
+            "enum": [
+              "full_time",
+              "part_time",
+              "contract",
+              "internship",
+              "temporary",
+              "unknown"
+            ],
+            "title": "Employment Type"
+          },
+          "pay": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Pay"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "apply_url": {
+            "type": "string",
+            "title": "Apply Url"
+          },
+          "source": {
+            "$ref": "#/components/schemas/JobSource"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "title": "Status"
+          },
+          "posted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Posted At"
+          },
+          "last_verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Verified At"
+          },
+          "content_version": {
+            "type": "integer",
+            "title": "Content Version"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "x-untrusted-text": true
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "requirements_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requirements Version"
+          },
+          "requirements": {
+            "items": {
+              "$ref": "#/components/schemas/Requirement"
+            },
+            "type": "array",
+            "title": "Requirements"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "company_name",
+          "location_raw",
+          "country",
+          "city",
+          "work_arrangements",
+          "is_remote",
+          "employment_type",
+          "pay",
+          "apply_url",
+          "source",
+          "status",
+          "posted_at",
+          "last_verified_at",
+          "content_version",
+          "description",
+          "closed_at",
+          "requirements_version",
+          "requirements"
+        ],
+        "title": "JobDetail"
+      },
+      "JobSource": {
+        "properties": {
+          "ats": {
+            "type": "string",
+            "enum": [
+              "greenhouse",
+              "lever",
+              "ashby",
+              "direct"
+            ],
+            "title": "Ats"
+          },
+          "board": {
+            "type": "string",
+            "title": "Board"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ats",
+          "board"
+        ],
+        "title": "JobSource"
+      },
       "Me": {
         "properties": {
           "id": {
@@ -685,6 +1229,106 @@
           "created_at"
         ],
         "title": "Me"
+      },
+      "Pay": {
+        "properties": {
+          "min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "min",
+          "max",
+          "currency"
+        ],
+        "title": "Pay"
+      },
+      "Requirement": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "ordinal": {
+            "type": "integer",
+            "title": "Ordinal"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "x-untrusted-text": true
+          },
+          "importance": {
+            "type": "string",
+            "enum": [
+              "required",
+              "preferred"
+            ],
+            "title": "Importance"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "skill",
+              "experience",
+              "education",
+              "certification",
+              "authorization",
+              "location",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "span": {
+            "$ref": "#/components/schemas/Span"
+          },
+          "min_years": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Years"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ordinal",
+          "text",
+          "importance",
+          "kind",
+          "span",
+          "min_years"
+        ],
+        "title": "Requirement"
       },
       "SessionRequest": {
         "properties": {
@@ -718,6 +1362,24 @@
           "code"
         ],
         "title": "SessionRequest"
+      },
+      "Span": {
+        "properties": {
+          "start": {
+            "type": "integer",
+            "title": "Start"
+          },
+          "end": {
+            "type": "integer",
+            "title": "End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "Span"
       },
       "Subprocessor": {
         "properties": {
