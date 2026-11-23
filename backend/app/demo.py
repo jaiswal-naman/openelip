@@ -17,6 +17,8 @@ Running it again for the same account adds no second brief and no second shown m
 import hashlib
 import io
 import json
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +33,7 @@ from sqlalchemy.engine import make_url
 from app.brief import api as brief
 from app.match import api as match
 from app.platform import config, db
+from app.platform.config import Role
 from app.platform.llm import fake
 from app.platform.sessions import seal_bytes
 from app.profile import api as profile
@@ -116,6 +119,21 @@ def _refuse_unless_scratch_and_fake() -> None:
             f"LLM_PROVIDER is {settings.llm_provider!r}. The demo replays recorded answers and must never reach a real "
             "model: set LLM_PROVIDER=fake."
         )
+
+
+@contextmanager
+def _scratch(user_id: UUID | None = None, *, role: Role) -> Iterator[Connection]:
+    """A transaction on a login the seed uses, after the server has said which database it is connected to: the URL
+    names were checked by `_refuse_unless_scratch_and_fake`, this is the same rule on `current_database()` itself, as the
+    eval seeds do (05-FIXES B8), before the caller writes a row."""
+    with db.transaction(user_id, role=role) as conn:
+        name = conn.execute(text("SELECT current_database()")).scalar_one()
+        if not (name or "").endswith("_test"):
+            raise SeedRefused(
+                f"the {role} login is connected to database {name!r}, which does not end in _test. The demo writes "
+                "invented rows and only runs on a scratch database."
+            )
+        yield conn
 
 
 def _person(conn: Connection, email: str) -> UUID:
@@ -417,7 +435,7 @@ def seed_matches(email: str) -> Seeded:
     _refuse_unless_scratch_and_fake()
     data = json.loads((DATA / "postings.json").read_text(encoding="utf-8"))
     now = datetime.now(timezone.utc)
-    with db.transaction(role="migrate") as conn:
+    with _scratch(role="migrate") as conn:
         user_id = _person(conn, email)
         _refuse_other_postings(conn, data["source"]["token"])
         zone = _prepare_account(conn, user_id, now)
@@ -427,14 +445,12 @@ def seed_matches(email: str) -> Seeded:
 
     fake.replay_from(RECORDING)  # the model is the recording: nothing reaches a provider
     result = match.run(user_id, trigger="on_demand", local_date=day)
-    with db.transaction(
-        role="migrate"
-    ) as conn:  # last, so that the onboarding sweep did not see a confirmed record early
+    with _scratch(role="migrate") as conn:  # last, so that the onboarding sweep did not see a confirmed record early
         conn.execute(
             text("UPDATE users SET record_confirmed_at = COALESCE(record_confirmed_at, now()) WHERE id = :u"),
             {"u": user_id},
         )
-    with db.transaction(role="worker") as conn:
+    with _scratch(role="worker") as conn:
         composed = brief.compose(conn, user_id, day, now=now)
         shown, filtered = _todays_decisions(conn, user_id, day)
     return Seeded(
@@ -560,7 +576,7 @@ def _say_in_chat(user_id: UUID, skill: str) -> None:
     the profile module, so the fact is a confirmed_proposal the base resume does not show until an edit adds it. On the
     owner's login, like the rest of the seed: the worker container that runs it holds no API login, and the scratch
     check above covers only the logins the seed uses."""
-    with db.transaction(user_id, role="migrate") as conn:
+    with _scratch(user_id, role="migrate") as conn:
         proposal = profile.propose_change(
             conn,
             user_id,
@@ -579,7 +595,7 @@ def seed_tailor(email: str) -> SeededTailor:
     address, or when `seed_matches` has not run for it. A second run changes nothing."""
     _refuse_unless_scratch_and_fake()
     said = json.loads((PHASE5 / "facts.json").read_text(encoding="utf-8"))["said_in_chat"]
-    with db.transaction(role="migrate") as conn:
+    with _scratch(role="migrate") as conn:
         user_id = _person(conn, email)
 
         def has(name: str) -> bool:
@@ -608,5 +624,5 @@ def seed_tailor(email: str) -> SeededTailor:
         _seed_resume_two(conn, user_id)
     for skill in said:  # after the resume's facts, so they come last in the record's order
         _say_in_chat(user_id, skill)
-    with db.transaction(role="migrate") as conn:
+    with _scratch(role="migrate") as conn:
         return SeededTailor(email, user_id, tuple(_added_facts(conn, user_id)))
