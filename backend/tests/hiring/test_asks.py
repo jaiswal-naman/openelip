@@ -277,7 +277,7 @@ def test_an_ask_is_private_no_shortlist_entry_and_no_employer_visible_row(engine
     assert world.fetch(engine, "SELECT 1 FROM interest_signals") == []
 
 
-# --- W2: the pool's predicates hold again when the ask is made from a run up to a day old ------------------------------
+# --- W2: the pool's predicates hold again when the ask is made from a run up to a day old ------------------------
 
 
 def run_then(engine, role, change):

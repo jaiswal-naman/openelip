@@ -10,8 +10,8 @@ the same role and candidate a no-op. Every ask runs in a savepoint of its own, s
 
 import json
 import logging
-from dataclasses import dataclass
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import timedelta
 from uuid import UUID
 

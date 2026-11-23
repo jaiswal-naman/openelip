@@ -20,11 +20,10 @@ The retry (one fresh request after an answer no item of which survives validatio
 here repeats it. Anything else that goes wrong is a bug and is not caught.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Literal
 from uuid import UUID
-
-import logging
 
 from sqlalchemy import Connection, text
 
