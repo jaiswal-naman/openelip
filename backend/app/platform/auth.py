@@ -126,9 +126,7 @@ class Me(BaseModel):
     created_at: datetime
     consents: list[ConsentState]
     brief: BriefSettings
-    capabilities: list[
-        str
-    ]  # the model tasks that would be called right now (API.md 2.3); empty with no usable provider
+    capabilities: list[str]  # the model tasks a call would reach right now (API.md 2.3); none without a provider
 
 
 class MePatch(BaseModel):
