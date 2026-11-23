@@ -323,7 +323,11 @@ def check_budget(inp: CheckInput) -> CheckResult:
 
 
 def _outside_strings(value: str) -> list[str]:
-    return [m.group() for m in _URL.finditer(value)] + [m.group() for m in _EMAIL.finditer(value)] + _phones(value)
+    return (
+        [m.group().rstrip(".,;:!?") for m in _URL.finditer(value)]
+        + [m.group() for m in _EMAIL.finditer(value)]
+        + _phones(value)
+    )
 
 
 def check_injection(inp: CheckInput) -> CheckResult:

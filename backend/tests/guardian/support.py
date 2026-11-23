@@ -32,13 +32,19 @@ class World(NamedTuple):
     campaign: UUID
 
 
-def make_committed_world(engine: Engine, *, follow_up_email: str | None = TYPED_ADDRESS, consent: bool = True) -> World:
+def make_committed_world(
+    engine: Engine,
+    *,
+    follow_up_email: str | None = TYPED_ADDRESS,
+    consent: bool = True,
+    description: str = "Build Python pipelines.",
+) -> World:
     with engine.begin() as conn:
         user = make_user(conn)
         job = make_job(
             conn,
             title="Data engineer",
-            description="Build Python pipelines.",
+            description=description,
             requirements=[("Python pipelines", "required")],
             company_name="Lumen Demo",
         )

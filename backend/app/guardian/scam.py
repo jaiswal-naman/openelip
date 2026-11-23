@@ -20,7 +20,7 @@ FEE_PHRASES = re.compile(
     r"background[- ]check|starter[- ]kit)\s+(?:fee|deposit|charge|payment)|refundable\s+(?:fee|deposit)|"
     r"(?:pay|send|wire|transfer|deposit)\s+(?:us\s+|the\s+|a\s+|an\s+)?(?:small\s+)?"
     r"(?:fee|deposit|payment|money|funds)|"
-    r"(?:buy|purchase)\s+(?:your\s+own\s+)?(?:equipment|laptop|software|gift\s+cards?)|gift\s+cards?|bitcoin|"
+    r"(?:buy|purchase)s?\s+(?:(?:your|their|his|her)\s+)?(?:own\s+)?(?:equipment|laptop|software|gift\s+cards?)|gift\s+cards?|bitcoin|"
     r"crypto(?:currency)?\s+(?:payment|wallet)|cheque\s+deposit|check\s+deposit)\b",
     re.IGNORECASE,
 )
