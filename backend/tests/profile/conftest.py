@@ -7,6 +7,7 @@ application's own connections, so `kit` empties the tables around each test.
 """
 
 import io
+import json
 import threading
 from collections.abc import Callable, Iterator
 from dataclasses import replace
@@ -21,6 +22,7 @@ from reportlab.pdfgen import canvas
 from sqlalchemy import Engine, Row, text
 
 from app.platform import config, db, queue
+from app.platform.llm import registry
 from app.platform.sessions import Principal, current_user
 from app.profile import documents, parse_job
 from app.profile.extract import workflow
@@ -156,17 +158,39 @@ class Kit:
 
     def empty(self) -> None:
         with self.engine.begin() as c:
-            c.execute(text("TRUNCATE users, queue_jobs, llm_calls RESTART IDENTITY CASCADE"))
+            c.execute(text("TRUNCATE users, queue_jobs, llm_calls, eval_runs RESTART IDENTITY CASCADE"))
 
-    def provider(self, name: str | None) -> None:
+    def provider(self, name: str | None, key: str | None = None) -> None:
         """provider("fake") lets the recorded-answer provider serve every task; provider(None) leaves no provider at all
-        (the default is a model with no key). Call it before agree(): the wording a consent is given under names the
-        providers."""
+        (the default is a model with no key); provider("anthropic", key="k") is a real model with a key. Call it before
+        agree(): the wording a consent is given under names the providers."""
         real = config.get()
         settings = replace(
-            real, llm_provider=name or "anthropic", anthropic_api_key=None, openai_api_key=None, llm_base_url=None
+            real, llm_provider=name or "anthropic", anthropic_api_key=key, openai_api_key=None, llm_base_url=None
         )
         self._monkeypatch.setattr(config, "get", lambda: settings)
+
+    def prove(self, **over: Any) -> None:
+        """Record a passed resume_extraction run on the test split by the model method that names the model the routes
+        use now and the prompt versions in use: what lets a real model read resumes (AI_SYSTEM 2.2). `over` changes
+        what the run's config says. The tables are emptied after each test, the runs included."""
+        model = registry.route(workflow.TASKS[0].name, config.get()).model
+        run_config = {
+            "method": "model",
+            "split": "test",
+            "model": model,
+            "prompt_versions": workflow.prompt_versions(),
+            **over,
+        }
+        with self.engine.begin() as c:
+            c.execute(
+                text(
+                    """INSERT INTO eval_runs (suite, git_sha, config, status, metrics, is_gate_passed, finished_at)
+                       VALUES ('resume_extraction', 'abc', CAST(:config AS jsonb), 'passed', CAST('{}' AS jsonb), true,
+                               now())"""
+                ),
+                {"config": json.dumps(run_config)},
+            )
 
     def person(self, email: str = "mara@example.test") -> UUID:
         with self.engine.begin() as c:
@@ -233,6 +257,7 @@ class Kit:
 def kit(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Kit]:
     kit = Kit(engine, monkeypatch)
     kit.empty()
+    kit.provider("fake")  # a provider serves every task, as on the default install; a test that needs another says so
     yield kit
     kit.empty()
 

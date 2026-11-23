@@ -11,8 +11,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.profile import documents_routes
 from app.profile.documents_routes import MAX_REQUEST_BYTES
+from app.profile.extract import workflow
 
 URL = "/v1/me/documents"
 WITHDRAW_AI = {"consents": [{"purpose": "ai_processing", "granted": False}]}
@@ -104,10 +104,11 @@ def test_with_no_model_configured_the_upload_says_so_before_it_asks_for_a_consen
 
 def test_every_resume_task_needs_a_provider_not_only_the_first(signed_in, kit, monkeypatch):
     kit.provider("local")  # a server that serves exactly the tasks models.toml names for it
+    kit.prove()  # and a passed gold-set run, which a real model needs (test_ai_gate.py)
     kit.agree(signed_in.user)
     assert ok(upload(signed_in, kit.docx()), 202)["status"] == "queued"  # all three resume tasks are served
     one_more = SimpleNamespace(name="resume.facts.not_configured")
-    monkeypatch.setattr(documents_routes, "TASKS", (*documents_routes.TASKS, one_more))
+    monkeypatch.setattr(workflow, "TASKS", (*workflow.TASKS, one_more))
     refused(upload(signed_in, kit.docx()), 503, "ai_disabled")
     assert kit.count("documents") == 1  # only the first upload
 

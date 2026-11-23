@@ -3,11 +3,12 @@
 The upload is the one multipart write, so it cannot use the JSON-only idempotent() dependency, and it has to be careful
 with a body that may be large and is not trusted (T-3-16, T-3-17). It declares its checks as dependencies, in the order
 FastAPI runs them, and none of them reads the body: the session, the Idempotency-Key header, a model provider for the
-resume tasks (503 ai_disabled), then the consent (403 consent_required). Only then is the body read, with its size
+resume tasks that a gold-set run has proven if it is a real model (503 ai_disabled), then the consent (403
+consent_required). Only then is the body read, with its size
 counted as it arrives, and a request that crosses the cap is refused at that point, not after it has all been received.
 
-A missing provider is reported before a missing consent: with no model there is nothing to agree to, and telling the
-person to agree would not help. The routes here are mounted by routes.py under /v1/me.
+A missing or unproven provider is reported before a missing consent: with no model there is nothing to agree to, and
+telling the person to agree would not help. The routes here are mounted by routes.py under /v1/me.
 """
 
 import hashlib
@@ -26,17 +27,15 @@ from sqlalchemy import Connection, Row, text
 from starlette.datastructures import UploadFile
 from starlette.formparsers import MultiPartException, MultiPartParser
 
-from app.platform import config, db
+from app.platform import db
 from app.platform.api import Envelope, envelope
 from app.platform.errors import ApiError
 from app.platform.idempotency import KEY_PATTERN, Write
-from app.platform.llm import registry
 from app.platform.sessions import Principal, current_user, open_sealed_bytes
 from app.trust.api import require_consent
 
-from . import documents
+from . import ai_gate, documents
 from .errors import InvalidField, RecordNotFound
-from .extract.workflow import TASKS
 from .models import DOCUMENT_API_STATUS
 from .resume.reader import read_resume
 
@@ -152,12 +151,11 @@ def upload_key(idempotency_key: Annotated[str | None, Header()] = None) -> str:
 
 
 def require_ai(principal: Signed) -> None:
-    """503 ai_disabled unless a provider serves every resume task, then 403 consent_required unless the person has
-    agreed to AI processing as it is worded now. A dependency, so it runs before the body is read."""
-    settings = config.get()
-    for task in TASKS:
-        registry.route(task.name, settings)
+    """503 ai_disabled unless a provider serves every resume task and, for a real model, a passed gold-set run proves
+    its route (ai_gate), then 403 consent_required unless the person has agreed to AI processing as it is worded now.
+    A dependency, so it runs before the body is read."""
     with db.transaction(principal.user_id) as conn:
+        ai_gate.require_available(conn)
         require_consent(conn, principal.user_id, "ai_processing")
 
 
