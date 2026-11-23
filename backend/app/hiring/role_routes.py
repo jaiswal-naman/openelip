@@ -8,7 +8,7 @@
     PUT  /v1/roles/{id}/requirements     replace and confirm the requirement list
     POST /v1/roles/{id}/publish          open the role as an unlisted job (422 blockers, 409 answers_overdue)
     POST /v1/roles/{id}/close            close it; open asks are withdrawn
-    GET  /v1/roles/{id}/preview          counts only, 1 to 4 shown as "fewer than 5", never a person
+    GET  /v1/roles/{id}/preview          counts only, 1 to 4 shown as "fewer than 5" (0 too for two), never a person
 
 The models are the contract: the web types are generated from them. A handler is a thin call into hiring.roles. A role
 of another organization is a 404 (row-level security hides it). Role text is employer-written and is marked

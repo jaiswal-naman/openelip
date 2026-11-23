@@ -7,6 +7,10 @@
 #   (the hiring desk demo, plan 06-07, on a fresh stack: down -v, up again, then the same command with tests/e2e/hiring-desk.spec.ts)
 #   docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml down -v      (throws it all away)
 #
+# One demo per stack: LLM_FAKE_DIR below holds the HIRING demo's recordings for the whole stack, so the matches-brief
+# demo replays hiring answers on a stack where the hiring demo has run (and the other way round). Run each demo on a fresh
+# stack (down -v, then up), as .github/workflows/e2e.yml does.
+#
 # What it changes, and why:
 #   * Its own project name (-p openelip-demo) and its own image tags, so it never touches your other stack, its volumes or its
 #     images; it shares nothing with it.
