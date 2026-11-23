@@ -4,13 +4,18 @@ import { ok } from "./render";
 
 export const VERSION = "a1b2c3d4e5f6";
 
-/** The signed-in account as GET /v1/me answers it. `ai` overrides fields of the ai_processing consent. */
-export function account(ai: Record<string, unknown> = {}) {
+/**
+ * The signed-in account as GET /v1/me answers it. `ai` overrides fields of the ai_processing consent; `over` overrides
+ * fields of the account itself (the brief schedule, the capabilities, the consents).
+ */
+export function account(ai: Record<string, unknown> = {}, over: Record<string, unknown> = {}) {
   return {
     id: "5c9d1e3f-4a6b-4c8d-8e2f-a3b4c5d6e780",
     email: "asha@example.com",
     timezone: "UTC",
     created_at: "2026-11-22T00:00:00Z",
+    brief: { frequency: "daily", weekday: null },
+    capabilities: [],
     consents: [
       { purpose: "terms", granted: false, granted_at: null, text_version: null },
       {
@@ -25,6 +30,7 @@ export function account(ai: Record<string, unknown> = {}) {
       { purpose: "brief_email", granted: false, granted_at: null, text_version: null },
       { purpose: "open_to_introductions", granted: false, granted_at: null, text_version: null },
     ],
+    ...over,
   };
 }
 
