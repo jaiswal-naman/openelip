@@ -67,7 +67,7 @@ jobs:
   # docker-compose.demo.yml, which also uses its own ports (8090 for the app, 8026 for Mailpit) and its own project name. The
   # spec skips itself unless DEMO_STACK=1, so the job above runs the same spec as a skip and this job runs only that spec.
   demo:
-    name: matches and brief, chat and tailoring, and hiring desk demos on the demo Compose stack
+    name: matches and brief, chat and tailoring, hiring desk and campaign demos on the demo Compose stack
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -117,6 +117,14 @@ jobs:
       - name: Run the hiring desk demo browser test
         working-directory: web
         run: pnpm exec playwright test tests/e2e/hiring-desk.spec.ts --project=chromium
+      # The campaign demo (plan 07-07) on a fresh stack as well: its Writer and verifier answers are handed out in order.
+      - name: Replace the demo stack with a fresh one for campaigns
+        run: |
+          docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml down -v
+          docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml up -d --build --wait
+      - name: Run the campaign demo browser test
+        working-directory: web
+        run: pnpm exec playwright test tests/e2e/campaigns.spec.ts --project=chromium
       - name: Container logs after a failure
         if: failure()
         run: docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml logs --no-color --tail=200

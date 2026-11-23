@@ -290,6 +290,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/privacy/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Audit Log
+         * @description Every automated decision and every agent action about the caller, newest first, from the sources each module
+         *     registered. Everything runs on the caller's own API connection: another person's entries are not visible to it.
+         */
+        get: operations["get_audit_log_v1_privacy_audit_log_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/documents": {
         parameters: {
             query?: never;
@@ -1737,6 +1758,58 @@ export interface components {
             /** Reply */
             reply?: unknown;
         };
+        /** AuditLink */
+        AuditLink: {
+            /** Kind */
+            kind: string;
+            /** Href */
+            href: string;
+        };
+        /**
+         * AuditLogEntry
+         * @description One automated decision or event about the caller. `summary` is built by code from codes and counts.
+         */
+        AuditLogEntry: {
+            /** Id */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Source */
+            source: string;
+            /** Kind */
+            kind: string;
+            /** Actor Type */
+            actor_type: string;
+            /** Summary */
+            summary: string;
+            /** Outcome */
+            outcome: string | null;
+            /** Reason Codes */
+            reason_codes: string[];
+            /** Agent Token Id */
+            agent_token_id: string | null;
+            /** Campaign Id */
+            campaign_id: string | null;
+            organization: components["schemas"]["AuditOrganization"] | null;
+            link: components["schemas"]["AuditLink"] | null;
+        };
+        /** AuditLogPage */
+        AuditLogPage: {
+            /** Entries */
+            entries: components["schemas"]["AuditLogEntry"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** AuditOrganization */
+        AuditOrganization: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string | null;
+        };
         /** AutonomyIn */
         AutonomyIn: {
             /** Actions */
@@ -2515,6 +2588,17 @@ export interface components {
             /** Success */
             success: boolean;
             data: components["schemas"]["ApplicationView"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[AuditLogPage] */
+        Envelope_AuditLogPage_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["AuditLogPage"] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -5301,6 +5385,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_PrivacyDeletion_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_audit_log_v1_privacy_audit_log_get: {
+        parameters: {
+            query?: {
+                agent_token_id?: string | null;
+                campaign_id?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_AuditLogPage_"];
                 };
             };
             /** @description Validation Error */
