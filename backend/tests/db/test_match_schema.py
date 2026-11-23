@@ -765,8 +765,10 @@ def test_the_revision_goes_down_one_step_leaving_nothing_and_the_old_purge_comes
             }
             assert left == {name: [] for name in left}
         alembic_run("upgrade", url, REVISION)
+        alembic_run("upgrade", url, REVISION)  # already there: a second upgrade changes nothing
         with engine.connect() as c:
             assert count(c, "pg_tables WHERE tablename = ANY(:n)", n=list(NEW_TABLES)) == len(NEW_TABLES)
+            assert names(c, "SELECT version_num FROM alembic_version") == [REVISION]
     finally:
         engine.dispose()
 
