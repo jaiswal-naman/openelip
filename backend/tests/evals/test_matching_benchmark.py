@@ -244,6 +244,17 @@ def test_a_posting_with_an_email_address_or_a_phone_number_is_recognised():
     assert not export_snapshot.has_contact_data("Senior engineer, 5+ years of Python", "Berlin")
 
 
+@pytest.mark.parametrize(
+    "written", ["accommodations[at]coinbase.com", "jobs (at) example.org", "Jobs [AT] Example.org", "a.b+c[at]sub.example.co.uk"]
+)
+def test_an_address_written_with_at_in_brackets_is_recognised_like_one_with_an_at_sign(written):
+    assert export_snapshot.has_contact_data(f"To ask for an accommodation, write to {written} before you apply.")
+
+
+def test_words_around_at_that_are_not_an_address_are_left_alone():
+    assert not export_snapshot.has_contact_data("Engineer (at least 5 years) based at [Berlin]", "Looking for a lead (at) Stripe")
+
+
 # ---- the frozen snapshot -------------------------------------------------------------------------------------------
 
 
@@ -275,6 +286,16 @@ def test_no_posting_in_the_snapshot_holds_an_email_address_or_a_phone_number():
     for p in SNAPSHOT:
         texts = (p["title"], p["description"], p["location_raw"], p["department"], p["apply_url"], p["company"])
         assert not export_snapshot.has_contact_data(*texts), p["ref"]
+
+
+def test_the_obfuscated_addresses_taken_out_of_the_snapshot_are_replaced_in_place_and_counted_in_its_metadata():
+    redacted = META["redacted"]  # the export filter then caught "@" only; the postings were kept and the strings replaced
+
+    held = sum(p[field].count(redacted["replacement"]) for p in SNAPSHOT for field in ("title", "description"))
+
+    assert redacted["replacement"] == "[email removed]"
+    assert held == redacted["strings"] > 0
+    assert len(SNAPSHOT) == META["selection"]["count"]  # no posting was dropped for it
 
 
 # ---- the invented profiles ----------------------------------------------------------------------------------------
