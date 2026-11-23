@@ -1,0 +1,9 @@
+[
+  {"claims": [
+     {"topic": "product", "quote": "Ferrowick Freight builds route planning software for regional trucking companies."},
+     {"topic": "size", "quote": "The company has 85 employees."}],
+   "links": ["/careers"], "injection_suspected": false},
+  {"claims": [
+     {"topic": "hiring_process", "quote": "We hire through a two-step interview process: a call with the team, then a take-home exercise."}],
+   "links": [], "injection_suspected": false}
+]

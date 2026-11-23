@@ -1,0 +1,9 @@
+[
+  {"sentences": [
+     {"text": "I currently earn 185000 a year.", "facts": [], "dossier_claims": [], "events": []},
+     {"text": "My salary floor is 240000.", "facts": [], "dossier_claims": [], "events": []},
+     {"text": "You can reach me on +1 415 555 0100.", "facts": ["f2"], "dossier_claims": [], "events": ["e1"]}]},
+  {"sentences": [
+     {"text": "I applied on 3 November 2026.", "facts": [], "dossier_claims": [], "events": ["e1"]},
+     {"text": "I built nightly Python and PostgreSQL pipelines.", "facts": ["f2"], "dossier_claims": [], "events": []}]}
+]

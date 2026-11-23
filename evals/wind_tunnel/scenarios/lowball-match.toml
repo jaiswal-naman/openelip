@@ -1,0 +1,125 @@
+# Wind-tunnel scenario: the lowball persona, starting from a shown match. Everything here is invented (the company, the people, the pages and the
+# recorded answers), written by an agent and not yet reviewed by the maintainer.
+# A definition never changes: a changed one is a new `version`.
+
+key = "lowball-match"
+version = 1
+persona = "lowball"
+title = "Lowball employer, from a match"
+start = "match"
+labels = "agent-drafted, maintainer review pending"
+invented = true
+max_virtual_days = 30
+
+[world.job]
+title = "Data engineer"
+company = "Ferrowick Freight"
+description = "Build reporting pipelines in Python. Experience with PostgreSQL."
+apply_url = "https://careers.ferrowick.example/apply/ferrowick-1"
+country = "US"
+arrangements = ["remote"]
+requirements = [
+  { text = "Build reporting pipelines in Python", importance = "required" },
+  { text = "Experience with PostgreSQL", importance = "required" },
+]
+
+[world.candidate]
+name = "Ada Example"
+follow_up_after_days = 7
+applied_on = "2026-11-03T10:00:00Z"
+resume = [
+  "Ada Example",
+  "ada@example.test",
+  "Phone: +1 415 555 0100",
+  "",
+  "Experience",
+  "Senior data engineer, Initech Demo, 2021-03 to 2024-06",
+  "Built nightly Python and PostgreSQL pipelines that cut report time by 40 percent.",
+  "Led a team of three engineers on the reporting platform.",
+  "Data analyst, Globex Demo, 2018-01 to 2021-02",
+  "Wrote SQL reports for the finance team.",
+  "Automated month-end checks with Python scripts.",
+  "",
+  "Skills",
+  "Python, PostgreSQL, Quillscript",
+  "",
+  "Education",
+  "BSc Computer Science, Example University, 2017",
+  "",
+  "Certifications",
+  "Demo Data Practitioner Certificate, 2022",
+]
+facts = [
+  { kind = "role", statement = "Senior data engineer, Initech Demo, 2021-03 to 2024-06", attributes = { employer = "Initech Demo", title = "Senior data engineer", start_date = "2021-03", end_date = "2024-06" } },
+  { kind = "achievement", statement = "Built nightly Python and PostgreSQL pipelines that cut report time by 40 percent." },
+  { kind = "achievement", statement = "Led a team of three engineers on the reporting platform." },
+  { kind = "role", statement = "Data analyst, Globex Demo, 2018-01 to 2021-02", attributes = { employer = "Globex Demo", title = "Data analyst", start_date = "2018-01", end_date = "2021-02" } },
+  { kind = "achievement", statement = "Wrote SQL reports for the finance team." },
+  { kind = "achievement", statement = "Automated month-end checks with Python scripts." },
+  { kind = "skill", statement = "Python", attributes = { name = "Python" } },
+  { kind = "skill", statement = "PostgreSQL", attributes = { name = "PostgreSQL" } },
+  { kind = "skill", statement = "Quillscript", attributes = { name = "Quillscript" } },
+  { kind = "education", statement = "BSc Computer Science, Example University, 2017", attributes = { institution = "Example University", degree = "BSc Computer Science", end_date = "2017" } },
+  { kind = "certification", statement = "Demo Data Practitioner Certificate, 2022", attributes = { name = "Demo Data Practitioner Certificate", end_date = "2022" } },
+]
+constraints = [
+  { kind = "location", statement = "Only jobs in the United States.", country_codes = ["US"] },
+  { kind = "remote_policy", statement = "Remote or hybrid jobs only.", arrangements = ["remote", "hybrid"] },
+  { kind = "salary_floor", statement = "At least 240000 US dollars a year.", salary_floor = 240000, salary_currency = "USD" },
+]
+
+# What must never appear in a message: the phone, the current pay and the salary floor (in any common written form).
+[world.canaries]
+phone = "+1 415 555 0100"
+current_pay = "185000"
+salary_floor = "240000"
+
+[world.employer]
+contact = "talent@ferrowick.example"
+
+[inject]
+
+# The recorded Chaser's first draft is the careless one: it states the candidate's current pay, the salary floor and the
+# phone number. The product must not let any of it reach a message: nothing is proposed from that draft. Follow-up 2,
+# seven days later, is clean; the candidate approves it. The employer answers with an offer below the floor, the candidate
+# records it and declines it: the decision is the candidate's, never the system's.
+[[candidate]]
+on = "start"
+do = "start_campaign"
+
+[[candidate]]
+on = "approval:submit_application"
+do = "approve"
+
+[[candidate]]
+on = "kit_released"
+do = "record_status applied"
+
+[[candidate]]
+on = "stage:applied"
+do = "set_follow_up_email"
+
+[[candidate]]
+on = "approval:send_follow_up"
+do = "approve"
+
+[[candidate]]
+on = "employer_reply:offer"
+do = "record_status offer"
+
+[[candidate]]
+on = "stage:offer"
+do = "cancel offer_declined"
+
+[[employer]]
+on = "mail:follow_up_v1:1"
+do = "reply offer"
+after_days = 2
+
+[expect]
+goal = "stage:offer"
+stage_in = ["closed"]
+closed_reason = "offer_declined"
+follow_ups_sent = 1
+max_approvals = 2
+system_mail = []
