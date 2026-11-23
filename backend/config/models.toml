@@ -136,3 +136,27 @@ model = "claude-haiku-5-5"
 input_usd_per_mtok = 0.10     # prompts up to 100k tokens; a posting is a few thousand
 output_usd_per_mtok = 0.50
 price_checked_at = 2026-11-22
+
+# Evidence verdicts for one candidate and one job (AI_SYSTEM 4.4): the candidate's confirmed facts with name, contact
+# details and links removed, against the posting's requirements, so the data class is de-identified. AI_SYSTEM 2.2 lists
+# gpt-6-luna as the fallback "once its gold set passes": it has no route here until a gold-set run passes for it, and
+# until OpenAI's retention terms are checked (see its retention_note: it carries only public, synthetic and consented
+# evaluation data), so this candidate data is never sent to it. The Anthropic prices are the ping task's, for the same
+# model and the same date: a request is a few thousand tokens, far under the 100k-token tier.
+[tasks."match.evidence.score"]
+description = "Judges each requirement of one job posting against a candidate's confirmed facts and cites the facts each verdict rests on."
+data_class = "de-identified"
+max_tokens = 3000       # AI_SYSTEM 2.2 (assumption)
+timeout_seconds = 30    # AI_SYSTEM 2.2 (assumption)
+
+[tasks."match.evidence.score".models.anthropic]
+model = "claude-haiku-5-5"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-22
+
+[tasks."match.evidence.score".models.local]
+model = "local-model"   # placeholder: set this to the model name your server runs
+
+[tasks."match.evidence.score".models.fake]
+model = "recorded"
