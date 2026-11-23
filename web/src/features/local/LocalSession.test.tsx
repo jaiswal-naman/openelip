@@ -4,12 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fail, ok, renderWithApi } from "@/test/render";
 import { LocalSession } from "./LocalSession";
 
-// One router object for the whole file: the real useRouter returns a stable one, and an effect depends on it
-const nav = vi.hoisted(() => {
-  const router = { replace: vi.fn(), refresh: vi.fn(), push: vi.fn() };
-  return { ...router, router };
-});
-vi.mock("next/navigation", () => ({ useRouter: () => nav.router }));
+const nav = vi.hoisted(() => ({ reloadTo: vi.fn() }));
+vi.mock("@/lib/navigate", () => ({ reloadTo: nav.reloadTo }));
 
 // An invented account
 const me = { id: "5c9d1e3f-4a6b-4c8d-8e2f-a3b4c5d6e780", email: "owner@example.test", timezone: "UTC", created_at: "2026-11-22T00:00:00Z" };
@@ -20,8 +16,7 @@ const status = (key_set: boolean) => ({
 });
 
 beforeEach(() => {
-  nav.replace.mockReset();
-  nav.refresh.mockReset();
+  nav.reloadTo.mockReset();
 });
 
 describe("opening the owner's session", () => {
@@ -30,8 +25,7 @@ describe("opening the owner's session", () => {
       "POST /v1/auth/local": ok(me, 201),
       "GET /v1/local/status": ok(status(true)),
     });
-    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/jobs?q=backend"));
-    expect(nav.refresh).toHaveBeenCalled();
+    await waitFor(() => expect(nav.reloadTo).toHaveBeenCalledWith("/jobs?q=backend"));
     expect(calls[0].method).toBe("POST");
     expect(await calls[0].clone().json()).toEqual({ timezone: "UTC" });
   });
@@ -41,7 +35,7 @@ describe("opening the owner's session", () => {
       "POST /v1/auth/local": ok(me, 201),
       "GET /v1/local/status": ok(status(false)),
     });
-    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/setup?next=%2Fjobs"));
+    await waitFor(() => expect(nav.reloadTo).toHaveBeenCalledWith("/setup?next=%2Fjobs"));
   });
 
   it("says why it could not, goes nowhere, and tries again when asked", async () => {
@@ -52,8 +46,8 @@ describe("opening the owner's session", () => {
       "GET /v1/local/status": ok(status(true)),
     });
     expect(await screen.findByRole("alert")).toHaveTextContent("This database holds more than one account");
-    expect(nav.replace).not.toHaveBeenCalled();
+    expect(nav.reloadTo).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Try again" }));
-    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/jobs"));
+    await waitFor(() => expect(nav.reloadTo).toHaveBeenCalledWith("/jobs"));
   });
 });
