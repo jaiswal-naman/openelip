@@ -44,7 +44,7 @@ from tests.match.factories import (
 
 REPO = Path(__file__).resolve().parents[3]
 REVISION = "p4_0401_match_brief"
-PREVIOUS = "p3_0303_skill_fks"
+PREVIOUS = "p3_0304_audit_subject"
 DESCRIPTION = "Python is required. SQL is a plus. Mentoring helps."
 REQUIREMENTS = [("Python is required.", "required"), ("SQL is a plus.", "preferred"), ("Mentoring helps.", "preferred")]
 NEW_ENUMS = (

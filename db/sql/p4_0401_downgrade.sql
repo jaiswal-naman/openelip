@@ -1,4 +1,4 @@
--- Revision p4_0401_match_brief, downgrade: back to the shape revision p3_0303_skill_fks leaves. Read by the revision, which
+-- Revision p4_0401_match_brief, downgrade: back to the shape revision p3_0304_audit_subject leaves. Read by the revision, which
 -- runs it as app_owner.
 --
 -- It exists so the CI migration check (up, down to 0001_baseline, up) can run on a scratch database. It is lossy by nature:
