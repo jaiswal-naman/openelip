@@ -12,6 +12,8 @@ from types import FrameType
 
 from app.ingest import jobs  # noqa: F401  (importing it registers the ingest handlers)
 from app.platform import config, db, log, queue, relay, scheduler
+from app.profile import jobs as profile_jobs
+from app.profile import privacy as profile_privacy  # noqa: F401  (the export job reads the registry in this process)
 
 POLL_SECONDS = 1
 
@@ -26,6 +28,7 @@ def main() -> None:
     signal.signal(signal.SIGTERM, request_stop)
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
     queues = config.get().worker_queues  # empty means every queue
+    profile_jobs.register()
     log.event("worker.started")
     try:
         while not stop.is_set():

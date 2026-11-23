@@ -343,7 +343,7 @@ Columns: **Caller** uses the codes in 1.2. **Req** lists the requirement ids ser
 | PATCH | `/v1/me/constraints/{constraint_id}` | Change a constraint (a new version; the change is logged) | C | REC-03, REC-05 | 2 |
 | DELETE | `/v1/me/constraints/{constraint_id}` | Remove a constraint | C | REC-05 | 2 |
 | GET | `/v1/me/preferences` | Active soft preferences | C | REC-04 | 2 |
-| POST | `/v1/me/preferences` | Add a soft preference; a dealbreaker that could not be typed is stored as `untyped_dealbreaker` with a notice that it is not guaranteed | C | REC-04 | 2 |
+| POST | `/v1/me/preferences` | Add a soft preference; a dealbreaker that could not be typed is stored as `untyped_dealbreaker` with a notice that it is not guaranteed. When it fits a hard-constraint kind, the preference in the response also carries `suggested_constraint` (the body `POST /v1/me/constraints` takes); nothing becomes a hard constraint until the candidate posts it | C | REC-04 | 2 |
 | PATCH | `/v1/me/preferences/{preference_id}` | Change a preference | C | REC-04, REC-05 | 2 |
 | DELETE | `/v1/me/preferences/{preference_id}` | Remove a preference | C | REC-05 | 2 |
 | GET | `/v1/me/events` | The change log (before, after, source, time); `?status=proposed` lists open proposals from onboarding, chat, feedback or Twin replies | C | REC-05, CHT-03, MAT-08 | 2 |
