@@ -55,8 +55,8 @@ NUMBER_WORDS = {
     "billion": 1_000_000_000,
     "dozen": 12,
 }
-# Ordinals, fractions and multiplier words state a quantity as much as a digit does ("first", "halved", "doubled", "2x"),
-# so the number check sees them (05 fix A4). By value, in the same space as the digits: "first" is 1, "half" is 0.5.
+# Ordinals, fractions and multiplier words state a quantity as much as a digit does ("first", "halved", "2x"), so the
+# number check sees them (05 fix A4). By value, in the same space as the digits: "first" is 1, "half" is 0.5.
 # "second" is left out (it is also a unit of time).
 QUANTITY_WORDS = {
     **{

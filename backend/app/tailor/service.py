@@ -9,8 +9,8 @@ export, which draws only approved edits onto a base built from the person's conf
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
 from collections.abc import Iterable
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 from uuid import UUID
 

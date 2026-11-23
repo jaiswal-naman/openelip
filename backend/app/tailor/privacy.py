@@ -39,8 +39,8 @@ WITH_APPROVED_EDIT = text(
 
 README = (
     "Tailored resumes\n\n"
-    "resume_edits in tailor.json includes the text of edits the verifier DISCARDED (archive_label = 'discarded'). They\n"
-    "were never shown to you as suggestions and no resume file contains them; they are included because they are rows\n"
+    "resume_edits in tailor.json includes the text of edits the verifier DISCARDED (archive_label = 'discarded').\n"
+    "They were never shown to you as suggestions and no resume file contains them; they are included because they are rows\n"
     "about you. An approved edit whose supporting fact you have since retired or corrected is kept here with\n"
     "archive_label = 'not_exported_fact_not_usable'; it is left out of every resume file.\n"
 )
