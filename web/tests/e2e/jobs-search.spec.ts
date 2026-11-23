@@ -19,12 +19,15 @@ test.beforeAll(() => {
   seeded = seedJobs();
 });
 
-test("search in plain English, see where each result came from, load more, and open one", async ({ page }) => {
+test("search in plain English, see where each result came from, load more, and open one", async ({ page, request }) => {
+  const modeNow = async () => {
+    const answer = await request.get(`/v1/jobs?q=${encodeURIComponent(QUERY)}&limit=1`);
+    expect(answer.ok()).toBe(true);
+    return ((await answer.json()) as { meta: { mode: string } }).meta.mode;
+  };
+  const before = await modeNow();
   await page.goto("/jobs");
   await page.getByRole("searchbox", { name: "Search open jobs" }).fill(QUERY);
-  // The page's own first page of results, which the note is drawn from (a second request could land after the embed
-  // sweep reached the jobs and answer in another mode).
-  const firstPage = page.waitForResponse((r) => r.url().includes("/v1/jobs?") && r.url().includes("q=software") && !r.url().includes("cursor="));
   await page.getByRole("button", { name: "Search" }).click();
   await expect(page).toHaveURL(SEARCH_ADDRESS);
 
@@ -40,14 +43,13 @@ test("search in plain English, see where each result came from, load more, and o
     await expect(card.locator("time")).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}T/);
   }
 
-  // The note is there exactly when the API said only keywords were searched, so the test needs no knowledge of whether
-  // the embed sweep has reached the stack's jobs yet.
-  const answer = await firstPage;
-  expect(answer.ok()).toBe(true);
-  const { meta } = (await answer.json()) as { meta: { mode: string } };
+  // The note is there exactly when only keywords were searched. The page's first page is fetched by the server as it
+  // renders, between the two answers here, and the embed sweep only ever turns keyword search into hybrid: when both
+  // answers agree the page had that mode too. When the sweep reached the stack's jobs in between, either is right.
+  const after = await modeNow();
   const note = results.getByText("Keyword results only right now.");
-  if (meta.mode === "keyword") await expect(note).toBeVisible();
-  else await expect(note).toHaveCount(0);
+  if (before === after && after === "keyword") await expect(note).toBeVisible();
+  else if (before === after) await expect(note).toHaveCount(0);
 
   // Load more asks for the next page with the API's cursor and the same query, adds the rows, and leaves the cursor out of the address.
   const nextPage = page.waitForRequest((r) => r.url().includes("/v1/jobs?") && r.url().includes("cursor="));
