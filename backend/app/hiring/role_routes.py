@@ -10,10 +10,10 @@
     POST /v1/roles/{id}/close            close it; open asks are withdrawn
     GET  /v1/roles/{id}/preview          counts only, 1 to 4 shown as "fewer than 5", never a person
 
+The models are the contract: the web types are generated from them. A handler is a thin call into hiring.roles. A role
 of another organization is a 404 (row-level security hides it). Role text is employer-written and is marked
-x-untrusted-text: the web shows it as plain text (API.md 1.10). There is no version or ETag on a
-points into is marked x-untrusted-text: the web shows it as plain text (API.md 1.10). There is no version or ETag on a
-role (INDEX deviation 5): drafts are last write wins.
+x-untrusted-text: the web shows it as plain text (API.md 1.10). There is no version or ETag on a role (INDEX deviation
+5): drafts are last write wins.
 """
 
 from datetime import datetime
@@ -82,8 +82,8 @@ class PayRange(BaseModel):
         return self
 
 
+class RoleFields(BaseModel):
     """What an employer sets besides the text; nothing is inferred from the description (INDEX deviation 6)."""
-    """What an employer sets on a role besides its text; nothing is inferred from the description (INDEX deviation 6)."""
 
     country: str | None = Field(default=None, pattern=r"^[A-Z]{2}$")  # ISO 3166-1 alpha-2
     city: str | None = Field(default=None, min_length=1, max_length=120)
