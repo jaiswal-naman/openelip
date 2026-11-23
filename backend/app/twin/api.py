@@ -3,19 +3,20 @@
   ask(conn, ...)             an employer member, or an organization's agent, asks the candidate's Twin a question
   question_view(conn, id)    one question as the caller may read it: its state, topic, answer and citations
   wait(id, read, seconds)    poll a view until the Twin has posted something, or the time is up
+  get_scopes, put_scopes     the candidate's twelve topic permissions (pay and contact details are locked to never)
 
 Everything here runs on the caller's own connection, on the API login: row-level security decides who may ask and who
 may read, and nothing opens a worker or match transaction. An employer question is stored without a topic (the Twin
 classifies it later), the Twin runs in the worker through the `twin.resume` job, and a released answer is a Twin message
-that exists only as an executed `twin_answer` action (the database enforces that). Plan 09-03 adds `get_scopes` and
-`put_scopes` to this module.
+that exists only as an executed `twin_answer` action (the database enforces that). `get_scopes` and `put_scopes` are the
+candidate's topic permissions (TWN-03).
 
 The state of a question is derived, never stored: no Twin message about it yet is `pending`; the latest holding message
 (`unknown`) is `waiting_for_candidate`; a final message (`answered`, `relayed`, `declined`) names itself.
 """
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
@@ -46,8 +47,13 @@ __all__ = [
     "QuestionView",
     "ReplyView",
     "SessionClosed",
+    "InvalidScope",
+    "ScopeRow",
+    "TopicLocked",
     "TwinError",
     "ask",
+    "get_scopes",
+    "put_scopes",
     "question_view",
     "wait",
 ]
@@ -85,6 +91,14 @@ class ConsentMissing(TwinError):
 
 class InvalidQuestion(TwinError):
     """The question is shorter than QUESTION_MIN or longer than QUESTION_MAX characters."""
+
+
+class TopicLocked(TwinError):
+    """Current pay and contact details can only be `never`."""
+
+
+class InvalidScope(TwinError):
+    """A topic or permission that does not exist, or the same topic twice."""
 
 
 @dataclass(frozen=True)
@@ -234,6 +248,74 @@ def _open_session(
         ),
         {"i": introduction_id, "u": user_id, "o": organization_id, "by": asked_by, "t": agent_token_id},
     ).scalar_one()
+
+
+# ---- the candidate's topic permissions ----------------------------------------------------------------------------
+
+TOPICS = (  # AI_SYSTEM 8.2 order
+    "experience",
+    "skills",
+    "education",
+    "projects",
+    "availability",
+    "work_authorization",
+    "location",
+    "expected_pay",
+    "motivation",
+    "other",
+    "current_pay",
+    "contact_details",
+)
+LOCKED = ("current_pay", "contact_details")
+PERMISSIONS = ("answer", "ask_me", "never")
+DEFAULT_PERMISSION = "ask_me"
+
+
+@dataclass(frozen=True)
+class ScopeRow:
+    topic: str
+    permission: str
+    locked: bool  # pay and contact details: never, and the database refuses anything else
+
+
+def get_scopes(conn: Connection, user_id: UUID) -> list[ScopeRow]:
+    """The twelve topics in order with the person's permission: their row, else `ask_me` (`never` for the two locked
+    topics, whatever a row says)."""
+    stored = {
+        r.topic: r.permission
+        for r in conn.execute(
+            text("SELECT topic::text AS topic, permission::text AS permission FROM twin_scopes WHERE user_id = :u"),
+            {"u": user_id},
+        )
+    }
+    return [
+        ScopeRow(topic, "never" if topic in LOCKED else stored.get(topic, DEFAULT_PERMISSION), topic in LOCKED)
+        for topic in TOPICS
+    ]
+
+
+def put_scopes(conn: Connection, user_id: UUID, rows: Sequence[tuple[str, str]]) -> list[ScopeRow]:
+    """Replace the person's permissions with `rows` ((topic, permission) pairs): a topic left out goes back to its
+    default. Raises InvalidScope for an unknown topic or permission or a repeated topic, and TopicLocked when current
+    pay or contact details are set to anything but `never` (nothing is saved then). Returns what `get_scopes` says."""
+    seen: set[str] = set()
+    for topic, permission in rows:
+        if topic not in TOPICS or permission not in PERMISSIONS or topic in seen:
+            raise InvalidScope("a topic and permission from the lists, each topic once")
+        if topic in LOCKED and permission != "never":
+            raise TopicLocked(f"{topic} is never answered")
+        seen.add(topic)
+    with conn.begin_nested():
+        conn.execute(text("DELETE FROM twin_scopes WHERE user_id = :u"), {"u": user_id})
+        for topic, permission in rows:
+            conn.execute(
+                text(
+                    """INSERT INTO twin_scopes (user_id, topic, permission)
+                       VALUES (:u, CAST(:t AS twin_topic), CAST(:p AS twin_permission))"""
+                ),
+                {"u": user_id, "t": topic, "p": permission},
+            )
+    return get_scopes(conn, user_id)
 
 
 # ---- reading ------------------------------------------------------------------------------------------------------

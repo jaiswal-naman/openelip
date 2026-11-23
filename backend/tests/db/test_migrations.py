@@ -384,7 +384,9 @@ def test_the_phase_5_revision_sits_on_the_phase_4_one_and_the_merge_with_phase_6
     config.set_main_option("script_location", str(REPO / "db"))
     script = ScriptDirectory.from_config(config)
     assert script.get_revision(REVISION).down_revision == PREVIOUS
-    assert script.get_heads() == ["p9_0901_twin_agentnet"]  # Phase 9 (plan 09-01) sits on local mode, which sits on Phase 8
+    assert script.get_heads() == [
+        "p9_0901_twin_agentnet"
+    ]  # Phase 9 (plan 09-01) sits on local mode, which sits on Phase 8
     assert script.get_revision("p9_0901_twin_agentnet").down_revision == "l1_local_mode"
     assert script.get_revision("l1_local_mode").down_revision == "p8_0801_wind_tunnel"
     assert script.get_revision("p8_0801_wind_tunnel").down_revision == "p7_0702_langgraph"
@@ -541,9 +543,7 @@ def test_every_phase_9_enum_holds_the_data_model_values_in_order(engine, type_na
         assert list(labels) == _data_model_labels(type_name)
 
 
-def test_the_twin_revision_goes_down_to_local_mode_restoring_the_guard_and_up_again_twice(
-    make_database, alembic_run
-):
+def test_the_twin_revision_goes_down_to_local_mode_restoring_the_guard_and_up_again_twice(make_database, alembic_run):
     url = make_database("p9down_test")
     engine = _engine(url)
     guard = "SELECT md5(pg_get_functiondef('agent_actions_guard'::regproc))"

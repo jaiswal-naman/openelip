@@ -220,11 +220,17 @@ def _demo_seed_tailor(args: argparse.Namespace) -> int:
 
 
 def _graphs_check(args: argparse.Namespace) -> int:
-    """List campaign threads parked before a node the current graph no longer has: exit 1 when there are any."""
+    """List campaign and Twin threads parked before a node the current graph no longer has: exit 1 when there are any."""
     from app.campaigns import graph
     from app.guardian import runtime
+    from app.twin import graph as twin_graph
 
-    stuck = graph.missing_nodes_by_thread(runtime.saver(), graph.compiled())
+    stuck = {
+        thread: node
+        for thread, node in graph.missing_nodes_by_thread(runtime.saver(), graph.compiled()).items()
+        if thread.startswith("campaign:")  # the Twin's threads are checked against the Twin's graph below
+    }
+    stuck.update(twin_graph.missing_nodes_by_thread(runtime.saver(), twin_graph.compiled()))
     for thread, node in stuck.items():
         print(f"{thread} parked before {node}")
     print(f"{len(stuck)} thread(s) parked before a node that no longer exists")
@@ -235,11 +241,21 @@ def _graphs_reseat(args: argparse.Namespace) -> int:
     """Delete the checkpoints of the threads parked before `--node` and start them again from their tables."""
     from app.campaigns import graph
     from app.guardian import runtime
+    from app.twin import graph as twin_graph
 
-    stuck = graph.missing_nodes_by_thread(runtime.saver(), graph.compiled())
+    stuck = {
+        thread: node
+        for thread, node in graph.missing_nodes_by_thread(runtime.saver(), graph.compiled()).items()
+        if thread.startswith("campaign:")
+    }
     chosen = [thread for thread, node in stuck.items() if node == args.node]
     asked = graph.reseat(runtime.saver(), chosen)
     print(f"{len(chosen)} thread(s) reset, {asked} campaign(s) asked to start again")
+    twin_stuck = twin_graph.missing_nodes_by_thread(runtime.saver(), twin_graph.compiled())
+    twin_chosen = [thread for thread, node in twin_stuck.items() if node == args.node]
+    if twin_chosen:
+        twin_asked = twin_graph.reseat(runtime.saver(), twin_chosen)
+        print(f"{len(twin_chosen)} Twin thread(s) reset, {twin_asked} question(s) asked to start again")
     return 0
 
 
