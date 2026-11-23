@@ -3,7 +3,7 @@
 }
 
 .email {
-  max-width: 14rem;
+  max-width: 8.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

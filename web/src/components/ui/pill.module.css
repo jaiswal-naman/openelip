@@ -1,15 +1,25 @@
+/* A stamp: the status mark on a sheet. Outlined, lettered in the drawing's condensed hand, always an icon and words. */
 .pill {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-4);
-  padding: 0.2rem var(--sp-8) 0.2rem 0.375rem;
+  padding: 0.1875rem var(--sp-8) 0.1875rem 0.3125rem;
   border: 1px solid currentColor;
-  border-radius: var(--r-pill);
-  font-family: var(--font-mono);
+  border-radius: var(--r-sm);
+  font-family: var(--font-sans);
   font-size: var(--fs-pill);
-  font-weight: 600;
+  font-stretch: var(--stretch-lettering);
+  font-weight: 700;
+  letter-spacing: 0.07em;
   line-height: 1;
+  text-transform: uppercase;
   white-space: nowrap;
+}
+
+.pill svg {
+  width: 0.8125rem;
+  height: 0.8125rem;
+  stroke-width: 2.25;
 }
 
 .ok {

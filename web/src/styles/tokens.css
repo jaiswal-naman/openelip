@@ -1,46 +1,55 @@
 /*
- * Design tokens, copied from FRONTEND_UI 5.2 to 5.5. Contrast ratios in the comments were computed for that document
- * with the WCAG relative-luminance formula; values marked "changed" there failed 4.5:1 for small text and were corrected.
+ * Design tokens: the Drawing Sheet. Every piece of agent work is a sheet whose title block reads drawn by an agent, checked
+ * by the verifier, approved by you. Light is whiteprint (drafting film, India ink, diazo blue); dark is blueprint
+ * (Prussian-blue sheet, chalk lines). Redline marks only what needs the person.
+ *
+ * Contrast (WCAG relative luminance, checked for both themes): text and muted at least 6.6:1 on every surface, status
+ * colours at least 4.5:1, control borders at least 3:1. `--faint` is for disabled controls only.
  * Sizes are in rem so text can be resized to 200% without loss; the pixel value is for a 16px root.
  */
 
 :root {
   color-scheme: light;
 
-  /* Colour: light */
-  --bg: #f6f3ec;
-  --surface: #fffdf8;
-  --surface-2: #efeadf;
-  --line: #ddd5c4; /* decorative rules and card borders only (1.2 to 1.4:1) */
-  --line-strong: #857a65; /* input and control borders, 3.5:1 or more for non-text */
-  --text: #1b1f24;
-  --muted: #56616d;
-  --faint: #8a929b; /* disabled controls only */
-  --accent: #d9480f; /* brand mark, large accents; not small text (3.9:1) */
-  --accent-strong: #b93d0c; /* small accent text, primary fill with white text (5.62), focus ring */
-  --accent-soft: rgba(217, 72, 15, 0.1);
+  /* Colour: whiteprint */
+  --bg: #f3f5f2; /* the sheet */
+  --surface: #fcfdfb; /* fields, raised rows, popovers */
+  --surface-2: #e6ebe7; /* the register (sidebar), table heads, hover */
+  --line: #c3cdc7; /* hairline rules: decorative only */
+  --line-strong: #6b7882; /* control borders, 4.1:1 */
+  --ink-rule: #16202b; /* the heavy rule of a title block and a sheet's frame */
+  --text: #16202b; /* India ink, 15:1 */
+  --muted: #4a5866; /* 6.6:1 */
+  --faint: #7d8a95; /* disabled controls only */
+  --accent: #1f5fa6; /* diazo blue: the primary fill, white on it is 6.5:1 */
+  --accent-strong: #1f5fa6; /* small accent text and the focus ring, 5.9:1 */
+  --accent-soft: rgb(31 95 166 / 0.1);
   --on-accent: #ffffff;
-  --ok: #0b7550;
-  --warn: #8f5a00;
-  --bad: #b8283a;
-  --info: #1c64d1; /* links and citations */
-  --unk: #5f6873; /* no evidence, not stated, unknown */
+  --redline: #c0362a; /* what needs the person, 5.0:1 */
+  --redline-soft: rgb(192 54 42 / 0.08);
+  --ok: #1d6b44;
+  --ok-soft: rgb(29 107 68 / 0.09);
+  --warn: #835200;
+  --bad: #b3261e;
+  --info: #1a528f; /* links and citations, 7.2:1 */
+  --unk: #56626e; /* no evidence, not stated, unknown */
   --focus: var(--accent-strong);
 
-  /* Elevation 0 is a border and no shadow; shadows are only for things that float */
-  --shadow-1: 0 6px 18px -10px rgb(0 0 0 / 0.35);
-  --shadow-2: 0 18px 40px -18px rgb(0 0 0 / 0.5);
+  /* Elevation: the sheet is flat; only what floats over it casts a shadow */
+  --shadow-1: 0 6px 16px -8px rgb(22 32 43 / 0.28);
+  --shadow-2: 0 18px 40px -16px rgb(22 32 43 / 0.42);
 
-  /* Type */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Type: Archivo for the person and the lettering (its width axis gives the condensed title-block hand), mono for data */
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --fs-display: clamp(2rem, 5vw, 3.5rem);
-  --fs-page: 1.5rem;
-  --fs-section: 1.0625rem;
-  --fs-card: 0.90625rem;
+  --stretch-lettering: 78%; /* condensed: titles and title-block labels */
+  --fs-display: clamp(2rem, 4.5vw, 3.25rem);
+  --fs-page: clamp(1.625rem, 2.4vw, 2.125rem);
+  --fs-section: 1.125rem;
+  --fs-card: 1rem;
   --fs-body: 0.9375rem;
   --fs-small: 0.8125rem;
-  --fs-label: 0.71875rem;
+  --fs-label: 0.6875rem;
   --fs-data: 0.78125rem;
   --fs-pill: 0.6875rem;
 
@@ -56,67 +65,80 @@
   --sp-44: 2.75rem;
   --sp-64: 4rem;
 
-  /* Radius */
-  --r-sm: 0.375rem;
-  --r-md: 0.5rem;
-  --r-lg: 0.75rem;
-  --r-xl: 0.875rem;
+  /* Radius: a drafted line has crisp corners */
+  --r-sm: 2px;
+  --r-md: 2px;
+  --r-lg: 3px;
+  --r-xl: 4px;
   --r-pill: 999px;
 
-  /* Motion: opacity and transform only, nothing animates layout */
-  --dur-fast: 120ms;
+  /* Motion: 150 to 200ms state changes, one stamp moment, nothing loops; opacity and transform only */
+  --dur-fast: 150ms;
   --dur-mid: 200ms;
   --dur-slow: 280ms;
-  --ease-in: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Layout */
-  --header-h: 3.5rem;
-  --content-max: 80rem;
+  --header-h: 3.5rem; /* the register's top bar on a narrow screen */
+  --register-w: 15rem;
+  --content-max: 76rem;
   --measure: 42rem;
 }
 
-/* Dark follows the system unless the person chose light ... */
+/* Dark is blueprint, following the system unless the person chose light ... */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0d1015;
-    --surface: #151a21;
-    --surface-2: #1c232c;
-    --line: #29313c;
-    --line-strong: #6b7686;
-    --text: #e8ecf1;
-    --muted: #9ca8b6;
-    --faint: #69747f;
-    --accent: #ff7a45;
-    --accent-strong: #ff7a45;
-    --accent-soft: rgba(255, 122, 69, 0.14);
-    --on-accent: #0d1015; /* white on this orange is 2.59:1 and fails */
-    --ok: #3ddc97;
-    --warn: #f5b53d;
-    --bad: #ff5d6c;
-    --info: #6aa9ff;
-    --unk: #8b95a3;
+    --bg: #0f2b47;
+    --surface: #14365a;
+    --surface-2: #0a2036;
+    --line: #2b4c6e;
+    --line-strong: #7f9dbb;
+    --ink-rule: #d5e3f1;
+    --text: #eaf1f8;
+    --muted: #afc3d7;
+    --faint: #7591ac;
+    --accent: #a6d4ff;
+    --accent-strong: #a6d4ff;
+    --accent-soft: rgb(166 212 255 / 0.14);
+    --on-accent: #0f2b47;
+    --redline: #ff907f;
+    --redline-soft: rgb(255 144 127 / 0.12);
+    --ok: #7adba8;
+    --ok-soft: rgb(122 219 168 / 0.12);
+    --warn: #f3c467;
+    --bad: #ff907f;
+    --info: #a6d4ff;
+    --unk: #afc3d7;
+    --shadow-1: 0 6px 16px -8px rgb(2 10 20 / 0.6);
+    --shadow-2: 0 18px 40px -16px rgb(2 10 20 / 0.75);
   }
 }
 
-/* ... and dark when the person chose it. The same values again: a media query cannot share a selector with an attribute. */
+/* ... and blueprint when the person chose it. The same values again: a media query cannot share a selector with an attribute. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0d1015;
-  --surface: #151a21;
-  --surface-2: #1c232c;
-  --line: #29313c;
-  --line-strong: #6b7686;
-  --text: #e8ecf1;
-  --muted: #9ca8b6;
-  --faint: #69747f;
-  --accent: #ff7a45;
-  --accent-strong: #ff7a45;
-  --accent-soft: rgba(255, 122, 69, 0.14);
-  --on-accent: #0d1015;
-  --ok: #3ddc97;
-  --warn: #f5b53d;
-  --bad: #ff5d6c;
-  --info: #6aa9ff;
-  --unk: #8b95a3;
+  --bg: #0f2b47;
+  --surface: #14365a;
+  --surface-2: #0a2036;
+  --line: #2b4c6e;
+  --line-strong: #7f9dbb;
+  --ink-rule: #d5e3f1;
+  --text: #eaf1f8;
+  --muted: #afc3d7;
+  --faint: #7591ac;
+  --accent: #a6d4ff;
+  --accent-strong: #a6d4ff;
+  --accent-soft: rgb(166 212 255 / 0.14);
+  --on-accent: #0f2b47;
+  --redline: #ff907f;
+  --redline-soft: rgb(255 144 127 / 0.12);
+  --ok: #7adba8;
+  --ok-soft: rgb(122 219 168 / 0.12);
+  --warn: #f3c467;
+  --bad: #ff907f;
+  --info: #a6d4ff;
+  --unk: #afc3d7;
+  --shadow-1: 0 6px 16px -8px rgb(2 10 20 / 0.6);
+  --shadow-2: 0 18px 40px -16px rgb(2 10 20 / 0.75);
 }

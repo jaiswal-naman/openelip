@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { Pill } from "@/components/ui/Pill";
 import { PRODUCT_NAME } from "@/lib/product";
@@ -15,6 +16,8 @@ const WORKING_TODAY = [
 ];
 
 export default function Home() {
+  // Local mode is one person's own workspace: the front page is their day, not a page about the project.
+  if (process.env.APP_MODE === "local") redirect("/app/today");
   return (
     <div className="container">
       <div className={styles.hero}>

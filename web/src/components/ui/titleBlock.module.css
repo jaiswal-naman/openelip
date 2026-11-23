@@ -1,0 +1,96 @@
+/*
+ * The title block. An ink rule across the top, as a drawing frame closes; the heading on the left; the facts in ruled
+ * cells on the right, label over value. On a narrow sheet the cells drop under the heading as a two-column grid.
+ */
+
+.block {
+  display: grid;
+  gap: var(--sp-20) var(--sp-32);
+  padding-block-start: var(--sp-20);
+  border-block-start: 2px solid var(--ink-rule);
+}
+
+@media (min-width: 56rem) {
+  .block {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+}
+
+.name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  min-width: 0;
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-width: var(--measure);
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+  margin-block-start: var(--sp-8);
+}
+
+.cells {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  margin: 0;
+  border-block-start: 1px solid var(--line-strong);
+  border-inline-start: 1px solid var(--line-strong);
+}
+
+@media (min-width: 40rem) {
+  .cells {
+    grid-auto-columns: minmax(7.5rem, auto);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+  }
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-8) var(--sp-12) var(--sp-12);
+  border-block-end: 1px solid var(--line-strong);
+  border-inline-end: 1px solid var(--line-strong);
+}
+
+.cell dt {
+  color: var(--muted);
+}
+
+.cell dd {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-stretch: var(--stretch-lettering);
+  font-weight: 650;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell[data-tone="redline"] {
+  background: var(--redline-soft);
+}
+
+.cell[data-tone="redline"] dd,
+.cell[data-tone="redline"] dt {
+  color: var(--redline);
+}
+
+.cell[data-tone="ok"] dd {
+  color: var(--ok);
+}
+
+.cell[data-tone="muted"] dd {
+  color: var(--muted);
+  font-weight: 500;
+}

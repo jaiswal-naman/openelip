@@ -62,6 +62,18 @@ export function DecisionCard({
           </p>
         )}
         {decision.note && <p className="t-small muted">{decision.note}</p>}
+        {act.hasProposal && (
+          <p role="status" className={styles.receipt}>
+            We suggested a change to your record. It changes nothing until you confirm it: see <Link href="/app/record">your record</Link>.
+          </p>
+        )}
+        {act.error !== null && (
+          <p role="alert" className={styles.problem}>
+            {describeFailure(act.error)} Your choice was not saved.
+          </p>
+        )}
+      </div>
+      <div className={styles.cardSide}>
         {act.isDismissed ? (
           <p role="status" className={styles.receipt}>
             Dismissed. Open it and save it to take that back.
@@ -78,7 +90,7 @@ export function DecisionCard({
                     <Button size="sm" isPending={act.isPending} onPress={act.toggleSave}>
                       {act.isSaved ? "Unsave" : "Save"}
                     </Button>
-                    <DismissDialog onDismiss={act.dismiss} isPending={act.isPending} />
+                    <DismissDialog onDismiss={act.dismiss} isPending={act.isPending} size="sm" />
                     {act.isSaved && <Pill tone="ok">Saved</Pill>}
                   </>
                 )}
@@ -89,16 +101,6 @@ export function DecisionCard({
               </LinkButton>
             )}
           </div>
-        )}
-        {act.hasProposal && (
-          <p role="status" className={styles.receipt}>
-            We suggested a change to your record. It changes nothing until you confirm it: see <Link href="/app/record">your record</Link>.
-          </p>
-        )}
-        {act.error !== null && (
-          <p role="alert" className={styles.problem}>
-            {describeFailure(act.error)} Your choice was not saved.
-          </p>
         )}
       </div>
     </article>

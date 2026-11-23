@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Tab, TabList, TabPanel, Tabs } from "react-aria-components";
 import { LinkButton } from "@/components/ui/LinkButton";
+import { TitleBlock } from "@/components/ui/TitleBlock";
 import { AiOffNotice, EmptyState, ErrorState } from "@/components/ui/States";
 import { LocalTime } from "@/components/ui/Viewer";
 import { useMe } from "@/features/auth/queries";
@@ -82,21 +83,30 @@ export function TodayView() {
 
   return (
     <div className={styles.today}>
-      <header className={styles.head}>
-        <h1 className="t-page">{date === null ? "Today" : `Today, ${dayLabel(date, viewer.locale)}`}</h1>
-        <p className={styles.lead}>
-          {brief.data === undefined
-            ? "Loading your brief."
-            : waiting === 0
-              ? "Nothing needs you today."
-              : `${waiting} ${waiting === 1 ? "decision needs" : "decisions need"} you.`}
-        </p>
-        {brief.data?.delivery.email === "sent" && brief.data.delivery.email_sent_at && (
-          <p className="t-small muted">
-            Brief emailed <LocalTime iso={brief.data.delivery.email_sent_at} />
-          </p>
-        )}
-      </header>
+      <TitleBlock
+        title={date === null ? "Today" : `Today, ${dayLabel(date, viewer.locale)}`}
+        lines={
+          <>
+            <p className={styles.lead}>
+              {brief.data === undefined
+                ? "Loading your brief."
+                : waiting === 0
+                  ? "Nothing needs you today."
+                  : `${waiting} ${waiting === 1 ? "decision needs" : "decisions need"} you.`}
+            </p>
+            {brief.data?.delivery.email === "sent" && brief.data.delivery.email_sent_at && (
+              <p className="t-small">
+                Brief emailed <LocalTime iso={brief.data.delivery.email_sent_at} />
+              </p>
+            )}
+          </>
+        }
+        cells={[
+          { label: "Needs you", value: brief.data === undefined ? "…" : waiting, tone: waiting > 0 ? "redline" : "muted" },
+          { label: "Matches", value: day.data === undefined ? "…" : matches.length },
+          { label: "Brief", value: paused ? "Paused" : brief.data ? "Delivered" : "Not yet", tone: paused || !brief.data ? "muted" : "ok" },
+        ]}
+      />
 
       {paused && (
         <p className={styles.banner}>

@@ -1,4 +1,4 @@
-/* One button look for <button> (React Aria) and <a> (links styled as buttons). FRONTEND_UI 5.7: primary, secondary, quiet; 32 and 40px. */
+/* One button look for <button> (React Aria) and <a> (links styled as buttons): primary (diazo blue), secondary (ruled), quiet; 32 and 40px. */
 
 .button {
   position: relative;
@@ -32,9 +32,10 @@
   font-size: var(--fs-small);
 }
 
-/* The one filled button on a card. White text in light, the page colour in dark (see tokens.css). */
+/* The one filled button in a region: diazo blue on whiteprint, chalk cyan on blueprint (see tokens.css) */
 .primary {
-  background: var(--accent-strong);
+  background: var(--accent);
+  border-color: var(--accent);
   color: var(--on-accent);
 }
 
@@ -54,7 +55,10 @@
     filter: brightness(0.92);
   }
 
-  .secondary:hover,
+  .secondary:hover {
+    border-color: var(--text);
+  }
+
   .quiet:hover {
     background: var(--surface-2);
   }

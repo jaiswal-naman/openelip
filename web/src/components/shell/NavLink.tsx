@@ -5,13 +5,16 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import styles from "./header.module.css";
 
-/** A header link that says which page it is, to the eye (accent underline) and to screen readers (aria-current). */
-export function NavLink({ href, children }: { href: string; children: ReactNode }) {
+/** A register entry that says which sheet is open, to the eye (an ink cell) and to screen readers (aria-current). */
+export function NavLink({ href, icon, children }: { href: string; icon?: ReactNode; children: ReactNode }) {
   const pathname = usePathname();
   const isCurrent = pathname === href || pathname.startsWith(`${href}/`);
   return (
-    <Link href={href} className={styles.link} aria-current={isCurrent ? "page" : undefined}>
-      {children}
-    </Link>
+    <li>
+      <Link href={href} className={styles.link} aria-current={isCurrent ? "page" : undefined}>
+        {icon}
+        <span>{children}</span>
+      </Link>
+    </li>
   );
 }

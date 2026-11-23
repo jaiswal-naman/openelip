@@ -111,11 +111,110 @@ export const HalfCircleIcon = (props: IconProps) => (
 );
 
 /** The brand mark: an open ring with the accent in its gap. Not from Lucide. */
+/** The mark: a drawing sheet with its title block in the corner, the cell you sign filled in. */
 export function BrandMark({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-      <path d="M19.79 7.5A9 9 0 1 0 19.79 16.5" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" />
-      <circle cx="20" cy="12" r="2.6" fill="var(--accent)" />
+      <rect x="2.75" y="2.75" width="18.5" height="18.5" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M11.25 21.25V14.75H21.25" stroke="currentColor" strokeWidth="1.75" />
+      <rect x="13" y="16.5" width="6.5" height="3" fill="var(--accent)" />
     </svg>
   );
 }
+
+// The register's icons, from Lucide like the rest.
+export const CalendarIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M8 2v4" />
+    <path d="M16 2v4" />
+    <rect width="18" height="18" x="3" y="4" rx="2" />
+    <path d="M3 10h18" />
+  </Icon>
+);
+
+export const SendIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+    <path d="m21.854 2.147-10.94 10.939" />
+  </Icon>
+);
+
+export const BriefcaseIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    <rect width="20" height="14" x="2" y="6" rx="2" />
+  </Icon>
+);
+
+export const FileTextIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    <path d="M10 9H8" />
+    <path d="M16 13H8" />
+    <path d="M16 17H8" />
+  </Icon>
+);
+
+export const ClipboardListIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    <path d="M12 11h4" />
+    <path d="M12 16h4" />
+    <path d="M8 11h.01" />
+    <path d="M8 16h.01" />
+  </Icon>
+);
+
+export const MessageSquareIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </Icon>
+);
+
+export const UsersIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </Icon>
+);
+
+export const ReceiptIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+    <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+    <path d="M12 17.5v-11" />
+  </Icon>
+);
+
+export const ShieldCheckIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+    <path d="m9 12 2 2 4-4" />
+  </Icon>
+);
+
+export const SlidersIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <line x1="21" x2="14" y1="4" y2="4" />
+    <line x1="10" x2="3" y1="4" y2="4" />
+    <line x1="21" x2="12" y1="12" y2="12" />
+    <line x1="8" x2="3" y1="12" y2="12" />
+    <line x1="21" x2="16" y1="20" y2="20" />
+    <line x1="12" x2="3" y1="20" y2="20" />
+    <line x1="14" x2="14" y1="2" y2="6" />
+    <line x1="8" x2="8" y1="10" y2="14" />
+    <line x1="16" x2="16" y1="18" y2="22" />
+  </Icon>
+);
+
+export const MenuIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <line x1="4" x2="20" y1="6" y2="6" />
+    <line x1="4" x2="20" y1="12" y2="12" />
+    <line x1="4" x2="20" y1="18" y2="18" />
+  </Icon>
+);

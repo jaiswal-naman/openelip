@@ -1,34 +1,19 @@
-import Link from "next/link";
-import { AccountMenu } from "@/features/auth/AccountMenu";
-import { ChatOpener } from "@/features/chat/ChatOpener";
-import { PRODUCT_NAME } from "@/lib/product";
-import { BrandMark } from "../icons/icons";
 import styles from "./header.module.css";
-import { NavLink } from "./NavLink";
-import { ThemeToggle } from "./ThemeToggle";
+import { RegisterNav } from "./RegisterNav";
 
+/**
+ * The register: the list of sheets down the left side, as an engineering drawing set lists its drawings. On a narrow
+ * screen it folds into a top bar with a Menu button. In local mode (APP_MODE=local, read on the server) there is one owner
+ * and no account to switch, so the account menu gives way to the model-key cell and the hiring desk is always listed.
+ */
 export function SiteHeader() {
   return (
     <>
       <a href="#main" className={styles.skip}>
         Skip to main content
       </a>
-      <header className={styles.header}>
-        <div className={`container ${styles.inner}`}>
-          <Link href="/" className={styles.brand} aria-label={`${PRODUCT_NAME} home`}>
-            <BrandMark />
-            <span className={styles.wordmark}>{PRODUCT_NAME}</span>
-          </Link>
-          <nav aria-label="Main" className={styles.nav}>
-            <NavLink href="/jobs">Jobs</NavLink>
-            <NavLink href="/trust">Trust</NavLink>
-          </nav>
-          <div className={styles.tools}>
-            <ChatOpener />
-            <ThemeToggle />
-            <AccountMenu hiringDeskAlways={process.env.APP_MODE === "local"} />
-          </div>
-        </div>
+      <header className={styles.register}>
+        <RegisterNav local={process.env.APP_MODE === "local"} />
       </header>
     </>
   );

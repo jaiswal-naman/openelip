@@ -1,4 +1,7 @@
-/* Today: the tabs, the decision and match cards, and the list of what was held back (FRONTEND_UI 3.3 and 4.1). Tokens only. */
+/*
+ * Today as a sheet: the title block, the tabs, decisions as ruled rows with their action at the right edge, matches as
+ * rows of the same rule, what was done as a revision table, and what was held back grouped under its reason.
+ */
 
 .today {
   display: flex;
@@ -6,27 +9,22 @@
   gap: var(--sp-24);
 }
 
-.head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-}
-
 .lead {
-  max-width: var(--measure);
+  color: var(--text);
+  font-size: 1.0625rem;
+  font-weight: 550;
 }
 
-/* A notice with a bar down its edge and a border: the words carry the meaning, the bar is extra. */
+/* A notice on the sheet: ruled, with its label lettered in the notice's colour */
 .banner {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--sp-4) var(--sp-8);
+  gap: var(--sp-4) var(--sp-12);
   max-width: var(--measure);
   padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line-strong);
-  border-inline-start: 4px solid var(--warn);
-  border-radius: var(--r-md);
+  border: 1px solid var(--warn);
+  border-radius: var(--r-sm);
   background: var(--surface);
 }
 
@@ -45,16 +43,20 @@
 
 .tab {
   min-height: 2.5rem;
+  margin-block-end: -1px;
   padding: var(--sp-8) var(--sp-16);
-  border-bottom: 3px solid transparent;
+  border-bottom: 2px solid transparent;
   color: var(--muted);
-  font-weight: 600;
+  font-stretch: var(--stretch-lettering);
+  font-size: 1rem;
+  font-weight: 650;
   cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-in);
 }
 
-/* The current tab is the one with the bar and the stronger text, and aria-selected says it to a screen reader. */
+/* The current tab carries the ink rule and the ink text; aria-selected says it to a screen reader */
 .tab[data-selected] {
-  border-bottom-color: var(--accent-strong);
+  border-bottom-color: var(--ink-rule);
   color: var(--text);
 }
 
@@ -72,8 +74,7 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-16);
-  padding-block-start: var(--sp-16);
+  gap: var(--sp-24);
 }
 
 .panel[data-focus-visible] {
@@ -81,29 +82,43 @@
   outline-offset: 2px;
 }
 
+/* ---- rows: decisions and matches ---- */
+
+/* The tab rule above is the list's top rule */
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-12);
 }
 
-/* ---- the cards ---- */
+.list > li {
+  border-block-end: 1px solid var(--line);
+}
 
 .card {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: var(--sp-12) var(--sp-24);
-  padding: var(--sp-16) var(--sp-20);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+  display: grid;
+  gap: var(--sp-12) var(--sp-32);
+  padding: var(--sp-16) var(--sp-8);
+  transition: background-color var(--dur-fast) var(--ease-in);
 }
 
-/* The decision an email link opened: a stronger border and a bar, and aria-current for a screen reader. */
+@media (min-width: 48rem) {
+  .card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+}
+
+@media (hover: hover) {
+  .card:hover {
+    background: var(--surface);
+  }
+}
+
+/* The decision an email link opened, and aria-current for a screen reader */
 .card[data-open] {
-  border-color: var(--accent-strong);
-  box-shadow: inset 4px 0 0 var(--accent-strong);
+  background: var(--accent-soft);
+  outline: 1px solid var(--accent-strong);
+  outline-offset: -1px;
 }
 
 .cardMain {
@@ -111,28 +126,60 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--sp-8);
-  flex: 1 1 22rem;
   min-width: 0;
+  max-width: 48rem;
 }
 
 .cardSide {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: var(--sp-4);
   min-width: 0;
   color: var(--muted);
 }
 
+@media (min-width: 48rem) {
+  .cardSide {
+    align-items: flex-end;
+    text-align: end;
+  }
+}
+
 .cardTitle {
+  font-size: 1.0625rem;
   overflow-wrap: anywhere;
+}
+
+.cardTitle a {
+  color: var(--text);
+  text-decoration-color: var(--line-strong);
+}
+
+.cardTitle a:hover {
+  text-decoration-color: currentColor;
 }
 
 .company {
+  color: var(--muted);
+  font-weight: 550;
   overflow-wrap: anywhere;
 }
 
+/* A decision's kind, marked with the revision delta: a decision is a change waiting for the person's signature */
 .kind {
-  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  color: var(--redline);
+}
+
+.kind::before {
+  content: "";
+  width: 0.6875rem;
+  height: 0.625rem;
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
 
 .meta {
@@ -176,27 +223,39 @@
 .problem {
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   background: var(--surface);
+  color: var(--bad);
   font-weight: 600;
 }
 
-/* ---- what was done ---- */
+/* ---- what was done: the revision table ---- */
 
 .done {
   display: flex;
   flex-direction: column;
   gap: var(--sp-8);
-  padding: var(--sp-16) var(--sp-20);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
 }
 
 .doneList {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  border-block-start: 1px solid var(--line-strong);
+}
+
+.doneList > li {
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr);
+  gap: var(--sp-16);
+  padding: var(--sp-8);
+  border-block-end: 1px solid var(--line);
+}
+
+@media (max-width: 30rem) {
+  .doneList > li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-2);
+  }
 }
 
 /* ---- why not ---- */
@@ -204,7 +263,7 @@
 .groups {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-24);
+  gap: var(--sp-32);
 }
 
 .group {
@@ -216,13 +275,14 @@
 .rows {
   display: flex;
   flex-direction: column;
+  border-block-end: 1px solid var(--line);
 }
 
 .row {
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
-  padding: var(--sp-12) 0;
+  padding: var(--sp-12) var(--sp-8);
   border-top: 1px solid var(--line);
   overflow-wrap: anywhere;
 }
