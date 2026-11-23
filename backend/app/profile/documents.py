@@ -135,5 +135,6 @@ def store_document(conn: Connection, user_id: UUID, filename: str | None, data: 
         unique_key=job_key(document_id),
         queue=PARSE_QUEUE,
         max_attempts=PARSE_ATTEMPTS,
+        user_id=user_id,
     )
     return document_id

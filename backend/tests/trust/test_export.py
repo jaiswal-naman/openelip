@@ -16,6 +16,7 @@ import pytest
 from sqlalchemy import text
 
 from app.platform import db, queue, scheduler, sessions
+from app.profile import documents
 from app.trust import api, export, jobs, privacy
 from app.trust.routes import API_STATUS
 
@@ -270,6 +271,28 @@ def test_the_account_is_in_the_archive_without_credential_hashes(ada, api_client
     # the idempotency record of the very request that asked for this export
     assert [row["path"] for row in platform["idempotency_keys"]] == ["/v1/privacy/exports"]
     assert all("request_sha256" not in row for row in platform["idempotency_keys"])
+
+
+def test_the_export_job_and_the_parse_of_an_upload_belong_to_the_person_and_the_archive_lists_them(
+    ada, api_client, engine, run_jobs
+):
+    """queue.enqueue is given the person, so the archive's queue_jobs holds their jobs and no one else's, and the
+    erasure (a cascade on that column) reaches them."""
+    bob = seed(engine, "bob@mail.test", "BOBCANARY")
+    for person in (ada, bob):
+        with db.transaction(person.user) as conn:
+            resume = b"%PDF-1.7 invented resume " + person.tag.encode()
+            documents.store_document(conn, person.user, "resume.pdf", resume)
+    with engine.begin() as c:  # the parses wait a day, so the one job run below is the export
+        c.execute(text("UPDATE queue_jobs SET run_at = now() + interval '1 day' WHERE kind = 'profile.parse'"))
+    request_id = build(api_client, engine, run_jobs)
+
+    with engine.connect() as c:
+        owners = {(row.kind, row.user_id) for row in c.execute(text("SELECT kind, user_id FROM queue_jobs"))}
+    assert owners == {("profile.parse", ada.user), ("profile.parse", bob.user), ("trust.export", ada.user)}
+    platform = json.loads(open_zip(stored_archive(engine, request_id)).read("platform.json"))
+    assert sorted(row["kind"] for row in platform["queue_jobs"]) == ["profile.parse", "trust.export"]
+    assert {row["user_id"] for row in platform["queue_jobs"]} == {str(ada.user)}
 
 
 def test_an_embedding_is_exported_as_numbers(ada, api_client, engine, run_jobs):

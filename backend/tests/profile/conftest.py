@@ -219,7 +219,7 @@ class Kit:
             return c.execute(
                 text(
                     """SELECT status::text AS state, attempts, max_attempts, last_error_code, queue, kind, payload,
-                              unique_key FROM queue_jobs WHERE unique_key = :key"""
+                              unique_key, user_id FROM queue_jobs WHERE unique_key = :key"""
                 ),
                 {"key": f"profile.parse:{document_id}"},
             ).one()

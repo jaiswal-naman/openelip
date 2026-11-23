@@ -90,6 +90,7 @@ def test_an_upload_is_kept_sealed_and_answers_202_with_the_id_and_where_to_poll(
     )
     assert open_sealed_bytes(bytes(row.content)) == data
     assert (kit.job(body["id"]).state, kit.count("queue_jobs")) == ("queued", 1)
+    assert kit.job(body["id"]).user_id == uploader.user  # the job is the person's: exported with them, erased with them
 
 
 def test_the_same_key_and_file_answer_with_the_first_answer_and_store_nothing_more(uploader, kit):

@@ -108,6 +108,17 @@ def test_a_repeated_unique_key_makes_one_job_even_after_the_first_one_succeeded(
     assert count(factory, "once") == 1
 
 
+def test_a_job_made_for_a_person_carries_their_id_and_one_made_for_no_one_does_not(factory):
+    """queue_jobs.user_id is what the export reads and the erasure cascades on (TRU-01, TRU-02)."""
+    with factory() as conn:
+        user = conn.execute(
+            text("INSERT INTO users (email) VALUES (:e) RETURNING id"), {"e": f"queue-{os.getpid()}@example.test"}
+        ).scalar_one()
+    mine = add(factory, "test.noop", "mine", user_id=user)
+    nobody = add(factory, "test.noop", "nobody")
+    assert (job(factory, mine).user_id, job(factory, nobody).user_id) == (user, None)
+
+
 def test_a_job_enqueued_in_a_transaction_that_rolls_back_never_exists(factory):
     with pytest.raises(RuntimeError):
         with factory() as conn:
