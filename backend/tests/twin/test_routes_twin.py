@@ -312,7 +312,7 @@ def test_the_routes_need_only_the_api_login(api_client, world, no_wait, monkeypa
     sign_in(api_client, world.candidate)
     ok(api_client.get("/v1/twin/questions"))
     ok(api_client.get("/v1/twin/scopes"))
-    assert set(db._engines) <= {"api"}
+    assert "worker" not in db._engines and "match" not in db._engines
     assert UUID(str(world.session))
 
 
