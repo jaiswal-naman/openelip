@@ -9,7 +9,8 @@ resume, chat or page text.
 
 import json
 from collections.abc import Mapping, Sequence
-from typing import Any
+from datetime import datetime
+from typing import Any, NamedTuple
 from uuid import UUID
 
 from sqlalchemy import Connection, text
@@ -221,3 +222,65 @@ def entry(conn: Connection, user_id: UUID, entry_id: int) -> dict[str, Any] | No
         ).mappings()
     ]
     return found
+
+
+class RunRow(NamedTuple):
+    """One agent run of a person for the runs list (API 2.19): the blocked actions of the run and what its model calls
+    cost, in micro-dollars."""
+
+    id: UUID
+    campaign_id: UUID | None
+    agent_role: str
+    status: str
+    blocked: int
+    cost_microusd: int
+    started_at: datetime
+    finished_at: datetime | None
+
+
+def list_runs(
+    conn: Connection,
+    user_id: UUID,
+    *,
+    campaign_id: UUID | None = None,
+    status: str | None = None,
+    agent_role: str | None = None,
+    before: tuple[datetime, UUID] | None = None,
+    limit: int = 50,
+) -> list[RunRow]:
+    """The person's agent runs, newest first, those that started before `before` (a `(started_at, id)` position).
+    A campaign's `guardian` run only holds its state changes and never finishes (Phase 7 decision 31), so it is not
+    a run of an agent and is never listed (Phase 8 decision 36)."""
+    where = ["r.user_id = :u", "r.agent_role <> 'guardian'"]
+    params: dict[str, Any] = {"u": user_id, "limit": limit}
+    if campaign_id is not None:
+        where.append("r.campaign_id = :c")
+        params["c"] = campaign_id
+    if status is not None:
+        where.append("r.status = CAST(:status AS agent_run_status)")
+        params["status"] = status
+    if agent_role is not None:
+        where.append("r.agent_role = CAST(:role AS agent_role)")
+        params["role"] = agent_role
+    if before is not None:
+        where.append("(r.started_at, r.id) < (:at, :id)")
+        params["at"], params["id"] = before
+    rows = conn.execute(
+        text(
+            f"""SELECT r.id, r.campaign_id, r.agent_role::text AS agent_role, r.status::text AS status,
+                       (SELECT count(*) FROM agent_actions x
+                         WHERE x.agent_run_id = r.id AND x.status = 'blocked') AS blocked,
+                       COALESCE((SELECT sum(l.cost_microusd) FROM llm_calls l WHERE l.agent_run_id = r.id), 0)
+                           AS cost_microusd,
+                       r.started_at, r.finished_at
+                FROM agent_runs r WHERE {" AND ".join(where)}
+                ORDER BY r.started_at DESC, r.id DESC LIMIT :limit"""
+        ),
+        params,
+    ).all()
+    return [
+        RunRow(
+            r.id, r.campaign_id, r.agent_role, r.status, r.blocked, int(r.cost_microusd), r.started_at, r.finished_at
+        )
+        for r in rows
+    ]

@@ -17,8 +17,9 @@ REPO = Path(__file__).resolve().parents[3]
 # converted in place by revision p2_0201_job_index), 3.6 and 3.7 for the match and brief tables of plan 04-01
 # (outbox is 3.7's and Phase 1's), 3.8 and 3.12 for the tailor, apply and chat tables of plan 05-01 (plus the Phase 5
 # column chat_messages.finish_reason), 3.9 for the hiring tables of plan 06-01 and 3.10 for the campaign and Guardian
-# tables of plan 07-01, 3.13 for the wind-tunnel tables and view of plan 08-01, and local mode's model key (revision
-# l1_local_mode), so a change to either side that the other does not follow fails here.
+# tables of plan 07-01, 3.13 for the wind-tunnel tables and view of plan 08-01, local mode's model key (revision
+# l1_local_mode) and 3.11 for the Twin and agent-token tables of plan 09-01, so a change to either side that the other
+# does not follow fails here.
 # Not autogenerate.
 EXPECTED = {
     "users": """
@@ -225,6 +226,19 @@ EXPECTED = {
         created_at timestamptz""",
     "local_model_key": """
         singleton bool; provider text; api_key_sealed text; key_last4 text; updated_at timestamptz""",
+    "twin_scopes": """
+        user_id uuid; topic twin_topic; permission twin_permission; updated_at timestamptz""",
+    "agent_tokens": """
+        id uuid; principal token_principal; user_id uuid; organization_id uuid?; consent_id uuid?; client_name text
+        token_sha256 bytea; scopes _token_scope; expires_at timestamptz; revoked_at timestamptz?
+        last_used_at timestamptz?; created_at timestamptz""",
+    "twin_sessions": """
+        id uuid; introduction_id uuid; user_id uuid; organization_id uuid; opened_by uuid?; agent_token_id uuid?
+        status twin_session_status; created_at timestamptz; closed_at timestamptz?""",
+    "twin_messages": """
+        id uuid; session_id uuid; user_id uuid; organization_id uuid; author twin_author; body text; topic twin_topic?
+        answer_kind twin_answer_kind?; cited_fact_ids _uuid; in_reply_to uuid?; agent_action_id int8?
+        created_at timestamptz""",
     # a view: information_schema reports every view column as nullable
     "sim_scenario_verdicts": """
         eval_run_id uuid?; scenario_id uuid?; attempts int8?; attempts_passed int8?; passed bool?""",
@@ -370,7 +384,8 @@ def test_the_phase_5_revision_sits_on_the_phase_4_one_and_the_merge_with_phase_6
     config.set_main_option("script_location", str(REPO / "db"))
     script = ScriptDirectory.from_config(config)
     assert script.get_revision(REVISION).down_revision == PREVIOUS
-    assert script.get_heads() == ["l1_local_mode"]  # local mode sits on Phase 8's head
+    assert script.get_heads() == ["p9_0901_twin_agentnet"]  # 09-01 sits on local mode, local mode on Phase 8
+    assert script.get_revision("p9_0901_twin_agentnet").down_revision == "l1_local_mode"
     assert script.get_revision("l1_local_mode").down_revision == "p8_0801_wind_tunnel"
     assert script.get_revision("p8_0801_wind_tunnel").down_revision == "p7_0702_langgraph"
     assert script.get_revision("p7_0702_langgraph").down_revision == "p7_0701_campaigns_guardian"
@@ -491,3 +506,68 @@ def test_local_mode_tables_belong_to_the_owner_and_the_grants_are_as_narrow_as_t
         ("app_api", "DELETE"),
         ("app_worker", "SELECT"),
     }
+
+
+P9_TABLES = ["twin_scopes", "twin_sessions", "twin_messages", "agent_tokens"]
+P9_ENUMS = [
+    "twin_topic",
+    "twin_permission",
+    "twin_author",
+    "twin_answer_kind",
+    "twin_session_status",
+    "token_principal",
+    "token_scope",
+]
+P9_FUNCTIONS = [
+    "app_scope_ok",
+    "resolve_agent_token",
+    "touch_agent_token",
+    "role_ask_bucket",
+    "twin_message_citations",
+    "twin_sessions_check",
+    "twin_messages_check",
+    "agent_tokens_check",
+    "twin_questions_delete_thread",
+]
+
+
+@pytest.mark.parametrize("type_name", P9_ENUMS)
+def test_every_phase_9_enum_holds_the_data_model_values_in_order(engine, type_name):
+    with engine.connect() as c:
+        labels = c.execute(
+            text("SELECT enumlabel FROM pg_enum WHERE enumtypid = CAST(:t AS regtype) ORDER BY enumsortorder"),
+            {"t": type_name},
+        ).scalars()
+        assert list(labels) == _data_model_labels(type_name)
+
+
+def test_the_twin_revision_goes_down_to_local_mode_restoring_the_guard_and_up_again_twice(make_database, alembic_run):
+    url = make_database("p9down_test")
+    engine = _engine(url)
+    guard = "SELECT md5(pg_get_functiondef('agent_actions_guard'::regproc))"
+    try:
+        alembic_run("upgrade", url, "l1_local_mode")
+        with engine.connect() as c:
+            previous_guard = c.execute(text(guard)).scalar_one()
+        alembic_run("upgrade", url, "p9_0901_twin_agentnet")
+        with engine.connect() as c:
+            assert c.execute(text(guard)).scalar_one() != previous_guard  # the relay amendment
+            assert _names(c, "SELECT tablename FROM pg_tables WHERE tablename = ANY(:n)", n=P9_TABLES) == sorted(
+                P9_TABLES
+            )
+        alembic_run("downgrade", url, "l1_local_mode")
+        with engine.connect() as c:
+            assert _names(c, "SELECT relname FROM pg_class WHERE relname = ANY(:n)", n=P9_TABLES) == []
+            assert _names(c, "SELECT typname FROM pg_type WHERE typname = ANY(:n)", n=P9_ENUMS) == []
+            assert _names(c, "SELECT proname FROM pg_proc WHERE proname = ANY(:n)", n=P9_FUNCTIONS) == []
+            assert _names(c, "SELECT policyname FROM pg_policies WHERE policyname LIKE 'agent\\_%'") == []
+            assert _names(c, "SELECT policyname FROM pg_policies WHERE policyname = 'org_token_calls'") == []
+            assert c.execute(text(guard)).scalar_one() == previous_guard  # the Phase 7 guard, byte for byte
+            assert (
+                _names(c, "SELECT conname FROM pg_constraint WHERE conname IN ('audit_log_agent_token_id_fkey')") == []
+            )
+        alembic_run("upgrade", url, "head")
+        alembic_run("upgrade", url, "head")  # twice: the second changes nothing
+        _assert_matches_data_model(engine)
+    finally:
+        engine.dispose()

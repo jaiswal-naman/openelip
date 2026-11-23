@@ -5,10 +5,13 @@ Run:  uvicorn app.main:app --port 8000
 
 from fastapi import FastAPI
 
+from app.agentnet import privacy as agentnet_privacy  # noqa: F401  (importing it registers the agent-token table)
+from app.agentnet import routes as agentnet_routes
 from app.apply import privacy as apply_privacy  # noqa: F401  (importing it registers the apply tables and exporter)
 from app.apply import routes as apply_routes
 from app.brief import privacy as brief_privacy  # noqa: F401  (importing it registers the brief tables and exporter)
 from app.brief import routes as brief_routes
+from app.campaigns import control_routes as campaign_control_routes
 from app.campaigns import privacy as campaign_privacy  # noqa: F401  (importing it registers the campaign tables)
 from app.campaigns import routes as campaign_routes
 from app.campaigns import stream as campaign_stream  # noqa: F401  (importing it registers the campaigns stream source)
@@ -16,6 +19,7 @@ from app.campaigns import subscribers as campaign_subscribers  # noqa: F401  (im
 from app.campaigns import view_routes as campaign_view_routes
 from app.chat import privacy as chat_privacy  # noqa: F401  (importing it registers the chat tables and exporter)
 from app.chat import routes as chat_routes
+from app.evals import routes as eval_routes
 from app.guardian import privacy as guardian_privacy  # noqa: F401  (importing it registers the Guardian tables)
 from app.guardian import routes as guardian_routes
 from app.guardian import stream as guardian_stream  # noqa: F401  (importing it registers the Guardian stream source)
@@ -38,6 +42,8 @@ from app.tailor import privacy as tailor_privacy  # noqa: F401  (importing it re
 from app.tailor import routes as tailor_routes
 from app.trust import consent as trust_consent
 from app.trust import routes as trust_routes
+from app.twin import privacy as twin_privacy  # noqa: F401  (importing it registers the Twin tables and exporter)
+from app.twin import routes as twin_routes
 
 
 def create_app() -> FastAPI:
@@ -69,11 +75,15 @@ def create_app() -> FastAPI:
         chat_routes.router,
         campaign_routes.router,
         campaign_view_routes.router,
+        campaign_control_routes.router,
+        eval_routes.router,
         guardian_routes.router,
         hiring_org_routes.router,
         hiring_role_routes.router,
         hiring_introduction_routes.router,
         hiring_signal_routes.router,
+        twin_routes.router,
+        agentnet_routes.router,
     ):
         app.include_router(router)
     return app

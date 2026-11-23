@@ -1145,6 +1145,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/control/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Runs */
+        get: operations["read_runs_v1_control_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/control/costs/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Campaign Costs */
+        get: operations["campaign_costs_v1_control_costs_campaigns_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/control/evals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Scoreboard */
+        get: operations["scoreboard_v1_control_evals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/control/evals/runs/{eval_run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Run Detail */
+        get: operations["run_detail_v1_control_evals_runs__eval_run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/approvals": {
         parameters: {
             query?: never;
@@ -1817,6 +1885,39 @@ export interface components {
             /** Reply */
             reply?: unknown;
         };
+        /** Attempt */
+        Attempt: {
+            /** Scenario Key */
+            scenario_key: string;
+            /** Attempt */
+            attempt: number;
+            /** Seed */
+            seed: number;
+            /** Status */
+            status: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Finished At */
+            finished_at: string | null;
+            /** Results */
+            results: components["schemas"]["AttemptResult"][];
+        };
+        /** AttemptResult */
+        AttemptResult: {
+            /** Kind */
+            kind: string;
+            /** Code */
+            code: string;
+            /** Passed */
+            passed: boolean;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+        };
         /** AuditLink */
         AuditLink: {
             /** Kind */
@@ -2110,6 +2211,24 @@ export interface components {
              */
             undo_until: string;
         };
+        /** CampaignCosts */
+        CampaignCosts: {
+            /** Month */
+            month: string | null;
+            /**
+             * Currency
+             * @constant
+             */
+            currency: "USD";
+            /** Total Usd */
+            total_usd: string;
+            /** Model Calls */
+            model_calls: number;
+            /** Groups */
+            groups: components["schemas"]["CampaignSpend"][];
+            /** Label */
+            label: string;
+        };
         /** CampaignDetail */
         CampaignDetail: {
             /**
@@ -2187,6 +2306,25 @@ export interface components {
             company_name: string;
             /** Campaign Id */
             campaign_id: string | null;
+        };
+        /** CampaignSpend */
+        CampaignSpend: {
+            /** Campaign Id */
+            campaign_id: string | null;
+            /** Title */
+            title: string;
+            /** Company Name */
+            company_name: string | null;
+            /** Stage */
+            stage: string | null;
+            /** Spent Usd */
+            spent_usd: string;
+            /** Lifetime Spent Usd */
+            lifetime_spent_usd: string;
+            /** Budget Usd */
+            budget_usd: string | null;
+            /** Model Calls */
+            model_calls: number;
         };
         /** CancelIn */
         CancelIn: {
@@ -2686,6 +2824,17 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[CampaignCosts] */
+        Envelope_CampaignCosts_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["CampaignCosts"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[CampaignDetail] */
         Envelope_CampaignDetail_: {
             /** Success */
@@ -2768,6 +2917,17 @@ export interface components {
             /** Success */
             success: boolean;
             data: components["schemas"]["DocumentView"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[EvalRun] */
+        Envelope_EvalRun_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["EvalRun"] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -2999,6 +3159,28 @@ export interface components {
             /** Success */
             success: boolean;
             data: components["schemas"]["RoleView"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[Runs] */
+        Envelope_Runs_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["Runs"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[Scoreboard] */
+        Envelope_Scoreboard_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["Scoreboard"] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -3266,6 +3448,39 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** EvalRun */
+        EvalRun: {
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Suite */
+            suite: string;
+            /** Status */
+            status: string;
+            /** Mode */
+            mode: string;
+            /** Git Sha */
+            git_sha: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Finished At */
+            finished_at: string | null;
+            /** Config */
+            config: {
+                [key: string]: unknown;
+            };
+            /** Metrics */
+            metrics: {
+                [key: string]: unknown;
+            } | null;
+            /** Attempts */
+            attempts: components["schemas"]["Attempt"][] | null;
+        };
         /** EventView */
         EventView: {
             /**
@@ -3428,6 +3643,18 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HumanMinutes */
+        HumanMinutes: {
+            /** Value */
+            value: number;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Label */
+            label: string;
         };
         /** IntroductionAccepted */
         IntroductionAccepted: {
@@ -3617,6 +3844,19 @@ export interface components {
         LevelIn: {
             /** Level */
             level: string;
+        };
+        /** LiveRun */
+        LiveRun: {
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * Finished At
+             * Format: date-time
+             */
+            finished_at: string;
         };
         /**
          * LocalSessionRequest
@@ -4089,6 +4329,13 @@ export interface components {
             id: string;
             /** Kind */
             kind: string;
+        };
+        /** Persona */
+        Persona: {
+            /** Persona */
+            persona: string;
+            /** Scenarios */
+            scenarios: components["schemas"]["Scenario"][];
         };
         /** PreferenceChange */
         PreferenceChange: {
@@ -4800,6 +5047,54 @@ export interface components {
             closed_at: string | null;
             extraction?: components["schemas"]["Extraction"] | null;
         };
+        /** Run */
+        Run: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "campaign" | "matching";
+            campaign: components["schemas"]["RunCampaign"] | null;
+            /** Agent Role */
+            agent_role: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "succeeded" | "failed" | "cancelled";
+            /** Blocked */
+            blocked: number;
+            /** Cost Usd */
+            cost_usd: string | null;
+            /** Trigger */
+            trigger: string | null;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Finished At */
+            finished_at: string | null;
+            /** Duration Ms */
+            duration_ms: number | null;
+        };
+        /** RunCampaign */
+        RunCampaign: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /** Company Name */
+            company_name: string;
+        };
         /** RunSummary */
         RunSummary: {
             /**
@@ -4821,6 +5116,18 @@ export interface components {
              */
             checker: "passed" | "disagreed";
         };
+        /** Runs */
+        Runs: {
+            /** Runs */
+            runs: components["schemas"]["Run"][];
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
         /** SalaryFloor */
         SalaryFloor: {
             /** Amount */
@@ -4834,6 +5141,53 @@ export interface components {
             kind: string;
             /** Quote */
             quote: string;
+        };
+        /** Scenario */
+        Scenario: {
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+            /** Version */
+            version: number;
+            result: components["schemas"]["ScenarioResult"] | null;
+        };
+        /** ScenarioResult */
+        ScenarioResult: {
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Version */
+            version: number;
+            /** Attempts */
+            attempts: number;
+            /** Attempts Passed */
+            attempts_passed: number;
+            /** Passed */
+            passed: boolean;
+            /** Attempt Statuses */
+            attempt_statuses: string[];
+            /** Medians */
+            medians: {
+                [key: string]: unknown;
+            } | null;
+            /** Mode */
+            mode: string;
+            /** Git Sha */
+            git_sha: string;
+            /**
+             * Finished At
+             * Format: date-time
+             */
+            finished_at: string;
+        };
+        /** Scoreboard */
+        Scoreboard: {
+            /** Suites */
+            suites: components["schemas"]["Suite"][];
+            wind_tunnel: components["schemas"]["WindTunnel"];
         };
         /** SessionIn */
         SessionIn: {
@@ -4952,6 +5306,41 @@ export interface components {
             /** Outside Copies Statement */
             outside_copies_statement: string;
         };
+        /** Suite */
+        Suite: {
+            /** Suite */
+            suite: string;
+            result: components["schemas"]["SuiteResult"] | null;
+        };
+        /** SuiteResult */
+        SuiteResult: {
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Status */
+            status: string;
+            /** Mode */
+            mode: string;
+            /** N */
+            n: number | null;
+            /** Passed */
+            passed: number | null;
+            /** Score */
+            score: number | null;
+            /** Git Sha */
+            git_sha: string;
+            /**
+             * Finished At
+             * Format: date-time
+             */
+            finished_at: string;
+            /** Model */
+            model: string | null;
+            /** Labels */
+            labels: string | null;
+        };
         /** TailoredIn */
         TailoredIn: {
             /** Job Id */
@@ -5028,6 +5417,13 @@ export interface components {
         VersionOnly: {
             /** Record Version */
             record_version: number;
+        };
+        /** WindTunnel */
+        WindTunnel: {
+            last_live_run: components["schemas"]["LiveRun"] | null;
+            /** Personas */
+            personas: components["schemas"]["Persona"][];
+            human_minutes_per_interview: components["schemas"]["HumanMinutes"] | null;
         };
         /**
          * PayRange
@@ -5444,6 +5840,7 @@ export interface operations {
         parameters: {
             query?: {
                 group_by?: "month" | "task";
+                month?: string | null;
             };
             header?: never;
             path?: never;
@@ -7304,6 +7701,123 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_runs_v1_control_runs_get: {
+        parameters: {
+            query?: {
+                campaign_id?: string | null;
+                status?: ("running" | "succeeded" | "failed" | "cancelled") | null;
+                agent_role?: ("scout" | "researcher" | "analyst" | "writer" | "operator" | "chaser" | "coach" | "twin") | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Runs_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    campaign_costs_v1_control_costs_campaigns_get: {
+        parameters: {
+            query?: {
+                month?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_CampaignCosts_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoreboard_v1_control_evals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Scoreboard_"];
+                };
+            };
+        };
+    };
+    run_detail_v1_control_evals_runs__eval_run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eval_run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_EvalRun_"];
                 };
             };
             /** @description Validation Error */
