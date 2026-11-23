@@ -159,6 +159,18 @@ def _recency(job: Candidate, now: datetime) -> float:
     return ranking.age_bucket((now - job.changed_at).total_seconds() / SECONDS_PER_DAY)
 
 
+def _final_score(
+    job: Candidate, rows: tuple[EvidenceRow, ...], preferences: list[dict[str, Any]], now: datetime
+) -> float:
+    """The rules score of a job that has verdicts: fit, plus the same soft signals as the pre-rank."""
+    return ranking.final_score(
+        ranking.fit_score(rows),
+        _preference_match(job, preferences),
+        _seniority_distance(job, preferences),
+        _recency(job, now),
+    )
+
+
 def _prerank(found: list[Candidate], preferences: list[dict[str, Any]], now: datetime) -> list[Candidate]:
     """The retrieved jobs best first by the rules alone (no verdicts exist yet): the fusion score as a share of the
     best one, plus the soft signals. A tie goes to the lower job id, so a run repeats."""
@@ -432,10 +444,7 @@ def _decide(conn: Connection, user_id: UUID, day: date, prepared: _Prepared, sco
         elif reason := _unfit(job, state.get(job.job_id), last_shown.get(job.job_id)):
             others.append(_Decision(job, "withheld", (reason,)))
         elif (accepted := scores.accepted.get(job.job_id)) is not None:
-            final = ranking.final_score(
-                ranking.fit_score(accepted.rows), _preference_match(job, prepared.preferences),
-                _seniority_distance(job, prepared.preferences), _recency(job, now),
-            )  # fmt: skip
+            final = _final_score(job, accepted.rows, prepared.preferences, now)
             scored[job.job_id] = ranking.Scored(
                 job.job_id, job.facts.company_name, job.title, final, accepted.rows, accepted.weak_fit
             )
