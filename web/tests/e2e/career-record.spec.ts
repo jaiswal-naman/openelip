@@ -10,11 +10,12 @@ import { BASE_URL, freshAddress, MAILPIT_URL, signInThroughApi } from "./helpers
 /*
  * Phase 3, the Career Record, as a candidate sees it (SC1 to SC5).
  *
- * Two groups. The first signs fresh accounts in and scans every candidate page with axe in both themes, and checks that a
- * person who has not agreed to AI processing is told why AI is off and can still keep a record. It needs nothing but the
- * stack Phase 1's browser tests use, so it runs on a fresh one.
+ * Three groups. The first signs nobody in: a visitor with no session who opens a candidate page is sent to sign in, and
+ * the address says where to come back to. The second signs fresh accounts in and scans every candidate page with axe in
+ * both themes, and checks that a person who has not agreed to AI processing is told why AI is off and can still keep a
+ * record. Both need nothing but the stack Phase 1's browser tests use, so they run on a fresh one.
  *
- * The second is the demo: agree to AI processing, upload an invented resume, see each fact with the words it came from, see
+ * The third is the demo: agree to AI processing, upload an invented resume, see each fact with the words it came from, see
  * the hidden text that was removed, decide facts, set constraints and preferences, edit a constraint and see the change log,
  * export everything and delete the account. It needs the fake model provider to know the answers for the invented resume,
  * which no fresh stack has, so it runs only with DEMO_STACK=1. It copies the recorded answers (fixtures/recorded) into the
@@ -94,6 +95,29 @@ async function focusRing(target: Locator) {
     return { style: style.outlineStyle, width: Number.parseFloat(style.outlineWidth) };
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// A visitor with no session is sent to sign in from every page that is for a signed-in person
+
+// Each page redirects on the server when the API says there is no session, and puts the page itself in `next`, so signing in
+// brings the person back (the pages' own code: web/src/app/onboarding, app/record and app/settings).
+const SIGNED_IN_PAGES = ["/onboarding", "/app/record", "/app/settings?section=privacy"];
+
+test.describe("the candidate pages, signed out", () => {
+  for (const path of SIGNED_IN_PAGES) {
+    test(`${path} sends a visitor with no session to sign in and says where to come back to`, async ({ browser }) => {
+      const context = await browser.newContext({ baseURL: BASE_URL }); // no cookie
+      const page = await context.newPage();
+
+      await page.goto(path);
+
+      // exact: a string would be read as a glob, where ? matches any character
+      await expect(page).toHaveURL((url) => url.pathname === "/sign-in" && url.searchParams.get("next") === path);
+      await expect(page.getByRole("button", { name: "Send code" })).toBeVisible();
+      await context.close();
+    });
+  }
+});
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Every candidate page, both themes, for a person who has not agreed to AI processing and for one who has
