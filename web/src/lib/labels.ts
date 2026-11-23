@@ -30,9 +30,25 @@ export const ERROR_MESSAGES = {
   requirements_unconfirmed: "Publishing needs every requirement confirmed.",
   quota_exhausted: "No serious-interest signals left this week. They reset on Monday (UTC).",
   already_resolved: "This changed in another tab or by an agent. Showing the latest.",
+  // Campaigns and the Guardian (FRONTEND_UI 6.4)
+  budget_exhausted: "This campaign reached its budget. Raise the budget to continue, or cancel.",
+  job_closed: "This job has closed, so a campaign cannot start.",
+  violates_constraint: "This job breaks one of your hard constraints, so a campaign cannot start.",
+  autonomy_not_allowed: "That level is not allowed for this kind of action.",
+  version_conflict: "These settings changed in another tab or by an agent. Showing the latest.",
+  consent_required: "Campaigns need your agreement to AI processing. Review it in Settings, then try again.",
 } as const;
 
 export type KnownErrorCode = keyof typeof ERROR_MESSAGES;
+
+/** What a 409 conflict says when it names the state the thing is really in (campaigns, approvals, undo). */
+const CONFLICT_STATE_MESSAGES: Record<string, string> = {
+  closed: "This campaign is closed.",
+  sending: "Sending has started, so this can no longer be undone.",
+  sent: "This was already sent, so it can no longer be undone.",
+  executed: "This was already sent, so it can no longer be undone.",
+  cancelled: "This was already undone.",
+};
 
 /** "45 seconds", "14 minutes", "2 hours": rounded up, because telling someone to try too early wastes their time. */
 export function waitPhrase(seconds: number): string {
@@ -48,6 +64,11 @@ export function messageFor(failure: Pick<ApiFailure, "code" | "requestId" | "ret
     return `Too many attempts. Try again in ${waitPhrase(failure.retryAfterSeconds)}.`;
   }
   if (failure.code === "conflict" && failure.details?.state === "answers_overdue") return ERROR_MESSAGES.answers_overdue;
+  if (failure.code === "conflict" && typeof failure.details?.campaign_id === "string") return "You already have a campaign for this job.";
+  if (failure.code === "conflict" && typeof failure.details?.state === "string") {
+    const said = CONFLICT_STATE_MESSAGES[failure.details.state];
+    if (said !== undefined) return said;
+  }
   if (failure.code === "quota_exhausted" && typeof failure.details?.resets_at === "string") {
     const reset = new Date(failure.details.resets_at);
     if (!Number.isNaN(reset.getTime())) {
@@ -283,4 +304,148 @@ export const PACKET_QUESTION_LABELS: Record<string, string> = {
   expected_pay: "What pay do you expect?",
   notice_period: "What is your notice period?",
   start_date: "When could you start?",
+};
+
+// ---- Campaigns and the Guardian (CMP-01 to CMP-07, GRD-01 to GRD-04, GRD-07) -----------------------------------------------
+// FRONTEND_UI 3.6, 3.7, 3.19 and 6.2 word these.
+
+export type CampaignStage = Schemas["Column"]["stage"];
+
+export const CAMPAIGN_STAGE_LABELS: Record<CampaignStage, string> = {
+  researching: "Researching",
+  needs_you: "Needs you",
+  applied: "Applied",
+  talking: "Talking",
+  interview: "Interview",
+  offer: "Offer",
+  closed: "Closed",
+};
+
+export const CLOSED_REASON_LABELS: Record<string, string> = {
+  cancelled: "Cancelled by you",
+  rejected: "Rejected",
+  no_response: "No response",
+  job_closed: "The job closed",
+  offer_accepted: "Offer accepted",
+  offer_declined: "Offer declined",
+};
+
+export const PAUSE_LABELS: Record<NonNullable<Schemas["Card"]["pause_reason"]>, string> = {
+  candidate: "You paused",
+  budget_exhausted: "Budget reached",
+  scam_suspected: "Possible scam",
+};
+
+export const STEP_STATUS_LABELS: Record<string, string> = {
+  pending: "Not started",
+  running: "Working",
+  waiting: "Waiting",
+  done: "Done",
+  failed: "Could not finish",
+  skipped: "Skipped",
+  cancelled: "Cancelled",
+};
+
+export const AGENT_ROLE_LABELS: Record<string, string> = {
+  scout: "Scout",
+  researcher: "Researcher",
+  analyst: "Analyst",
+  writer: "Writer",
+  operator: "Operator",
+  chaser: "Chaser",
+  coach: "Coach",
+  twin: "Twin",
+  guardian: "Guardian",
+};
+
+export const CHECK_KIND_LABELS: Record<string, string> = {
+  citations: "Every claim has a source",
+  consent: "Your consent",
+  scope: "Only what you allowed",
+  budget: "Budget",
+  injection: "No instructions hidden in text",
+  rate_limit: "Follow-up limit",
+};
+
+export const POLICY_DECISION_LABELS: Record<string, string> = {
+  allow: "Allowed without asking",
+  ask: "Ask you first",
+  deny: "Not allowed",
+};
+
+export const ACTION_STATUS_LABELS: Record<string, string> = {
+  recorded: "Recorded",
+  proposed: "Proposed",
+  awaiting_approval: "Waiting for you",
+  scheduled: "Scheduled",
+  executed: "Done",
+  blocked: "Blocked",
+  rejected: "You declined",
+  expired: "Expired",
+  cancelled: "Cancelled",
+  failed: "Failed",
+};
+
+export const ACTION_TYPE_LABELS: Record<string, string> = {
+  submit_application: "Submit an application",
+  send_follow_up: "Send a follow-up",
+  twin_answer: "Answer an employer's question",
+};
+
+/** Where an approved follow-up is in the outbox (`delivery`). */
+export const DELIVERY_LABELS: Record<string, string> = {
+  pending: "Scheduled",
+  sending: "Sending",
+  sent: "Sent",
+  failed: "Failed",
+  cancelled: "Undone",
+  refused: "Blocked",
+  unknown: "May have sent",
+};
+
+/** The Guardian's reason codes in words (the same sentences as backend guardian/explain.py; a code with no entry gets UNKNOWN_REASON). */
+export const REASON_LABELS: Record<string, string> = {
+  dial_never: "You set this kind of action to never, so it was not attempted.",
+  campaign_paused: "This campaign is paused, so nothing was prepared or sent.",
+  campaign_closed: "This campaign is closed, so nothing was prepared or sent.",
+  account_inactive: "Your account is not active, so nothing was prepared or sent.",
+  type_not_available: "This kind of action is not available yet.",
+  citation_unresolved: "The draft cites something that is not in your confirmed record or in the company's sources, or says something it does not cite.",
+  unsupported_claim: "The draft says more than its sources support.",
+  citation_check_missing: "The check that compares a draft with its sources is not available, so it was held.",
+  consent_missing: "You have not allowed AI processing, so a draft written with it cannot be used.",
+  constraint_conflict: "The job now breaks one of your hard constraints, so nothing was sent for it.",
+  employer_blocked: "You blocked this employer, so nothing was sent to them.",
+  restricted_data: "The draft holds something only you may state, so it was held.",
+  budget_exhausted: "This campaign reached its model budget, so work stopped until you raise it or cancel.",
+  injection_suspected: "Text the agent read carried an instruction or an address that does not come from your record or the employer's own site, so the draft was held.",
+  limit_reached: "Two follow-ups were already sent for this campaign, which is the most allowed.",
+  candidate: "You paused this campaign.",
+  scam_suspected: "The posting looks like a scam, so work stopped before anything was shared.",
+  expired: "You did not answer in time, so the request expired.",
+  undone: "You undid this before it was sent.",
+  cancelled: "The campaign was cancelled before this was sent.",
+  action_not_scheduled: "This was no longer scheduled when its time came, so it was not sent.",
+  preview_changed: "The draft changed after you saw it; look at the new version before deciding.",
+};
+export const UNKNOWN_REASON = "This did not go ahead.";
+export const reasonText = (code: string | null): string => (code === null ? "" : (REASON_LABELS[code] ?? UNKNOWN_REASON));
+
+export const SCAM_SIGNAL_LABELS: Record<string, string> = {
+  fee_request: "It asks you to pay a fee or buy something.",
+  documents_before_interview: "It asks for identity or bank documents before an interview.",
+  off_platform: "It asks you to move to a chat app or a personal mailbox.",
+};
+export const scamSignalText = (kind: string): string => SCAM_SIGNAL_LABELS[kind] ?? "The posting matched a rule for scam postings.";
+
+/** The three kinds of action the dial covers (GRD-01), and why a row can be locked. */
+export const AUTONOMY_ROW_LABELS: Record<string, { name: string; locked: string }> = {
+  submit_application: { name: "Submit an application", locked: "The system never submits an application for you. You approve the packet and you apply." },
+  send_follow_up: { name: "Send a follow-up", locked: "A follow-up is never sent without your approval, so Tell me after is not offered." },
+  twin_answer: { name: "Answer an employer's question", locked: "Answers on your behalf arrive in a later version. Your choice is saved for then." },
+};
+export const AUTONOMY_LEVEL_LABELS: Record<string, string> = {
+  ask_first: "Ask me first",
+  tell_me_after: "Tell me after",
+  never: "Never",
 };

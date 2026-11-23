@@ -11,6 +11,7 @@ import { describeFailure } from "@/lib/api/problems";
 import { FINISH_REASON_LABELS, messageFor } from "@/lib/labels";
 import { useChatContext, setChatContext } from "./context";
 import { MessageText } from "./MessageText";
+import { CampaignCard } from "./CampaignCard";
 import { ProposalCard } from "./ProposalCard";
 import type { Reply } from "./reply";
 import { useChat } from "./useChat";
@@ -61,6 +62,9 @@ function ReplyView({ reply }: { reply: Reply }) {
       {ended !== "" && <p className="t-small muted">{ended}</p>}
       {reply.proposals.map((proposal) => (
         <ProposalCard key={proposal.event_id} proposal={proposal} />
+      ))}
+      {reply.campaignProposals.map((offer) => (
+        <CampaignCard key={offer.job_id} offer={offer} />
       ))}
     </div>
   );

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { meQuery } from "@/features/auth/queries";
+import { AutonomySection } from "@/features/autonomy/AutonomySection";
 import { BriefSettings } from "@/features/brief/BriefSettings";
 import { IntroductionsSettings } from "@/features/introductions/IntroductionsSettings";
 import styles from "@/features/privacy/privacy.module.css";
@@ -17,6 +18,7 @@ export const metadata: Metadata = { title: "Settings" };
 const SECTIONS = [
   { id: "brief", label: "Brief" },
   { id: "introductions", label: "Introductions" },
+  { id: "autonomy", label: "Autonomy" },
   { id: "privacy", label: "Privacy" },
 ] as const;
 type Section = (typeof SECTIONS)[number]["id"];
@@ -54,7 +56,7 @@ export default async function SettingsPage({ searchParams }: Props) {
             ))}
           </ul>
         </nav>
-        <HydrationBoundary state={dehydrate(queryClient)}>{section === "brief" ? <BriefSettings /> : section === "introductions" ? <IntroductionsSettings /> : <PrivacySection />}</HydrationBoundary>
+        <HydrationBoundary state={dehydrate(queryClient)}>{section === "brief" ? <BriefSettings /> : section === "introductions" ? <IntroductionsSettings /> : section === "autonomy" ? <AutonomySection /> : <PrivacySection />}</HydrationBoundary>
       </div>
     </div>
   );
