@@ -465,7 +465,7 @@ def _fail(ctx: Ctx, code: str, output: Mapping[str, Any] | None = None) -> dict[
     with _tx(ctx.user_id) as conn:
         board.fail(conn, ctx.step.id, code, output)
         _close(conn, ctx, status="failed", code=code)
-    log.event("campaign.step_failed", campaign_id=ctx.campaign_id, step_key=ctx.step.step_key, error_code=code)
+    log.event("campaign.step_failed", campaign_id=ctx.campaign_id, error_code=code)
     return {"next": None}
 
 
