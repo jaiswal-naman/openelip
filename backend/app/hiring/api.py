@@ -6,30 +6,45 @@ package is a public interface.
   brief_asks(conn, introduction_ids)      organization, role and expiry of the caller's own introductions
   introduction_ref(conn, introduction_id) who an introduction is between and where it stands, for campaigns (Phase 7)
   introduction_labels(conn, ids)          organization and role names of the introductions the caller can see (Phase 9)
+  accepted_introductions(conn, ...)       an organization's accepted introductions for an outside agent (Phase 9)
+  queue_ordinary_ask(conn, ...)           queue the ordinary ask for an open role, as the publish route does (Phase 9)
 
 Membership, Invitation and BriefAsk are what they return.
 """
 
+import base64
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import Connection, text
 
+from app.platform import queue
+
 from .queries import Invitation, Membership, my_organizations
 
 __all__ = [
+    "AcceptedIntroduction",
+    "AnswersOverdue",
+    "AskQueued",
+    "BadCursor",
     "BriefAsk",
     "IntroductionLabel",
     "IntroductionRef",
     "Invitation",
     "Membership",
+    "RoleNotFound",
+    "RoleNotOpen",
+    "accepted_introductions",
     "asks_for_brief",
     "brief_asks",
     "introduction_labels",
     "introduction_ref",
     "my_organizations",
+    "queue_ordinary_ask",
 ]
 
 
@@ -154,3 +169,128 @@ def introduction_labels(conn: Connection, introduction_ids: Sequence[UUID]) -> d
         for r in rows
         if r.organization_name is not None and r.role_title is not None
     }
+
+
+@dataclass(frozen=True)
+class AcceptedIntroduction:
+    """One accepted introduction as an employer's agent reads it: the role, the answer state, what the candidate agreed
+    to share (the frozen copy, third-party text) and the email only after the organization answered yes."""
+
+    introduction_id: UUID
+    role_id: UUID
+    role_title: str
+    responded_at: datetime
+    answer_due_at: datetime | None
+    is_overdue: bool
+    employer_answer: str | None
+    shared: dict[str, Any] | None
+    email: str | None
+
+
+class BadCursor(ValueError):
+    """A cursor this list did not issue."""
+
+
+def _encode(when: datetime, ident: UUID) -> str:
+    raw = json.dumps([when.isoformat(), str(ident)])
+    return base64.urlsafe_b64encode(raw.encode()).decode().rstrip("=")
+
+
+def _decode(cursor: str) -> tuple[datetime, UUID]:
+    try:
+        when, ident = json.loads(base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)))
+        return datetime.fromisoformat(when), UUID(ident)
+    except (ValueError, TypeError):
+        raise BadCursor("not a cursor of this list") from None
+
+
+def accepted_introductions(
+    conn: Connection,
+    *,
+    organization_id: UUID,
+    role_id: UUID | None = None,
+    before: str | None = None,
+    limit: int = 20,
+) -> tuple[list[AcceptedIntroduction], str | None]:
+    """The organization's accepted introductions, newest answer first, one page, and the cursor of the next. Only
+    accepted rows exist for this reader: the caller's row-level security (a member, or an organization token that holds
+    twin:ask or introductions:request) shows no asked, declined or expired one, so nothing here reveals who was asked.
+    The email is the preview's, and only once the answer is yes. `before` is a cursor from an earlier call; a cursor
+    this list did not issue raises BadCursor."""
+    params: dict[str, Any] = {"org": organization_id, "role": role_id, "limit": limit + 1}
+    after = ""
+    if before is not None:
+        params["c_at"], params["c_id"] = _decode(before)
+        after = "AND (i.responded_at, i.id) < (:c_at, :c_id)"
+    rows = conn.execute(
+        text(
+            f"""SELECT i.id, i.role_id, r.title AS role_title, i.responded_at, i.answer_due_at,
+                       (i.employer_answer IS NULL AND i.answer_due_at < now()) AS is_overdue,
+                       i.employer_answer::text AS employer_answer, i.share_preview
+                  FROM introductions i JOIN roles r ON r.id = i.role_id
+                 WHERE i.organization_id = :org AND i.status = 'accepted'
+                   AND (CAST(:role AS uuid) IS NULL OR i.role_id = :role) {after}
+                 ORDER BY i.responded_at DESC, i.id DESC LIMIT :limit"""
+        ),
+        params,
+    ).all()
+    page = rows[:limit]
+    found = []
+    for row in page:
+        preview = row.share_preview or {}
+        email = (preview.get("on_employer_yes") or {}).get("email") if row.employer_answer == "yes" else None
+        found.append(
+            AcceptedIntroduction(
+                introduction_id=row.id,
+                role_id=row.role_id,
+                role_title=row.role_title,
+                responded_at=row.responded_at,
+                answer_due_at=row.answer_due_at,
+                is_overdue=bool(row.is_overdue),
+                employer_answer=row.employer_answer,
+                shared=preview.get("on_accept"),
+                email=email,
+            )
+        )
+    next_cursor = _encode(page[-1].responded_at, page[-1].id) if len(rows) > limit else None
+    return found, next_cursor
+
+
+class RoleNotFound(Exception):
+    """No such role in this organization, as far as the caller may see."""
+
+
+class RoleNotOpen(Exception):
+    """The role is a draft or closed, or has no published job."""
+
+
+class AnswersOverdue(Exception):
+    """The organization owes an answer, so it may ask nobody new."""
+
+
+@dataclass(frozen=True)
+class AskQueued:
+    """What starting the ordinary ask returned: when, and how many candidates are being asked, as a bucket only."""
+
+    candidates_asked: str  # under_5, 5_to_9, 10_to_24 or 25_plus (role_ask_bucket)
+    ran_at: datetime
+
+
+def queue_ordinary_ask(conn: Connection, *, organization_id: UUID, role_id: UUID, unique_key: str) -> AskQueued:
+    """Queue Phase 6's hiring.ask_candidates for an open role of the organization, as publishing does, under the
+    caller's row-level security. A repeated unique key queues nothing new. The count is the bucket of asks still waiting
+    on candidates when this is called (role_ask_bucket); the asks the new run makes show in later calls. No
+    introduction, approval or share is created here: the worker's run asks, and each candidate decides."""
+    role = conn.execute(
+        text("SELECT r.status::text AS status, r.job_id FROM roles r WHERE r.id = :r AND r.organization_id = :o"),
+        {"r": role_id, "o": organization_id},
+    ).one_or_none()
+    if role is None:
+        raise RoleNotFound
+    if role.status != "open" or role.job_id is None:
+        raise RoleNotOpen
+    if conn.execute(text("SELECT organization_has_overdue_answers(:org)"), {"org": organization_id}).scalar_one():
+        raise AnswersOverdue
+    queue.enqueue(conn, "hiring.ask_candidates", {"role_id": str(role_id)}, unique_key=unique_key, queue="llm")
+    bucket = conn.execute(text("SELECT role_ask_bucket(:r)"), {"r": role_id}).scalar_one()
+    return AskQueued(candidates_asked=bucket, ran_at=datetime.now(UTC))

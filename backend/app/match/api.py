@@ -15,6 +15,8 @@ package is a public interface.
   list_decisions(conn, user_id, ...)          the person's decisions by outcome and date, newest first
   decision_for_job(conn, user_id, job_id)     the newest decision for a job, else the on-request constraint check
   list_runs(conn, user_id, ...)               the person's own candidate runs, newest first, for the runs list
+  agent_reads                                 shown decisions and their explanation for a candidate's agent token
+  (09-04)
 
 BriefMatch, RunActivity, NightlyStatus, RunResult and DecisionView are what they return.
 """
@@ -26,7 +28,7 @@ from uuid import UUID
 
 from sqlalchemy import Connection, text
 
-from . import ledger
+from . import agent_reads, ledger
 from .checker import violations
 from .models import MATCH_OUTCOMES
 from .queries import BriefMatch, NightlyStatus, RunActivity, activity_since, brief_matches, nightly_status
@@ -44,6 +46,7 @@ from .role_run import (
 from .service import RunResult, run
 
 __all__ = [
+    "agent_reads",
     "RANKER_VERSION",
     "BriefMatch",
     "DecisionConstraint",
