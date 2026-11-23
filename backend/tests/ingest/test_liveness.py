@@ -16,6 +16,7 @@ import pytest
 from sqlalchemy import text
 
 from app import cli
+from app.ingest import api as ingest
 from app.ingest import liveness
 from app.ingest.fetch import mark_duplicates, store
 from app.platform import db, http
@@ -227,6 +228,25 @@ def test_a_job_closed_by_the_check_stays_closed_for_an_unchanged_posting_and_reo
     store(conn, source_id, "Live Co", [posting(1, description="Invented fixture posting, now rewritten in full.")])
     row = job(conn, job_id)
     assert (row.status, row.apply_check_ok, row.content_version) == ("open", None, 2)
+
+
+# --- which links nobody could vouch for (what the brief marks "not re-checked") ------------------------------------
+
+
+def test_unchecked_apply_links_names_the_jobs_whose_link_has_no_conclusive_check_on_their_current_text(
+    conn, monkeypatch
+):
+    alive, unsure, never, dead, changed = stored(conn, *(posting(n) for n in range(1, 6)))
+    verify(conn, monkeypatch, alive, 200)
+    verify(conn, monkeypatch, unsure, 503)  # the site did not say
+    verify(conn, monkeypatch, dead, 404)  # a conclusive answer, though not a good one
+    verify(conn, monkeypatch, changed, 200)
+    stored(conn, posting(5, description="Invented fixture posting five, rewritten so its text is a new version."))
+
+    assert ingest.unchecked_apply_links(conn, [alive, unsure, never, dead, changed]) == {unsure, never, changed}
+    assert ingest.unchecked_apply_links(conn, [alive, dead]) == set()
+    assert ingest.unchecked_apply_links(conn, []) == set()  # nothing asked, nothing read
+    assert ingest.unchecked_apply_links(conn, [987654321]) == set()  # a job that is not in the index is not "unchecked"
 
 
 # --- the real fetch_public in the loop ----------------------------------------------------------------------------

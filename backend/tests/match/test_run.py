@@ -6,6 +6,7 @@ validator and its one retry, the checker, the ranker under the daily cap, and th
 checks again. Everything a run reads is committed, so the tables are emptied around each test.
 """
 
+import json
 import uuid
 
 import pytest
@@ -13,7 +14,8 @@ from sqlalchemy import text
 
 from app.match import api, evidence, ranking, service
 from app.match.validator import Verdict, VerdictSet
-from app.platform.llm import ProviderUnavailable
+from app.platform import config
+from app.platform.llm import ProviderUnavailable, registry
 from tests.match import factories
 from tests.match.fixtures.run import world
 
@@ -380,6 +382,65 @@ def test_without_the_ai_processing_consent_the_gateway_is_not_called_at_all(engi
     (withheld,) = decisions(engine, user)
     assert (withheld.reasons, withheld.evidence) == (["not_scored"], 0)
     assert run_row(engine, result.run_id).evidence_prompt_version is None
+
+
+def real_model(provider, monkeypatch):
+    """A real model with a key (the anthropic route of models.toml), and a stand-in for the gateway that records who it
+    was asked for and answers every requirement met by the same fact. Nothing reaches a model."""
+    provider(LLM_PROVIDER="anthropic", ANTHROPIC_API_KEY="k")
+    asked: list[uuid.UUID] = []
+
+    def answer(request, *, principal):
+        asked.append(principal)
+        return VerdictSet(
+            verdicts=[Verdict(requirement=alias, verdict="met", facts=["f2"]) for alias in request.requirements]
+        )
+
+    monkeypatch.setattr(evidence, "score", answer)
+    return asked
+
+
+def test_a_real_model_no_gold_set_run_has_proven_is_never_asked_and_every_retrieved_job_is_withheld_not_scored(
+    engine, provider, monkeypatch
+):
+    asked = real_model(provider, monkeypatch)
+    user = world.add_person(engine)  # agreed to AI processing, and a key is set
+    for name in "AB":
+        world.add_job(engine, f"Role {name}")
+
+    result = service.run(user, trigger="onboarding", local_date=LOCAL_DATE)
+
+    assert (result.shown, result.withheld) == (0, 2) and asked == []
+    assert [(d.outcome, d.reasons, d.evidence) for d in decisions(engine, user)] == [
+        ("withheld", ["not_scored"], 0)
+    ] * 2
+    run = run_row(engine, result.run_id)
+    assert (run.status, run.evidence_prompt_version, run.retrieved_count) == ("completed", None, 2)
+
+
+def test_a_real_model_with_a_passed_gold_set_run_is_asked_and_its_verdicts_are_shown(engine, provider, monkeypatch):
+    asked = real_model(provider, monkeypatch)
+    route = registry.route(evidence.TASK, config.get())
+    with engine.begin() as c:  # what a live evidence_faithfulness run records when it passes (the worker role reads it)
+        c.execute(
+            text(
+                """INSERT INTO eval_runs (suite, git_sha, config, status, metrics, is_gate_passed, finished_at)
+                   VALUES ('evidence_faithfulness', 'abc', CAST(:config AS jsonb), 'passed', CAST('{}' AS jsonb), true,
+                           now())"""
+            ),
+            {
+                "config": json.dumps(
+                    {"method": "model", "model": route.model, "prompt_version": evidence.PROMPT_VERSION}
+                )
+            },
+        )
+    user = world.add_person(engine)
+    world.add_job(engine, "Role A")
+
+    result = service.run(user, trigger="onboarding", local_date=LOCAL_DATE)
+
+    assert result.shown == 1 and asked == [user]
+    assert run_row(engine, result.run_id).evidence_prompt_version == evidence.PROMPT_VERSION
 
 
 # --- failures -------------------------------------------------------------------------------------------------------

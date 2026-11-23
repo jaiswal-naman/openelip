@@ -35,8 +35,9 @@ TARGET_COUNT = 1000
 MAX_BYTES = 5_000_000  # the plan's size limit for a committed snapshot: lower the count rather than exceed it
 
 # A posting with an email address or phone number in it is never kept (T-04-38). The same two patterns are in
-# evals/requirement_extraction/build_sample.py and evals/location/build_sample.py.
-EMAIL = re.compile(r"[\w.+-]+@[\w-]+(\.[\w-]+)+")
+# evals/requirement_extraction/build_sample.py and evals/location/build_sample.py; the email one here also takes an
+# address written name[at]domain or name (at) domain, which the first export let through (21 postings, one mailbox).
+EMAIL = re.compile(r"[\w.+-]+(?:@|\s*[\[(]at[\])]\s*)[\w-]+(\.[\w-]+)+", re.IGNORECASE)
 PHONE = re.compile(r"\+\d[\d\s().-]{7,}\d|\(?\d{2,4}\)?[\s.-]\d{3,4}[\s.-]\d{3,4}\b")
 
 POOL_SQL = """

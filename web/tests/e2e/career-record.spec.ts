@@ -136,7 +136,7 @@ const CASES: Case[] = [
   },
   { path: "/onboarding?step=constraints", state: "agreed", ready: (page) => page.getByRole("heading", { level: 3, name: "Location" }) },
   { path: "/onboarding?step=preferences", state: "agreed", ready: (page) => page.getByRole("button", { name: "Add", exact: true }) },
-  { path: "/onboarding?step=done", state: "agreed", ready: (page) => page.getByRole("link", { name: "Open your record" }) },
+  { path: "/onboarding?step=matches", state: "agreed", ready: (page) => page.getByText(/Your brief arrives by 07:00 in/) },
   { path: "/app/record", state: "agreed", ready: (page) => page.getByRole("heading", { level: 2, name: "Change log" }) },
   { path: "/app/settings?section=privacy", state: "agreed", ready: (page) => page.getByRole("button", { name: "Delete account" }) },
 ];
@@ -330,7 +330,7 @@ test.describe("the phase demo", () => {
       await expect(saved).not.toContainText("Jainism");
 
       await page.getByRole("button", { name: "Finish" }).click();
-      await expect(page.getByRole("heading", { level: 1, name: "Your record is ready" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Time zone and first matches" })).toBeVisible();
     });
 
     await test.step("the record shows it all on one page, and the account menu leads there", async () => {

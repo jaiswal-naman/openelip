@@ -8,6 +8,11 @@ record side of a citation comes from app.profile.api, the only door into the Car
 
 Quotes are stored text, never generated: a requirement's quote is job_requirements.text at its stored span, and a fact's
 quote is the text the database checked at its span (or the person's own words when she wrote the fact herself).
+
+Safety is re-checked when a decision is read, not only when a run makes it (invariant 1): a match is listed, opened or
+checked only while the person's hard constraints, as they are now, still allow its job, and a decision whose job they
+now exclude is reported as filtered wherever the ledger reports it (the list, ?job_id=, the decision page, the filters
+and the run's counts). The ledger is append-only, so this is a different reading on the read and edits nothing.
 """
 
 import base64
@@ -24,6 +29,8 @@ from sqlalchemy import Connection, Row, text
 
 from app.platform.errors import ApiError
 from app.profile import api as profile
+
+from .queries import CURRENT_CONSTRAINTS, STILL_ALLOWED, UNVERIFIED_NOW
 
 CHECKER_DISAGREED = "checker_disagreement"  # match_runs.error_code of a run whose two constraint checks differed
 
@@ -46,17 +53,29 @@ JOB_COLUMNS = """j.id AS job_id, j.title, j.company_name, j.location_raw, j.coun
        j.status::text AS job_status, j.posted_at, j.last_verified_at, j.content_version"""
 JOB_FROM = "jobs j JOIN job_sources s ON s.id = j.source_id"
 
+# A match's `unverified` is read now, from the posting and the constraints as they are (queries.UNVERIFIED_NOW), not the
+# flags the run stored: a constraint added or removed since changes which fields are "not stated".
 MATCH_COLUMNS = f"""d.id AS decision_id, d.rank_position, d.summary, d.change_note,
-       CAST(d.reason_codes AS text[]) AS reason_codes, CAST(d.unverified AS text[]) AS unverified, {JOB_COLUMNS}"""
+       CAST(d.reason_codes AS text[]) AS reason_codes, {UNVERIFIED_NOW} AS unverified, {JOB_COLUMNS}"""
+# A ledger row is read now as well (invariant 1): a shown match whose job the person's hard constraints now exclude is
+# reported as filtered wherever the ledger reports a decision, so no read path calls a violator shown. HELD_NOW is that
+# question for a row of `match_decisions d JOIN jobs j CROSS JOIN c`; OUTCOME_NOW is the outcome the row reads as, which
+# the filters of the list ask about, so a held match is in `outcome=filtered` and not in `outcome=shown`.
+HELD_NOW = f"(d.outcome = 'shown' AND NOT ({STILL_ALLOWED}))"
+OUTCOME_NOW = f"CASE WHEN {HELD_NOW} THEN 'filtered' ELSE d.outcome::text END"
 DECISION_COLUMNS = f"""d.id AS decision_id, d.match_run_id, d.local_date, d.outcome::text AS outcome,
        CAST(d.reason_codes AS text[]) AS reason_codes, CAST(d.violated_kinds AS text[]) AS violated_kinds,
        CAST(d.unverified AS text[]) AS unverified, d.rank_position, d.summary, d.change_note, d.created_at,
-       {JOB_COLUMNS}"""
+       CAST(constraint_violations(j, c.cc) AS text[]) AS violated_now, {JOB_COLUMNS}"""
 
+# The run's counts are read now too: a match it showed that the constraints now exclude counts as filtered, not shown.
 RUN = text(
-    """SELECT r.id, r.record_version, r.shown_count AS shown, r.filtered_count AS filtered, r.error_code,
+    f"""{CURRENT_CONSTRAINTS}
+        SELECT r.id, r.record_version, r.shown_count AS shown, r.filtered_count AS filtered, r.error_code,
               (SELECT count(*) FROM match_decisions d
-                WHERE d.match_run_id = r.id AND d.outcome = 'withheld') AS withheld
+                WHERE d.match_run_id = r.id AND d.outcome = 'withheld') AS withheld,
+              (SELECT count(*) FROM match_decisions d JOIN jobs j ON j.id = d.job_id CROSS JOIN c
+                WHERE d.match_run_id = r.id AND {HELD_NOW}) AS held_now
          FROM match_runs r
         WHERE r.user_id = :u AND r.local_date = :day AND r.status = 'completed'
         ORDER BY r.finished_at DESC NULLS LAST, r.id DESC LIMIT 1"""
@@ -145,18 +164,26 @@ def active_constraints(conn: Connection, user_id: UUID) -> dict[str, dict[str, A
     return {constraint["kind"]: constraint for constraint in profile.get_record(conn, user_id)["constraints"]}
 
 
-def _constraint_ref(kinds: Sequence[str], active: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
-    """The constraint that removed a job: the first kind it broke (enum order). A constraint the person has since
-    removed leaves its kind and no id or sentence: the ledger never guesses what it said."""
+def _constraint_ref(
+    kinds: Sequence[str], active: dict[str, dict[str, Any]], decided_at: datetime | None = None
+) -> dict[str, Any] | None:
+    """The constraint that removed a job: the first kind it broke (enum order). It is named only if it was the person's
+    when `decided_at`, the time of the decision, came: one the person has since removed leaves its kind and no id or
+    sentence, and so does one replaced after the decision (the active constraint of that kind is another rule, which
+    the job may satisfy). The ledger never guesses what the old one said. `decided_at` None is a check made now."""
     if not kinds:
         return None
     found = active.get(kinds[0])
+    if found is not None and decided_at is not None and found["created_at"] > decided_at:
+        found = None
     return {"id": found["id"] if found else None, "kind": kinds[0], "statement": found["statement"] if found else None}
 
 
 def constraint_checks(conn: Connection, user_id: UUID, unverified: Sequence[str]) -> list[dict[str, Any]]:
-    """Each hard constraint the person has now, "satisfied" or "not_stated": a shown job broke none, and a flag on the
-    decision says which constrained fields its posting leaves unstated (FRONTEND_UI 3.4)."""
+    """Each hard constraint the person has now, "satisfied" or "not_stated". `unverified` is what the posting leaves
+    unstated, worked out against those same constraints (UNVERIFIED_NOW), never a flag a run stored: a constraint added
+    since is checked like the rest. A job that breaks one is not a match at all (shown_matches and match_by_id leave it
+    out), so "violated" is not a state a check can have (FRONTEND_UI 3.4)."""
     unstated = {kind for flag in unverified for kind in UNVERIFIED_KINDS[flag]}
     return [
         {"kind": kind, "statement": c["statement"], "state": "not_stated" if kind in unstated else "satisfied"}
@@ -209,16 +236,18 @@ def feedback_state(conn: Connection, user_id: UUID, job_ids: Sequence[int]) -> d
 
 def run_summary(conn: Connection, user_id: UUID, day: date) -> dict[str, Any] | None:
     """The latest run that finished on a local date, or None when none did. checker says whether the independent
-    constraint checker agreed with the filter on every job of the run."""
+    constraint checker agreed with the filter on every job of the run. The counts are the run's as the person's
+    constraints read now: a match the run showed that they now exclude counts as filtered, so the summary never calls
+    a violator shown (and never disagrees with the list below it)."""
     row = conn.execute(RUN, {"u": user_id, "day": day}).one_or_none()
     if row is None:
         return None
     return {
         "id": row.id,
         "record_version": row.record_version,
-        "shown": row.shown,
+        "shown": row.shown - row.held_now,
         "withheld": row.withheld,
-        "filtered": row.filtered,
+        "filtered": row.filtered + row.held_now,
         "checker": "disagreed" if row.error_code == CHECKER_DISAGREED else "passed",
     }
 
@@ -246,17 +275,24 @@ def _matches(conn: Connection, user_id: UUID, rows: Sequence[Row[Any]]) -> list[
 
 
 def shown_matches(conn: Connection, user_id: UUID, day: date) -> list[dict[str, Any]]:
-    """The matches shown on a local date, best first: at most five, because the database allows no more."""
-    sql = f"""SELECT {MATCH_COLUMNS} FROM match_decisions d JOIN {JOB_FROM} ON j.id = d.job_id
-              WHERE d.user_id = :u AND d.local_date = :day AND d.outcome = 'shown' ORDER BY d.rank_position"""
+    """The matches shown on a local date, best first: at most five, because the database allows no more. Only those
+    whose job the person's hard constraints still allow: the decision was made under the constraints of the run, and one
+    confirmed since holds at once (invariant 1). The stored decision is not touched."""
+    sql = f"""{CURRENT_CONSTRAINTS}
+              SELECT {MATCH_COLUMNS} FROM match_decisions d JOIN {JOB_FROM} ON j.id = d.job_id CROSS JOIN c
+              WHERE d.user_id = :u AND d.local_date = :day AND d.outcome = 'shown' AND {STILL_ALLOWED}
+              ORDER BY d.rank_position"""
     return _matches(conn, user_id, conn.execute(text(sql), {"u": user_id, "day": day}).all())
 
 
 def match_by_id(conn: Connection, user_id: UUID, decision_id: UUID) -> dict[str, Any] | None:
     """One shown match with the posting text and the constraint checks. None for a decision that is not a shown match
-    of this person: another person's, one that was withheld or filtered, or none at all."""
-    sql = f"""SELECT {MATCH_COLUMNS}, j.description FROM match_decisions d JOIN {JOB_FROM} ON j.id = d.job_id
-              WHERE d.id = :id AND d.user_id = :u AND d.outcome = 'shown'"""
+    of this person: another person's, one that was withheld or filtered, none at all, or one whose job the person's hard
+    constraints now exclude (decision_by_id answers for that one, as filtered)."""
+    sql = f"""{CURRENT_CONSTRAINTS}
+              SELECT {MATCH_COLUMNS}, j.description
+              FROM match_decisions d JOIN {JOB_FROM} ON j.id = d.job_id CROSS JOIN c
+              WHERE d.id = :id AND d.user_id = :u AND d.outcome = 'shown' AND {STILL_ALLOWED}"""
     row = conn.execute(text(sql), {"id": decision_id, "u": user_id}).one_or_none()
     if row is None:
         return None
@@ -297,28 +333,41 @@ def _gaps(conn: Connection, user_id: UUID, decision_ids: Sequence[UUID]) -> dict
     return found
 
 
+def _held_now(row: Row[Any]) -> bool:
+    """Whether a shown match's job is one the person's hard constraints now exclude (HELD_NOW, for a fetched row)."""
+    return bool(row.outcome == "shown" and row.violated_now)
+
+
 def _decisions(conn: Connection, user_id: UUID, rows: Sequence[Row[Any]]) -> list[dict[str, Any]]:
-    """Ledger rows as the API shows them. The constraint is the active one of the first kind the job broke."""
-    active = active_constraints(conn, user_id) if any(row.violated_kinds for row in rows) else {}
+    """Ledger rows as the API shows them, read now. A shown match whose job the person's hard constraints now exclude
+    reads as filtered (invariant 1): hard_constraint, the kinds it breaks, the rule that does it (the active one: it is
+    checked now) and no assessment. The stored row stays as the run wrote it, because the ledger is append-only; only
+    this answer changes. Any other decision is as recorded, its constraint named only if it was already the person's
+    when the decision was made (_constraint_ref)."""
+    active = active_constraints(conn, user_id) if any(row.violated_kinds or _held_now(row) for row in rows) else {}
     gaps = _gaps(conn, user_id, [row.decision_id for row in rows if row.outcome == "withheld"])
-    return [
-        {
-            "decision_id": row.decision_id,
-            "local_date": row.local_date,
-            "outcome": row.outcome,
-            "reason_codes": row.reason_codes,
-            "constraint": _constraint_ref(row.violated_kinds, active),
-            "gaps": gaps.get(row.decision_id, []),
-            "evaluated": None,
-            "job": _job_brief(row),
-            "violated_kinds": row.violated_kinds,
-            "unverified": row.unverified,
-            "rank_position": row.rank_position,
-            "summary": row.summary,
-            "change_note": row.change_note,
-        }
-        for row in rows
-    ]
+    decisions = []
+    for row in rows:
+        held = _held_now(row)
+        kinds = list(row.violated_now if held else row.violated_kinds)
+        decisions.append(
+            {
+                "decision_id": row.decision_id,
+                "local_date": row.local_date,
+                "outcome": "filtered" if held else row.outcome,
+                "reason_codes": ["hard_constraint"] if held else row.reason_codes,
+                "constraint": _constraint_ref(kinds, active, None if held else row.created_at),
+                "gaps": gaps.get(row.decision_id, []),
+                "evaluated": None,
+                "job": _job_brief(row),
+                "violated_kinds": kinds,
+                "unverified": [] if held else row.unverified,
+                "rank_position": None if held else row.rank_position,
+                "summary": None if held else row.summary,
+                "change_note": None if held else row.change_note,
+            }
+        )
+    return decisions
 
 
 def decisions_page(
@@ -333,14 +382,19 @@ def decisions_page(
     limit: int = 20,
     cursor: str | None = None,
 ) -> tuple[list[dict[str, Any]], str | None]:
-    """The person's decisions, newest local date first and newest row first, one page by keyset cursor."""
+    """The person's decisions, newest local date first and newest row first, one page by keyset cursor. The outcome and
+    reason filters ask about what a decision reads as now (_decisions): a shown match the person's constraints now
+    exclude is a filtered one for hard_constraint, and is no longer a shown one."""
     where = ["d.user_id = :u"]
     params: dict[str, Any] = {"u": user_id, "n": limit + 1}
     if outcomes:
-        where.append("d.outcome = ANY(CAST(:outcomes AS match_outcome[]))")
+        where.append(f"({OUTCOME_NOW}) = ANY(CAST(:outcomes AS text[]))")
         params["outcomes"] = list(outcomes)
     if reason:
-        where.append("CAST(:reason AS match_reason) = ANY(d.reason_codes)")
+        where.append(
+            f"(CASE WHEN {HELD_NOW} THEN CAST(:reason AS text) = 'hard_constraint'"
+            " ELSE CAST(:reason AS text) = ANY(CAST(d.reason_codes AS text[])) END)"
+        )
         params["reason"] = reason
     if since:
         where.append("d.local_date >= :since")
@@ -356,7 +410,8 @@ def decisions_page(
             cursor, date.fromisoformat, datetime.fromisoformat, UUID
         )
         where.append("(d.local_date, d.created_at, d.id) < (:c_day, :c_at, :c_id)")
-    sql = f"""SELECT {DECISION_COLUMNS} FROM match_decisions d JOIN {JOB_FROM} ON j.id = d.job_id
+    sql = f"""{CURRENT_CONSTRAINTS}
+              SELECT {DECISION_COLUMNS} FROM match_decisions d JOIN {JOB_FROM} ON j.id = d.job_id CROSS JOIN c
               WHERE {" AND ".join(where)} ORDER BY d.local_date DESC, d.created_at DESC, d.id DESC LIMIT :n"""
     rows = conn.execute(text(sql), params).all()
     kept = rows[:limit]
@@ -369,14 +424,19 @@ def decisions_page(
 
 def decision_by_id(conn: Connection, user_id: UUID, decision_id: UUID) -> dict[str, Any] | None:
     """One decision of any outcome with its evidence (none for a job that was never scored). None when it is not the
-    person's."""
-    sql = f"""SELECT {DECISION_COLUMNS} FROM match_decisions d JOIN {JOB_FROM} ON j.id = d.job_id
+    person's. It reads as the list does (_decisions): a shown match whose job the person's constraints now exclude is
+    filtered, with no evidence. This is the page the web falls back to when match_by_id has no match to open."""
+    sql = f"""{CURRENT_CONSTRAINTS}
+              SELECT {DECISION_COLUMNS} FROM match_decisions d JOIN {JOB_FROM} ON j.id = d.job_id CROSS JOIN c
               WHERE d.id = :id AND d.user_id = :u"""
     row = conn.execute(text(sql), {"id": decision_id, "u": user_id}).one_or_none()
     if row is None:
         return None
     (decision,) = _decisions(conn, user_id, [row])
-    return {**decision, "evidence": evidence_of(conn, user_id, [decision_id]).get(decision_id, [])}
+    evidence = (
+        [] if decision["outcome"] == "filtered" else evidence_of(conn, user_id, [decision_id]).get(decision_id, [])
+    )
+    return {**decision, "evidence": evidence}
 
 
 def check_job(conn: Connection, user_id: UUID, job_id: int, day: date) -> dict[str, Any] | None:

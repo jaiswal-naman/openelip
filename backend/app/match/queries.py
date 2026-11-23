@@ -23,6 +23,18 @@ NightlyStatus = Literal["none", "queued", "running", "completed", "failed"]
 # the brief is a short list, and five is the most a scored day shows.
 NOT_ASSESSED_LIMIT = 5  # assumption
 
+# A decision records what a run decided; whether its job may still be shown is asked again whenever the decision is read
+# (invariant 1), of the same SQL functions every run filters with (DATA_MODEL 4.1), against the person's constraints as
+# they are now. A constraint confirmed after the run, a changed location, a company the person has just excluded: each
+# holds at once, not at the next run. The three pieces belong to a query over `match_decisions d JOIN jobs j`:
+#   CURRENT_CONSTRAINTS   the CTE `c` (and its :u parameter), joined with CROSS JOIN c
+#   STILL_ALLOWED         true for a job that breaks no hard constraint (retrieval.py's own predicate)
+#   UNVERIFIED_NOW        the constrained fields the posting leaves unstated, as text[]
+# The ledger (ledger.py) reads its matches the same way, so the list, the page and the brief agree.
+CURRENT_CONSTRAINTS = "WITH c AS (SELECT compile_constraints(:u) AS cc)"
+STILL_ALLOWED = "constraint_violations(j, c.cc) = '{}'"
+UNVERIFIED_NOW = "CAST(unverified_fields(j, c.cc) AS text[])"
+
 
 @dataclass(frozen=True)
 class BriefMatch:
@@ -63,27 +75,35 @@ def brief_matches(conn: Connection, user_id: UUID, local_date: date) -> list[Bri
 
     A job two unscored runs both retrieved is listed once. The unassessed ones carry no summary: nothing was said
     about them, only that the rules ranked them high (AI_SYSTEM 2.10).
+
+    Both lists are read as of now, not as of the run: a job that has closed since, or that the person's hard constraints
+    now exclude, is left out, and the "unverified" fields are those of the constraints the person has now. The email is
+    written from this when it is sent, so it cannot carry what the person has excluded since the brief was composed.
     """
     shown = conn.execute(
         text(
-            """SELECT d.id, d.job_id, j.title, j.company_name, d.summary, d.rank_position, d.change_note,
-                      CAST(d.unverified AS text[]) AS unverified
-               FROM match_decisions d JOIN jobs j ON j.id = d.job_id
+            f"""{CURRENT_CONSTRAINTS}
+               SELECT d.id, d.job_id, j.title, j.company_name, d.summary, d.rank_position, d.change_note,
+                      {UNVERIFIED_NOW} AS unverified
+               FROM match_decisions d JOIN jobs j ON j.id = d.job_id CROSS JOIN c
                WHERE d.user_id = :u AND d.local_date = :d AND d.outcome = 'shown'
+                 AND j.status = 'open' AND {STILL_ALLOWED}
                ORDER BY d.rank_position"""
         ),
         {"u": user_id, "d": local_date},
     ).all()
     not_assessed = conn.execute(
         text(
-            """SELECT t.id, t.job_id, t.title, t.company_name, t.unverified FROM (
+            f"""{CURRENT_CONSTRAINTS}
+               SELECT t.id, t.job_id, t.title, t.company_name, t.unverified FROM (
                    SELECT DISTINCT ON (d.job_id) d.id, d.job_id, j.title, j.company_name, d.retrieval_rank,
-                          CAST(d.unverified AS text[]) AS unverified
-                   FROM match_decisions d JOIN jobs j ON j.id = d.job_id
+                          {UNVERIFIED_NOW} AS unverified
+                   FROM match_decisions d JOIN jobs j ON j.id = d.job_id CROSS JOIN c
                    WHERE d.user_id = :u AND d.local_date = :d AND d.outcome = 'withheld'
                      AND 'not_scored' = ANY (d.reason_codes)
                      AND NOT EXISTS (SELECT 1 FROM match_runs r WHERE r.user_id = :u AND r.local_date = :d
                                                                   AND r.evidence_prompt_version IS NOT NULL)
+                     AND j.status = 'open' AND {STILL_ALLOWED}
                    ORDER BY d.job_id, d.retrieval_rank NULLS LAST, d.id
                ) t
                ORDER BY t.retrieval_rank NULLS LAST, t.id

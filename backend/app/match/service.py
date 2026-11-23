@@ -1,7 +1,7 @@
 """The match run (ARCHITECTURE 4.3; MAT-01 to MAT-03, MAT-05 to MAT-07): one candidate, one pass over the job index.
 
-    1 account   the worker connection: whether the person is active and agreed to AI processing (the match role may
-                read neither consents nor names)
+    1 account   the worker connection: whether the person is active and agreed to AI processing, and whether the model
+                route is open (ai_gate); the match role may read neither consents, names nor eval_runs
     2 prepare   the match role: the run row, the record, retrieval with the filter first, the filtered sample, pre-rank,
                 and the requirements of the jobs to score
     3 score     no connection held: one request per job, validated, one retry on a rejected set
@@ -12,8 +12,9 @@ Steps 2 and 4 are separate transactions because step 3 can take minutes, and a m
 The database is the last guard: the daily cap, shown-once, the citation trigger and the completeness trigger all hold
 whatever this code does, and a refusal of one job withholds that job alone.
 
-A person who has not agreed to AI processing, or an instance with no model, still gets the retrieval and the rules
-ranking: every retrieved job is recorded withheld as not_scored and nothing is shown (AI_SYSTEM 2.10).
+A person who has not agreed to AI processing, or an instance with no model (or with a real model that no passed
+evidence_faithfulness run proves), still gets the retrieval and the rules ranking: every retrieved job is recorded
+withheld as not_scored and nothing is shown (AI_SYSTEM 2.10).
 """
 
 import logging
@@ -32,7 +33,7 @@ from app.platform.llm import AIDisabled, ProviderUnavailable, SchemaInvalid
 from app.profile import api as profile
 from app.trust import api as trust
 
-from . import checker, evidence, ranking, retrieval, summary
+from . import ai_gate, checker, evidence, ranking, retrieval, summary
 from .retrieval import Candidate
 from .validator import Accepted, EvidenceRow, Rejected, validate
 
@@ -210,7 +211,9 @@ def _checker_constraints(compiled: dict[str, dict[str, Any]]) -> checker.Constra
 
 
 def _account(user_id: UUID) -> tuple[str, str | None, bool]:
-    """(time zone, display name, agreed to AI processing), read on the worker connection."""
+    """(time zone, display name, whether a model may score for this person), read on the worker connection. One may when
+    the person agreed to AI processing and the route that would answer is open: a model is configured and, if it is a
+    real one, a passed evidence_faithfulness run proves it (ai_gate). Otherwise the run still retrieves and ranks."""
     with db.transaction(user_id=user_id, role="worker") as conn:
         row = conn.execute(
             text("SELECT timezone, display_name FROM users WHERE id = :u AND status = 'active'"), {"u": user_id}
@@ -219,10 +222,11 @@ def _account(user_id: UUID) -> tuple[str, str | None, bool]:
             raise NotRunnable("no active account")
         try:
             trust.require_consent(conn, user_id, "ai_processing")
-            agreed = True
-        except trust.ConsentRequired:
-            agreed = False
-    return row.timezone, row.display_name, agreed
+            ai_gate.require_available(conn)
+            may_score = True
+        except (trust.ConsentRequired, AIDisabled):
+            may_score = False
+    return row.timezone, row.display_name, may_score
 
 
 def _result(conn: Connection, run_id: UUID) -> RunResult:
@@ -349,11 +353,11 @@ def _answer(request: evidence.EvidenceRequest, user_id: UUID) -> Accepted | Reje
 
 
 def _score(
-    user_id: UUID, to_score: list[_ToScore], facts: list[dict[str, Any]], names: tuple[str, ...], agreed: bool
+    user_id: UUID, to_score: list[_ToScore], facts: list[dict[str, Any]], names: tuple[str, ...], may_score: bool
 ) -> _Scores:
     scores = _Scores({}, set())
-    if not agreed:
-        return scores  # no model sees a person's facts before they agree (TRU-05)
+    if not may_score:
+        return scores  # no model sees a person's facts before they agree (TRU-05), nor one nobody has measured
     for item in to_score:
         request = evidence.build_request(facts, item.requirements, description=item.description, names=names)
         try:
@@ -630,14 +634,14 @@ def run(user_id: UUID, *, trigger: str, local_date: date | None = None, score_li
     if trigger not in TRIGGERS:
         raise ValueError(f"trigger must be one of {TRIGGERS}")
     started, now = time.monotonic(), datetime.now(timezone.utc)
-    zone, display_name, agreed = _account(user_id)
+    zone, display_name, may_score = _account(user_id)
     day = local_date or now.astimezone(ZoneInfo(zone)).date()
     prepared = _prepare(user_id, trigger, day, score_limit, now)
     if isinstance(prepared, RunResult):
         return prepared  # a nightly run already done for this date
     try:
         names = (display_name,) if display_name else ()
-        scores = _score(user_id, prepared.to_score, prepared.facts, names, agreed)
+        scores = _score(user_id, prepared.to_score, prepared.facts, names, may_score)
         result = _write(user_id, day, prepared, scores, now)
     except ProviderUnavailable:
         _fail(user_id, prepared.run_id, "provider_unavailable")

@@ -74,9 +74,12 @@ class PacingWait(Exception):
     """The llm queue is behind: the plan fails the retryable way and the queue tries it again after its backoff."""
 
 
-def _enqueue_run(conn: Connection, kind: str, payload: dict[str, Any], *, unique_key: str, queue: str) -> bool:
-    """Queue a run (False when its key is already taken), with a lease long enough for it to finish."""
-    job_id = enqueue(conn, kind, payload, unique_key=unique_key, queue=queue)
+def _enqueue_run(
+    conn: Connection, kind: str, payload: dict[str, Any], *, unique_key: str, queue: str, user_id: UUID
+) -> bool:
+    """Queue a run (False when its key is already taken), with a lease long enough for it to finish. A run is about one
+    person, so the job names them: the export lists it, and erasing the person deletes it (queue.enqueue)."""
+    job_id = enqueue(conn, kind, payload, unique_key=unique_key, queue=queue, user_id=user_id)
     if job_id is None:
         return False
     conn.execute(
@@ -128,7 +131,9 @@ def plan_zone(conn: Connection, zone: str, day: date, now: datetime) -> int:
     queued = 0
     for user_id in due:
         payload = {"user_id": str(user_id), "local_date": day.isoformat()}
-        queued += _enqueue_run(conn, "match.nightly", payload, unique_key=nightly_key(user_id, day), queue="llm")
+        queued += _enqueue_run(
+            conn, "match.nightly", payload, unique_key=nightly_key(user_id, day), queue="llm", user_id=user_id
+        )
     log.event("match.plan", due=len(due), planned=queued)
     return queued
 
@@ -140,7 +145,12 @@ def sweep_onboarding(conn: Connection) -> int:
     for user_id in conn.execute(NO_RUN_YET).scalars().all():
         payload = {"user_id": str(user_id), "trigger": "onboarding"}
         queued += _enqueue_run(
-            conn, "match.run", payload, unique_key=f"match.onboarding:{user_id}", queue="interactive"
+            conn,
+            "match.run",
+            payload,
+            unique_key=f"match.onboarding:{user_id}",
+            queue="interactive",
+            user_id=user_id,
         )
     if queued:
         log.event("match.onboarding_sweep", planned=queued)

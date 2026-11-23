@@ -151,6 +151,20 @@ def _models_sync(args: argparse.Namespace) -> None:
     print(f"{count} model routes synced")
 
 
+def _demo_seed_matches(args: argparse.Namespace) -> int:
+    """Invented demo data for the matches and the morning brief, written into a scratch database (app/demo.py). A
+    refusal says why and exits 2; nothing has been written then."""
+    from app import demo
+
+    try:
+        seeded = demo.seed_matches(args.email)
+    except demo.SeedRefused as refusal:
+        print(f"refused: {refusal}", file=sys.stderr)
+        return 2
+    print(seeded.report())
+    return 0
+
+
 COMMANDS: dict[tuple[str, str], Callable[[argparse.Namespace], int | None]] = {
     ("queue", "list"): _queue_list,
     ("queue", "retry"): _queue_retry,
@@ -160,6 +174,7 @@ COMMANDS: dict[tuple[str, str], Callable[[argparse.Namespace], int | None]] = {
     ("jobs", "verify"): _jobs_verify,
     ("outbox", "resolve"): _outbox_resolve,
     ("models", "sync"): _models_sync,
+    ("demo", "seed-matches"): _demo_seed_matches,
 }
 
 
@@ -198,6 +213,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     models = groups.add_parser("models", help="the model registry").add_subparsers(dest="command", required=True)
     models.add_parser("sync", help="load config/models.toml into model_registry")
+
+    demo = groups.add_parser("demo", help="invented data for the demo, scratch databases only").add_subparsers(
+        dest="command", required=True
+    )
+    demo.add_parser("seed-matches", help="give an account invented matches and a morning brief").add_argument(
+        "--email", required=True, help="the address of an account that has signed in"
+    )
     return parser
 
 

@@ -60,6 +60,15 @@ def test_nothing_is_queued_before_0530_one_job_after_it_and_a_second_tick_adds_n
     assert key == f"brief.compose:{ada}:2026-11-23"
 
 
+def test_the_compose_job_names_its_person_so_the_export_lists_it_and_erasing_them_deletes_it(conn):
+    ada = person(conn)
+
+    assert jobs.queue_composes(conn, at(5, 31)) == 1
+
+    owner = conn.execute(text("SELECT user_id FROM queue_jobs WHERE kind = 'brief.compose'")).scalar_one()
+    assert owner == ada
+
+
 def test_a_nightly_run_that_is_not_done_is_waited_for_until_0615_then_the_brief_goes_without_it(conn):
     queued_run, running_run = person(conn), person(conn)
     start_nightly_job(conn, queued_run)  # its job is waiting in the queue

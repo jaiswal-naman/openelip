@@ -132,6 +132,35 @@ uv run python ../evals/evidence_faithfulness/build_gold.py [--check]
 `--recorded FILE` replays another recording of the same suite. A recorded run is frozen and cannot be deleted, so these
 commands write only to a database named `..._test` or `evals`.
 
+## Until a live run passes, no real model scores a match
+
+A route may serve a task only when a passed gold-set run for that task and model exists (AI_SYSTEM 2.2). The match run
+asks `eval_runs` (`backend/app/match/ai_gate.py`) for a passed `evidence_faithfulness` run whose config names `method`
+`"model"`, the `model` the route uses (`claude-haiku-5-5` in `config/models.toml`) and the current `prompt_version`.
+With none, a real model is refused, key or no key: the run completes without scoring and every retrieved job is held
+back as `not_scored`, as with no key. The replay above never counts: its run names the model `recorded` and has no
+method. The fake provider needs no run, because it calls no model.
+
+**The first live run** is the owner's step, once a key exists. It calls the real model for each of the 30 pairs (30 to 60
+requests, with the one fresh call after a rejection), scores the verdicts against the bars above, and records the run
+for good in the database `DATABASE_URL_WORKER` names. That must be the application's own database, the one the running
+worker reads, because that is where the match run looks for it. From `backend/`, in PowerShell:
+
+```
+$env:LLM_PROVIDER = "anthropic"; $env:ANTHROPIC_API_KEY = "<the key>"
+$env:DATABASE_URL_WORKER = "<the worker URL of the application's database>"   # the .env value, if that is the one
+uv run python -m app.evals run evidence_faithfulness --live
+uv run python -m app.evals gate evidence_faithfulness --run <the id printed last>
+```
+
+On a POSIX shell, set the same three variables with `export`. `run` prints the pair count and the run's status on standard
+error and the run id last; the run is `passed` only when all three bars hold (`score` 1.0), and only a passed run opens
+the route. A failed run stays on record and proves nothing; a provider that stops answering ends the run in `error`, and
+the same command can be run again. The run records `mode` `"live"`, `method` `"model"`, the `provider`, the `model`, the
+`prompt_version` and the labels note, and its metrics have `harness_check_only` false: unlike the replay, it is a
+measurement. A changed prompt (`prompt_version`) or a changed model needs a new live run. Report it as the manual checks
+below ask: with counts and Wilson intervals, and with the agent-drafted labels and the single rater said plainly.
+
 ## Manual checks (they need the maintainer or a model key)
 
 1. The maintainer reviews the labels; a second rater labels 20% of the pairs; kappa is reported; the guideline is amended.

@@ -13,12 +13,13 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
 
-from app.brief import jobs, mail, unsubscribe
+from app.brief import jobs, mail, unsubscribe, views
 from app.brief.api import compose
 from app.platform import db, queue, relay
 from app.trust import api as trust
 from tests.brief.world import world
 from tests.match.factories import LOCAL_DATE
+from tests.match.fixtures.run.world import add_constraint
 from tests.platform.test_relay import relay_now
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -152,6 +153,37 @@ def test_the_resolver_writes_the_message_to_the_person_with_the_two_unsubscribe_
     one_click = parse_qs(urlsplit(header[1:-1]).query)["t"][0]
     visible = outgoing.body.split(f"Stop this email: {BASE}/unsubscribe?t=")[1].split()[0]
     assert unsubscribe.verify(one_click, now=MORNING) == user == unsubscribe.verify(visible, now=MORNING)
+
+
+def test_a_constraint_confirmed_after_the_brief_was_composed_keeps_that_job_out_of_the_email_and_the_view(
+    conn, apply_links
+):
+    """The email is written when it is sent, an hour or so after the brief: a person who excluded a company in between
+    must not get it (invariant 1)."""
+    user, decisions = world(conn, email="reader@mail.test")
+    conn.execute(text("UPDATE jobs SET company_name = 'Hooli Demo' WHERE external_id = 'job-2'"))
+    result = compose(conn, user, LOCAL_DATE, now=MORNING)
+    assert len(views.brief_view(conn, result.in_app_brief_id, user)["decisions"]) == 3
+
+    add_constraint(conn, user, "excluded_company", company_names=["Hooli Demo"])  # between 05:30 and 06:40
+
+    outgoing = mail.resolve(conn, {"brief_id": str(result.in_app_brief_id)})
+
+    assert isinstance(outgoing, relay.Outgoing) and outgoing.subject == "Your morning brief: 2 matches"
+    assert "1. Role 1 at Initech Demo" in outgoing.body and "2. Role 3 at Initech Demo" in outgoing.body
+    assert "Hooli Demo" not in outgoing.body and f"/app/matches/{decisions[1]}" not in outgoing.body
+    kept = [d["ref"]["decision_id"] for d in views.brief_view(conn, result.in_app_brief_id, user)["decisions"]]
+    assert kept == [decisions[0], decisions[2]]
+
+
+def test_a_job_that_closed_after_the_brief_was_composed_is_not_in_the_email(conn, apply_links):
+    user, decisions, result = composed(conn)
+    conn.execute(text("UPDATE jobs SET status = 'closed', closed_at = now() WHERE external_id = 'job-3'"))
+
+    outgoing = mail.resolve(conn, {"brief_id": str(result.in_app_brief_id)})
+
+    assert outgoing.subject == "Your morning brief: 2 matches"
+    assert "Role 3" not in outgoing.body and f"/app/matches/{decisions[2]}" not in outgoing.body
 
 
 def test_a_consent_taken_back_after_the_brief_was_composed_cancels_the_email(conn, apply_links):

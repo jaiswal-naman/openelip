@@ -109,5 +109,35 @@ warehouse work at a level three steps above it. The same posting, two grades, as
 
 ## Decisions made while labelling
 
-(Judgement calls that came up, added during labelling so a second rater starts with them. Each is a rule of this
-guideline applied to a case it did not spell out.)
+Judgement calls that came up while the 366 pooled pairs were graded, written down so a second rater starts with them.
+Each is a rule of this guideline applied to a case it did not spell out. They were fixed during the first and only
+pass over the pairs (profile `p01` to `p20`, in that order, each profile's cards in the hidden order) and no grade was
+changed after a metric had been computed.
+
+1. **The card's 600 characters are mostly company boilerplate.** The first lines of most postings describe the employer,
+   not the role, so most grades rest on the title, the place and the arrangement the card shows. A grade of 3 therefore
+   means "the title, level and field the profile asks for and nothing visible against it", not "the requirements were
+   checked".
+2. **Level is read from the title.** From a title that names no level, the level is taken as the profile's own. One step
+   from the profile's current level (senior to staff, manager to senior manager, a junior title for a senior person)
+   costs one grade from 3; two or more steps (senior staff, director, vice president, or the reverse) cost two. An
+   internship or new-graduate posting for an experienced person is 0, and so is an experienced role for a student.
+3. **A generic title in the profile's field** ("Senior Software Engineer" with no stack) is 2 when nothing on the card
+   points at the profile's specialty, and 3 when the title names it ("Backend Engineer", "Site Reliability Engineer").
+4. **The same field on the other side of the customer** (applied AI, forward deployed or solutions roles for an engineer;
+   an engineer's role for a solutions architect) is 1, unless the profile lists that role among its wishes: then it is
+   graded as the wish (2 or 3).
+5. **Management and individual contribution** are different roles: an individual-contributor posting for a profile that
+   wants to manage is 0, and a management posting for an engineer is 1 in the same field and 0 in another. This is
+   graded even where the profile has a "manager or director level only" constraint (`p06`): the card states no level, so
+   the filter lets the posting through, and the wish ("engineering manager") decides the grade.
+6. **A language, region or market the record does not state** ("German speaker", "Korean market", "Spanish-speaking") costs
+   one grade: the records hold no languages and no markets.
+7. **A segment below the record's** (commercial or small-business sales for an enterprise seller) costs one grade, and
+   another market costs a further one.
+8. **A talent-community entry or a fixed-term contract** costs one grade from what the role would otherwise earn: it is
+   not the open, permanent job the profile looks for.
+9. **A function next door** (partner sales for a marketer, key-account sales for a customer success manager, research for an
+   engineer) is 1 and a different function is 0.
+10. **The same posting for two profiles** gets two grades (`Applied AI Engineer, Codex` is 2 for a machine-learning
+    engineer who asks for applied AI roles, 1 for a full-stack engineer, 0 for an engineering manager and for a student).

@@ -32,7 +32,7 @@ def kolkata(hour, minute, day=DAY):
 def queued(conn, kind):
     return conn.execute(
         text(
-            """SELECT unique_key, queue, payload, max_attempts, lease_seconds FROM queue_jobs
+            """SELECT unique_key, queue, payload, max_attempts, lease_seconds, user_id FROM queue_jobs
                 WHERE kind = :k ORDER BY unique_key"""
         ),
         {"k": kind},
@@ -145,6 +145,8 @@ def test_the_plan_queues_a_nightly_run_for_each_person_who_is_due_and_no_one_els
             {"user_id": str(person_of(row)), "local_date": "2026-11-23"},
             jobs.RUN_LEASE_SECONDS,
         )
+        # the job is about one person, so the export lists it and erasing them deletes it (queue.enqueue's contract)
+        assert row.user_id == person_of(row)
     not_due = {quiet, already_ran, weekly_another_day, paused, unconfirmed, elsewhere}
     assert not_due.isdisjoint({person_of(row) for row in queued(conn, "match.nightly")})
     assert jobs.plan_zone(conn, "Asia/Kolkata", DAY, kolkata(3, 11)) == 0  # the same plan again adds nothing
@@ -186,6 +188,7 @@ def test_the_onboarding_sweep_queues_a_first_run_once_for_a_confirmed_person_wit
         {"user_id": str(new), "trigger": "onboarding"},
         jobs.RUN_LEASE_SECONDS,
     )
+    assert first.user_id == new  # it names its person, so erasing them deletes it
     assert jobs.sweep_onboarding(conn) == 0  # never twice
     assert len(queued(conn, "match.run")) == 1
 

@@ -64,6 +64,14 @@
   width: min(100%, var(--measure));
 }
 
+/* The first matches: the cards of Today, one under another. */
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  width: 100%;
+}
+
 .problem {
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);

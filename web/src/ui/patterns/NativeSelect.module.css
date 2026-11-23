@@ -1,0 +1,20 @@
+/* A native select with the chevron of the other fields drawn over it (FRONTEND_UI 5.7). Tokens only. */
+
+.wrap {
+  position: relative;
+}
+
+.select {
+  appearance: none;
+  padding-inline-end: 2.25rem;
+  cursor: pointer;
+}
+
+.icon {
+  position: absolute;
+  inset-inline-end: var(--sp-12);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--muted);
+}

@@ -28,6 +28,7 @@ from tests.match.factories import (
     make_shown_decision,
     make_user,
 )
+from tests.match.fixtures.run.world import add_constraint
 
 IST = ZoneInfo("Asia/Kolkata")
 MORNING = datetime(2026, 11, 23, 6, 10, tzinfo=IST)  # before any email would be released
@@ -265,6 +266,70 @@ def test_with_no_scoring_that_day_the_items_are_the_jobs_nobody_assessed_and_say
     assert first["is_assessed"] is False and first["why"].startswith("Not yet assessed")
     assert first["actions"] == [{"action": "open", "method": "GET", "path": f"/v1/decisions/{held[0]}"}]
     assert apply_links.asked == [], "no apply link is vouched for on a job nobody assessed"
+
+
+def _items(conn, brief_id):
+    """The decisions a brief lists, in order."""
+    return (
+        conn.execute(
+            text("SELECT match_decision_id FROM brief_items WHERE brief_id = :b ORDER BY position"), {"b": brief_id}
+        )
+        .scalars()
+        .all()
+    )
+
+
+def test_a_job_the_constraints_exclude_by_the_morning_is_not_in_the_brief_and_its_link_is_not_asked_about(
+    conn, apply_links
+):
+    user, decisions = world(conn)
+    conn.execute(text("UPDATE jobs SET company_name = 'Hooli Demo' WHERE external_id = 'job-2'"))
+    add_constraint(conn, user, "excluded_company", company_names=["Hooli Demo"])  # confirmed after the 03:00 run
+
+    result = compose(conn, user, LOCAL_DATE, now=MORNING)
+
+    assert _items(conn, result.in_app_brief_id) == [decisions[0], decisions[2]]
+    assert apply_links.url("job-2") not in apply_links.asked
+    titles = [d["title"] for d in views.brief_view(conn, result.in_app_brief_id, user)["decisions"]]
+    assert titles == ["Role 1 at Initech Demo", "Role 3 at Initech Demo"]
+
+
+def test_when_every_match_is_now_excluded_there_is_nothing_to_say(conn, apply_links):
+    user, _ = world(conn, count=2)
+    add_constraint(conn, user, "excluded_company", company_names=["Initech Demo"])
+
+    result = compose(conn, user, LOCAL_DATE, now=MORNING)
+
+    assert result.status == "suppressed" and result.outbox_id is None
+
+
+def test_a_job_that_closed_after_the_run_is_not_in_the_brief_and_costs_no_apply_link_check(conn, apply_links):
+    user, decisions = world(conn)
+    conn.execute(text("UPDATE jobs SET status = 'closed', closed_at = now() WHERE external_id = 'job-1'"))
+
+    result = compose(conn, user, LOCAL_DATE, now=MORNING)
+
+    assert _items(conn, result.in_app_brief_id) == [decisions[1], decisions[2]]
+    assert apply_links.url("job-1") not in apply_links.asked
+
+
+def test_a_job_that_closed_after_the_run_is_not_offered_as_not_yet_assessed(conn, apply_links):
+    user = make_user(conn)
+    make_record(conn, user)
+    run = make_run(conn, user, evidence_prompt_version=None)
+    held = []
+    for rank in range(1, 7):
+        job = make_job(
+            conn, title=f"Job {rank}", description="Go.", requirements=[("Go.", "required")], external_id=f"c{rank}"
+        )
+        held.append(make_decision(conn, run, user, job, retrieval_rank=rank))
+    conn.execute(text("UPDATE jobs SET status = 'closed', closed_at = now() WHERE external_id = 'c1'"))
+
+    result = compose(conn, user, LOCAL_DATE, now=MORNING)
+
+    assert (
+        _items(conn, result.in_app_brief_id) == held[1:6]
+    )  # the closed one is gone and the next in rank takes its place
 
 
 def test_a_proposal_waiting_makes_a_brief_and_an_item_that_points_at_the_list(conn, apply_links):
