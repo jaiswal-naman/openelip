@@ -175,6 +175,7 @@ def test_confirming_a_proposal_applies_it_once_as_a_confirmed_proposal(conn, use
     assert event.reason == "You said you want to work remotely" and event.record_version_after == 1
     assert one(conn, "SELECT profile_event_id FROM constraints WHERE id = :i", i=UUID(applied.row["id"])) == event.id
     assert log(conn, user, status="proposed") == []  # answered
+    assert service.record_header(conn, user).open_proposals == 0
     (entry,) = log(conn, user)
     assert (entry["id"], entry["origin"], entry["source"]) == (applied.event_id, "chat", "confirmed_proposal")
 
@@ -191,6 +192,7 @@ def test_declining_a_proposal_records_the_no_and_changes_nothing_else(conn, user
     declined = events.decline(conn, user, proposal)
 
     assert (version(conn, user), rows(conn, "constraints", user)) == (0, 0)
+    assert service.record_header(conn, user).open_proposals == 0
     (entry,) = log(conn, user)
     assert (entry["id"], entry["status"], entry["proposal_event_id"], entry["origin"]) == (
         declined,

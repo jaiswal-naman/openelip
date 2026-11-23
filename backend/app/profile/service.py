@@ -559,11 +559,8 @@ def set_constraint(
 def replace_constraint(
     conn: Connection, user_id: UUID, constraint_id: UUID, clean: Mapping[str, Any], via: Via
 ) -> Applied:
-    """Replace one active constraint, named by id, with a whole new value of the same kind."""
-    old = active_constraint(conn, user_id, constraint_id)
-    if clean["kind"] != old.kind:
-        raise InvalidField("kind", "cannot_change")
-    return _write_constraint(conn, user_id, clean, old, via)
+    """Replace one active constraint, named by id, with a whole new value (a proposal was checked to keep its kind)."""
+    return _write_constraint(conn, user_id, clean, active_constraint(conn, user_id, constraint_id), via)
 
 
 @atomic
@@ -639,11 +636,8 @@ def add_preference(
 def replace_preference(
     conn: Connection, user_id: UUID, preference_id: UUID, clean: Mapping[str, Any], via: Via
 ) -> Applied:
-    """Replace one active preference, named by id, with a whole new value of the same kind."""
-    old = active_preference(conn, user_id, preference_id)
-    if clean["kind"] != old.kind:
-        raise InvalidField("kind", "cannot_change")
-    return _write_preference(conn, user_id, clean, old, via)
+    """Replace one active preference, named by id, with a whole new value (a proposal was checked to keep its kind)."""
+    return _write_preference(conn, user_id, clean, active_preference(conn, user_id, preference_id), via)
 
 
 @atomic
