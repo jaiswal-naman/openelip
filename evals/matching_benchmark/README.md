@@ -13,8 +13,8 @@ The runner needs no model key for the four methods that call no model.
   and a second rater labels 20% (Cohen's kappa reported), every number from this folder is a first reading and the
   report must say so.
 - **It is small.** AI_SYSTEM 12.2 targets 50 profiles and 1,000 to 2,000 pooled pairs; this set has 20 profiles and
-  about 500 pairs. With 20 profiles the paired intervals are wide, and a difference whose interval contains 0 is
-  reported as "no detectable difference", never as a win or a loss.
+  366 pairs (about 500 planned; see Status of the data). With 20 profiles the paired intervals are wide, and a
+  difference whose interval contains 0 is reported as "no detectable difference", never as a win or a loss.
 - **The profiles are invented** (`Demo Candidate 01` and so on, addresses on `example.test`). Synthetic data is labelled
   and reported separately (AI_SYSTEM 12.1 rule 7). The postings are real and public.
 - **Quality numbers come from one recorded run and are not claims beyond it.** They describe these 20 profiles over
@@ -32,7 +32,7 @@ The runner needs no model key for the four methods that call no model.
 | `GUIDELINE.md` | How a labeller reads a profile and a posting card, grades 0 to 3, worked examples. |
 | `export_snapshot.py` | Writes `snapshot.jsonl` and `snapshot.meta.json` from a database at the merged schema, in a read-only session. |
 | `target.py` | The guard every script imports: refuses a database whose name does not end in `_test`, points the four application roles at it, reads the migration head. |
-| `snapshot.jsonl`, `snapshot.meta.json` | The frozen postings and where they came from (selection SQL, counts, date, schema revision). |
+| `snapshot.jsonl`, `snapshot.meta.json` | The frozen postings and where they came from (selection SQL, counts, date, schema revision, and the one redaction made afterwards). |
 | `profiles.jsonl` | The 20 invented profiles: dated roles, skills, constraints, preferences. |
 | `load.py` | Builds a benchmark database (a name ending in `_test`) from the snapshot and the profiles. |
 | `pool.py`, `pool.jsonl` | Builds the set of pairs to judge (the union of the top 10 of M1 to M4 per profile), as references. |
@@ -93,7 +93,8 @@ when its interval excludes 0.
 Written on 2026-11-23 (AI_SYSTEM 12.1 rule 1: fix the metric and the bar before the run; a changed bar is a new, dated
 pre-registration). No run of this benchmark existed when this was written: this file and `GUIDELINE.md` are the first
 files of the folder in git history, committed before the snapshot, the profiles, the loader, the pool, the labels or any
-run. Since then only the parts that describe the finished data (the "Status of the data" section) were added.
+run. Since then only the parts that describe the finished data (the "Status of the data" section) were added, and the
+small corrections that section lists.
 
 **Bars of a run** (all four must hold; otherwise the run's `score` is 0.0):
 
@@ -142,15 +143,28 @@ how many, and an unjudged job counts as not relevant, which can only understate 
 
 Added after the snapshot, the profiles and the labels were made. The sections above were not changed, except that the
 files table now lists `target.py` (the guard that refuses any database whose name does not end in `_test`), which was
-written after the table.
+written after the table, and that the size bullet under "Read this first" now says 366 pairs, the number in the data,
+where it first said "about 500", the number planned.
 
-**Snapshot** (`snapshot.jsonl`, 4,995,603 bytes; `snapshot.meta.json`, 1.8 KB). Exported on 2026-11-23 from a restored
+**Snapshot** (`snapshot.jsonl`, 4,995,288 bytes; `snapshot.meta.json`, 2.2 KB). Exported on 2026-11-23 from a restored
 copy of a `pg_dump` of the live index `app` (Alembic `0002_platform`, 11,357 jobs), upgraded to head, because `app` is
 below the Phase 2/3 merge and the export refuses it. `app` itself was only dumped; the copy and the dump were deleted
 afterwards. Of 9,996 open, listed, canonical postings, 2,038 were dropped because their text held an email address or a
 phone number, which left 7,958. The target was 1,000 postings and the count fell to 758 to keep the file under 5 MB.
 They come from 57 sources (Greenhouse 512, Ashby 211, Lever 35) in 19 countries; 101 of them had no country in the
 index.
+
+**A redaction after the export.** The export filter matched an address written with `@` only, and 21 postings held one
+role mailbox written `accommodations[at]coinbase.com`. Each of those 21 strings is now `[email removed]` in
+`snapshot.jsonl`, in place: no posting was dropped, so the count, the refs, the pool and the labels are the same, and
+`snapshot.meta.json` records the 21 replacements under `redacted`, with the new size (it was 4,995,603 bytes). The filter
+(`export_snapshot.EMAIL`) now also matches the `[at]` and `(at)` forms, so a fresh export would drop those postings
+instead and hold a different set. M1 to M4 were run again on the redacted snapshot, after rebuilding the benchmark
+database from it: `pool.py` wrote the same `pool.jsonl` byte for byte, every quality figure and every interval came out
+identical, and only the timings, the run's date and its database changed, so `results.json` and `REPORT.md` were
+replaced. A test scans every text field of the snapshot for an address in any of these forms and for a phone number
+and finds none. The 158 `@` signs left in the file are employer domains named in scam warnings (`@anthropic.com`,
+`@ airbnb.com`) and three handles (`@lifeatfam`, `@supabase/supabase-js`, a `youtube.com/@` page), never a mailbox.
 
 **What the store path changes.** `load.py` puts the postings in through `ingest.fetch.store`, which reads each place and
 arrangement again with the current parser: 87 of the 101 postings that had no country in the live index get one, 11
