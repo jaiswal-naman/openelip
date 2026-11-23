@@ -33,6 +33,9 @@ COPY --from=build /srv/backend /srv/backend
 COPY db /srv/db
 COPY data /srv/data
 COPY evals /srv/evals
+# The erasure ledger's folder (docker-compose.yml mounts the volume `erasure` here). Docker copies the owner of an image
+# folder into a new empty volume, so the app user can write to it; without this line the volume is owned by root.
+RUN mkdir /srv/erasure && chown app:app /srv/erasure
 USER app
 EXPOSE 8000
 # No access log: a request line carries the query string, which can hold what someone typed into a search box.
