@@ -41,6 +41,9 @@ import report  # noqa: E402
 import run as bench_run  # noqa: E402
 import target  # noqa: E402
 
+while str(BENCH) in sys.path:  # the scripts are all imported; nothing of theirs is left on the path to shadow a module
+    sys.path.remove(str(BENCH))
+
 MARKER = "agent-drafted, maintainer review pending"
 NOW = datetime(2026, 11, 23, 6, 26, tzinfo=timezone.utc)
 UNIT = [1.0] + [0.0] * 383  # the embedding model, replaced by one fixed vector
