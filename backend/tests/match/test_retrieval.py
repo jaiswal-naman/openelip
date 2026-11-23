@@ -141,7 +141,9 @@ def test_a_job_already_shown_at_its_current_version_is_not_returned_but_is_at_a_
     job = add_job(conn, "Python engineer", tilt=0.0)
     other = add_job(conn, "Python engineer elsewhere", tilt=0.1)
     run = make_run(conn, person)
-    facts = conn.execute(text("SELECT id FROM profile_facts WHERE user_id = :u ORDER BY id"), {"u": person}).scalars().all()
+    facts = (
+        conn.execute(text("SELECT id FROM profile_facts WHERE user_id = :u ORDER BY id"), {"u": person}).scalars().all()
+    )
     make_shown_decision(conn, run, person, job, [Verdict("met", (facts[1],))])
 
     assert ids(retrieval.candidates(conn, person, vector=QUERY_VECTOR, terms="python")) == [other.id]
@@ -162,8 +164,10 @@ def test_a_job_that_was_only_withheld_is_still_a_candidate(conn, person):
 
 @pytest.fixture
 def three(conn, person):
-    """Vector order is a, b, c. Only b and c hold the word alpha, and b holds it in its title, so b leads the keywords."""
-    a = add_job(conn, "Beta role", description="Beta role. Plain words, nothing to find. You will write python.", tilt=0.0)
+    """Vector order is a, b, c. Only b and c hold the word alpha, and b has it in its title, so b leads the keywords."""
+    a = add_job(
+        conn, "Beta role", description="Beta role. Plain words, nothing to find. You will write python.", tilt=0.0
+    )
     b = add_job(conn, "Alpha role", description="Alpha role. Alpha work. You will write python.", tilt=1.0)
     c = add_job(conn, "Gamma role", description="Gamma role. Mentions alpha once. You will write python.", tilt=5.0)
     return a.id, b.id, c.id
@@ -238,7 +242,9 @@ def test_the_filtered_sample_is_the_twenty_best_ranked_violators_with_the_kinds_
         removed = add_job(conn, f"Python engineer abroad {outside[0]}", tilt=0.5, country="DE")
         conn.execute(text(outside[1]), {"id": removed.id})
 
-    sample = retrieval.filtered_sample(conn, person, vector=QUERY_VECTOR, terms="")  # vectors alone: the order is theirs
+    sample = retrieval.filtered_sample(
+        conn, person, vector=QUERY_VECTOR, terms=""
+    )  # vectors alone: the order is theirs
 
     assert len(sample) == 20
     assert ids(sample) == [both.id, *[v.id for v in violators[:19]]]
@@ -343,4 +349,6 @@ def test_the_active_preferences_are_read_without_the_superseded_ones(conn, perso
     )
     conn.execute(text("UPDATE preferences SET superseded_at = now() WHERE id = :id"), {"id": old})
 
-    assert retrieval.active_preferences(conn, person) == [{"kind": "target_title", "value": "staff engineer", "weight": 2}]
+    assert retrieval.active_preferences(conn, person) == [
+        {"kind": "target_title", "value": "staff engineer", "weight": 2}
+    ]
