@@ -1,6 +1,6 @@
 """The model gateway (ARCHITECTURE 5.8, AI_SYSTEM 2). Callers name a task and get a validated answer from complete()."""
 
 from .failures import AIDisabled, ProviderUnavailable, SchemaInvalid
-from .gateway import complete
+from .gateway import Attribution, attributed, complete
 
-__all__ = ["AIDisabled", "ProviderUnavailable", "SchemaInvalid", "complete"]
+__all__ = ["AIDisabled", "Attribution", "ProviderUnavailable", "SchemaInvalid", "attributed", "complete"]

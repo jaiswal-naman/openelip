@@ -182,10 +182,47 @@ def make_checkpoint_schema(conn) -> None:
         conn.execute(text(statement))
 
 
+def orphan_query(conn) -> str:
+    """ORPHAN_THREADS, without its Twin branch while twin_messages does not exist (it arrives in Phase 9)."""
+    if conn.execute(text("SELECT to_regclass('twin_messages') IS NULL")).scalar_one():
+        start = ORPHAN_THREADS.index("OR (t.thread_id ~ '^twin:")
+        return ORPHAN_THREADS[:start].rstrip() + ")\n"
+    return ORPHAN_THREADS
+
+
 def test_no_checkpoint_outlives_its_campaign_or_question(conn):
     if conn.execute(text("SELECT to_regnamespace('langgraph') IS NULL")).scalar_one():
         pytest.skip("no langgraph schema yet: it arrives with campaigns, and this test then runs on its own")
-    assert conn.execute(text(ORPHAN_THREADS)).scalar_one() == 0
+    assert conn.execute(text(orphan_query(conn))).scalar_one() == 0
+
+
+def add_thread(conn, thread_id: str) -> None:
+    conn.execute(
+        text(
+            """INSERT INTO langgraph.checkpoints (thread_id, checkpoint_ns, checkpoint_id, checkpoint, metadata)
+               VALUES (:t, '', 'c1', '{}', '{}')"""
+        ),
+        {"t": thread_id},
+    )
+
+
+def test_the_orphan_check_sees_a_real_orphan_and_the_campaign_trigger_leaves_none(conn):
+    if conn.execute(text("SELECT to_regnamespace('langgraph') IS NULL")).scalar_one():
+        pytest.skip("no langgraph schema yet")
+    from tests.campaigns.factories import make_world
+
+    world = make_world(conn)
+    add_thread(conn, f"campaign:{world.campaign}")
+    assert conn.execute(text(orphan_query(conn))).scalar_one() == 0  # its campaign exists
+    add_thread(conn, "campaign:22222222-2222-2222-2222-222222222222")  # a campaign that never existed
+    assert conn.execute(text(orphan_query(conn))).scalar_one() == 1  # the check counts it
+    conn.execute(
+        text("DELETE FROM langgraph.checkpoints WHERE thread_id = 'campaign:22222222-2222-2222-2222-222222222222'")
+    )
+    conn.execute(text("SELECT set_config('app.maintenance', 'on', true)"))
+    conn.execute(text("DELETE FROM campaigns WHERE id = :c"), {"c": world.campaign})
+    assert conn.execute(text("SELECT count(*) FROM langgraph.checkpoints")).scalar_one() == 0  # the trigger took it
+    assert conn.execute(text(orphan_query(conn))).scalar_one() == 0
 
 
 def test_the_orphan_check_counts_a_thread_whose_owner_is_gone(conn):

@@ -16,7 +16,8 @@ REPO = Path(__file__).resolve().parents[3]
 # 03-01 added (consents, audit_log, data_requests), 3.4 for the record tables of plan 03-04 and 3.5 (the job index,
 # converted in place by revision p2_0201_job_index), 3.6 and 3.7 for the match and brief tables of plan 04-01
 # (outbox is 3.7's and Phase 1's), 3.8 and 3.12 for the tailor, apply and chat tables of plan 05-01 (plus the Phase 5
-# column chat_messages.finish_reason), and 3.9 for the hiring tables of plan 06-01, so a change to either side that the
+# column chat_messages.finish_reason), 3.9 for the hiring tables of plan 06-01 and 3.10 for the campaign and Guardian
+# tables of plan 07-01, so a change to either side that the
 # other does not follow fails here.
 # Not autogenerate.
 EXPECTED = {
@@ -184,6 +185,36 @@ EXPECTED = {
     "chat_messages": """
         id uuid; session_id uuid; user_id uuid; role chat_role; content text?; tool_name text?; refs jsonb
         llm_call_id int8?; finish_reason text?; created_at timestamptz""",
+    # DATA_MODEL 3.10, the campaign and Guardian tables that plan 07-01 added (follow_up_email is its amendment).
+    "campaigns": """
+        id uuid; user_id uuid; job_id int8; match_decision_id uuid?; introduction_id uuid?; stage campaign_stage
+        paused_at timestamptz?; closed_reason campaign_closed_reason?; closed_at timestamptz?; budget_microusd int8
+        follow_up_after_days int2; follow_up_email text?; last_update_at timestamptz; lock_version int4
+        created_at timestamptz; updated_at timestamptz""",
+    "campaign_steps": """
+        id uuid; campaign_id uuid; user_id uuid; step_key text; agent_role agent_role; status step_status
+        due_at timestamptz; attempts int2; waiting_for_approval_id uuid?; output jsonb?; error_code text?
+        created_at timestamptz; started_at timestamptz?; finished_at timestamptz?""",
+    "company_dossiers": """
+        id uuid; campaign_id uuid; user_id uuid; company_name text; version int2; claims jsonb; agent_run_id uuid?
+        created_at timestamptz""",
+    "agent_runs": """
+        id uuid; user_id uuid; campaign_id uuid?; campaign_step_id uuid?; twin_session_id uuid?; agent_role agent_role
+        status agent_run_status; config_version text; error_code text?; started_at timestamptz
+        finished_at timestamptz?""",
+    "agent_actions": """
+        id int8; agent_run_id uuid; user_id uuid; campaign_id uuid?; seq int4; kind action_kind
+        action_type action_type?; status action_status; summary text; inputs jsonb; evidence jsonb; payload jsonb?
+        organization_id uuid?; llm_call_id int8?; policy_decision policy_decision?; policy_version text?
+        undo_until timestamptz?; outcome_code text?; created_at timestamptz; executed_at timestamptz?""",
+    "approvals": """
+        id uuid; user_id uuid; agent_action_id int8; status approval_status; requested_at timestamptz
+        expires_at timestamptz; decided_at timestamptz?; decided_via text?; note text?""",
+    "autonomy_settings": """
+        user_id uuid; action_type action_type; level autonomy_level; updated_at timestamptz""",
+    "guardian_checks": """
+        id int8; agent_action_id int8; user_id uuid; check_kind guardian_check_kind; passed bool; reason_code text?
+        details jsonb; guardian_version text; checked_at timestamptz""",
 }
 
 
@@ -325,7 +356,9 @@ def test_the_phase_5_revision_sits_on_the_phase_4_one_and_the_merge_with_phase_6
     config.set_main_option("script_location", str(REPO / "db"))
     script = ScriptDirectory.from_config(config)
     assert script.get_revision(REVISION).down_revision == PREVIOUS
-    assert script.get_heads() == ["p56_merge_chat_hiring"]
+    assert script.get_heads() == ["p7_0702_langgraph"]  # Phase 7 (plan 07-01) sits on the merge of Phases 5 and 6
+    assert script.get_revision("p7_0702_langgraph").down_revision == "p7_0701_campaigns_guardian"
+    assert script.get_revision("p7_0701_campaigns_guardian").down_revision == "p56_merge_chat_hiring"
     assert set(script.get_revision("p56_merge_chat_hiring").down_revision) == {REVISION, "p6_0601_hiring"}
 
 

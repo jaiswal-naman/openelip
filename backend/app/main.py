@@ -9,8 +9,14 @@ from app.apply import privacy as apply_privacy  # noqa: F401  (importing it regi
 from app.apply import routes as apply_routes
 from app.brief import privacy as brief_privacy  # noqa: F401  (importing it registers the brief tables and exporter)
 from app.brief import routes as brief_routes
+from app.campaigns import privacy as campaign_privacy  # noqa: F401  (importing it registers the campaign tables)
+from app.campaigns import routes as campaign_routes
+from app.campaigns import subscribers as campaign_subscribers  # noqa: F401  (importing it fills the event registry)
+from app.campaigns import view_routes as campaign_view_routes
 from app.chat import privacy as chat_privacy  # noqa: F401  (importing it registers the chat tables and exporter)
 from app.chat import routes as chat_routes
+from app.guardian import privacy as guardian_privacy  # noqa: F401  (importing it registers the Guardian tables)
+from app.guardian import routes as guardian_routes
 from app.hiring import api as hiring_api
 from app.hiring import introduction_routes as hiring_introduction_routes
 from app.hiring import org_routes as hiring_org_routes
@@ -54,6 +60,9 @@ def create_app() -> FastAPI:
         tailor_routes.router,
         apply_routes.router,
         chat_routes.router,
+        campaign_routes.router,
+        campaign_view_routes.router,
+        guardian_routes.router,
         hiring_org_routes.router,
         hiring_role_routes.router,
         hiring_introduction_routes.router,

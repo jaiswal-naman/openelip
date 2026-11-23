@@ -1256,6 +1256,8 @@ CREATE TABLE campaigns (
   closed_at            timestamptz,
   budget_microusd      bigint         NOT NULL CHECK (budget_microusd > 0),   -- model spend the Guardian allows
   follow_up_after_days smallint       NOT NULL DEFAULT 7 CHECK (follow_up_after_days BETWEEN 1 AND 60),  -- assumption
+  follow_up_email      text           CHECK (follow_up_email IS NULL OR (length(follow_up_email) <= 254
+                                          AND follow_up_email ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$')),  -- the one address the candidate typed for follow-ups (plan 07-01)
   last_update_at       timestamptz    NOT NULL DEFAULT now(),  -- last news from outside; drives the Chaser
   lock_version         integer        NOT NULL DEFAULT 0,      -- optimistic lock; only the graph's route node writes stage
   created_at           timestamptz    NOT NULL DEFAULT now(),
@@ -1323,7 +1325,7 @@ CREATE TABLE agent_runs (
 CREATE INDEX agent_runs_campaign_idx ON agent_runs (campaign_id, agent_role, started_at DESC);
 
 -- The flight recorder (GRD-03): every step an agent takes, in order. Content is immutable;
--- only status, executed_at and outcome_code move forward, under the trigger in section 4.
+-- only status, executed_at and outcome_code move forward, and undo_until is set once, under the trigger in section 4.
 CREATE TABLE agent_actions (
   id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   agent_run_id    uuid            NOT NULL REFERENCES agent_runs(id) ON DELETE CASCADE,
@@ -1353,7 +1355,10 @@ CREATE TABLE agent_actions (
   CHECK ((kind = 'outside_action') = (status <> 'recorded')),
   CHECK ((status = 'executed') = (executed_at IS NOT NULL)),
   CHECK (status NOT IN ('blocked', 'failed') OR outcome_code IS NOT NULL),
-  CHECK (action_type <> 'send_follow_up' OR undo_until IS NOT NULL),  -- GRD-04
+  -- GRD-04, amended (plan 07-01): undo_until is set once, when the follow-up is scheduled (4.6), so a follow-up that is
+  -- still proposed or awaiting approval has none
+  CHECK (action_type IS DISTINCT FROM 'send_follow_up' OR status NOT IN ('scheduled', 'executed')
+         OR undo_until IS NOT NULL),
   CHECK (policy_decision IS DISTINCT FROM 'deny' OR status IN ('proposed', 'blocked'))
 );
 CREATE INDEX agent_actions_campaign_idx ON agent_actions (campaign_id, created_at);
@@ -1404,6 +1409,8 @@ CREATE TABLE guardian_checks (
 );
 CREATE INDEX guardian_checks_action_idx ON guardian_checks (agent_action_id);
 ```
+
+Phase 7 additions (plan 07-01): the live definitions are `db/sql/p7_0701_types_tables.sql` and `db/sql/p7_0701_triggers_security.sql`, run by revision `p7_0701_campaigns_guardian`. They differ from the block above in three places, each marked in the SQL: `campaigns.follow_up_email` is new (the one address the candidate typed; the Chaser never writes to another), `undo_until` is set once when a follow-up is scheduled and not at insert (4.6), and `record_state_change` is new (4.6). `agent_runs.twin_session_id` stays a plain column until the Twin tables exist (Phase 9). The foreign keys of 3.14 that belong to Phase 7 (`brief_items`, `outbox`, `application_packets`, `applications`, `campaign_steps`, `company_dossiers`, `agent_actions.llm_call_id`, and `llm_calls.campaign_id` and `agent_run_id`) are added by the same revision, each only when missing.
 
 ### 3.11 twin and agentnet
 
@@ -1776,6 +1783,8 @@ $$;
 CREATE TRIGGER twin_questions_delete_thread AFTER DELETE ON twin_messages
   FOR EACH ROW WHEN (OLD.author = 'employer') EXECUTE FUNCTION twin_questions_delete_thread();
 ```
+
+Phase 7 (plan 07-01): revision `p7_0702_langgraph` runs the schema statements (`db/sql/p7_0702_schema.sql`), `PostgresSaver.setup()` on a separate autocommit connection as `app_owner`, and the deletion function and the campaign trigger (`db/sql/p7_0702_delete_thread.sql`); the Twin trigger waits for `twin_messages` (Phase 9). It records `LANGGRAPH_MIGRATION_COUNT` and `LANGGRAPH_MIGRATIONS_SHA256` of `PostgresSaver.MIGRATIONS`, which `tests/db/test_langgraph_schema.py` compares with the installed library. Both revisions are listed in section 8.
 
 ## 4. Constraints that carry the invariants
 
@@ -2175,10 +2184,22 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- UPDATE: content is fixed; only status, executed_at and outcome_code move.
-  IF (to_jsonb(NEW) - ARRAY['status', 'executed_at', 'outcome_code'])
-     IS DISTINCT FROM (to_jsonb(OLD) - ARRAY['status', 'executed_at', 'outcome_code']) THEN
+  -- UPDATE: content is fixed; only status, executed_at, outcome_code and the one-time undo_until move.
+  IF (to_jsonb(NEW) - ARRAY['status', 'executed_at', 'outcome_code', 'undo_until'])
+     IS DISTINCT FROM (to_jsonb(OLD) - ARRAY['status', 'executed_at', 'outcome_code', 'undo_until']) THEN
     RAISE EXCEPTION 'agent_actions content is immutable' USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  -- Plan 07-01: undo_until is set once, from NULL, on the move to scheduled, and then ahead of now by at least a minute.
+  IF NEW.undo_until IS DISTINCT FROM OLD.undo_until THEN
+    IF OLD.undo_until IS NOT NULL THEN
+      RAISE EXCEPTION 'undo_until is set once and never changes' USING ERRCODE = 'insufficient_privilege';
+    END IF;
+    IF NEW.status <> 'scheduled' OR OLD.status NOT IN ('proposed', 'awaiting_approval') THEN
+      RAISE EXCEPTION 'undo_until is set only when the action is scheduled' USING ERRCODE = 'check_violation';
+    END IF;
+    IF NEW.undo_until IS NULL OR NEW.undo_until < now() + interval '1 minute' THEN
+      RAISE EXCEPTION 'undo_until must be at least one minute ahead' USING ERRCODE = 'check_violation';
+    END IF;
   END IF;
   IF NEW.status = OLD.status THEN
     RETURN NEW;
@@ -2260,6 +2281,43 @@ END;
 $$;
 CREATE TRIGGER outbox_check_action BEFORE INSERT ON outbox
   FOR EACH ROW EXECUTE FUNCTION outbox_check_action();
+
+-- Plan 07-01 (decision 31): the candidate's pause, resume and cancel record a state change, yet app_api may not insert
+-- into agent_actions. This function inserts one kind of row, state_change, for the caller's own campaign and nothing else
+-- (no outside action, no check), under the campaign's one control run (agent_role guardian, created on first use), with
+-- the next seq taken under a lock on the campaign row. It returns the new row's id. EXECUTE goes to app_api and app_worker.
+CREATE FUNCTION record_state_change(p_campaign_id uuid, p_cause text, p_outcome_code text,
+                                    p_inputs jsonb DEFAULT '{}')
+RETURNS bigint
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  owner_id uuid;
+  run_id   uuid;
+  next_seq integer;
+  new_id   bigint;
+BEGIN
+  SELECT c.user_id INTO owner_id FROM campaigns c
+  WHERE c.id = p_campaign_id AND c.user_id = app_user_id() FOR UPDATE;
+  IF owner_id IS NULL THEN
+    RAISE EXCEPTION 'record_state_change: not your campaign' USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  SELECT r.id INTO run_id FROM agent_runs r
+  WHERE r.campaign_id = p_campaign_id AND r.agent_role = 'guardian'
+  ORDER BY r.started_at, r.id LIMIT 1 FOR UPDATE;
+  IF run_id IS NULL THEN
+    INSERT INTO agent_runs (user_id, campaign_id, agent_role, config_version)
+    VALUES (owner_id, p_campaign_id, 'guardian', 'control') RETURNING id INTO run_id;
+  END IF;
+  SELECT coalesce(max(a.seq), 0) + 1 INTO next_seq FROM agent_actions a WHERE a.agent_run_id = run_id;
+  INSERT INTO agent_actions (agent_run_id, user_id, campaign_id, seq, kind, status, summary, outcome_code, inputs)
+  VALUES (run_id, owner_id, p_campaign_id, next_seq, 'state_change', 'recorded', left(p_cause, 200),
+          p_outcome_code, coalesce(p_inputs, '{}'::jsonb))
+  RETURNING id INTO new_id;
+  RETURN new_id;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION record_state_change(uuid, text, text, jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION record_state_change(uuid, text, text, jsonb) TO app_api, app_worker;
 
 -- 4.7 ------------------------------------------------------------------------------------------
 -- Invariant 4. Consent before anything about a candidate reaches an employer or an outside agent.
@@ -2842,6 +2900,8 @@ GRANT SELECT, UPDATE         ON agent_actions, introductions TO app_api;
 GRANT SELECT, INSERT, UPDATE ON agent_actions, introductions, eval_runs TO app_worker;
 GRANT SELECT, INSERT         ON queue_jobs TO app_api;
 GRANT SELECT, INSERT, UPDATE ON approvals TO app_api, app_worker;
+-- Plan 07-01: app_api cannot insert into agent_actions or guardian_checks; its one way to record a state change is the
+-- SECURITY DEFINER function record_state_change (4.6), whose EXECUTE is granted to app_api and app_worker only.
 
 -- Mutable tables, scoped by the policies above.
 GRANT SELECT, INSERT, UPDATE ON users TO app_api;
@@ -3129,7 +3189,7 @@ Today `db.apply_schema()` runs `db/schema.sql` (`CREATE ... IF NOT EXISTS`) on e
 | 1 | `0001_baseline` | Executes today's `db/schema.sql` unchanged. On the existing database it is a no-op because every statement is `IF NOT EXISTS`; on a fresh database it creates the old shape. Both paths then share one history. |
 | 2 | `0002_types_and_index` | Creates the roles (if absent), the enum types and helper functions, then converts the three tables in place with the SQL below. |
 | 3 | `0003_everything_else` | Sections 3.3, 3.4, the rest of 3.5 (`skills`, `job_requirements`), 3.6 to 3.14, 4, 5 and 7, in that order. |
-| 4 | `0004_langgraph` | Section 3.15 as `app_owner` on an autocommit connection: creates schema `langgraph` and its grants, calls `PostgresSaver.setup()`, then creates the deletion function and triggers. A library upgrade that adds migrations gets its own revision that calls `setup()` again. |
+| 4 | `0004_langgraph` (built as `p7_0702_langgraph`) | Section 3.15 as `app_owner` on an autocommit connection: creates schema `langgraph` and its grants, calls `PostgresSaver.setup()`, then creates the deletion function and triggers. A library upgrade that adds migrations gets its own revision that calls `setup()` again. |
 | 5 | Code change | Remove the `apply_schema()` call; `alembic upgrade head` runs as `app_owner` before the app starts. Ingest writes `work_arrangements`, `employment_type` and `employment_type_raw` instead of `is_remote` and `employment_type` (ARCHITECTURE.md owns that change). |
 
 Conversion choices: `is_remote = true` becomes `{remote}`, `false` becomes `{onsite,hybrid}` (the ingest code sets false only for postings it knows are not remote), and NULL becomes `{}` (not stated). The old free-text `employment_type` is kept as `employment_type_raw` and mapped to the enum where it plainly matches. `materially_changed_at` starts at `first_seen_at`. Existing embeddings are labelled with the model name from configuration. Closed rows without `closed_at` get `last_verified_at`.

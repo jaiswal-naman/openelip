@@ -10,6 +10,7 @@ import base64
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from typing import Literal
 from urllib.parse import urlsplit
@@ -63,6 +64,19 @@ class Settings:
     otel_endpoint: str | None
     worker_queues: tuple[str, ...]  # empty means every queue
     tailor_rephrase: bool  # AI_SYSTEM 4.7: model rephrasing of resume lines stays off until audited
+    campaign_budget_usd: Decimal  # model spend one campaign may reach before the Guardian pauses it (GRD-07)
+    monthly_budget_usd: Decimal  # model spend one person's campaigns may reach in a calendar month (GRD-07)
+    research_pages_dir: (
+        str | None
+    )  # a directory of recorded pages the Researcher reads instead of the web (not in production)
+
+    @property
+    def campaign_budget_microusd(self) -> int:
+        return _to_microusd(self.campaign_budget_usd)
+
+    @property
+    def monthly_budget_microusd(self) -> int:
+        return _to_microusd(self.monthly_budget_usd)
 
     def database_url(self, role: Role) -> str:
         return {
@@ -71,6 +85,22 @@ class Settings:
             "worker": self.database_url_worker,
             "match": self.database_url_match,
         }[role]
+
+
+def _to_microusd(usd: Decimal) -> int:
+    """Whole micro-dollars: budgets are stored and compared in them, never as floats."""
+    return int(usd * 1_000_000)
+
+
+def _budget(name: str, value: str | None, default: str) -> Decimal:
+    """A positive dollar amount. Anything else stops the process; the value itself is never echoed."""
+    try:
+        amount = Decimal((value or default).strip())
+    except InvalidOperation:
+        raise ConfigError(f"{name} must be a number of dollars greater than zero") from None
+    if not amount.is_finite() or amount <= 0 or _to_microusd(amount) < 1:
+        raise ConfigError(f"{name} must be a number of dollars greater than zero")
+    return amount
 
 
 def _split(value: str | None) -> tuple[str, ...]:
@@ -119,11 +149,21 @@ def load(environ: Mapping[str, str]) -> Settings:
         otel_endpoint=get("OTEL_EXPORTER_OTLP_ENDPOINT"),
         worker_queues=_split(get("WORKER_QUEUES")),
         tailor_rephrase=_flag("TAILOR_REPHRASE", get("TAILOR_REPHRASE")),  # default false (AI_SYSTEM 4.7)
+        campaign_budget_usd=_budget("APP_CAMPAIGN_BUDGET_USD", get("APP_CAMPAIGN_BUDGET_USD"), "0.75"),  # assumption
+        monthly_budget_usd=_budget("APP_MONTHLY_BUDGET_USD", get("APP_MONTHLY_BUDGET_USD"), "5"),  # assumption
+        research_pages_dir=get("RESEARCH_PAGES_DIR"),
     )
+    _refuse_recorded_pages_in_production(settings)
     _check_keys_are_usable(settings)
     _refuse_development_secrets_off_localhost(settings)
     _refuse_tracing(environ)
     return settings
+
+
+def _refuse_recorded_pages_in_production(settings: Settings) -> None:
+    """RESEARCH_PAGES_DIR makes the Researcher read recorded pages, so a production process must not have it."""
+    if settings.research_pages_dir and settings.app_env == "production":
+        raise ConfigError("RESEARCH_PAGES_DIR is for tests, evals and the demo; it is refused when APP_ENV=production")
 
 
 def _check_keys_are_usable(settings: Settings) -> None:
