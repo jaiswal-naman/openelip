@@ -238,8 +238,10 @@ def web(monkeypatch):
     answers, asked = {}, []
 
     def handler(request):
-        asked.append(str(request.url))
-        return answers[str(request.url)]
+        # The request goes to the address that passed the check, with the link's own name in the Host header.
+        named = f"{request.url.scheme}://{request.headers['host']}{request.url.raw_path.decode('ascii')}"
+        asked.append(named)
+        return answers[named]
 
     monkeypatch.setattr(http, "resolve", lambda host: ["93.184.216.34"] if host == "example.test" else [host])
     monkeypatch.setattr(
