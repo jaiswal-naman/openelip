@@ -30,8 +30,8 @@ The foundation slice (IDX-01, IDX-02, IDX-03) is complete and is not a phase her
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Platform and web shell** - One-command stack, sign-in, costed model gateway, queue, CI with eval gate, and a public jobs page
-- [ ] **Phase 2: Searchable job index** - Search by meaning, source and freshness on every job, scheduled refresh, requirements extracted with spans
+- [x] **Phase 1: Platform and web shell** - One-command stack, sign-in, costed model gateway, queue, CI with eval gate, and a public jobs page
+- [x] **Phase 2: Searchable job index** - Search by meaning, source and freshness on every job, scheduled refresh, requirements extracted with spans
 - [ ] **Phase 3: Career Record** - AI-processing consent, resume to confirmed facts with source lines, typed constraints, change log, export and deletion
 - [ ] **Phase 4: Matches and morning brief** - At most five constraint-safe matches a day with cited evidence tables, "why not", and a daily brief
 - [ ] **Phase 5: Chat, tailoring and applications** - Cited chat with propose-and-confirm, resume tailoring that cannot invent, packets and a tracker
@@ -207,8 +207,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Platform and web shell | 0/TBD | Not started | - |
-| 2. Searchable job index | 0/TBD | Not started | - |
+| 1. Platform and web shell | 7/7 | Complete | 2026-11-23 |
+| 2. Searchable job index | 8/8 | Complete | 2026-11-23 |
 | 3. Career Record | 0/TBD | Not started | - |
 | 4. Matches and morning brief | 0/TBD | Not started | - |
 | 5. Chat, tailoring and applications | 0/TBD | Not started | - |
