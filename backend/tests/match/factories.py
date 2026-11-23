@@ -4,7 +4,8 @@ Everything here is made up: the candidate, the employer ("Initech Demo") and eve
 write with plain SQL on the connection they are given, which is the test's own bootstrap connection (it bypasses
 row-level security, and the `conn` fixture rolls its transaction back), and nothing here commits.
 
-pytest keeps conftest.py off the import path but not this file: the tests reach it as a package under backend/,
+A test imports it by its package path (backend/ is on the import path and tests/ has no __init__.py, so the folders are
+namespace packages):
     from tests.match.factories import make_user, make_record, make_job, make_run, make_shown_decision
 """
 
