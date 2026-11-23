@@ -52,7 +52,7 @@ def state():
 
 def an_unregistered_principal_is_treated_as_before():
     with pytest.raises(AIDisabled):
-        fake.call("research.plan", principal=uuid.uuid4())  # no recording of that task in platform/llm/recorded
+        fake.call("windtunnel.unrecorded", principal=uuid.uuid4())  # no file for this task in platform/llm/recorded
 
 
 def test_both_scenarios_run_interleaved_two_attempts_each_and_pass(engine, fake_provider, asgi_app):
