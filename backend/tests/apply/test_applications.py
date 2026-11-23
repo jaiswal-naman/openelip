@@ -157,6 +157,15 @@ def test_a_time_in_the_future_is_refused_but_a_little_clock_drift_is_not(world):
     ok(apply_for(world, occurred_at=(datetime.now(UTC) + timedelta(minutes=4)).isoformat()), 201)
 
 
+@pytest.mark.parametrize("ancient", ["0001-01-01T00:00:00Z", "1999-12-31T23:59:59Z"])
+def test_a_time_before_the_year_2000_is_refused_so_the_tracker_can_always_be_read_back(world, ancient):
+    error = refused(apply_for(world, occurred_at=ancient), 422, "validation_failed")
+    assert error["details"]["fields"][0]["field"] == "occurred_at"
+    assert count(world.engine, "applications") == 0
+    ok(apply_for(world, occurred_at="2000-01-01T00:00:00Z"), 201)  # the floor itself is allowed
+    assert len(ok(world.client.get("/v1/applications"))["data"]) == 1
+
+
 # ---- linking a packet ---------------------------------------------------------------------------------------------
 
 

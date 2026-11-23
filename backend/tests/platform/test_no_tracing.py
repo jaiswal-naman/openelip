@@ -15,19 +15,27 @@ from app.platform import config
 
 BACKEND = Path(__file__).resolve().parents[2]
 SECRET = "lsv2_pt_0123456789abcdef_this_is_a_secret"
+# Written out here, not read from the code under test, so a name dropped from the code fails a test. ARCHITECTURE 5.9
+# item 13 names the first and third; the installed langsmith (langsmith.utils.tracing_is_enabled) reads all four.
+FLAGS = ("LANGSMITH_TRACING", "LANGSMITH_TRACING_V2", "LANGCHAIN_TRACING_V2", "LANGCHAIN_TRACING")
+KEYS = ("LANGSMITH_API_KEY", "LANGCHAIN_API_KEY")
 
 
 def test_the_settings_load_with_no_tracing_variable_set():
     assert config.load({}).tailor_rephrase is False
 
 
-@pytest.mark.parametrize("name", config.TRACING_FLAGS)
+def test_the_code_refuses_exactly_these_variables():
+    assert set(config.TRACING_FLAGS) == set(FLAGS) and set(config.TRACING_KEYS) == set(KEYS)
+
+
+@pytest.mark.parametrize("name", FLAGS)
 @pytest.mark.parametrize("value", ["false", "FALSE", "0", "no", "off", "", "  "])
 def test_a_tracing_flag_that_is_off_or_empty_loads(name, value):
     config.load({name: value})
 
 
-@pytest.mark.parametrize("name", config.TRACING_FLAGS)
+@pytest.mark.parametrize("name", FLAGS)
 @pytest.mark.parametrize("value", ["true", "TRUE", "True", " true ", "1", "yes", "on"])
 def test_a_tracing_flag_that_is_on_stops_the_process_and_names_the_variable(name, value):
     with pytest.raises(config.ConfigError) as refused:
@@ -35,7 +43,7 @@ def test_a_tracing_flag_that_is_on_stops_the_process_and_names_the_variable(name
     assert name in str(refused.value)
 
 
-@pytest.mark.parametrize("name", config.TRACING_KEYS)
+@pytest.mark.parametrize("name", KEYS)
 def test_a_langsmith_or_langchain_key_stops_the_process_and_is_never_echoed(name):
     with pytest.raises(config.ConfigError) as refused:
         config.load({name: SECRET})
@@ -92,9 +100,20 @@ def test_the_api_refuses_to_start_with_tracing_on(tracing_on):
         main.create_app()
 
 
+class WorkerStarted(BaseException):
+    """Raised by the stand-in below when the worker gets past its start-up checks. A BaseException on purpose: the
+    worker's loop catches every Exception and carries on, so anything milder would let a worker with no guard run
+    forever against the database (the loop is infinite) instead of failing the test."""
+
+
+def _worker_started(*args, **kwargs):
+    raise WorkerStarted
+
+
 def test_the_worker_refuses_to_start_with_tracing_on(tracing_on, monkeypatch):
     _, worker = tracing_on
     monkeypatch.setattr(worker.signal, "signal", lambda *args: None)  # do not leave a SIGTERM handler behind
+    monkeypatch.setattr(worker.log, "event", _worker_started)  # the first thing it does once the settings are read
     with pytest.raises(config.ConfigError, match="LANGSMITH_TRACING"):
         worker.main()
 

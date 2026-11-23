@@ -23,6 +23,9 @@ from app.platform.errors import ApiError
 from .models import ApplicationStatus
 
 OCCURRED_AT_SKEW = timedelta(minutes=5)  # assumption: a person's own clock may run a little ahead of the server's
+# assumption: a floor that keeps absurd years out; a year-1 time cannot be read back in every time zone, and the person
+# could not delete the application to get their tracker back.
+OCCURRED_AT_FLOOR = datetime(2000, 1, 1, tzinfo=timezone.utc)
 # ponytail: no paging. A tracker holds tens of rows; past this the newest are listed. A cursor (API.md 1.4) is the
 # upgrade when anyone gets there.
 MAX_LISTED = 200
@@ -94,6 +97,8 @@ def _stated_time(occurred_at: datetime | None, *, not_before: datetime | None) -
     """The time the person says it happened (now when they say nothing), or a 422 for one that cannot be true."""
     now = datetime.now(timezone.utc)
     when = occurred_at or now
+    if when < OCCURRED_AT_FLOOR:
+        raise _invalid_time("cannot be before the year 2000")
     if when > now + OCCURRED_AT_SKEW:
         raise _invalid_time("cannot be in the future")
     if not_before is not None and when < not_before:
