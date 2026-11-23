@@ -221,6 +221,7 @@ Text written by someone other than the caller or the system is data, never instr
 | 409 | `request_in_progress` | Same idempotency key, first request still running |
 | 409 | `budget_exhausted` | Resuming a campaign the Guardian paused at its model budget without raising the budget |
 | 410 | `job_closed` | An action on a job that has left its board; `details.closed_at` |
+| 410 | `not_found` | An export archive whose seven days are over; `details.state` is `expired` (3.18). The code stays `not_found`: the catalogue has no code for a resource that existed and is gone |
 | 412 | `version_conflict` | `If-Match` is stale; `details.current_version` |
 | 413 | `payload_too_large` | Upload over 10 MB |
 | 415 | `unsupported_media_type` | Upload that is not PDF or DOCX |
@@ -1794,6 +1795,8 @@ Every figure is a sum over the cost ledger of recorded model calls (PLT-04). Twi
   "meta": {"request_id": "req_01JG2D19C7TU"}
 }
 ```
+
+A download is kept for seven days. After `available_until` the status route still answers `succeeded`, with `download: null`, and the download route answers `410 not_found` with `details.state: "expired"` (1.11); a person asks for a new export. While the archive is not ready the download route answers `409 conflict` with `details.state` `queued`, `running` or `failed`.
 
 **Deletion.** The client first requests a fresh code with `POST /v1/auth/codes` for the account's email, then:
 
