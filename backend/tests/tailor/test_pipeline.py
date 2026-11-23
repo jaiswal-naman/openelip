@@ -269,12 +269,17 @@ def test_a_rephrase_missing_from_the_entail_answer_is_not_entailed(tmp_path, led
 
 
 def test_an_entailment_answer_that_contradicts_itself_does_not_pass_the_edit(tmp_path, ledger):
-    both = {
-        "items": [{"edit": "e1", "entailed": True}, {"edit": "e1", "entailed": False}, {"edit": "e2", "entailed": True}]
+    both_ways = {  # e1 says no then yes, e2 says yes then no: whichever comes first or last, a no anywhere is a no
+        "items": [
+            {"edit": "e1", "entailed": False},
+            {"edit": "e1", "entailed": True},
+            {"edit": "e2", "entailed": True},
+            {"edit": "e2", "entailed": False},
+        ]
     }
-    script(tmp_path, MIXED[0], both)
+    script(tmp_path, MIXED[0], both_ways)
     reasons = {e.ordinal: e.discard_reason for e in run().edits}
-    assert reasons[4] == "not_entailed" and reasons[6] is None  # e1 said both ways: fail closed; e2 said yes
+    assert reasons[4] == "not_entailed" and reasons[6] == "not_entailed"
 
 
 def test_every_rephrase_is_not_entailed_when_verify_entail_is_invalid_twice(tmp_path, ledger):
@@ -343,9 +348,10 @@ def test_the_section_is_taken_from_the_facts_not_from_the_model(tmp_path, ledger
         one_edit("remove", "f10", "", ["f10"], section="experience"),  # a skill is skills
         one_edit("reorder", None, "", [], ["f11", "f9", "f10"], section="projects"),
         one_edit("add_from_fact", None, "Quillscript", ["f14"], section="experience"),
+        one_edit("rephrase", "f2", "Built and ran Python services for payments", ["f2"], section="skills"),
     ]
-    script(tmp_path, {"edits": wrong})
-    assert [e.section for e in run().edits] == ["experience", "skills", "skills", "skills"]
+    script(tmp_path, {"edits": wrong}, {"items": [{"edit": "e1", "entailed": True}]})
+    assert [e.section for e in run().edits] == ["experience", "skills", "skills", "skills", "experience"]
 
 
 def test_a_rephrase_names_the_target_among_its_supporting_facts_even_if_the_model_did_not(tmp_path, ledger):
