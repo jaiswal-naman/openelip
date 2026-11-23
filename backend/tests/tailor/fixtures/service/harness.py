@@ -26,6 +26,7 @@ from tests.p5_factories import make_job, make_tailorable_record, make_user
 EMPTY = text("TRUNCATE users, jobs, job_sources, queue_jobs, llm_calls, idempotency_keys RESTART IDENTITY CASCADE")
 JOB_TEXT = "Build reporting pipelines in Python. Experience with PostgreSQL. Kubernetes is a plus."
 REQUIREMENTS = (("Build reporting pipelines in Python", "required"), ("Experience with PostgreSQL", "required"))
+NO_RECORDINGS = Path(__file__).parent / "no-recordings"  # never created: every task finds no file, so AIDisabled
 
 
 def empty_tables(engine: Engine) -> None:
@@ -49,6 +50,8 @@ def use_provider(monkeypatch: pytest.MonkeyPatch, recording: Path | None = None,
     monkeypatch.setattr(gateway, "_record", record)
     monkeypatch.setattr(fake, "_source", recording)  # undone with the test
     monkeypatch.setattr(fake, "_given", {})
+    if recording is None:  # "no recording" must stay true now that recorded/ ships the demo's default answers (05-07)
+        monkeypatch.setattr(fake, "_RECORDED", NO_RECORDINGS)
     return calls
 
 
