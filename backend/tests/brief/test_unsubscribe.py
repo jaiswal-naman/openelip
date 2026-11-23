@@ -63,10 +63,12 @@ def test_a_signature_made_for_another_purpose_is_refused():
     """The purpose prefix: a signature over the same bytes made for another signed link unsubscribes no one."""
     person = uuid4()
     payload = person.bytes + int((NOW + unsubscribe.TOKEN_LIFE).timestamp()).to_bytes(8, "big")
-    foreign = hmac.new(config.get().link_key.encode(), b"export-link:" + payload, hashlib.sha256).digest()
-    token = f"{unsubscribe._b64(payload)}.{unsubscribe._b64(foreign)}"
+    key = config.get().link_key.encode()
 
-    assert unsubscribe.verify(token, now=NOW) is None
+    for purpose in (b"export-link:", b""):  # another purpose's prefix, and a bare HMAC of the payload
+        signature = hmac.new(key, purpose + payload, hashlib.sha256).digest()
+        token = f"{unsubscribe._b64(payload)}.{unsubscribe._b64(signature)}"
+        assert unsubscribe.verify(token, now=NOW) is None, purpose
 
 
 def test_a_token_stops_working_after_sixty_days():
