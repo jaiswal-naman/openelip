@@ -45,6 +45,29 @@ describe("RecorderView", () => {
     expect(within(selected).getByText("Show the draft")).toBeInTheDocument();
   });
 
+  it("shows each check once, with its latest verdict, when the Guardian checked the step more than once", async () => {
+    search = "step=2";
+    // Checked when proposed (scope blocked) and again before release (scope passed): the later round decided
+    const twice = {
+      ...entry,
+      checks: [
+        { id: 1, check: "scope", passed: false, reason_code: "dial_never", details: {}, checked_at: "2026-11-23T09:00:00Z" },
+        { id: 2, check: "budget", passed: true, reason_code: null, details: {}, checked_at: "2026-11-23T09:00:00Z" },
+        { id: 3, check: "scope", passed: true, reason_code: null, details: {}, checked_at: "2026-11-23T10:00:00Z" },
+        { id: 4, check: "budget", passed: true, reason_code: null, details: {}, checked_at: "2026-11-23T10:00:00Z" },
+      ],
+    };
+    renderWithApi(<RecorderView campaignId="c1" />, {
+      "GET /v1/control/recorder": ok([row(1), row(2)]),
+      "GET /v1/control/recorder/2": ok(twice),
+    });
+    const selected = await screen.findByRole("article", { name: "Selected step" });
+    const checks = within(selected).getByRole("table", { name: "Guardian checks and their verdicts" });
+    expect(within(checks).getAllByRole("row")).toHaveLength(3); // the head and one row per check
+    expect(within(checks).getByRole("row", { name: /Recipient, employer and data limits/ })).toHaveTextContent("Passed");
+    expect(within(selected).getByText("Checked 2 times on this step. The latest verdict of each check is shown.")).toBeInTheDocument();
+  });
+
   it("moves with Next, Previous, First and Last in the address", async () => {
     search = "step=2";
     const user = userEvent.setup();

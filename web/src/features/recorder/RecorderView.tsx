@@ -42,6 +42,10 @@ function Entry({ id }: { id: number }) {
   if (entry.isPending) return <p role="status">Loading the step...</p>;
   if (entry.isError) return <ErrorState what="Could not load this step." error={entry.error} onRetry={() => void entry.refetch()} />;
   const data = entry.data;
+  // The Guardian runs its checks when an action is proposed and again before it is released, so one step can carry several
+  // rounds. The latest verdict of each check is the one that decided (checks arrive oldest first).
+  const latestChecks = [...new Map(data.checks.map((check) => [check.check, check])).values()];
+  const checkRounds = Math.max(0, ...latestChecks.map((kind) => data.checks.filter((check) => check.check === kind.check).length));
   return (
     <article className={styles.stack} aria-label="Selected step">
       <h2 className={`t-section ${styles.heading}`}>
@@ -72,11 +76,12 @@ function Entry({ id }: { id: number }) {
           <p className={styles.draft}>{data.payload.body}</p>
         </details>
       )}
-      {data.checks.length > 0 && (
+      {latestChecks.length > 0 && (
         <section aria-labelledby="checks-heading" className={styles.checks}>
           <h3 id="checks-heading" className="t-card">
             Guardian checks
           </h3>
+          {checkRounds > 1 && <p className="t-small muted">Checked {checkRounds} times on this step. The latest verdict of each check is shown.</p>}
           <table className={ledger.table}>
             <caption className="sr-only">Guardian checks and their verdicts</caption>
             <thead>
@@ -87,7 +92,7 @@ function Entry({ id }: { id: number }) {
               </tr>
             </thead>
             <tbody>
-              {data.checks.map((check) => (
+              {latestChecks.map((check) => (
                 <tr key={check.id}>
                   <th scope="row">{CHECK_KIND_LABELS[check.check] ?? check.check}</th>
                   <td data-label="Verdict">{check.passed ? <Pill tone="ok">Passed</Pill> : <Pill tone="bad">Blocked</Pill>}</td>
