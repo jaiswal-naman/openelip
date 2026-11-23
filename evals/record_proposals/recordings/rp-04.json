@@ -1,0 +1,19 @@
+[
+ {
+  "proposals": [
+   {
+    "entity": "constraint",
+    "operation": "set",
+    "field": "salary_floor",
+    "value": {
+     "salary_floor": {
+      "amount": 2000000,
+      "currency": "INR"
+     }
+    },
+    "evidence_quote": "I will not take anything under 2,000,000 INR a year",
+    "statement": "At least 2,000,000 INR a year."
+   }
+  ]
+ }
+]

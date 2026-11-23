@@ -1,0 +1,15 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "search_jobs",
+    "q": "data engineer"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "Your hard constraints were applied to this search. One job fits: the Initech Demo posting [[j1]]."
+ }
+]

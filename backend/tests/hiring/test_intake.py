@@ -17,7 +17,7 @@ from sqlalchemy import text
 from app.hiring import intake
 from app.ingest import api as ingest_api
 from app.ingest.requirements import task, validate
-from app.platform import config
+from app.platform import config, db
 from app.platform.llm import ProviderUnavailable, fake, gateway
 
 FIXTURES = Path(__file__).parent / "fixtures" / "intake"
@@ -42,14 +42,22 @@ def settings_for(**env: str) -> config.Settings:
 
 @pytest.fixture
 def provider(engine, monkeypatch):
-    """The real gateway on the fake provider, with an empty ledger. provider(LLM_PROVIDER="anthropic") runs the same
-    gateway under another setup; answers_from("name.json") says which recording the fake provider plays."""
+    """The real gateway on the fake provider, with an empty ledger and an employer who saves the description.
+    provider(LLM_PROVIDER="anthropic") runs the same gateway under another setup; answers_from("name.json") says which
+    recording the fake provider plays. The application's engines are the test's own, so it sees which login wrote."""
     settings = {"value": settings_for()}
     monkeypatch.setattr(config, "get", lambda: settings["value"])
+    monkeypatch.setattr(db, "_engines", {})
     with engine.begin() as conn:
         conn.execute(text("TRUNCATE llm_calls, model_registry RESTART IDENTITY CASCADE"))
+        employer = conn.execute(
+            text("INSERT INTO users (email) VALUES ('intake-employer@example.test') RETURNING id")
+        ).scalar_one()
 
     class Provider:
+        def __init__(self) -> None:
+            self.employer = employer
+
         def use(self, **env: str) -> None:
             settings["value"] = settings_for(**env)
 
@@ -58,8 +66,11 @@ def provider(engine, monkeypatch):
 
     yield Provider()
     fake.replay_from(None)
+    for application_engine in db._engines.values():
+        application_engine.dispose()
     with engine.begin() as conn:
         conn.execute(text("TRUNCATE llm_calls, model_registry RESTART IDENTITY CASCADE"))
+        conn.execute(text("DELETE FROM users WHERE id = :u"), {"u": employer})
 
 
 def ledger(engine):
@@ -74,7 +85,7 @@ def ledger(engine):
 
 def test_a_valid_answer_becomes_rows_whose_spans_are_code_points_of_the_description(engine, provider):
     provider.answers_from("invented_answer_three.json")
-    result = intake.extract(DESCRIPTION)
+    result = intake.extract(DESCRIPTION, provider.employer)
     assert (result.state, result.dropped) == ("extracted", 0)
     assert [(r.ordinal, r.importance, r.kind, r.min_years) for r in result.rows] == [
         (1, "required", "experience", 3),
@@ -89,21 +100,28 @@ def test_a_valid_answer_becomes_rows_whose_spans_are_code_points_of_the_descript
     assert first.start != len(DESCRIPTION[: first.start].encode("utf-16-le")) // 2
 
 
-def test_the_rows_are_the_validators_own_and_the_call_is_the_public_task_charged_to_no_one(engine, provider):
+def test_the_rows_are_the_validators_own_and_the_call_is_recorded_against_the_employer(engine, provider):
     provider.answers_from("invented_answer_three.json")
-    result = intake.extract(DESCRIPTION)
+    result = intake.extract(DESCRIPTION, provider.employer)
     assert all(isinstance(row, ingest_api.RequirementRow) for row in result.rows)
-    assert ledger(engine) == [(task.TASK, "ok", None, 1)]
+    assert ledger(engine) == [(task.TASK, "ok", provider.employer, 1)]
     with engine.connect() as conn:
         version = conn.execute(text("SELECT prompt_version FROM llm_calls")).scalar_one()
     assert version == task.PROMPT_VERSION  # the prompt and the route are the posting path's, unchanged
+
+
+def test_the_call_is_recorded_by_the_api_login_alone_because_it_runs_in_the_api_process(engine, provider):
+    """The API container holds no worker login: a role saved there failed with OperationalError before this (K1)."""
+    provider.answers_from("invented_answer_three.json")
+    assert intake.extract(DESCRIPTION, provider.employer).state == "extracted"
+    assert set(db._engines) == {"api"}
 
 
 def test_text_that_states_no_requirement_is_extracted_with_no_rows_and_is_not_called_empty(engine, provider, tmp_path):
     recording = tmp_path / "none.json"
     recording.write_text(json.dumps([{"requirements": []}]), encoding="utf-8")
     provider.answers_from(recording)
-    result = intake.extract("We are a small team that likes cats.")
+    result = intake.extract("We are a small team that likes cats.", provider.employer)
     assert (result.state, result.rows, result.dropped) == ("extracted", [], 0)
     assert len(ledger(engine)) == 1  # the model was asked and said there was nothing
 
@@ -114,7 +132,7 @@ def test_text_that_states_no_requirement_is_extracted_with_no_rows_and_is_not_ca
 @pytest.mark.parametrize("description", ["", "   ", "\n\t \n"])
 def test_a_blank_description_is_empty_and_makes_no_call(engine, provider, description):
     provider.answers_from("invented_answer_three.json")  # a recording is ready, and must stay unused
-    result = intake.extract(description)
+    result = intake.extract(description, provider.employer)
     assert (result.state, result.rows, result.dropped) == ("empty", [], 0)
     assert ledger(engine) == []
     assert json.loads(fake.call("job.requirements.extract").text)["requirements"]  # still the first answer in the list
@@ -122,14 +140,14 @@ def test_a_blank_description_is_empty_and_makes_no_call(engine, provider, descri
 
 def test_with_no_key_the_task_is_ai_disabled_and_nothing_is_called(engine, provider):
     provider.use(LLM_PROVIDER="anthropic")
-    result = intake.extract(DESCRIPTION)
+    result = intake.extract(DESCRIPTION, provider.employer)
     assert (result.state, result.rows, result.dropped) == ("ai_disabled", [], 0)
     assert ledger(engine) == []
 
 
 def test_a_fake_provider_with_no_recording_is_ai_disabled_too(engine, provider):
     fake.replay_from(None)  # the task has no recording of its own: "no provider" for the gateway
-    assert intake.extract(DESCRIPTION).state == "ai_disabled"
+    assert intake.extract(DESCRIPTION, provider.employer).state == "ai_disabled"
     assert ledger(engine) == []
 
 
@@ -138,9 +156,9 @@ def test_a_provider_that_does_not_answer_is_failed_and_the_ledger_says_so(engine
         raise ProviderUnavailable(timed_out=True)
 
     monkeypatch.setattr(gateway, "_call", timed_out)
-    result = intake.extract(DESCRIPTION)
+    result = intake.extract(DESCRIPTION, provider.employer)
     assert (result.state, result.rows, result.dropped) == ("failed", [], 0)
-    assert ledger(engine) == [(task.TASK, "timeout", None, 1)]
+    assert ledger(engine) == [(task.TASK, "timeout", provider.employer, 1)]
 
 
 @pytest.mark.parametrize(
@@ -152,7 +170,7 @@ def test_a_provider_that_does_not_answer_is_failed_and_the_ledger_says_so(engine
 )
 def test_two_invalid_answers_are_failed_and_never_retried_here(engine, provider, recording, outcomes):
     provider.answers_from(recording)  # two answers: a third request would find none left
-    result = intake.extract(DESCRIPTION)
+    result = intake.extract(DESCRIPTION, provider.employer)
     assert (result.state, result.rows, result.dropped) == ("failed", [], 0)
     assert [outcome for _, outcome, _, _ in ledger(engine)] == outcomes
 
@@ -163,7 +181,7 @@ def test_anything_else_that_goes_wrong_is_not_caught(engine, provider, monkeypat
 
     monkeypatch.setattr(gateway, "_call", broken)
     with pytest.raises(RuntimeError, match="a bug"):
-        intake.extract(DESCRIPTION)
+        intake.extract(DESCRIPTION, provider.employer)
 
 
 # ---- the cap ----------------------------------------
@@ -182,7 +200,7 @@ def thirty_five_skills(provider, tmp_path):
 
 
 def test_more_than_thirty_requirements_are_cut_to_the_first_thirty_and_the_rest_are_counted(engine, provider, tmp_path):
-    result = intake.extract(thirty_five_skills(provider, tmp_path))
+    result = intake.extract(thirty_five_skills(provider, tmp_path), provider.employer)
     assert intake.MAX_REQUIREMENTS == 30
     assert (result.state, len(result.rows), result.dropped) == ("extracted", 30, 5)
     assert [row.ordinal for row in result.rows] == list(range(1, 31))
@@ -193,7 +211,7 @@ def test_the_roles_own_cap_holds_even_if_the_posting_cap_of_the_validator_moves(
     engine, provider, tmp_path, monkeypatch
 ):
     monkeypatch.setattr(validate, "MAX_REQUIREMENTS", 40)  # the validator now keeps all 35
-    result = intake.extract(thirty_five_skills(provider, tmp_path))
+    result = intake.extract(thirty_five_skills(provider, tmp_path), provider.employer)
     assert (result.state, len(result.rows), result.dropped) == ("extracted", 30, 5)
     assert [row.ordinal for row in result.rows] == list(range(1, 31))
 

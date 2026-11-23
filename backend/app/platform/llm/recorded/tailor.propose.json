@@ -1,0 +1,9 @@
+[
+  {"edits": [
+    {"op": "reorder", "target": null, "section": "skills", "after_text": "", "supporting": [], "requirements": ["r1"], "order": ["f10", "f2", "f11", "f12"]},
+    {"op": "remove", "target": "f9", "section": "experience", "after_text": "", "supporting": ["f9"], "requirements": [], "order": []},
+    {"op": "add_from_fact", "target": null, "section": "skills", "after_text": "Docker", "supporting": ["f13"], "requirements": [], "order": []},
+    {"op": "reorder", "target": null, "section": "skills", "after_text": "", "supporting": [], "requirements": ["r1"], "order": ["f10", "f11", "f12", "f2", "f14"]},
+    {"op": "add_from_fact", "target": null, "section": "skills", "after_text": "Grafana for 5 years", "supporting": ["f14"], "requirements": [], "order": []}
+  ]}
+]

@@ -1,0 +1,85 @@
+[
+  {
+    "edits": [
+      {
+        "op": "add_from_fact",
+        "target": null,
+        "section": "skills",
+        "after_text": "Terraform",
+        "supporting": [
+          "f18"
+        ],
+        "requirements": [
+          "r1"
+        ],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f6",
+        "section": "experience",
+        "after_text": "Delivered the invoice portal in March 2021",
+        "supporting": [
+          "f6"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "add_from_fact",
+        "target": null,
+        "section": "skills",
+        "after_text": "Quillscript scripting language",
+        "supporting": [
+          "f17"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f8",
+        "section": "experience",
+        "after_text": "Wrote weekly SQL reports for two teams at Brindle Demo",
+        "supporting": [
+          "f8"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f3",
+        "section": "experience",
+        "after_text": "Cut report build time by 30% in 2020",
+        "supporting": [
+          "f3"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "experience",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [],
+        "order": [
+          "f3",
+          "f2",
+          "f4",
+          "f5"
+        ]
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": true
+      }
+    ]
+  }
+]

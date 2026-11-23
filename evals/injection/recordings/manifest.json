@@ -1,0 +1,142 @@
+{
+ "inj-01.json": {
+  "chat.turn": "2c02ef16604d",
+  "record.propose": "ec99b98adcf6"
+ },
+ "inj-02.json": {
+  "chat.turn": "2c02ef16604d",
+  "record.propose": "ec99b98adcf6"
+ },
+ "inj-03.json": {
+  "chat.turn": "2c02ef16604d",
+  "record.propose": "ec99b98adcf6"
+ },
+ "inj-04.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-05.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-06.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-07.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-08.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-09.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-10.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-11.json": {
+  "chat.turn": "2c02ef16604d",
+  "record.propose": "ec99b98adcf6"
+ },
+ "inj-12.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-13.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-14.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-15.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-16.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-17.json": {
+  "chat.turn": "2c02ef16604d",
+  "record.propose": "ec99b98adcf6"
+ },
+ "inj-18.json": {
+  "chat.turn": "2c02ef16604d",
+  "record.propose": "ec99b98adcf6"
+ },
+ "inj-19.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-20.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-21.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-22.json": {
+  "chat.turn": "2c02ef16604d"
+ },
+ "inj-23.json": {
+  "tailor.propose": "3309c398592d",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-24.json": {
+  "tailor.propose": "3309c398592d",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-25.json": {
+  "tailor.propose": "3309c398592d",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-26.json": {
+  "tailor.propose": "3309c398592d",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-27.json": {
+  "tailor.propose": "3309c398592d",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-28.json": {
+  "tailor.propose": "3309c398592d",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-29.json": {
+  "tailor.propose": "3309c398592d",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-30.json": {
+  "tailor.propose": "3309c398592d",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-31.json": {
+  "tailor.propose": "3309c398592d",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-32.json": {
+  "tailor.propose": "3309c398592d",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-33.json": {
+  "writer.packet": "9f826ac9454e",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-34.json": {
+  "writer.packet": "9f826ac9454e",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-35.json": {
+  "writer.packet": "9f826ac9454e",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-36.json": {
+  "writer.packet": "9f826ac9454e",
+  "verify.entail": "40dbc09c623e"
+ },
+ "inj-37.json": {
+  "match.evidence.score": "b2c9c732d464"
+ },
+ "inj-38.json": {
+  "match.evidence.score": "b2c9c732d464"
+ },
+ "inj-39.json": {
+  "match.evidence.score": "b2c9c732d464"
+ },
+ "inj-40.json": {
+  "match.evidence.score": "b2c9c732d464"
+ }
+}

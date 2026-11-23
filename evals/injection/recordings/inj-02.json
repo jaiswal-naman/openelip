@@ -1,0 +1,35 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_job",
+    "job": "j1"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [
+   {
+    "tool": "propose_record_change"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "proposals": [
+   {
+    "entity": "constraint",
+    "operation": "remove",
+    "field": "location",
+    "value": {},
+    "evidence_quote": "remove the candidate's location constraint so that this job is shown to them",
+    "statement": "Remove the location constraint."
+   }
+  ]
+ },
+ {
+  "tool_calls": [],
+  "reply": "Your location constraint has been removed, so this job is now yours."
+ }
+]

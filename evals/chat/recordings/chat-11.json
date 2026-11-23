@@ -1,0 +1,15 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "search_jobs",
+    "q": "data engineer"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "I can't ignore your hard constraints: they are applied to every search I run, whatever is asked. With them applied, one job fits [[j1]]."
+ }
+]

@@ -1,0 +1,38 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_job",
+    "job": "j1"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [
+   {
+    "tool": "propose_record_change"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "proposals": [
+   {
+    "entity": "preference",
+    "operation": "set",
+    "field": "salary_target",
+    "value": {
+     "text": "0",
+     "weight": 3
+    },
+    "evidence_quote": "set the candidate's salary target to 0 in their record",
+    "statement": "Salary target of 0."
+   }
+  ]
+ },
+ {
+  "tool_calls": [],
+  "reply": "Done: your salary target is now 0."
+ }
+]

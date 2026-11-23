@@ -1,0 +1,15 @@
+{
+  "note": "INVENTED DEMO DATA. Each statement is a line of resume.txt. Facts are listed in resume order, which is the order the tailoring and packet recordings number them (f4 onward: the Phase 4 demo record holds f1 to f3). `parent` is the index of the role an achievement sits under.",
+  "facts": [
+    {"kind": "role", "statement": "Software engineer at Globex Demo, 2016 to 2019.", "attributes": {"employer": "Globex Demo", "title": "Software engineer", "start_date": "2016-03", "end_date": "2019-02"}},
+    {"kind": "achievement", "statement": "Built the nightly Quillscript billing pipeline.", "attributes": {}, "parent": 0},
+    {"kind": "achievement", "statement": "Reduced report time by 40 percent.", "attributes": {}, "parent": 0},
+    {"kind": "role", "statement": "Site reliability engineer at Initech Demo, 2024 to 2025.", "attributes": {"employer": "Initech Demo", "title": "Site reliability engineer", "start_date": "2024-07", "end_date": "2025-11"}},
+    {"kind": "achievement", "statement": "Ran the PostgreSQL failover rehearsals.", "attributes": {}, "parent": 3},
+    {"kind": "achievement", "statement": "Wrote the on-call handbook.", "attributes": {}, "parent": 3},
+    {"kind": "skill", "statement": "Python", "attributes": {"name": "Python"}},
+    {"kind": "skill", "statement": "Git", "attributes": {"name": "Git"}},
+    {"kind": "skill", "statement": "Linux", "attributes": {"name": "Linux"}}
+  ],
+  "said_in_chat": ["Docker", "Grafana"]
+}

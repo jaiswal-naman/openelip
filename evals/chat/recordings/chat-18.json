@@ -1,0 +1,31 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "propose_record_change"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "proposals": [
+   {
+    "entity": "constraint",
+    "operation": "set",
+    "field": "excluded_company",
+    "value": {
+     "company_names": [
+      "Globex Demo",
+      "Hooli Demo"
+     ]
+    },
+    "evidence_quote": "never show me jobs at Hooli Demo",
+    "statement": "Never Globex Demo or Hooli Demo."
+   }
+  ]
+ },
+ {
+  "tool_calls": [],
+  "reply": "I proposed adding Hooli Demo to the companies you never want. Confirm it in the app to apply it."
+ }
+]

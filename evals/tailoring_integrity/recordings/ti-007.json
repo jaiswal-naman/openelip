@@ -1,0 +1,93 @@
+[
+  {
+    "edits": [
+      {
+        "op": "rephrase",
+        "target": "f7",
+        "section": "experience",
+        "after_text": "Looked after 40 SQL reports for the finance team",
+        "supporting": [
+          "f7"
+        ],
+        "requirements": [
+          "r3"
+        ],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f4",
+        "section": "experience",
+        "after_text": "Defined the customer churn metrics",
+        "supporting": [
+          "f4"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f8",
+        "section": "experience",
+        "after_text": "Cleaned survey data for the 2019 customer study",
+        "supporting": [
+          "f8"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f5",
+        "section": "experience",
+        "after_text": "Presented monthly results to a team of eight managers as Lead Data Analyst",
+        "supporting": [
+          "f5"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "remove",
+        "target": "f9",
+        "section": "experience",
+        "after_text": "",
+        "supporting": [
+          "f9"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "skills",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [
+          "r2",
+          "r3"
+        ],
+        "order": [
+          "f11",
+          "f12",
+          "f10",
+          "f13",
+          "f14"
+        ]
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": true
+      },
+      {
+        "edit": "e2",
+        "entailed": false
+      }
+    ]
+  }
+]

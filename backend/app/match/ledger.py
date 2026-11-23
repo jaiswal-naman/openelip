@@ -461,6 +461,7 @@ def check_job(conn: Connection, user_id: UUID, job_id: int, day: date) -> dict[s
         "gaps": [],
         "evaluated": "on_request",
         "job": _job_brief(row),
+        "violated_kinds": violated,  # every kind, for match.api; the route's model shows only the first (constraint)
     }
 
 

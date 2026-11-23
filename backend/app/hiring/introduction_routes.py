@@ -47,7 +47,7 @@ class Resolved(BaseModel):
     answer_due_at: datetime | None = None
 
 
-class Accepted(BaseModel):
+class IntroductionAccepted(BaseModel):
     introduction: Resolved
     shared: str
 
@@ -90,7 +90,7 @@ def read_introduction(introduction_id: UUID, principal: Signed) -> dict[str, Any
     return envelope(view)
 
 
-@router.post("/v1/introductions/{introduction_id}/accept", response_model=Envelope[Accepted])
+@router.post("/v1/introductions/{introduction_id}/accept", response_model=Envelope[IntroductionAccepted])
 def accept_introduction(introduction_id: UUID, body: AcceptBody, write: Annotated[Write, Depends(idempotent)]) -> Any:
     return write.run(
         lambda conn: introductions.accept(

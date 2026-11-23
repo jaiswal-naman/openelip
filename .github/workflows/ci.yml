@@ -81,14 +81,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [harness_smoke, resume_extraction, requirement_extraction, evidence_faithfulness, constraint_property, role_intake] # later phases add their gold sets here
+        suite: [harness_smoke, resume_extraction, requirement_extraction, evidence_faithfulness, constraint_property, tailoring_integrity, chat, record_proposals, injection, role_intake] # later phases add their gold sets here
     services:
       db:
         image: pgvector/pgvector:pg17
         env:
           POSTGRES_USER: app
           POSTGRES_PASSWORD: app_local_only
-          POSTGRES_DB: evals
+          POSTGRES_DB: evals_test # a name ending in _test: the Phase 5 eval seeds refuse any other
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U app"
@@ -96,8 +96,10 @@ jobs:
           --health-timeout 5s
           --health-retries 12
     env:
-      DATABASE_URL_MIGRATE: postgresql://app:app_local_only@localhost:5432/evals
-      DATABASE_URL_WORKER: postgresql://app_worker:app_worker_local_only@localhost:5432/evals
+      DATABASE_URL_MIGRATE: postgresql://app:app_local_only@localhost:5432/evals_test
+      DATABASE_URL_API: postgresql://app_api:app_api_local_only@localhost:5432/evals_test
+      DATABASE_URL_WORKER: postgresql://app_worker:app_worker_local_only@localhost:5432/evals_test
+      DATABASE_URL_MATCH: postgresql://app_match:app_match_local_only@localhost:5432/evals_test
       LLM_PROVIDER: fake # replay: recorded answers through the gateway, so no model key is needed
       GIT_SHA: ${{ github.sha }}
     defaults:

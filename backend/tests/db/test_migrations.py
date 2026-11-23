@@ -1,14 +1,22 @@
 """The migration history builds the schema DATA_MODEL describes, keeps the job rows it adopts, and round-trips."""
 
+import re
+from pathlib import Path
+
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import make_url
+
+REPO = Path(__file__).resolve().parents[3]
 
 # What information_schema must show after `alembic upgrade head`, as "column udt_name" ("?" marks a nullable column).
 # Transcribed by hand from DATA_MODEL 3.3, 3.7 and 3.13 (the Phase 1 tables), 3.3 again for the trust tables that plan
 # 03-01 added (consents, audit_log, data_requests), 3.4 for the record tables of plan 03-04 and 3.5 (the job index,
 # converted in place by revision p2_0201_job_index), 3.6 and 3.7 for the match and brief tables of plan 04-01
-# (outbox is 3.7's and Phase 1's), and 3.9 for the hiring tables of plan 06-01, so a change to either side that the
+# (outbox is 3.7's and Phase 1's), 3.8 and 3.12 for the tailor, apply and chat tables of plan 05-01 (plus the Phase 5
+# column chat_messages.finish_reason), and 3.9 for the hiring tables of plan 06-01, so a change to either side that the
 # other does not follow fails here.
 # Not autogenerate.
 EXPECTED = {
@@ -154,6 +162,28 @@ EXPECTED = {
     "interest_signals": """
         id uuid; sender_side signal_side; user_id uuid; organization_id uuid; role_id uuid; introduction_id uuid?
         sent_by uuid?; week_start date; slot int2; created_at timestamptz""",
+    # DATA_MODEL 3.8 and 3.12, the tailor, apply and chat tables that plan 05-01 added.
+    "tailored_resumes": """
+        id uuid; user_id uuid; job_id int8; job_content_version int4; base_document_id uuid; record_version int8
+        status tailored_status; prompt_version text?; discarded_count int4; created_at timestamptz""",
+    "resume_edits": """
+        id uuid; tailored_resume_id uuid; user_id uuid; ordinal int2; section text; target_fact_id uuid?
+        before_text text; after_text text; supporting_fact_ids _uuid; verifier_status edit_verifier_status
+        discard_reason edit_discard_reason?; decision edit_decision; decided_at timestamptz?; created_at timestamptz""",
+    "application_packets": """
+        id uuid; user_id uuid; job_id int8; campaign_id uuid?; tailored_resume_id uuid?; answers jsonb
+        cover_note text?; status packet_status; approved_at timestamptz?; created_at timestamptz""",
+    "applications": """
+        id uuid; user_id uuid; job_id int8; campaign_id uuid?; application_packet_id uuid?
+        status application_status; status_changed_at timestamptz; created_at timestamptz""",
+    "application_events": """
+        id int8; application_id uuid; user_id uuid; status application_status; occurred_at timestamptz
+        created_at timestamptz""",
+    "chat_sessions": """
+        id uuid; user_id uuid; kind chat_session_kind; created_at timestamptz; last_message_at timestamptz?""",
+    "chat_messages": """
+        id uuid; session_id uuid; user_id uuid; role chat_role; content text?; tool_name text?; refs jsonb
+        llm_call_id int8?; finish_reason text?; created_at timestamptz""",
 }
 
 
@@ -258,6 +288,91 @@ def test_the_job_rows_survive_the_upgrade(make_database, alembic_run):
     assert before == after == (1, 3, 1)
     assert searchable == 3
     assert owners == ["app_owner"]
+
+
+# ---- revision p5_0501_chat_tailor_apply (plan 05-01) ----------------------------------------------------------------
+
+REVISION = "p5_0501_chat_tailor_apply"
+PREVIOUS = "p4_0401_match_brief"
+NEW_TABLES = (
+    "tailored_resumes",
+    "resume_edits",
+    "application_packets",
+    "applications",
+    "application_events",
+    "chat_sessions",
+    "chat_messages",
+)
+NEW_ENUMS = (
+    "tailored_status",
+    "edit_verifier_status",
+    "edit_discard_reason",
+    "edit_decision",
+    "application_status",
+    "packet_status",
+    "chat_session_kind",
+    "chat_role",
+)
+NEW_FUNCTIONS = ("resume_edits_check_support", "resume_edits_decide_once")
+
+
+def _names(connection, sql: str, **params) -> list[str]:
+    return sorted(connection.execute(text(sql), params).scalars())
+
+
+def test_the_phase_5_revision_sits_on_the_phase_4_one_and_the_merge_with_phase_6_is_the_only_head():
+    config = Config()
+    config.set_main_option("script_location", str(REPO / "db"))
+    script = ScriptDirectory.from_config(config)
+    assert script.get_revision(REVISION).down_revision == PREVIOUS
+    assert script.get_heads() == ["p56_merge_chat_hiring"]
+    assert set(script.get_revision("p56_merge_chat_hiring").down_revision) == {REVISION, "p6_0601_hiring"}
+
+
+def _data_model_labels(type_name: str) -> list[str]:
+    source = (REPO / "docs" / "DATA_MODEL.md").read_text(encoding="utf-8")
+    found = re.search(rf"CREATE TYPE\s+{type_name}\s+AS ENUM\s*\(([^)]*)\)", source)
+    assert found, f"DATA_MODEL.md has no CREATE TYPE {type_name}"
+    return re.findall(r"'([^']+)'", found.group(1))
+
+
+@pytest.mark.parametrize("type_name", NEW_ENUMS)
+def test_every_phase_5_enum_holds_the_data_model_values_in_order(engine, type_name):
+    with engine.connect() as c:
+        labels = c.execute(
+            text("SELECT enumlabel FROM pg_enum WHERE enumtypid = CAST(:t AS regtype) ORDER BY enumsortorder"),
+            {"t": type_name},
+        ).scalars()
+        assert list(labels) == _data_model_labels(type_name)
+
+
+def test_the_phase_5_revision_goes_down_one_step_leaving_nothing_and_up_again_twice_changes_nothing(
+    make_database, alembic_run
+):
+    url = make_database("p5down_test")
+    engine = _engine(url)
+    try:
+        alembic_run("upgrade", url, REVISION)
+        alembic_run("downgrade", url, PREVIOUS)
+        with engine.connect() as c:
+            left = {
+                "tables": _names(c, "SELECT tablename FROM pg_tables WHERE tablename = ANY(:n)", n=list(NEW_TABLES)),
+                "types": _names(c, "SELECT typname FROM pg_type WHERE typname = ANY(:n)", n=list(NEW_ENUMS)),
+                "functions": _names(c, "SELECT proname FROM pg_proc WHERE proname = ANY(:n)", n=list(NEW_FUNCTIONS)),
+                "policies": _names(
+                    c, "SELECT policyname FROM pg_policies WHERE tablename = ANY(:n)", n=list(NEW_TABLES)
+                ),
+            }
+            assert left == {name: [] for name in left}
+            assert _names(c, "SELECT version_num FROM alembic_version") == [PREVIOUS]
+        alembic_run("upgrade", url, REVISION)
+        alembic_run("upgrade", url, REVISION)  # already there: a second upgrade changes nothing
+        with engine.connect() as c:
+            found = _names(c, "SELECT tablename FROM pg_tables WHERE tablename = ANY(:n)", n=list(NEW_TABLES))
+            assert found == sorted(NEW_TABLES)
+            assert _names(c, "SELECT version_num FROM alembic_version") == [REVISION]
+    finally:
+        engine.dispose()
 
 
 def test_the_harness_refuses_databases_that_do_not_end_in_test(assert_test_db):

@@ -1,0 +1,36 @@
+[
+ {
+  "edits": [
+   {
+    "op": "rephrase",
+    "target": "f3",
+    "section": "experience",
+    "after_text": "Cut report build time by 30% using Rust and Haskell",
+    "supporting": [
+     "f3"
+    ],
+    "requirements": [],
+    "order": []
+   },
+   {
+    "op": "remove",
+    "target": "f6",
+    "section": "experience",
+    "after_text": "",
+    "supporting": [
+     "f6"
+    ],
+    "requirements": [],
+    "order": []
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   }
+  ]
+ }
+]

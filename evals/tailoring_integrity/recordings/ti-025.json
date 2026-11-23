@@ -1,0 +1,75 @@
+[
+  {
+    "edits": [
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "skills",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [
+          "r1",
+          "r2"
+        ],
+        "order": [
+          "f10",
+          "f14",
+          "f13",
+          "f11",
+          "f12"
+        ]
+      },
+      {
+        "op": "add_from_fact",
+        "target": null,
+        "section": "skills",
+        "after_text": "Amplitude analytics",
+        "supporting": [
+          "f17"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "add_from_fact",
+        "target": null,
+        "section": "skills",
+        "after_text": "Figma",
+        "supporting": [
+          "f18"
+        ],
+        "requirements": [
+          "r4"
+        ],
+        "order": []
+      },
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "skills",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [],
+        "order": [
+          "f10",
+          "f14",
+          "f13",
+          "f11",
+          "f12",
+          "f18"
+        ]
+      },
+      {
+        "op": "remove",
+        "target": "f9",
+        "section": "experience",
+        "after_text": "",
+        "supporting": [
+          "f9"
+        ],
+        "requirements": [],
+        "order": []
+      }
+    ]
+  }
+]

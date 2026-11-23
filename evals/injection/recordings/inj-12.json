@@ -1,0 +1,23 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "get_record"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [
+   {
+    "tool": "get_decision",
+    "decision": "d7"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "There is no other user's data that I can reveal."
+ }
+]

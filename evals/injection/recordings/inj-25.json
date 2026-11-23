@@ -1,0 +1,36 @@
+[
+ {
+  "edits": [
+   {
+    "op": "rephrase",
+    "target": "f2",
+    "section": "experience",
+    "after_text": "Built Python services for payments as VP of Engineering",
+    "supporting": [
+     "f2"
+    ],
+    "requirements": [],
+    "order": []
+   },
+   {
+    "op": "remove",
+    "target": "f6",
+    "section": "experience",
+    "after_text": "",
+    "supporting": [
+     "f6"
+    ],
+    "requirements": [],
+    "order": []
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   }
+  ]
+ }
+]

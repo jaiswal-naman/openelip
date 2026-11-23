@@ -10,6 +10,10 @@ search() is one SQL statement shaped like DATA_MODEL 6.1, without the constraint
 
 Keyword mode is the sparse list alone. With no query text the list is every eligible job, newest first. Pages are
 keyset pages: the cursor holds the last row's sort key and id, so the next page is "strictly after" it.
+
+With `constrained_for` a job that breaks one of that person's hard constraints is not eligible (CHT-02, invariant 1):
+the test is part of the same statement, so ranking and the cursor only ever see jobs that pass. A job whose field the
+posting leaves unstated passes, as in every other path that selects jobs.
 """
 
 import base64
@@ -20,6 +24,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import Connection, Row, TextClause, text
 
@@ -61,6 +66,10 @@ SPARSE = f"""sparse AS (
              WHERE e.search @@ tsq
              ORDER BY relevance DESC, e.id LIMIT {LIST_DEPTH}) best
 )"""
+# The SQL functions of DATA_MODEL 4.1 that the nightly run uses too. The person's constraints are compiled once for the
+# statement (an uncorrelated subquery, so not once per job). compile_constraints reads `constraints` under row-level
+# security: the transaction must act as that same person, which search() checks.
+CONSTRAINED = "constraint_violations(j, (SELECT compile_constraints(:constrained_for))) = '{}'"
 # Newest first, and a job with no posted date after every dated one.
 LISTING_KEY = "coalesce(j.posted_at, '-infinity'::timestamptz)"
 
@@ -121,10 +130,15 @@ def _job(row: Row[Any]) -> dict[str, Any]:
     }
 
 
-def _eligible(country: str | None, city: str | None, remote: bool | None) -> tuple[str, dict[str, Any]]:
+def _eligible(
+    country: str | None, city: str | None, remote: bool | None, constrained_for: UUID | None
+) -> tuple[str, dict[str, Any]]:
     """The WHERE clause of the jobs a search may return, and its bound values. Filters narrow before any ranking."""
     where = ["j.status = 'open'", "j.canonical_job_id IS NULL", "j.is_listed"]
     values: dict[str, Any] = {}
+    if constrained_for is not None:
+        where.append(CONSTRAINED)
+        values["constrained_for"] = constrained_for
     if country:
         where.append("j.country = :country")
         values["country"] = country
@@ -180,10 +194,13 @@ def _listing(where: str, *, after: bool) -> TextClause:
     )
 
 
-def _fingerprint(query: str, country: str | None, city: str | None, remote: bool | None) -> str:
-    """What identifies a search: a cursor is good only for the search that made it."""
-    shape = json.dumps([query, country, city and city.lower(), remote], ensure_ascii=False, separators=(",", ":"))
-    return hashlib.sha256(shape.encode()).hexdigest()[:16]
+def _fingerprint(query: str, country: str | None, city: str | None, remote: bool | None, constrained: bool) -> str:
+    """What identifies a search: a cursor is good only for the search that made it. A search without constraints is
+    identified exactly as before the constraint existed, so its cursors are unchanged."""
+    shape: list[Any] = [query, country, city and city.lower(), remote]
+    if constrained:
+        shape.append("constrained")
+    return hashlib.sha256(json.dumps(shape, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()[:16]
 
 
 def _encode_cursor(mode: str, fingerprint: str, key: float | str, job_id: int) -> str:
@@ -221,23 +238,33 @@ def search(
     limit: int,
     cursor: str | None,
     mode: str,
+    constrained_for: UUID | None = None,
 ) -> SearchPage:
     """One page of open, canonical, listed jobs. The page's `mode` says what ran: hybrid becomes keyword when no
     eligible job has a vector yet or the model is unavailable. With no query text, jobs are listed newest first and the
-    mode is the one asked for. Raises InvalidCursor for a cursor that is not this search's."""
+    mode is the one asked for. Raises InvalidCursor for a cursor that is not this search's.
+
+    `constrained_for` leaves out every job that breaks that person's hard constraints. It is always the signed-in
+    person, never a value a caller or a model supplies. The connection must be an app_api transaction for the same
+    person (db.transaction(user_id)): row-level security shows `constraints` only to its own person, so a transaction
+    for anyone else would see none and let every job through. That is refused with ValueError, never allowed quietly."""
     if mode not in MODES:
         raise ValueError(f"mode must be one of {MODES}")
+    if constrained_for is not None:
+        acting = conn.execute(text("SELECT current_setting('app.user_id', true)")).scalar_one()
+        if acting != str(constrained_for):
+            raise ValueError("a constrained search must run in a transaction that acts as that person")
     started = time.monotonic()
     query = _clean(q)
     country = country.upper() if country else None
     city = _clean(city) or None
-    where, values = _eligible(country, city, remote)
+    where, values = _eligible(country, city, remote, constrained_for)
     vector = _query_vector(conn, where, values, query) if query and mode == "hybrid" else None
     if not query:
         used = mode  # nothing to rank: the list is the same in both modes
     else:
         used = "hybrid" if vector is not None else "keyword"
-    fingerprint = _fingerprint(query, country, city, remote)
+    fingerprint = _fingerprint(query, country, city, remote, constrained_for is not None)
     after = _decode_cursor(cursor, used, fingerprint, listing=not query) if cursor else None
 
     values = {**values, "fetch": limit + 1}

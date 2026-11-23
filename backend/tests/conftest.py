@@ -27,6 +27,8 @@ DATA_TABLES = (
     "users, sessions, login_codes, idempotency_keys, outbox, queue_jobs, llm_calls, model_registry, "
     "eval_runs, eval_items, fetch_runs, jobs, job_sources, "
     "match_runs, match_decisions, match_evidence, feedback_events, briefs, brief_items, "
+    "tailored_resumes, resume_edits, application_packets, applications, application_events, "
+    "chat_sessions, chat_messages, "
     "organizations, org_members, roles, role_requirements, introductions, shortlist_entries, interest_signals"
 )
 

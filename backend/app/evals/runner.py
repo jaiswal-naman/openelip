@@ -83,6 +83,10 @@ SUITES: dict[str, Suite | OwnScorer] = {
     "evidence_faithfulness": OwnScorer("evidence_faithfulness/score.py"),
     "constraint_property": OwnScorer("constraint_property/score.py"),
     "role_intake": OwnScorer("role_intake/score.py"),
+    "tailoring_integrity": OwnScorer("tailoring_integrity/score.py"),
+    "chat": OwnScorer("chat/score.py"),
+    "record_proposals": OwnScorer("record_proposals/score.py"),
+    "injection": OwnScorer("injection/score.py"),
 }
 
 

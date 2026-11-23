@@ -44,6 +44,9 @@ export function AccountMenu() {
               <MenuItem id="today" href="/app/today" textValue="Today" className={menu.item}>
                 <span>Today</span>
               </MenuItem>
+              <MenuItem id="applications" href="/app/campaigns" textValue="Applications" className={menu.item}>
+                <span>Applications</span>
+              </MenuItem>
               <MenuItem id="record" href="/app/record" textValue="Your record" className={menu.item}>
                 <span>Your record</span>
               </MenuItem>

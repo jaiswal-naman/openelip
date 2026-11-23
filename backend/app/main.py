@@ -5,8 +5,12 @@ Run:  uvicorn app.main:app --port 8000
 
 from fastapi import FastAPI
 
+from app.apply import privacy as apply_privacy  # noqa: F401  (importing it registers the apply tables and exporter)
+from app.apply import routes as apply_routes
 from app.brief import privacy as brief_privacy  # noqa: F401  (importing it registers the brief tables and exporter)
 from app.brief import routes as brief_routes
+from app.chat import privacy as chat_privacy  # noqa: F401  (importing it registers the chat tables and exporter)
+from app.chat import routes as chat_routes
 from app.hiring import api as hiring_api
 from app.hiring import introduction_routes as hiring_introduction_routes
 from app.hiring import org_routes as hiring_org_routes
@@ -20,6 +24,8 @@ from app.match import routes as match_routes
 from app.platform import api, auth, control_routes, errors, telemetry
 from app.profile import privacy as profile_privacy  # noqa: F401  (importing it registers the profile tables and exporter)
 from app.profile import routes as profile_routes
+from app.tailor import privacy as tailor_privacy  # noqa: F401  (importing it registers the tailor tables and exporter)
+from app.tailor import routes as tailor_routes
 from app.trust import consent as trust_consent
 from app.trust import routes as trust_routes
 
@@ -45,6 +51,9 @@ def create_app() -> FastAPI:
         profile_routes.router,
         match_routes.router,
         brief_routes.router,
+        tailor_routes.router,
+        apply_routes.router,
+        chat_routes.router,
         hiring_org_routes.router,
         hiring_role_routes.router,
         hiring_introduction_routes.router,

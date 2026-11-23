@@ -1,0 +1,15 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "list_matches",
+    "outcome": "filtered"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "That job was filtered before any scoring [[d1]], because you told me never to show Globex Demo [[c1]]. It is a hard constraint, so it applies whatever the job says."
+ }
+]

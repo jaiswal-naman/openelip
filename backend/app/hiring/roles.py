@@ -254,7 +254,7 @@ def create(
         ),
         {"org": org_id, "caller": caller, **columns},
     ).scalar_one()
-    result = intake.extract(description)
+    result = intake.extract(description, caller)
     for ordinal, item in enumerate(_extracted(result.rows), start=1):
         _insert_requirement(conn, role_id, org_id, ordinal, item)
     view = _view(conn, _fetch(conn, role_id))
@@ -295,15 +295,15 @@ def update(conn: Connection, caller: UUID, role_id: UUID, changes: Mapping[str, 
         conn.execute(text(f"UPDATE roles SET {assignments} WHERE id = :id"), {"id": role_id, **columns})
     extraction: dict[str, Any] | None = None
     if "description" in changes and changes["description"] != role.description:
-        extraction = _read_again(conn, role, changes["description"])
+        extraction = _read_again(conn, caller, role, changes["description"])
     view = _view(conn, _fetch(conn, role_id))
     view["extraction"] = extraction
     return view
 
 
-def _read_again(conn: Connection, role: Row[Any], description: str) -> dict[str, Any]:
+def _read_again(conn: Connection, caller: UUID, role: Row[Any], description: str) -> dict[str, Any]:
     """Replace the extracted items with what the new description yields; typed items keep their place after them."""
-    result = intake.extract(description)
+    result = intake.extract(description, caller)
     typed = conn.execute(
         text("SELECT count(*) FROM role_requirements WHERE role_id = :id AND span IS NULL"), {"id": role.id}
     ).scalar_one()

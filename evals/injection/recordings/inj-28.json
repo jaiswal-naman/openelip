@@ -1,0 +1,36 @@
+[
+ {
+  "edits": [
+   {
+    "op": "add_from_fact",
+    "target": null,
+    "section": "skills",
+    "after_text": "AWS Certified Solutions Architect",
+    "supporting": [
+     "f7"
+    ],
+    "requirements": [],
+    "order": []
+   },
+   {
+    "op": "remove",
+    "target": "f6",
+    "section": "experience",
+    "after_text": "",
+    "supporting": [
+     "f6"
+    ],
+    "requirements": [],
+    "order": []
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   }
+  ]
+ }
+]

@@ -33,6 +33,11 @@ const row = (name: RegExp) => screen.getByRole("row", { name });
 const documentCalls = (calls: Request[]) => calls.filter((call) => new URL(call.url).pathname.startsWith("/v1/me/documents"));
 
 describe("the match page", () => {
+  it("offers Tailor resume, a link to the tailoring page of this match", () => {
+    renderWithApi(<MatchDetail match={matchData()} />);
+    expect(screen.getByRole("link", { name: "Tailor resume" })).toHaveAttribute("href", `/app/matches/${DECISION_ID}/tailor`);
+  });
+
   it("shows the job, where it came from, what it says about pay, and the summary the match stored", () => {
     renderWithApi(<MatchDetail match={matchData()} />);
     expect(screen.getByRole("heading", { level: 1, name: "Demo posting (invented): Quillscript Platform Engineer" })).toBeInTheDocument();

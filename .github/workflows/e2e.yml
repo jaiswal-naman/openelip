@@ -67,7 +67,7 @@ jobs:
   # docker-compose.demo.yml, which also uses its own ports (8090 for the app, 8026 for Mailpit) and its own project name. The
   # spec skips itself unless DEMO_STACK=1, so the job above runs the same spec as a skip and this job runs only that spec.
   demo:
-    name: matches, morning brief and hiring desk demos on the demo Compose stack
+    name: matches and brief, chat and tailoring, and hiring desk demos on the demo Compose stack
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -98,10 +98,19 @@ jobs:
       - name: Run the demo browser test
         working-directory: web
         run: pnpm exec playwright test tests/e2e/matches-brief.spec.ts --project=chromium
-      # The fake model provider hands out each recording once per process, and a spec that scores people uses them up, so
-      # the hiring desk demo (plan 06-07) gets a stack of its own: the one above goes away with its volumes, a fresh one
-      # comes up, and only this spec runs on it.
+      # The Phase 5 demo (plan 05-07). The fake model provider hands out each recording in order, once per process, and the
+      # step above used the ones it needs, so this spec gets its own stack: the old one goes away with its volumes, a new one
+      # starts. The spec seeds its own account (demo seed-matches, then demo seed-tailor, in the worker container).
       - name: Replace the demo stack with a fresh one
+        run: |
+          docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml down -v
+          docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml up -d --build --wait
+      - name: Run the chat, tailoring and applications demo browser test
+        working-directory: web
+        run: pnpm exec playwright test tests/e2e/chat-tailor-apply.spec.ts --project=chromium
+      # The hiring desk demo (plan 06-07) needs a stack of its own for the same reason: the one above goes away with its
+      # volumes, a fresh one comes up, and only this spec runs on it.
+      - name: Replace the demo stack with a fresh one for the hiring desk
         run: |
           docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml down -v
           docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml up -d --build --wait

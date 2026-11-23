@@ -50,7 +50,7 @@
     "/v1/jobs": {
       "get": {
         "summary": "Search Jobs",
-        "description": "Search open, de-duplicated, listed jobs by keywords and by meaning. Results carry no fit claims.\n\nmeta.mode says what ran: hybrid falls back to keyword when no job has a vector yet or the model is unavailable.",
+        "description": "Search open, de-duplicated, listed jobs by keywords and by meaning. Results carry no fit claims.\n\nmeta.mode says what ran: hybrid falls back to keyword when no job has a vector yet or the model is unavailable.\nWith apply_constraints the caller's own hard constraints are applied (CHT-02) and meta.constraints_applied is true;\nit needs a session (401 otherwise) and the person is always the session's, never a parameter.",
         "operationId": "search_jobs_v1_jobs_get",
         "parameters": [
           {
@@ -156,6 +156,18 @@
               "default": "hybrid",
               "title": "Mode"
             }
+          },
+          {
+            "name": "apply_constraints",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Signed in only: leave out jobs that break your hard constraints.",
+              "default": false,
+              "title": "Apply Constraints"
+            },
+            "description": "Signed in only: leave out jobs that break your hard constraints."
           }
         ],
         "responses": {
@@ -2110,6 +2122,888 @@
         }
       }
     },
+    "/v1/tailored-resumes": {
+      "post": {
+        "summary": "Request Tailored",
+        "description": "Ask for a tailored resume. It is built in the background: poll the read until its status is ready or failed.",
+        "operationId": "request_tailored_v1_tailored_resumes_post",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TailoredIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_TailoredView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List Tailored",
+        "operationId": "list_tailored_v1_tailored_resumes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_TailoredView__"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tailored-resumes/{tailored_id}": {
+      "get": {
+        "summary": "Read Tailored",
+        "operationId": "read_tailored_v1_tailored_resumes__tailored_id__get",
+        "parameters": [
+          {
+            "name": "tailored_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tailored Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_TailoredView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tailored-resumes/{tailored_id}/decisions": {
+      "post": {
+        "summary": "Decide",
+        "description": "Approve or reject passed edits. An edit already decided is 409 `already_decided`; an id that is not a passed edit\nof this tailored resume is 404.",
+        "operationId": "decide_v1_tailored_resumes__tailored_id__decisions_post",
+        "parameters": [
+          {
+            "name": "tailored_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tailored Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_TailoredView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tailored-resumes/{tailored_id}/file": {
+      "get": {
+        "summary": "Download",
+        "description": "The resume with approved edits only. Rendered on every request and stored nowhere.",
+        "operationId": "download_v1_tailored_resumes__tailored_id__file_get",
+        "parameters": [
+          {
+            "name": "tailored_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tailored Id"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "pdf",
+                "docx"
+              ],
+              "type": "string",
+              "title": "Format"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/applications": {
+      "get": {
+        "summary": "Applications",
+        "description": "The tracker: every application with its whole status history, the most recently changed first.",
+        "operationId": "applications_v1_applications_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_ApplicationView__"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Record Application",
+        "description": "Record that the person applied. One application per job: a second is 409 with state `application_exists`.",
+        "operationId": "record_application_v1_applications_post",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ApplicationView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/applications/{application_id}/status": {
+      "post": {
+        "summary": "Record Status",
+        "description": "Record a new status (interview, offer, rejected, no response, or applied again) and when it happened. The same\nstatus as the current one is 409 `same_status`; a time before the current status or in the future is 422.",
+        "operationId": "record_status_v1_applications__application_id__status_post",
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Application Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ApplicationView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/applications/packets": {
+      "post": {
+        "summary": "Request Packet",
+        "description": "Prepare the packet for a job. It is drafted in the background: poll the read until its status is ready or failed.\nA second request for the job supersedes the first.",
+        "operationId": "request_packet_v1_applications_packets_post",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PacketIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PacketView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Packets",
+        "description": "The person's current packets, newest first; `job_id` limits them to one job.",
+        "operationId": "packets_v1_applications_packets_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_PacketView__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/applications/packets/{packet_id}": {
+      "get": {
+        "summary": "Read Packet",
+        "operationId": "read_packet_v1_applications_packets__packet_id__get",
+        "parameters": [
+          {
+            "name": "packet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Packet Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PacketView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/applications/packets/{packet_id}/file": {
+      "get": {
+        "summary": "Packet File",
+        "description": "The packet as a PDF (the only format). Rendered on every request and stored nowhere.",
+        "operationId": "packet_file_v1_applications_packets__packet_id__file_get",
+        "parameters": [
+          {
+            "name": "packet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Packet Id"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "const": "pdf",
+              "type": "string",
+              "title": "Format"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat/sessions": {
+      "post": {
+        "summary": "Open Chat Session",
+        "description": "Open a session. `onboarding` is accepted and stored and runs the same agent (decision 22).",
+        "operationId": "open_chat_session_v1_chat_sessions_post",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_SessionView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List Chat Sessions",
+        "operationId": "list_chat_sessions_v1_chat_sessions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_SessionView__"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat/sessions/{session_id}/messages": {
+      "get": {
+        "summary": "Chat Transcript",
+        "description": "The person's messages in order: their own, the agent's tool rows and its replies, each reply with the ledger rows\nit cites and the record changes it proposed. `finish_reason` is null while a reply is still being written.",
+        "operationId": "chat_transcript_v1_chat_sessions__session_id__messages_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_MessageView__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Send Chat Message",
+        "description": "Send a message. 202 with the reply's id and where to stream it; the reply is written whether or not anyone\nlistens. 403 without the ai_processing consent, 503 with no model, 429 past 30 messages an hour, 409 while a\nreply of theirs is still being written.",
+        "operationId": "send_chat_message_v1_chat_sessions__session_id__messages_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Accepted_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat/sessions/{session_id}/messages/{message_id}/stream": {
+      "get": {
+        "summary": "Stream Chat Reply",
+        "description": "The reply's events. A plain `def`: the ownership check and the database read run in the thread pool, then a\nresponse whose body is an async generator takes over, so waiting for the next event holds no thread. 404 before the\nfirst byte for a reply that is not the caller's.",
+        "operationId": "stream_chat_reply_v1_chat_sessions__session_id__messages__message_id__stream_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Message Id"
+            }
+          },
+          {
+            "name": "last-event-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-sent events (API.md 4.2)",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "The reply is finished and the client has its end: stop reconnecting"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat/sessions/{session_id}/messages/{message_id}/stop": {
+      "post": {
+        "summary": "Stop Chat Reply",
+        "description": "Stop a reply: it ends as `stopped` at the next model turn or tool call. A reply that has ended stays as it is.",
+        "operationId": "stop_chat_reply_v1_chat_sessions__session_id__messages__message_id__stop_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Message Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ReplyState_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/orgs": {
       "post": {
         "summary": "Create Org",
@@ -3149,7 +4043,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_Accepted_"
+                  "$ref": "#/components/schemas/Envelope_IntroductionAccepted_"
                 }
               }
             }
@@ -3524,18 +4418,32 @@
       },
       "Accepted": {
         "properties": {
-          "introduction": {
-            "$ref": "#/components/schemas/Resolved"
-          },
-          "shared": {
+          "user_message_id": {
             "type": "string",
-            "title": "Shared"
+            "format": "uuid",
+            "title": "User Message Id"
+          },
+          "message_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Message Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "running",
+            "title": "Status"
+          },
+          "stream_url": {
+            "type": "string",
+            "title": "Stream Url"
           }
         },
         "type": "object",
         "required": [
-          "introduction",
-          "shared"
+          "user_message_id",
+          "message_id",
+          "status",
+          "stream_url"
         ],
         "title": "Accepted"
       },
@@ -3563,6 +4471,52 @@
           "reason"
         ],
         "title": "AnswerBody"
+      },
+      "AnswerView": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "title": "Question Id"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "drafted",
+              "candidate_must_answer"
+            ],
+            "title": "Status"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "fact_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Fact Ids"
+          },
+          "removed_sentences": {
+            "type": "integer",
+            "title": "Removed Sentences"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question_id",
+          "question",
+          "status",
+          "answer",
+          "fact_ids",
+          "removed_sentences"
+        ],
+        "title": "AnswerView"
       },
       "Answered": {
         "properties": {
@@ -3594,6 +4548,114 @@
           "email"
         ],
         "title": "Answered"
+      },
+      "ApplicationIn": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
+            "title": "Job Id"
+          },
+          "application_packet_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Application Packet Id"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "ApplicationIn"
+      },
+      "ApplicationView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id"
+          },
+          "job_title": {
+            "type": "string",
+            "title": "Job Title"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "interview",
+              "offer",
+              "rejected",
+              "no_response"
+            ],
+            "title": "Status"
+          },
+          "status_changed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Status Changed At"
+          },
+          "application_packet_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Application Packet Id"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventView"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "job_id",
+          "job_title",
+          "company_name",
+          "status",
+          "status_changed_at",
+          "application_packet_id",
+          "events"
+        ],
+        "title": "ApplicationView",
+        "description": "One application as the tracker shows it, and as the chat tool reads it."
       },
       "Body_unsubscribe_one_click_v1_briefs_unsubscribe_post": {
         "properties": {
@@ -4038,6 +5100,78 @@
           "end"
         ],
         "title": "CharSpan"
+      },
+      "CitationView": {
+        "properties": {
+          "alias": {
+            "type": "string",
+            "title": "Alias"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "decision",
+              "job",
+              "fact",
+              "constraint"
+            ],
+            "title": "Kind"
+          },
+          "decision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Id"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "fact_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fact Id"
+          },
+          "constraint_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Constraint Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alias",
+          "kind"
+        ],
+        "title": "CitationView",
+        "description": "A ledger row a reply rests on: the alias its text carries as [[d1]], and the real id of that kind."
       },
       "CodeRequest": {
         "properties": {
@@ -4732,6 +5866,29 @@
         ],
         "title": "DecisionDetail"
       },
+      "DecisionIn": {
+        "properties": {
+          "edit_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Edit Id"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ],
+            "title": "Decision"
+          }
+        },
+        "type": "object",
+        "required": [
+          "edit_id",
+          "decision"
+        ],
+        "title": "DecisionIn"
+      },
       "DecisionView": {
         "properties": {
           "decision_id": {
@@ -4836,6 +5993,24 @@
           "job"
         ],
         "title": "DecisionView"
+      },
+      "DecisionsIn": {
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionIn"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Decisions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decisions"
+        ],
+        "title": "DecisionsIn"
       },
       "Declined": {
         "properties": {
@@ -5086,6 +6261,73 @@
         "title": "DocumentView",
         "description": "parse_error_code says why a document failed (or, on a succeeded one, that part of it could not be read:\npartial_extraction); message is the same in words. hidden_text_flags is null until the document is parsed."
       },
+      "EditView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "ordinal": {
+            "type": "integer",
+            "title": "Ordinal"
+          },
+          "op": {
+            "type": "string",
+            "title": "Op"
+          },
+          "section": {
+            "type": "string",
+            "title": "Section"
+          },
+          "before_text": {
+            "type": "string",
+            "title": "Before Text"
+          },
+          "after_text": {
+            "type": "string",
+            "title": "After Text"
+          },
+          "supporting_fact_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Supporting Fact Ids"
+          },
+          "decision": {
+            "type": "string",
+            "title": "Decision"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ordinal",
+          "op",
+          "section",
+          "before_text",
+          "after_text",
+          "supporting_fact_ids",
+          "decision",
+          "decided_at"
+        ],
+        "title": "EditView",
+        "description": "One passed edit, as the person sees it. A discarded edit has no view."
+      },
       "Envelope_Accepted_": {
         "properties": {
           "success": {
@@ -5167,6 +6409,47 @@
           "meta"
         ],
         "title": "Envelope[Answered]"
+      },
+      "Envelope_ApplicationView_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApplicationView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[ApplicationView]"
       },
       "Envelope_BriefDetail_": {
         "properties": {
@@ -5619,6 +6902,47 @@
         ],
         "title": "Envelope[FeedbackRecorded]"
       },
+      "Envelope_IntroductionAccepted_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntroductionAccepted"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[IntroductionAccepted]"
+      },
       "Envelope_JobDetail_": {
         "properties": {
           "success": {
@@ -5823,6 +7147,47 @@
           "meta"
         ],
         "title": "Envelope[Organization]"
+      },
+      "Envelope_PacketView_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PacketView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[PacketView]"
       },
       "Envelope_PreferenceWritten_": {
         "properties": {
@@ -6111,6 +7476,47 @@
         ],
         "title": "Envelope[RecordView]"
       },
+      "Envelope_ReplyState_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReplyState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[ReplyState]"
+      },
       "Envelope_RoleView_": {
         "properties": {
           "success": {
@@ -6152,6 +7558,47 @@
         ],
         "title": "Envelope[RoleView]"
       },
+      "Envelope_SessionView_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[SessionView]"
+      },
       "Envelope_Subprocessors_": {
         "properties": {
           "success": {
@@ -6192,6 +7639,47 @@
           "meta"
         ],
         "title": "Envelope[Subprocessors]"
+      },
+      "Envelope_TailoredView_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TailoredView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[TailoredView]"
       },
       "Envelope_TodayMatches_": {
         "properties": {
@@ -6359,6 +7847,51 @@
         ],
         "title": "Envelope[dict[str, Any]]"
       },
+      "Envelope_list_ApplicationView__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ApplicationView"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[list[ApplicationView]]"
+      },
       "Envelope_list_BriefListItem__": {
         "properties": {
           "success": {
@@ -6493,6 +8026,96 @@
           "meta"
         ],
         "title": "Envelope[list[Job]]"
+      },
+      "Envelope_list_MessageView__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MessageView"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[list[MessageView]]"
+      },
+      "Envelope_list_PacketView__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PacketView"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[list[PacketView]]"
       },
       "Envelope_list_RecordConstraint__": {
         "properties": {
@@ -6719,6 +8342,96 @@
         ],
         "title": "Envelope[list[RoleListItem]]"
       },
+      "Envelope_list_SessionView__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SessionView"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[list[SessionView]]"
+      },
+      "Envelope_list_TailoredView__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TailoredView"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[list[TailoredView]]"
+      },
       "Envelope_list_dict_str__Any___": {
         "properties": {
           "success": {
@@ -6788,6 +8501,38 @@
           "details"
         ],
         "title": "ErrorBody"
+      },
+      "EventView": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "interview",
+              "offer",
+              "rejected",
+              "no_response"
+            ],
+            "title": "Status"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "occurred_at",
+          "created_at"
+        ],
+        "title": "EventView"
       },
       "EvidenceItem": {
         "properties": {
@@ -7127,6 +8872,23 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "IntroductionAccepted": {
+        "properties": {
+          "introduction": {
+            "$ref": "#/components/schemas/Resolved"
+          },
+          "shared": {
+            "type": "string",
+            "title": "Shared"
+          }
+        },
+        "type": "object",
+        "required": [
+          "introduction",
+          "shared"
+        ],
+        "title": "IntroductionAccepted"
       },
       "InviteBody": {
         "properties": {
@@ -8162,6 +9924,124 @@
         ],
         "title": "Member"
       },
+      "MessageIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "context_job_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9.223372036854776e+18,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Job Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "MessageIn"
+      },
+      "MessageView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant",
+              "tool"
+            ],
+            "title": "Role"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text",
+            "x-untrusted-text": true
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Name"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/CitationView"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalView"
+            },
+            "type": "array",
+            "title": "Proposals"
+          },
+          "finish_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "length",
+                  "stopped",
+                  "interrupted"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finish Reason"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "role",
+          "text",
+          "tool_name",
+          "citations",
+          "proposals",
+          "finish_reason",
+          "created_at"
+        ],
+        "title": "MessageView"
+      },
       "NewConstraint": {
         "properties": {
           "country_codes": {
@@ -8531,6 +10411,118 @@
         ],
         "title": "OrganizationMembership",
         "description": "An employer organization the person is an active member of, with their role in it (HIR-01)."
+      },
+      "PacketIn": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
+            "title": "Job Id"
+          },
+          "tailored_resume_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tailored Resume Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "PacketIn"
+      },
+      "PacketView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id"
+          },
+          "job_title": {
+            "type": "string",
+            "title": "Job Title"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "ready",
+              "failed",
+              "approved",
+              "superseded"
+            ],
+            "title": "Status"
+          },
+          "tailored_resume_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tailored Resume Id"
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/AnswerView"
+            },
+            "type": "array",
+            "title": "Answers"
+          },
+          "cover_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Note"
+          },
+          "removed_sentences": {
+            "type": "integer",
+            "title": "Removed Sentences"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "job_id",
+          "job_title",
+          "company_name",
+          "status",
+          "tailored_resume_id",
+          "answers",
+          "cover_note",
+          "removed_sentences",
+          "created_at"
+        ],
+        "title": "PacketView"
       },
       "Pay": {
         "properties": {
@@ -9028,6 +11020,62 @@
           "event_id"
         ],
         "title": "ProposalDeclined"
+      },
+      "ProposalView": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Event Id"
+          },
+          "entity": {
+            "type": "string",
+            "title": "Entity"
+          },
+          "operation": {
+            "type": "string",
+            "title": "Operation"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "statement": {
+            "type": "string",
+            "title": "Statement"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id",
+          "entity",
+          "operation",
+          "before",
+          "after",
+          "statement"
+        ],
+        "title": "ProposalView",
+        "description": "A record change the agent proposed. It is only a proposal until the candidate confirms event_id in the app."
       },
       "RecordCitation": {
         "properties": {
@@ -9765,6 +11813,38 @@
           "source"
         ],
         "title": "ReplacedBy"
+      },
+      "ReplyState": {
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Message Id"
+          },
+          "finish_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "length",
+                  "stopped",
+                  "interrupted"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finish Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message_id",
+          "finish_reason"
+        ],
+        "title": "ReplyState"
       },
       "Requirement": {
         "properties": {
@@ -10722,6 +12802,22 @@
         ],
         "title": "SalaryFloor"
       },
+      "SessionIn": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "onboarding",
+              "open"
+            ],
+            "title": "Kind",
+            "default": "open"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SessionIn"
+      },
       "SessionRequest": {
         "properties": {
           "email": {
@@ -10754,6 +12850,48 @@
           "code"
         ],
         "title": "SessionRequest"
+      },
+      "SessionView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "onboarding",
+              "open"
+            ],
+            "title": "Kind"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "last_message_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Message At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "created_at",
+          "last_message_at"
+        ],
+        "title": "SessionView"
       },
       "SignalBody": {
         "properties": {
@@ -10808,6 +12946,32 @@
           "end"
         ],
         "title": "SpanIn"
+      },
+      "StatusIn": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "interview",
+              "offer",
+              "rejected",
+              "no_response"
+            ],
+            "title": "Status"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "occurred_at"
+        ],
+        "title": "StatusIn"
       },
       "Subprocessor": {
         "properties": {
@@ -10865,6 +13029,104 @@
           "outside_copies_statement"
         ],
         "title": "Subprocessors"
+      },
+      "TailoredIn": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
+            "title": "Job Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "TailoredIn"
+      },
+      "TailoredView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id"
+          },
+          "job_title": {
+            "type": "string",
+            "title": "Job Title"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "generating",
+              "ready",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "discarded_count": {
+            "type": "integer",
+            "title": "Discarded Count"
+          },
+          "discarded_by_reason": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Discarded By Reason"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "record_version": {
+            "type": "integer",
+            "title": "Record Version"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "edits": {
+            "items": {
+              "$ref": "#/components/schemas/EditView"
+            },
+            "type": "array",
+            "title": "Edits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "job_id",
+          "job_title",
+          "company_name",
+          "status",
+          "discarded_count",
+          "discarded_by_reason",
+          "prompt_version",
+          "record_version",
+          "created_at",
+          "edits"
+        ],
+        "title": "TailoredView"
       },
       "TodayMatches": {
         "properties": {

@@ -180,6 +180,19 @@ def _demo_seed_hiring(args: argparse.Namespace) -> int:
     return 0
 
 
+def _demo_seed_tailor(args: argparse.Namespace) -> int:
+    """Invented facts for the chat, tailoring and packet demo, on an account `demo seed-matches` already seeded."""
+    from app import demo
+
+    try:
+        seeded = demo.seed_tailor(args.email)
+    except demo.SeedRefused as refusal:
+        print(f"refused: {refusal}", file=sys.stderr)
+        return 2
+    print(seeded.report())
+    return 0
+
+
 COMMANDS: dict[tuple[str, str], Callable[[argparse.Namespace], int | None]] = {
     ("queue", "list"): _queue_list,
     ("queue", "retry"): _queue_retry,
@@ -190,6 +203,7 @@ COMMANDS: dict[tuple[str, str], Callable[[argparse.Namespace], int | None]] = {
     ("outbox", "resolve"): _outbox_resolve,
     ("models", "sync"): _models_sync,
     ("demo", "seed-matches"): _demo_seed_matches,
+    ("demo", "seed-tailor"): _demo_seed_tailor,
     ("demo", "seed-hiring"): _demo_seed_hiring,
 }
 
@@ -235,6 +249,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     demo.add_parser("seed-matches", help="give an account invented matches and a morning brief").add_argument(
         "--email", required=True, help="the address of an account that has signed in"
+    )
+    demo.add_parser("seed-tailor", help="give a seeded account invented facts for tailoring and a packet").add_argument(
+        "--email", required=True, help="the address of an account `demo seed-matches` was run for"
     )
     seed_hiring = demo.add_parser("seed-hiring", help="an invented organization and candidates for the hiring desk")
     seed_hiring.add_argument(

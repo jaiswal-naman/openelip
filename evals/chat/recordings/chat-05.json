@@ -1,0 +1,24 @@
+[
+ {
+  "tool_calls": [
+   {
+    "tool": "list_matches",
+    "outcome": "shown"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [
+   {
+    "tool": "get_decision",
+    "decision": "d1"
+   }
+  ],
+  "reply": null
+ },
+ {
+  "tool_calls": [],
+  "reply": "It was shown because it passes all your hard constraints and ranked first today [[d1]]. The job is the Initech Demo data engineer posting [[j1]]. One requirement is backed by your pipeline achievement [[f1]]; the other has no evidence on your record yet."
+ }
+]

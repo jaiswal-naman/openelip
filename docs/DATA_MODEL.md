@@ -1056,6 +1056,10 @@ CREATE TABLE application_packets (
 );
 CREATE UNIQUE INDEX application_packets_one_current
   ON application_packets (campaign_id) WHERE status <> 'superseded' AND campaign_id IS NOT NULL;
+-- Phase 5: one current packet per job without a campaign. Campaigns arrive in Phase 7; until then a packet belongs to a
+-- person and a job, and asking again supersedes the old one (APP-02).
+CREATE UNIQUE INDEX application_packets_one_current_job
+  ON application_packets (user_id, job_id) WHERE status <> 'superseded' AND campaign_id IS NULL;
 
 CREATE TABLE applications (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1503,12 +1507,17 @@ CREATE TABLE chat_messages (
   tool_name   text,                              -- tool rows: which tool ran
   refs        jsonb       NOT NULL DEFAULT '{}', -- ids the message cites: decisions, jobs, proposals (CHT-01)
   llm_call_id bigint,
+  -- Phase 5: NULL while the reply runs; only assistant rows set it. The assistant row is inserted when the message is
+  -- accepted (so the 202 can name it) and this column records how the reply ended.
+  finish_reason text CHECK (finish_reason IN ('complete', 'length', 'stopped', 'interrupted')),
   created_at  timestamptz NOT NULL DEFAULT now(),
   CHECK ((role = 'tool') = (tool_name IS NOT NULL)),
   CHECK ((role = 'tool') = (content IS NULL))
 );
 CREATE INDEX chat_messages_session_idx ON chat_messages (session_id, created_at);
 ```
+
+What `refs` holds (Phase 5). A tool row: `{"reply_id", "aliases": {"d1": {"kind", "id"}}}`, the short names the model saw for real ids. An assistant row: `{"citations": [{alias, kind, <kind>_id}], "proposals": [<proposal event payloads>], "proposal_event_ids": [...], "unknown_citations": n, "last_event_id": n, "usage": {...}, "cost_usd": "...", "aliases": {...}}`; `aliases` appears only when the reply made a name no tool row holds (the job on screen). The session's alias table is rebuilt from the `aliases` of its tool and assistant rows. An assistant row's `content` is `''` unless `finish_reason = 'complete'`.
 
 ### 3.13 platform and evals: model registry, ledger, queue, evals
 
@@ -2066,8 +2075,31 @@ END;
 $$;
 CREATE TRIGGER resume_edits_support BEFORE INSERT ON resume_edits
   FOR EACH ROW EXECUTE FUNCTION resume_edits_check_support();
+
+-- Phase 5: decision starts as 'pending', so write_once_columns would refuse the first decision (it refuses any change to
+-- a column that is not NULL). This function fixes every column except decision and decided_at, and lets the decision
+-- leave 'pending' once. The CHECKs of resume_edits still keep a discarded edit pending and tie decided_at to the decision.
+-- Like write_once_columns it lets app.maintenance through (erase_user and purge_expired set it).
+CREATE FUNCTION resume_edits_decide_once() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF current_setting('app.maintenance', true) = 'on' THEN
+    RETURN NEW;
+  END IF;
+  IF (to_jsonb(NEW) - ARRAY['decision', 'decided_at']) IS DISTINCT FROM (to_jsonb(OLD) - ARRAY['decision', 'decided_at']) THEN
+    RAISE EXCEPTION '% rows are immutable except for decision and decided_at', TG_TABLE_NAME
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  IF OLD.decision <> 'pending'
+     AND (NEW.decision IS DISTINCT FROM OLD.decision OR NEW.decided_at IS DISTINCT FROM OLD.decided_at) THEN
+    RAISE EXCEPTION '%.decision can be changed only once', TG_TABLE_NAME
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  RETURN NEW;
+END;
+$$;
 CREATE TRIGGER resume_edits_content_fixed BEFORE UPDATE ON resume_edits
-  FOR EACH ROW EXECUTE FUNCTION write_once_columns('decision', 'decided_at');
+  FOR EACH ROW EXECUTE FUNCTION resume_edits_decide_once();
 
 -- 4.5 ------------------------------------------------------------------------------------------
 -- Append-only tables (insert only) and versioned tables (write-once lifecycle columns, no delete).
@@ -2794,6 +2826,9 @@ GRANT SELECT ON job_sources, jobs, job_requirements, fetch_runs, skills, model_r
 GRANT SELECT, INSERT ON consents, audit_log, profile_events, feedback_events, application_events, twin_messages
   TO app_api;
 GRANT SELECT ON match_runs, match_decisions, match_evidence, guardian_checks, llm_calls TO app_api;
+-- The chat reply calls the model in the API process (Phase 5), so the API login records those calls: its own rows
+-- only (candidate_own), and the registry row of a model the code names on first use.
+GRANT INSERT ON llm_calls, model_registry TO app_api;
 GRANT SELECT, INSERT ON consents, audit_log, profile_events, fetch_runs, job_requirements, match_decisions,
                         match_evidence, feedback_events, application_events, guardian_checks, twin_messages,
                         llm_calls, eval_items, sim_scenarios, sim_results
@@ -3233,9 +3268,9 @@ Every v1 requirement in [REQUIREMENTS.md](REQUIREMENTS.md), with the tables and 
 | CHT-04 | `guardian_checks`, `documents`, `eval_runs` | check kind `injection`; `hidden_text_chars`; eval suite `injection` |
 | TLR-01 | `tailored_resumes`, `resume_edits` | |
 | TLR-02 | `resume_edits` | `verifier_status`, `discard_reason`, `resume_edits_support` |
-| TLR-03 | `resume_edits`, `tailored_resumes` | `decision` set once; export storage keys |
+| TLR-03 | `resume_edits`, `tailored_resumes` | `decision` set once (`resume_edits_decide_once`); export storage keys |
 | APP-01 | `applications`, `application_events` | append-only history, composite foreign key to the person's application |
-| APP-02 | `application_packets` | `application_packets_one_current` |
+| APP-02 | `application_packets` | `application_packets_one_current`, `application_packets_one_current_job` |
 | HIR-01 | `organizations`, `org_members` | organization policies, `create_organization()`, `accept_org_invitation()` |
 | HIR-02 | `roles`, `role_requirements` | `roles_live_needs_pay_and_requirements` |
 | HIR-03 | `match_decisions`, `introductions` | `role_preview()`, small counts suppressed |
@@ -3303,6 +3338,9 @@ Every v1 requirement in [REQUIREMENTS.md](REQUIREMENTS.md), with the tables and 
 | 19 | The database checks an outbox row when queued, not when sent. | R36, resolved: the sender re-reads the action at send time (ARCHITECTURE.md 5.5). |
 | 20 | psycopg 3 binding to the enum types is unverified. | R37, resolved as a task: verify in the first migration test. Still not verified (section 12.4). |
 | 21 | AI_SYSTEM.md 12.2 had no `eval_suite` value for the record-proposal, chat, dossier, Twin and Guardian gold sets, so the routes `record.propose`, `chat.turn`, `research.*`, `twin.*`, `writer.packet`, `chaser.draft` and `coach.prep` could never show a passed run. | DDL-9, resolved: added `record_proposals` (`record.propose`), `chat` (`chat.turn`), `dossier` (`research.*`), `twin` (`twin.*`), `guardian` (the Guardian set) and `agent_drafts` (`writer.packet`, `chaser.draft`, `coach.prep`). AI_SYSTEM.md names no gold set for `agent_drafts` yet; one must exist before those three routes can pass. |
+| 22 | Phase 5: the chat stream needs the assistant row to exist before the reply does (the 202 names it) and a place to record how the reply ended. | Resolved, Phase 5 deviation: `chat_messages.finish_reason` (`complete`, `length`, `stopped`, `interrupted`; NULL while the reply runs, set only on assistant rows) added to 3.12. |
+| 23 | Phase 5: APP-02 is Phase 5, but a packet belongs to a campaign (Phase 7), so two packets for one job could pile up. | Resolved, Phase 5 deviation: partial unique index `application_packets_one_current_job` on `(user_id, job_id)` for packets without a campaign, added to 3.8. Both `campaign_id` columns stay plain uuids until Phase 7 adds the keys to `campaigns` (3.14, lines for `application_packets` and `applications`). |
+| 24 | Phase 5: 4.3 froze `resume_edits` with `write_once_columns('decision', 'decided_at')`, which refuses any change to a column that is not NULL. `decision` starts as `'pending'`, so the first approval or rejection would be refused. | Resolved, Phase 5 deviation: `resume_edits_decide_once()` replaces it on the `resume_edits_content_fixed` trigger (4.3). It refuses a change to any column other than `decision` and `decided_at`, and a change to either once the decision has left `pending`; the CHECKs still keep a discarded edit pending. |
 
 ## 12. Verification record
 

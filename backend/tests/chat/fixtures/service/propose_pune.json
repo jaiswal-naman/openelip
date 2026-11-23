@@ -1,0 +1,5 @@
+[
+  {"tool_calls": [{"tool": "propose_record_change"}], "reply": null},
+  {"proposals": [{"entity": "preference", "operation": "set", "field": "location", "value": {"text": "Pune", "weight": 2}, "evidence_quote": "I would also take jobs in Pune", "statement": "Open to jobs in Pune."}]},
+  {"tool_calls": [], "reply": "I have put that to you as a proposal. Nothing changes until you confirm it in the app."}
+]

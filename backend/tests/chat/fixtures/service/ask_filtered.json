@@ -1,0 +1,4 @@
+[
+  {"tool_calls": [{"tool": "list_matches", "outcome": "filtered"}], "reply": null},
+  {"tool_calls": [], "reply": "That job was filtered by your company exclusion [[d1]]. The constraint [[c1]] rules that employer out."}
+]

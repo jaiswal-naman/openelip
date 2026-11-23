@@ -23,6 +23,8 @@ dependencies = [
   "python-multipart>=0.0.34",
   "fastembed==0.9.1",  # ARCHITECTURE 3.6: local embeddings (ONNX Runtime, no PyTorch)
   "geonamescache==3.0.2",  # offline place-name gazetteer for the location parser (plan 02-04)
+  "langgraph==1.2.24",
+  "reportlab==5.1.0",
 ]
 
 [dependency-groups]
@@ -32,6 +34,7 @@ dev = [
   "mypy",
   "import-linter==2.17",
   "reportlab>=5.1.0",
+  "pyyaml>=6.0.4",  # tests/evals/test_evl01_coverage.py parses ci.yml
 ]
 
 [build-system]

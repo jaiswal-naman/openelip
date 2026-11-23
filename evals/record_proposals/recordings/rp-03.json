@@ -1,0 +1,16 @@
+[
+ {
+  "proposals": [
+   {
+    "entity": "fact",
+    "operation": "set",
+    "field": "certification",
+    "value": {
+     "text": "Demo Cloud Practitioner certificate"
+    },
+    "evidence_quote": "I hold the Demo Cloud Practitioner certificate",
+    "statement": "Holds the Demo Cloud Practitioner certificate."
+   }
+  ]
+ }
+]
