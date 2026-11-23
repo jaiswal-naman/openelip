@@ -4,11 +4,30 @@ package is a public interface.
   brief_matches(conn, user_id, local_date)   what a day's brief lists
   activity_since(conn, user_id, since)        the runs that finished after a time, for "done since the last brief"
   nightly_status(conn, user_id, local_date)   whether the day's nightly run is still to come, running, done or failed
+  run(user_id, trigger=..., local_date=...)   one matching run for a person; returns a RunResult
+  retrieve(conn, user_id, mode=...)           the candidates for a person's own record (keyword, vector or hybrid)
+  violations(job, constraints)                the independent checker: the hard constraints a job breaks
+  RANKER_VERSION                              the name of the ranking rules, stored on every run
 
-BriefMatch, RunActivity and NightlyStatus are what they return. The pipeline entry points (run, retrieve, violations)
-are added by the plan that builds them.
+BriefMatch, RunActivity, NightlyStatus and RunResult are what they return.
 """
 
+from .checker import violations
 from .queries import BriefMatch, NightlyStatus, RunActivity, activity_since, brief_matches, nightly_status
+from .ranking import RANKER_VERSION
+from .retrieval import retrieve
+from .service import RunResult, run
 
-__all__ = ["BriefMatch", "NightlyStatus", "RunActivity", "activity_since", "brief_matches", "nightly_status"]
+__all__ = [
+    "RANKER_VERSION",
+    "BriefMatch",
+    "NightlyStatus",
+    "RunActivity",
+    "RunResult",
+    "activity_since",
+    "brief_matches",
+    "nightly_status",
+    "retrieve",
+    "run",
+    "violations",
+]
