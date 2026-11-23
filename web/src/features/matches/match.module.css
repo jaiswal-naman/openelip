@@ -1,0 +1,301 @@
+/* One match: its facts, the requirement table, and the two texts it cites (FRONTEND_UI 3.4 and 4.2). Tokens only. */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-8);
+}
+
+.title {
+  overflow-wrap: anywhere;
+}
+
+.company {
+  font-size: var(--fs-section);
+  overflow-wrap: anywhere;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4) var(--sp-16);
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.facts li {
+  overflow-wrap: anywhere;
+}
+
+.summary {
+  max-width: var(--measure);
+}
+
+/* A notice with a bar down its edge and a border: the words carry the meaning, the bar is extra. */
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-4) var(--sp-8);
+  max-width: var(--measure);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line-strong);
+  border-inline-start: 4px solid var(--warn);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.bannerLabel {
+  color: var(--warn);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8);
+}
+
+.notice {
+  max-width: var(--measure);
+  font-weight: 600;
+}
+
+.problem {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  min-width: 0;
+  padding: var(--sp-16) var(--sp-20);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.reasonList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding-inline-start: var(--sp-20);
+  list-style: disc;
+}
+
+/* ---- the requirement table ---- */
+
+/* A wide table scrolls inside its own region on a narrow screen, never the whole page (WCAG 1.4.10). */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table,
+.plainTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.column {
+  padding: var(--sp-8) var(--sp-12);
+  border-bottom: 1px solid var(--line-strong);
+  color: var(--muted);
+  text-align: start;
+  vertical-align: bottom;
+}
+
+.cell {
+  padding: var(--sp-12);
+  border-top: 1px solid var(--line);
+  font-weight: 400;
+  text-align: start;
+  vertical-align: top;
+}
+
+.row {
+  cursor: pointer;
+  outline-offset: -2px; /* inside the row: the table's own region would clip a ring drawn outside it */
+}
+
+@media (hover: hover) {
+  .row[data-hovered] {
+    background: var(--surface-2);
+  }
+}
+
+.row[data-focus-visible] {
+  outline: 2px solid var(--focus);
+}
+
+/* The selected row: a fill and a bar down its edge, and aria-selected for a screen reader; not colour alone. */
+.row[data-selected="true"] {
+  background: var(--accent-soft);
+}
+
+.row[data-selected="true"] .cell:first-child {
+  box-shadow: inset 4px 0 0 var(--accent-strong);
+}
+
+.requirement {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+}
+
+.words {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  padding: 0 var(--sp-8);
+  border: 1px solid currentColor;
+  border-radius: var(--r-pill);
+}
+
+.required {
+  color: var(--text);
+}
+
+.preferred {
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.citations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.source {
+  display: block;
+}
+
+/* ---- the two texts ---- */
+
+.panes {
+  display: grid;
+  gap: var(--sp-24);
+  align-items: start;
+}
+
+@media (min-width: 64rem) {
+  .panes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  min-width: 0;
+}
+
+.paneNote {
+  color: var(--muted);
+}
+
+/* Bounded, so a long posting scrolls to the mark inside its pane; focusable, so the keyboard can scroll it. */
+.scroll {
+  max-height: 22rem;
+  overflow: auto;
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+/* ---- the dismiss dialog (the same look as the delete-account dialog) ---- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-16);
+  background: rgb(0 0 0 / 0.55);
+}
+
+.modal {
+  width: min(100%, 34rem);
+  max-height: 100%;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding: var(--sp-24);
+  outline: none;
+}
+
+.reasons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+/* Each reason is a row with a round marker that fills when chosen; the focus ring is drawn on the row. */
+.reason {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  min-height: 2.5rem;
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+
+.reason::before {
+  content: "";
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--line-strong);
+  border-radius: var(--r-pill);
+}
+
+.reason[data-selected] {
+  border-color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+.reason[data-selected]::before {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+  box-shadow: inset 0 0 0 2px var(--surface);
+}
+
+.reason[data-focus-visible] {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8) var(--sp-12);
+}

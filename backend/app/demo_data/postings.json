@@ -1,0 +1,78 @@
+{
+  "note": "INVENTED DEMO DATA. Initech Demo is a made-up company and none of these postings is real. They are inserted only into a scratch database (its name ends in _test) by `python -m app.cli demo seed-matches`. Every apply link is on the reserved .invalid domain, which can never resolve, so the morning re-check of an apply link cannot reach the network or close a demo job.",
+  "source": {"ats": "lever", "token": "initech-demo", "company_name": "Initech Demo"},
+  "postings": [
+    {
+      "external_id": "demo-1",
+      "title": "Demo posting (invented): Quillscript Platform Engineer",
+      "location_raw": "Remote, United States",
+      "country": "US",
+      "city": null,
+      "work_arrangements": ["remote"],
+      "employment_type": "full_time",
+      "salary": null,
+      "apply_url": "https://apply.initech-demo.invalid/1",
+      "description": "Demo posting (invented): Initech Demo is a made-up company and this posting describes no real job.\nQuillscript Platform Engineer. Remote, United States.\nYou will build and run the platform that other teams ship on. We are looking for an engineer who has shipped services in Quillscript and PostgreSQL, with 3+ years of backend engineering experience. Preferred: Kubernetes in production, and you will manage a small team of engineers.\nThis is demo data and cannot be applied to.",
+      "requirements": [
+        {"text": "shipped services in Quillscript and PostgreSQL", "importance": "required", "kind": "skill", "min_years": null},
+        {"text": "3+ years of backend engineering experience", "importance": "required", "kind": "experience", "min_years": 3},
+        {"text": "Kubernetes in production", "importance": "preferred", "kind": "skill", "min_years": null},
+        {"text": "manage a small team of engineers", "importance": "preferred", "kind": "experience", "min_years": null}
+      ]
+    },
+    {
+      "external_id": "demo-2",
+      "title": "Demo posting (invented): Data Reliability Engineer",
+      "location_raw": "Austin, Texas, United States (hybrid)",
+      "country": "US",
+      "city": "Austin",
+      "work_arrangements": ["hybrid"],
+      "employment_type": "full_time",
+      "salary": {"min": 140000, "max": 170000, "currency": "USD"},
+      "apply_url": "https://apply.initech-demo.invalid/2",
+      "description": "Demo posting (invented): Initech Demo is a made-up company and this posting describes no real job.\nData Reliability Engineer. Austin, Texas, United States, hybrid.\nYou will keep the data platform correct and fast. You have built and operated Quillscript services on PostgreSQL, and you bring 3+ years of backend development. Preferred: experience with Terraform, and you will supervise a small engineering team.\nThis is demo data and cannot be applied to.",
+      "requirements": [
+        {"text": "built and operated Quillscript services on PostgreSQL", "importance": "required", "kind": "skill", "min_years": null},
+        {"text": "3+ years of backend development", "importance": "required", "kind": "experience", "min_years": 3},
+        {"text": "experience with Terraform", "importance": "preferred", "kind": "skill", "min_years": null},
+        {"text": "supervise a small engineering team", "importance": "preferred", "kind": "experience", "min_years": null}
+      ]
+    },
+    {
+      "external_id": "demo-3",
+      "title": "Demo posting (invented): Ledger Backend Engineer",
+      "location_raw": "Remote",
+      "country": null,
+      "city": null,
+      "work_arrangements": ["remote"],
+      "employment_type": "full_time",
+      "salary": null,
+      "apply_url": "https://apply.initech-demo.invalid/3",
+      "description": "Demo posting (invented): Initech Demo is a made-up company and this posting describes no real job.\nLedger Backend Engineer. Remote.\nYou will own the services that keep our ledger honest. We need production experience with Quillscript and 3+ years of backend engineering. Preferred: familiarity with Kafka, and you will coordinate a small team of engineers.\nThis is demo data and cannot be applied to.",
+      "requirements": [
+        {"text": "production experience with Quillscript", "importance": "required", "kind": "skill", "min_years": null},
+        {"text": "3+ years of backend engineering", "importance": "required", "kind": "experience", "min_years": 3},
+        {"text": "familiarity with Kafka", "importance": "preferred", "kind": "skill", "min_years": null},
+        {"text": "coordinate a small team of engineers", "importance": "preferred", "kind": "experience", "min_years": null}
+      ]
+    },
+    {
+      "external_id": "demo-4",
+      "title": "Demo posting (invented): Onsite Support Engineer",
+      "location_raw": "Berlin, Germany (on site)",
+      "country": "DE",
+      "city": "Berlin",
+      "work_arrangements": ["onsite"],
+      "employment_type": "full_time",
+      "salary": null,
+      "apply_url": "https://apply.initech-demo.invalid/4",
+      "description": "Demo posting (invented): Initech Demo is a made-up company and this posting describes no real job.\nOnsite Support Engineer. Berlin, Germany, on site only.\nYou will visit customers and keep their Quillscript installations running. You must be able to troubleshoot Quillscript installations and have 2+ years of customer support experience. Preferred: a driving licence. You must work on site in Berlin.\nThis is demo data and cannot be applied to.",
+      "requirements": [
+        {"text": "troubleshoot Quillscript installations", "importance": "required", "kind": "skill", "min_years": null},
+        {"text": "2+ years of customer support experience", "importance": "required", "kind": "experience", "min_years": 2},
+        {"text": "a driving licence", "importance": "preferred", "kind": "other", "min_years": null},
+        {"text": "work on site in Berlin", "importance": "required", "kind": "location", "min_years": null}
+      ]
+    }
+  ]
+}

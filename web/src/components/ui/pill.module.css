@@ -16,6 +16,14 @@
   color: var(--ok);
 }
 
+.warn {
+  color: var(--warn);
+}
+
+.bad {
+  color: var(--bad);
+}
+
 .unk {
   color: var(--unk);
 }

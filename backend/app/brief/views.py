@@ -15,6 +15,7 @@ from uuid import UUID
 
 from sqlalchemy import Connection, Row, text
 
+from app.ingest import api as ingest
 from app.match import api as match
 from app.platform.errors import ApiError
 from app.profile import api as profile
@@ -81,26 +82,15 @@ def list_briefs(
 
 
 def _match_decisions(conn: Connection, brief: Row[Any], user_id: UUID) -> list[dict[str, Any]]:
-    """The brief's matches in the order it stored them. A decision the ledger no longer lists is skipped."""
+    """The brief's matches in the order it stored them. A decision match.brief_matches no longer lists is skipped: its
+    job has closed since, or the person's hard constraints now exclude it (the email is written from this when sent)."""
     stored = conn.execute(
         text("SELECT match_decision_id FROM brief_items WHERE brief_id = :b ORDER BY position"), {"b": brief.id}
     ).scalars()
     current = {m.decision_id: m for m in match.brief_matches(conn, user_id, brief.local_date)}
     kept = [current[decision_id] for decision_id in stored if decision_id in current]
-    unchecked = _unchecked_jobs(conn, [m.job_id for m in kept if m.is_assessed])
+    unchecked = ingest.unchecked_apply_links(conn, [m.job_id for m in kept if m.is_assessed])
     return [_match_item(m, m.job_id in unchecked) for m in kept]
-
-
-def _unchecked_jobs(conn: Connection, job_ids: list[int]) -> set[int]:
-    """The jobs whose apply link has no conclusive check on their current text: the compose could not tell (the site did
-    not answer), or the posting changed since. This reads one column of the job index, which ARCHITECTURE 3.3 gives to
-    ingest alone; ingest.api offers no read of it, so it stays here until it does (noted in the 04-05 SUMMARY)."""
-    if not job_ids:
-        return set()
-    found = conn.execute(
-        text("SELECT id FROM jobs WHERE id = ANY(:ids) AND apply_check_ok IS NULL"), {"ids": job_ids}
-    ).scalars()
-    return set(found)
 
 
 def _match_item(m: match.BriefMatch, is_unchecked: bool) -> dict[str, Any]:

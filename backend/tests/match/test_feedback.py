@@ -19,6 +19,7 @@ from app.platform.sessions import Principal, current_user
 from app.profile import api as profile
 from app.profile import service
 from tests.match.factories import (
+    LOCAL_DATE,
     Verdict,
     make_decision,
     make_job,
@@ -308,6 +309,12 @@ def stored(engine, user: UUID) -> list[tuple[str, str | None]]:
         return events(conn, user)
 
 
+def shown_today(world) -> list[str]:
+    """The decision ids on the person's list of matches for the day the factories made them."""
+    data = ok(world.client.get("/v1/matches", params={"date": LOCAL_DATE.isoformat()}))
+    return [m["decision_id"] for m in data["matches"]]
+
+
 def test_save_then_unsave_through_the_route_leaves_it_unsaved_and_both_rows_remain(world, engine):
     first = ok(send(world.client, world.decision, {"kind": "save"}), 201)
     assert first == {"is_saved": True, "is_dismissed": False, "proposal_event_id": None}
@@ -380,8 +387,14 @@ def test_dismissing_a_company_through_the_route_then_confirming_the_proposal_fil
     assert ok(world.client.get("/v1/me/record"))["record_version"] == 1  # unchanged
     with engine.connect() as conn:
         assert violations(conn, world.user, world.job) == []
+    assert shown_today(world) == [str(world.decision)]  # nothing changed, so the match is still on Today
 
     confirmed = world.client.post(f"/v1/me/events/{event}/confirm", headers={"Idempotency-Key": uuid4().hex})
     assert ok(confirmed)["entity"] == "constraint"
     with engine.connect() as conn:
         assert violations(conn, world.user, world.job) == ["excluded_company"]
+    # The job now breaks a constraint the person confirmed: it leaves Today and its page says why (invariant 1).
+    assert shown_today(world) == []
+    refused(world.client.get(f"/v1/matches/{world.decision}"), 404, "not_found")
+    held = ok(world.client.get(f"/v1/decisions/{world.decision}"))
+    assert (held["outcome"], held["violated_kinds"]) == ("filtered", ["excluded_company"])

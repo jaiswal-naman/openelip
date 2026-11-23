@@ -27,7 +27,7 @@ from tests.match import factories
 RECORDINGS = Path(__file__).parent
 LOCAL_DATE = factories.LOCAL_DATE
 DEFAULT_REQUIREMENTS = (("Python", "required"), ("SQL", "required"))
-EMPTY = text("TRUNCATE users, jobs, job_sources, queue_jobs, llm_calls RESTART IDENTITY CASCADE")
+EMPTY = text("TRUNCATE users, jobs, job_sources, queue_jobs, llm_calls, eval_runs RESTART IDENTITY CASCADE")
 
 
 def empty_tables(engine: Engine) -> None:

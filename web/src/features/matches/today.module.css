@@ -1,0 +1,237 @@
+/* Today: the tabs, the decision and match cards, and the list of what was held back (FRONTEND_UI 3.3 and 4.1). Tokens only. */
+
+.today {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.lead {
+  max-width: var(--measure);
+}
+
+/* A notice with a bar down its edge and a border: the words carry the meaning, the bar is extra. */
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-4) var(--sp-8);
+  max-width: var(--measure);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line-strong);
+  border-inline-start: 4px solid var(--warn);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.bannerLabel {
+  color: var(--warn);
+}
+
+/* ---- tabs (URL state, so each is a button that changes ?view=) ---- */
+
+.tabList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.tab {
+  min-height: 2.5rem;
+  padding: var(--sp-8) var(--sp-16);
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* The current tab is the one with the bar and the stronger text, and aria-selected says it to a screen reader. */
+.tab[data-selected] {
+  border-bottom-color: var(--accent-strong);
+  color: var(--text);
+}
+
+@media (hover: hover) {
+  .tab[data-hovered] {
+    color: var(--text);
+  }
+}
+
+.tab[data-focus-visible] {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  padding-block-start: var(--sp-16);
+}
+
+.panel[data-focus-visible] {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+/* ---- the cards ---- */
+
+.card {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sp-12) var(--sp-24);
+  padding: var(--sp-16) var(--sp-20);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+/* The decision an email link opened: a stronger border and a bar, and aria-current for a screen reader. */
+.card[data-open] {
+  border-color: var(--accent-strong);
+  box-shadow: inset 4px 0 0 var(--accent-strong);
+}
+
+.cardMain {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-8);
+  flex: 1 1 22rem;
+  min-width: 0;
+}
+
+.cardSide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+  color: var(--muted);
+}
+
+.cardTitle {
+  overflow-wrap: anywhere;
+}
+
+.company {
+  overflow-wrap: anywhere;
+}
+
+.kind {
+  color: var(--muted);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4) var(--sp-16);
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4) var(--sp-16);
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.changed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-4) var(--sp-8);
+}
+
+.changedLabel {
+  color: var(--warn);
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8);
+}
+
+.receipt {
+  font-weight: 600;
+}
+
+.problem {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+/* ---- what was done ---- */
+
+.done {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding: var(--sp-16) var(--sp-20);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.doneList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* ---- why not ---- */
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-12) 0;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.gaps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding-inline-start: var(--sp-20);
+  list-style: disc;
+  color: var(--muted);
+}

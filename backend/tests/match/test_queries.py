@@ -23,6 +23,7 @@ from tests.match.factories import (
     make_shown_decision,
     make_user,
 )
+from tests.match.fixtures.run.world import add_constraint
 
 TOMORROW = LOCAL_DATE + timedelta(days=1)
 
@@ -44,21 +45,20 @@ def not_scored(conn: Connection, run: UUID, user: UUID, job: Job, rank: int | No
 
 def test_the_shown_decisions_of_the_date_are_listed_by_rank_with_the_job_and_the_note(conn):
     ada, bob = make_user(conn), make_user(conn)
+    add_constraint(conn, ada, "salary_floor", salary_floor=3_000_000, salary_currency="INR")  # what the flags are about
     first = make_titled_job(conn, "Data engineer")
-    second = make_titled_job(conn, "Platform engineer", company_name="Hooli Demo")
+    second = make_titled_job(
+        conn,
+        "Platform engineer",
+        company_name="Hooli Demo",
+        salary_min=3_000_000,
+        salary_max=4_000_000,
+        salary_currency="INR",
+    )
     third = make_titled_job(conn, "Analyst")
     run = make_run(conn, ada)
     show(conn, run, ada, second, 2, summary="Runs the platform.")
-    top = show(
-        conn,
-        run,
-        ada,
-        first,
-        1,
-        summary="Builds pipelines.",
-        change_note="Pay is now stated.",
-        unverified=("salary_not_stated",),
-    )
+    top = show(conn, run, ada, first, 1, summary="Builds pipelines.", change_note="Pay is now stated.")
     not_scored(conn, run, ada, third, 3, reasons=("weak_fit",))  # held back by a scored run: not on the brief
     show(conn, make_run(conn, ada, local_date=TOMORROW), ada, third, 1)  # another date
     show(conn, make_run(conn, bob), bob, first, 1)  # another person
@@ -86,10 +86,11 @@ def test_a_day_with_no_shown_match_and_a_scored_run_lists_nothing(conn):
 
 def test_when_no_run_of_the_day_could_score_the_best_ranked_unassessed_jobs_are_listed_marked_so(conn):
     ada, bob = make_user(conn), make_user(conn)
+    add_constraint(conn, ada, "location", country_codes=["IN"])  # the postings state no country: the flag below
     run = make_run(conn, ada, evidence_prompt_version=None)  # no model: nothing was scored, so nothing was shown
     jobs = [make_titled_job(conn, f"Job {n}") for n in range(NOT_ASSESSED_LIMIT + 2)]
     for rank, job in zip((6, 2, 7, 1, 5, 3, 4), jobs, strict=True):  # shuffled, so the order below is the rank's
-        not_scored(conn, run, ada, job, rank, unverified=("location_not_stated",))
+        not_scored(conn, run, ada, job, rank)
     not_scored(conn, run, ada, make_titled_job(conn, "Weak"), 1, reasons=("weak_fit",))  # a different reason
     not_scored(conn, make_run(conn, ada, local_date=TOMORROW, evidence_prompt_version=None), ada, jobs[0], 1)
     not_scored(conn, make_run(conn, bob, evidence_prompt_version=None), bob, jobs[0], 1)
@@ -120,6 +121,72 @@ def test_one_scored_run_in_the_day_means_no_unassessed_jobs_at_all(conn):
     nightly = make_run(conn, ada)  # the nightly run could score
     top = show(conn, nightly, ada, make_titled_job(conn, "Scored"), 1)
     assert [(m.decision_id, m.is_assessed) for m in api.brief_matches(conn, ada, LOCAL_DATE)] == [(top, True)]
+
+
+# ---- what may be listed now: a decision is read against today's constraints and today's index ------------------
+
+
+def test_a_shown_job_the_constraints_now_exclude_is_left_off_the_brief(conn):
+    ada = make_user(conn)
+    run = make_run(conn, ada)
+    stays = show(conn, run, ada, make_titled_job(conn, "Data engineer", country="IN"), 1)
+    show(conn, run, ada, make_titled_job(conn, "Platform engineer", company_name="Hooli Demo", country="IN"), 2)
+    assert len(api.brief_matches(conn, ada, LOCAL_DATE)) == 2  # no constraint yet
+
+    add_constraint(conn, ada, "excluded_company", company_names=["Hooli Demo"])  # confirmed after the run
+
+    assert [(m.decision_id, m.title) for m in api.brief_matches(conn, ada, LOCAL_DATE)] == [(stays, "Data engineer")]
+
+
+def test_a_location_changed_after_the_run_leaves_off_the_jobs_it_now_excludes_and_flags_the_ones_that_do_not_say(conn):
+    ada = make_user(conn)
+    run = make_run(conn, ada)
+    show(conn, run, ada, make_titled_job(conn, "Data engineer", country="IN"), 1)
+    stays = show(conn, run, ada, make_titled_job(conn, "Remote analyst"), 2)  # the posting names no country
+
+    add_constraint(conn, ada, "location", country_codes=["DE"])  # she is moving to Germany
+
+    (left,) = api.brief_matches(conn, ada, LOCAL_DATE)
+    assert (left.decision_id, left.title) == (stays, "Remote analyst")
+    assert left.unverified == ("location_not_stated",)  # it passes because it is silent, and the brief says so
+
+
+def test_a_job_nobody_assessed_that_the_constraints_now_exclude_is_not_listed_either(conn):
+    ada = make_user(conn)
+    run = make_run(conn, ada, evidence_prompt_version=None)
+    not_scored(conn, run, ada, make_titled_job(conn, "Fine", country="IN"), 1)
+    not_scored(conn, run, ada, make_titled_job(conn, "Excluded", company_name="Hooli Demo", country="IN"), 2)
+
+    add_constraint(conn, ada, "excluded_company", company_names=["Hooli Demo"])
+
+    assert [(m.title, m.is_assessed) for m in api.brief_matches(conn, ada, LOCAL_DATE)] == [("Fine", False)]
+
+
+def close(conn: Connection, job: Job) -> None:
+    """The posting is taken down (the six-hourly refresh does this between a run and the morning brief)."""
+    conn.execute(text("UPDATE jobs SET status = 'closed', closed_at = now() WHERE id = :j"), {"j": job.id})
+
+
+def test_a_job_that_has_closed_since_the_run_is_left_off_the_brief(conn):
+    ada = make_user(conn)
+    run = make_run(conn, ada)
+    stays = show(conn, run, ada, make_titled_job(conn, "Still open"), 1)
+    gone = make_titled_job(conn, "Closed since")
+    show(conn, run, ada, gone, 2)
+    close(conn, gone)
+
+    assert [m.decision_id for m in api.brief_matches(conn, ada, LOCAL_DATE)] == [stays]
+
+
+def test_a_closed_job_nobody_assessed_is_not_listed_as_not_yet_assessed(conn):
+    ada = make_user(conn)
+    run = make_run(conn, ada, evidence_prompt_version=None)
+    not_scored(conn, run, ada, make_titled_job(conn, "Still open"), 1)
+    gone = make_titled_job(conn, "Closed since")
+    not_scored(conn, run, ada, gone, 2)
+    close(conn, gone)
+
+    assert [m.title for m in api.brief_matches(conn, ada, LOCAL_DATE)] == ["Still open"]
 
 
 # ---- activity_since --------------------------------------------------------------------------------------------

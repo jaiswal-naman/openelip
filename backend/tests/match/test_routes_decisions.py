@@ -29,6 +29,7 @@ from tests.match.factories import (
 DAY = LOCAL_DATE.isoformat()
 YESTERDAY = LOCAL_DATE - timedelta(days=1)
 SALARY = {"salary_floor": {"amount": 3_000_000, "currency": "INR"}}
+EXCLUDED_NOW = "Never Ashgrove Capital or Initech Demo."
 
 
 def ok(response, status: int = 200):
@@ -135,6 +136,14 @@ def seed(engine) -> SimpleNamespace:
         )
         stamp(conn, {w.old: "2026-11-22T06:00:00Z", w.shown: "2026-11-23T06:00:00Z", w.gapped: "2026-11-23T06:01:00Z"})
         stamp(conn, {w.filtered: "2026-11-23T06:02:00Z"})
+        # Her constraints are older than the decisions above: a constraint is named as the reason for a decision only if
+        # it already existed when the decision was made, and the stamps put the decisions in the past.
+        conn.execute(text("SELECT set_config('app.maintenance', 'on', true)"))
+        conn.execute(
+            text("UPDATE constraints SET created_at = CAST(:at AS timestamptz) WHERE user_id = :u"),
+            {"at": "2026-11-20T00:00:00Z", "u": w.ada},
+        )
+        conn.execute(text("SELECT set_config('app.maintenance', 'off', true)"))
     return w
 
 
@@ -206,6 +215,93 @@ def test_a_constraint_the_person_has_since_removed_leaves_the_kind_and_no_statem
         service.remove_constraint(conn, world.ada, UUID(world.floor))
     rows = ok(world.client.get("/v1/decisions", params={"outcome": "filtered"}))
     assert [r["constraint"] for r in rows] == [{"id": None, "kind": "salary_floor", "statement": None}]
+
+
+def test_a_constraint_replaced_after_the_decision_is_not_named_as_the_one_that_filtered_the_job(world, engine):
+    """The job was filtered under the old pay floor, and the new floor may let it through, so the ledger cannot say the
+    new sentence removed it. A replaced constraint reads like a removed one: the kind stays, the sentence does not."""
+    with engine.begin() as conn:
+        service.set_constraint(
+            conn,
+            world.ada,
+            "salary_floor",
+            {"salary_floor": {"amount": 1_500_000, "currency": "INR"}},
+            "Nothing below 15 lakh a year.",
+        )
+    nobody = {"id": None, "kind": "salary_floor", "statement": None}
+    rows = ok(world.client.get("/v1/decisions", params={"outcome": "filtered"}))
+    assert [r["constraint"] for r in rows] == [nobody]
+    assert ok(world.client.get(f"/v1/decisions/{world.filtered}"))["constraint"] == nobody
+    (row,) = ok(world.client.get("/v1/decisions", params={"job_id": world.cheap.id}))
+    assert row["constraint"] == nobody  # the stored decision for the job, not a fresh check
+
+
+def exclude_the_shown_matchs_employer(engine, world) -> str:
+    """Ada excludes Initech Demo, the employer of her shown match, after the run (as a dismissal she confirms does).
+    The new constraint replaces her excluded-company one; its id comes back."""
+    with engine.begin() as conn:
+        return service.set_constraint(
+            conn,
+            world.ada,
+            "excluded_company",
+            {"company_names": ["Ashgrove Capital", "Initech Demo"]},
+            EXCLUDED_NOW,
+        ).row["id"]
+
+
+def test_a_shown_match_the_constraints_now_exclude_is_listed_as_filtered_and_never_as_shown(world, engine):
+    rule = exclude_the_shown_matchs_employer(engine, world)
+
+    rows = {row["decision_id"]: row for row in ok(world.client.get("/v1/decisions"))}
+
+    held = rows[str(world.shown)]
+    assert (held["outcome"], held["reason_codes"], held["gaps"]) == ("filtered", ["hard_constraint"], [])
+    assert held["constraint"] == {"id": rule, "kind": "excluded_company", "statement": EXCLUDED_NOW}
+    assert (rows[str(world.filtered)]["outcome"], rows[str(world.gapped)]["outcome"]) == ("filtered", "withheld")
+    with engine.connect() as conn:  # the ledger itself still says what the run decided
+        stored = conn.execute(text("SELECT outcome::text FROM match_decisions WHERE id = :id"), {"id": world.shown})
+        assert stored.scalar_one() == "shown"
+
+
+def test_the_filters_ask_about_the_outcome_and_reason_the_ledger_now_reports(world, engine):
+    exclude_the_shown_matchs_employer(engine, world)
+    get = world.client.get
+    shown, gapped, filtered = str(world.shown), str(world.gapped), str(world.filtered)
+
+    assert ids(ok(get("/v1/decisions", params={"outcome": "shown"}))) == []
+    assert set(ids(ok(get("/v1/decisions", params={"outcome": "filtered"})))) == {shown, filtered}
+    # what the Why not tab asks for: the match it can no longer show is in it
+    why_not = {"outcome": "withheld,filtered", "from": DAY, "to": DAY}
+    assert set(ids(ok(get("/v1/decisions", params=why_not)))) == {shown, gapped, filtered}
+    assert set(ids(ok(get("/v1/decisions", params={"reason": "hard_constraint"})))) == {shown, filtered}
+    assert ids(ok(get("/v1/decisions", params={"reason": "top_ranked"}))) == []
+
+
+def test_pages_over_what_the_ledger_now_reports_follow_the_cursor_without_a_gap_or_a_repeat(world, engine):
+    exclude_the_shown_matchs_employer(engine, world)
+    seen, cursor = [], None
+    while True:
+        response = world.client.get(
+            "/v1/decisions", params={"outcome": "filtered", "limit": 1, **({"cursor": cursor} if cursor else {})}
+        )
+        seen += ids(ok(response))
+        cursor = response.json()["meta"]["next_cursor"]
+        if cursor is None:
+            break
+    assert seen == [str(world.filtered), str(world.shown)]  # newest first, each once
+
+
+def test_job_id_reports_a_decision_the_constraints_now_exclude_as_filtered_not_as_shown(world, engine):
+    rule = exclude_the_shown_matchs_employer(engine, world)
+
+    (row,) = ok(world.client.get("/v1/decisions", params={"job_id": world.good.id}))
+
+    assert (row["decision_id"], row["outcome"], row["reason_codes"]) == (
+        str(world.shown),
+        "filtered",
+        ["hard_constraint"],
+    )
+    assert row["constraint"]["id"] == rule and row["evaluated"] is None  # a stored decision, read now
 
 
 def test_the_filters_narrow_the_list_by_outcome_reason_and_date(world):

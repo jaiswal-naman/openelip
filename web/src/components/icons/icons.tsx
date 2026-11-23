@@ -96,6 +96,20 @@ export const HelpIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const XIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </Icon>
+);
+
+/** A circle with half of it filled: "partly". */
+export const HalfCircleIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 18a6 6 0 0 0 0-12v12z" />
+  </Icon>
+);
+
 /** The brand mark: an open ring with the accent in its gap. Not from Lucide. */
 export function BrandMark({ size = 24 }: { size?: number }) {
   return (

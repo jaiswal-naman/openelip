@@ -32,6 +32,7 @@ DAY = LOCAL_DATE.isoformat()
 TOMORROW = LOCAL_DATE + timedelta(days=1)
 DESCRIPTION = "Build data pipelines in Python and SQL. Kubernetes is a plus."
 GO_DESCRIPTION = "Run the platform. Ten years of Go required."
+SALARY_FLOOR = {"salary_floor": {"amount": 3_000_000, "currency": "INR"}}
 
 
 def ok(response, status: int = 200):
@@ -89,7 +90,6 @@ def seed(engine) -> SimpleNamespace:
             [Verdict("met", w.record.fact_ids[1:2]), Verdict("no_evidence")],
             rank_position=1,
             summary="Meets 1 of 1 required item.",
-            unverified=("salary_not_stated",),
         )
         w.second = make_shown_decision(
             conn,
@@ -133,7 +133,9 @@ def world(api_client, engine) -> SimpleNamespace:
 # ---- GET /v1/matches ---------------------------------------------------------------------------------------------
 
 
-def test_todays_matches_are_the_shown_decisions_of_the_date_ranked_with_the_run_and_every_requirement(world):
+def test_todays_matches_are_the_shown_decisions_of_the_date_ranked_with_the_run_and_every_requirement(world, engine):
+    with engine.begin() as conn:  # a pay floor: the first posting states no pay, the second states enough
+        service.set_constraint(conn, world.ada, "salary_floor", SALARY_FLOOR, "30 lakh a year")
     data = ok(world.client.get("/v1/matches", params={"date": DAY}))
 
     assert (data["local_date"], data["timezone"]) == (DAY, "Asia/Kolkata")
@@ -327,14 +329,8 @@ def test_the_match_routes_need_a_signed_in_person(api_client):
 
 
 def test_one_match_adds_the_posting_text_the_constraint_checks_and_the_feedback(world, engine):
-    with engine.begin() as conn:
-        service.set_constraint(
-            conn,
-            world.ada,
-            "salary_floor",
-            {"salary_floor": {"amount": 3_000_000, "currency": "INR"}},
-            "30 lakh a year",
-        )
+    with engine.begin() as conn:  # three constraints the person added after the run
+        service.set_constraint(conn, world.ada, "salary_floor", SALARY_FLOOR, "30 lakh a year")
         service.set_constraint(conn, world.ada, "employment_type", {"employment_types": ["full_time"]}, "Full time")
         service.set_constraint(conn, world.ada, "excluded_company", {"company_names": ["Hooli Demo"]}, "Never Hooli")
     match = ok(world.client.get(f"/v1/matches/{world.first}"))
@@ -347,25 +343,46 @@ def test_one_match_adds_the_posting_text_the_constraint_checks_and_the_feedback(
     assert match["feedback"] == {"is_saved": False, "is_dismissed": False}
     checks = {c["kind"]: c for c in match["constraint_checks"]}
     assert set(checks) == {"location", "remote_policy", "salary_floor", "employment_type", "excluded_company"}
-    assert checks["salary_floor"]["state"] == "not_stated"  # the decision carries salary_not_stated
+    # Every state is worked out now, from the posting and the constraints as they are: none is a flag the run stored.
+    assert match["unverified"] == ["salary_not_stated", "employment_type_not_stated"]
+    assert checks["salary_floor"]["state"] == "not_stated"  # the posting states no pay
+    assert checks["employment_type"] == {"kind": "employment_type", "statement": "Full time", "state": "not_stated"}
     assert checks["location"] == {"kind": "location", "statement": "Only jobs in India.", "state": "satisfied"}
     assert checks["remote_policy"]["state"] == "satisfied" and checks["excluded_company"]["state"] == "satisfied"
-    assert checks["employment_type"]["statement"] == "Full time"
+
+
+# A posting that breaks nothing and leaves nothing unstated, for the constraints set in the test below; each case
+# changes the one field that raises its flag.
+CLEAN_POSTING = {
+    "country": "IN",
+    "arrangements": ["remote"],
+    "employment_type": "full_time",
+    "seniority": "senior",
+    "salary_min": 2_000_000,
+    "salary_max": 3_000_000,
+    "salary_currency": "INR",
+}
 
 
 @pytest.mark.parametrize(
-    ("flag", "kinds"),
+    ("flag", "posting", "kinds"),
     [
-        ("location_not_stated", {"location", "work_authorization"}),
-        ("arrangement_not_stated", {"remote_policy"}),
-        ("arrangement_ambiguous", {"remote_policy"}),
-        ("salary_not_stated", {"salary_floor"}),
-        ("salary_currency_differs", {"salary_floor"}),
-        ("employment_type_not_stated", {"employment_type"}),
-        ("seniority_not_stated", {"seniority"}),
+        ("location_not_stated", {"country": None}, {"location", "work_authorization"}),
+        ("arrangement_not_stated", {"arrangements": []}, {"remote_policy"}),
+        ("arrangement_ambiguous", {"arrangements": ["remote", "onsite"]}, {"remote_policy"}),
+        (
+            "salary_not_stated",
+            {"salary_min": None, "salary_max": None, "salary_currency": None},
+            {"salary_floor"},
+        ),
+        ("salary_currency_differs", {"salary_currency": "USD"}, {"salary_floor"}),
+        ("employment_type_not_stated", {"employment_type": "unknown"}, {"employment_type"}),
+        ("seniority_not_stated", {"seniority": "unknown"}, {"seniority"}),
     ],
 )
-def test_each_unverified_flag_marks_the_constraints_whose_field_the_posting_leaves_unstated(world, engine, flag, kinds):
+def test_each_unverified_flag_marks_the_constraints_whose_field_the_posting_leaves_unstated(
+    world, engine, flag, posting, kinds
+):
     with engine.begin() as conn:
         for kind, fields in (
             ("work_authorization", {"country_codes": ["IN"]}),
@@ -374,11 +391,17 @@ def test_each_unverified_flag_marks_the_constraints_whose_field_the_posting_leav
             ("seniority", {"seniorities": ["senior"]}),
         ):
             service.set_constraint(conn, world.ada, kind, fields, f"Invented {kind}.")
-        job = make_job(conn, title="Flagged", description="Python.", requirements=[("Python.", "required")])
-        decision = make_shown_decision(
-            conn, world.run, world.ada, job, [Verdict("no_evidence")], rank_position=3, unverified=(flag,)
+        job = make_job(
+            conn,
+            title="Flagged",
+            description="Python.",
+            requirements=[("Python.", "required")],
+            **{**CLEAN_POSTING, **posting},
         )
-    checks = ok(world.client.get(f"/v1/matches/{decision}"))["constraint_checks"]
+        decision = make_shown_decision(conn, world.run, world.ada, job, [Verdict("no_evidence")], rank_position=3)
+    match = ok(world.client.get(f"/v1/matches/{decision}"))
+    assert match["unverified"] == [flag]  # read from the posting now: the decision itself stored no flag
+    checks = match["constraint_checks"]
     assert {c["kind"] for c in checks if c["state"] == "not_stated"} == kinds
     assert {c["kind"] for c in checks if c["state"] == "satisfied"} == {
         "location",
@@ -404,6 +427,77 @@ def test_a_withheld_decision_a_filtered_one_someone_elses_and_an_unknown_id_are_
     for decision in (world.held, filtered, world.bobs, uuid4()):
         refused(world.client.get(f"/v1/matches/{decision}"), 404, "not_found")
     refused(world.client.get("/v1/matches/not-an-id"), 422, "validation_failed")
+
+
+# ---- a constraint added after the run: invariant 1 holds when a decision is read, not only when it is made ----------
+
+
+def test_a_company_excluded_after_the_run_takes_that_job_off_the_list_and_off_its_own_page(world, engine):
+    with engine.begin() as conn:
+        service.set_constraint(conn, world.ada, "excluded_company", {"company_names": ["Hooli Demo"]}, "Never Hooli.")
+
+    data = ok(world.client.get("/v1/matches", params={"date": DAY}))
+
+    assert [m["decision_id"] for m in data["matches"]] == [str(world.first)]  # the Hooli posting is gone
+    # The run's counts are read now too, so the summary never calls a violator shown: of the run's two matches, one is
+    # now a job the constraints filter. withheld is the run's own.
+    assert (data["run"]["shown"], data["run"]["withheld"], data["run"]["filtered"]) == (1, 1, 389)
+    refused(world.client.get(f"/v1/matches/{world.second}"), 404, "not_found")
+    kept = ok(world.client.get(f"/v1/matches/{world.first}"))
+    states = {c["kind"]: c["state"] for c in kept["constraint_checks"]}
+    assert states["excluded_company"] == "satisfied"  # the constraint was asked of this job, and it passed
+    with engine.connect() as conn:  # nothing was edited: the ledger still says what the run decided
+        stored = conn.execute(
+            text("SELECT outcome::text, summary FROM match_decisions WHERE id = :id"), {"id": world.second}
+        ).one()
+    assert tuple(stored) == ("shown", "Meets 0 of 1 required item.")
+
+
+def test_the_page_of_a_match_the_constraints_now_exclude_reads_as_a_filtered_decision_with_the_rule_that_did_it(
+    world, engine
+):
+    with engine.begin() as conn:
+        rule = service.set_constraint(
+            conn, world.ada, "excluded_company", {"company_names": ["Hooli Demo"]}, "Never Hooli."
+        ).row["id"]
+
+    held = ok(world.client.get(f"/v1/decisions/{world.second}"))  # where the match page sends a link it cannot open
+
+    assert held["decision_id"] == str(world.second) and held["job"]["id"] == world.platform.id
+    assert (held["outcome"], held["reason_codes"], held["violated_kinds"]) == (
+        "filtered",
+        ["hard_constraint"],
+        ["excluded_company"],
+    )
+    assert held["constraint"] == {"id": rule, "kind": "excluded_company", "statement": "Never Hooli."}
+    assert (held["summary"], held["rank_position"], held["change_note"], held["evidence"]) == (None, None, None, [])
+    again = ok(world.client.get(f"/v1/decisions/{world.first}"))  # a match the constraints still allow is as recorded
+    assert (again["outcome"], again["rank_position"], again["summary"]) == ("shown", 1, "Meets 1 of 1 required item.")
+
+
+def test_a_location_changed_after_the_run_takes_off_every_job_it_now_excludes(world, engine):
+    with engine.begin() as conn:
+        service.set_constraint(conn, world.ada, "location", {"country_codes": ["DE"]}, "Only jobs in Germany.")
+
+    data = ok(world.client.get("/v1/matches", params={"date": DAY}))
+
+    assert data["matches"] == [] and data["run"]["id"] == str(world.run)  # both postings are in India
+    assert (data["run"]["shown"], data["run"]["withheld"], data["run"]["filtered"]) == (0, 1, 390)  # not "2 shown"
+    for decision in (world.first, world.second):
+        refused(world.client.get(f"/v1/matches/{decision}"), 404, "not_found")
+    held = ok(world.client.get(f"/v1/decisions/{world.first}"))
+    assert (held["outcome"], held["violated_kinds"]) == ("filtered", ["location"])
+    assert held["constraint"]["statement"] == "Only jobs in Germany."
+
+
+def test_a_constraint_removed_after_the_run_leaves_the_match_where_it_was(world, engine):
+    with engine.begin() as conn:
+        for kind in ("location", "remote_policy"):
+            (constraint,) = [c for c in service.list_constraints(conn, world.ada) if c["kind"] == kind]
+            service.remove_constraint(conn, world.ada, UUID(constraint["id"]))
+    data = ok(world.client.get("/v1/matches", params={"date": DAY}))
+    assert [m["decision_id"] for m in data["matches"]] == [str(world.first), str(world.second)]
+    assert ok(world.client.get(f"/v1/matches/{world.first}"))["constraint_checks"] == []
 
 
 # ---- the contract ------------------------------------------------------------------------------------------------

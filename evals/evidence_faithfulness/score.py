@@ -9,9 +9,16 @@ eval_runs row with one eval_items row per pair, gated like any other suite:
     cd backend && uv run python ../evals/evidence_faithfulness/score.py [--recorded FILE]   # the same, recorded
 
 Every pair goes through the real path: build_request, the gateway (a ledger row per call), validate, and one fresh call
-when the validator rejects the first answer (AI_SYSTEM 4.4). Only the model is replaced: the answers come from
-recorded.json, which was built from the gold labels. So the score proves that the code path works and that a damaged
-recording fails; it is NOT a model quality number (invariant 8). README.md holds the pre-registered bars.
+when the validator rejects the first answer (AI_SYSTEM 4.4). In a replay only the model is replaced: the answers come
+from recorded.json, which was built from the gold labels. So the score proves that the code path works and that a
+damaged recording fails; it is NOT a model quality number (invariant 8). README.md holds the pre-registered bars.
+
+The same path runs live, with the model the environment configures answering every pair (run(None); LIVE below):
+
+    cd backend && uv run python -m app.evals run evidence_faithfulness --live
+
+That run records method "model" and the model's name beside the prompt version, which is what the match route gate
+(app.match.ai_gate) needs, and its score is a measurement of the model against the bars in the README.
 """
 
 import argparse
@@ -38,6 +45,7 @@ SUITE = "evidence_faithfulness"
 TASK = evidence.TASK  # the task whose route the run's record names
 LABELS = "agent-drafted, maintainer review pending"
 CONFIG = {"labels": LABELS, "prompt_version": evidence.PROMPT_VERSION, "gold": GOLD.name}
+LIVE = True  # run(None) calls the real model: the runner's --live (backend/app/evals/runner.py) needs this to allow it
 # The bars of README.md "Pre-registered bars", written before any run (AI_SYSTEM 4.4 targets and its 2% alert line).
 FAITHFUL_BAR, FALSE_MET_BAR, REJECT_BAR = 0.90, 0.05, 0.02
 ATTEMPTS = 2  # the first answer and one fresh call after a rejection
@@ -104,7 +112,9 @@ def replay_pair(item: dict[str, Any], description: str) -> Outcome:
     return Outcome(None, request, ATTEMPTS, failure)
 
 
-def run(recorded: Path) -> Scored:
+def run(recorded: Path | None) -> Scored:
+    """Score every pair. `recorded` is a recording to replay through the gateway's fake provider; None is a live run,
+    where the gateway calls the model the environment configures and nothing is replayed."""
     gold = load_gold()
     descriptions = {row["posting_id"]: row["description"] for row in read_jsonl(POSTINGS)}
     results: list[Result] = []
@@ -122,7 +132,8 @@ def run(recorded: Path) -> Scored:
         ),
         0,
     )
-    provider.replay_from(recorded)  # the gateway's fake provider hands these out in the order the calls are made
+    if recorded is not None:
+        provider.replay_from(recorded)  # the gateway's fake provider hands these out in the order the calls are made
     try:
         for item in gold:
             outcome = replay_pair(item, descriptions[item["posting_ref"]])
@@ -181,7 +192,8 @@ def run(recorded: Path) -> Scored:
         "faithful_verdicts": count["faithful"],
         "required_items": count["required"],
         "false_met_required": count["false_met"],
-        "harness_check_only": True,  # a replay of answers built from the gold says nothing about quality
+        "harness_check_only": recorded
+        is not None,  # a replay of answers built from the gold says nothing about quality
     }
     return Scored(results, metrics)
 

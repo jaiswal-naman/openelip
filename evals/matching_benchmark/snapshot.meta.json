@@ -13,7 +13,7 @@
     "pool": 7958,
     "target_count": 1000,
     "count": 758,
-    "size_bytes": 4995603,
+    "size_bytes": 4995288,
     "size_limit_bytes": 5000000
   },
   "sources": 57,
@@ -43,5 +43,11 @@
     "IL": 14,
     "ID": 9,
     "LU": 2
+  },
+  "redacted": {
+    "strings": 21,
+    "postings": 21,
+    "replacement": "[email removed]",
+    "what": "An address written name[at]domain (one role mailbox) that the export filter, which then matched '@' only, let through. The postings were kept and each string replaced in place, so the count and the refs are unchanged. export_snapshot.EMAIL now also matches the [at] and (at) forms: a fresh export would drop these postings instead."
   }
 }

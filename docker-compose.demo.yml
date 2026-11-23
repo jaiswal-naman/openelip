@@ -1,0 +1,64 @@
+# A second, throwaway copy of the product for the matches and morning-brief demo (plan 04-06). It is an override: it adds to
+# docker-compose.yml and is never run on its own.
+#
+#   docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml up -d --build --wait
+#   cd web && DEMO_STACK=1 BASE_URL=http://localhost:8090 MAILPIT_URL=http://localhost:8026 \
+#     pnpm exec playwright test tests/e2e/matches-brief.spec.ts --project=chromium
+#   docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml down -v      (throws it all away)
+#
+# What it changes, and why:
+#   * Its own project name (-p openelip-demo) and its own image tags, so it never touches your other stack, its volumes or its
+#     images; it shares nothing with it.
+#   * Its own host ports (the proxy, which is the one address for the web app and the API, the mail catcher and the database),
+#     so both stacks can run at once. Override them with DEMO_HTTP_PORT, DEMO_MAIL_PORT and DEMO_DB_PORT.
+#   * A database called app_demo_test in every DATABASE_URL_*. The name ends in _test on purpose: the demo seed
+#     (`python -m app.cli demo seed-matches`) refuses to write to any other database, so it can never put its invented
+#     postings into the real index.
+#   * LLM_PROVIDER=fake on the API and the worker: recorded answers, no key, no network, no cost. The seed refuses any other.
+#   * The worker also holds the owner's login (DATABASE_URL_MIGRATE), because the seed writes the invented record and postings
+#     with it, and it takes no `ingest` jobs (WORKER_QUEUES), so it never fetches the real job boards: the demo's recorded
+#     answers fit the four invented postings only, and the seed refuses an index that holds others.
+#
+# Ports bound to 127.0.0.1 only, as in docker-compose.yml. `!override` replaces the base file's port list instead of adding to it.
+
+services:
+  db:
+    environment:
+      POSTGRES_DB: app_demo_test
+    ports: !override
+      - "127.0.0.1:${DEMO_DB_PORT:-5434}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app_demo_test"]
+
+  migrate:
+    image: openelip-demo-backend:dev
+    environment:
+      DATABASE_URL_MIGRATE: postgresql://app:app_local_only@db:5432/app_demo_test
+
+  api:
+    image: openelip-demo-backend:dev
+    environment:
+      APP_BASE_URL: http://localhost:${DEMO_HTTP_PORT:-8090}
+      LLM_PROVIDER: fake
+      DATABASE_URL_API: postgresql://app_api:${APP_DB_API_PASSWORD:-app_api_local_only}@db:5432/app_demo_test
+
+  worker:
+    image: openelip-demo-backend:dev
+    environment:
+      APP_BASE_URL: http://localhost:${DEMO_HTTP_PORT:-8090}
+      LLM_PROVIDER: fake
+      DATABASE_URL_WORKER: postgresql://app_worker:${APP_DB_WORKER_PASSWORD:-app_worker_local_only}@db:5432/app_demo_test
+      DATABASE_URL_MATCH: postgresql://app_match:${APP_DB_MATCH_PASSWORD:-app_match_local_only}@db:5432/app_demo_test
+      DATABASE_URL_MIGRATE: postgresql://app:app_local_only@db:5432/app_demo_test
+      WORKER_QUEUES: default,interactive,llm
+
+  web:
+    image: openelip-demo-web:dev
+
+  proxy:
+    ports: !override
+      - "127.0.0.1:${DEMO_HTTP_PORT:-8090}:80"
+
+  mail:
+    ports: !override
+      - "127.0.0.1:${DEMO_MAIL_PORT:-8026}:8025"

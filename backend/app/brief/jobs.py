@@ -80,13 +80,15 @@ def due_people(conn: Connection, now: datetime) -> list[tuple[UUID, date]]:
 
 def queue_composes(conn: Connection, now: datetime) -> int:
     """Queue one brief.compose for each person due at `now`; returns how many were new. The queue's unique key
-    brief.compose:{user}:{date} makes a repeat of the same minute, or of the next one, add nothing."""
+    brief.compose:{user}:{date} makes a repeat of the same minute, or of the next one, add nothing. The job names the
+    person, so the export lists it and erasing them deletes it (queue.enqueue)."""
     queued = sum(
         queue.enqueue(
             conn,
             COMPOSE_JOB,
             {"user_id": str(user_id), "local_date": local_date.isoformat()},
             unique_key=f"{COMPOSE_JOB}:{user_id}:{local_date}",
+            user_id=user_id,
         )
         is not None
         for user_id, local_date in due_people(conn, now)

@@ -189,7 +189,8 @@ class TodayMatches(BaseModel):
 
 
 class ConstraintRef(BaseModel):
-    """The constraint that removed a job. id and statement are null when the person has since removed it."""
+    """The constraint that removed a job. id and statement are null when the person has since removed it, or replaced it
+    with another of the same kind after the decision was made."""
 
     id: UUID | None
     kind: ConstraintKind
@@ -268,7 +269,8 @@ def _one_of(values: str, allowed: tuple[str, ...], name: str) -> list[str]:
 
 @router.get("/v1/matches", response_model=Envelope[TodayMatches])
 def todays_matches(principal: Signed, day: Annotated[date | None, Query(alias="date")] = None) -> dict[str, Any]:
-    """The matches shown on a date, ranked, each with the requirement evidence table. Zero is a valid day."""
+    """The matches shown on a date, ranked, each with the requirement evidence table. Zero is a valid day. A job the
+    caller's hard constraints exclude now, whatever they said when the run made the match, is not listed."""
     with db.transaction(principal.user_id) as conn:
         zone = ledger.timezone_of(conn, principal.user_id)
         local_date = day or ledger.today_in(zone)
@@ -283,7 +285,8 @@ def todays_matches(principal: Signed, day: Annotated[date | None, Query(alias="d
 
 @router.get("/v1/matches/{decision_id}", response_model=Envelope[MatchDetail])
 def one_match(decision_id: UUID, principal: Signed) -> dict[str, Any]:
-    """One shown match with the posting's text (for the highlights) and a check of each hard constraint."""
+    """One shown match with the posting's text (for the highlights) and a check of each hard constraint. 404 when the
+    job is one the caller's hard constraints now exclude: GET /v1/decisions/{id} reads it as filtered."""
     with db.transaction(principal.user_id) as conn:
         found = ledger.match_by_id(conn, principal.user_id, decision_id)
     if found is None:
@@ -318,7 +321,8 @@ def decision_ledger(
     cursor: After = None,
 ) -> dict[str, Any]:
     """The decision ledger, newest first. ?job_id= returns the stored decision for one job, or checks that job against
-    the caller's hard constraints on the spot (no model call, nothing stored) and returns filtered or not_evaluated."""
+    the caller's hard constraints on the spot (no model call, nothing stored) and returns filtered or not_evaluated. A
+    shown match whose job the caller's hard constraints now exclude is reported as filtered, by the filters too."""
     outcomes = _one_of(outcome, MATCH_OUTCOMES, "outcome") if outcome else None
     if reason is not None and reason not in MATCH_REASONS:
         raise ApiError(400, "invalid_request", f"reason is not one of: {', '.join(MATCH_REASONS)}.")
@@ -344,7 +348,8 @@ def decision_ledger(
 
 @router.get("/v1/decisions/{decision_id}", response_model=Envelope[DecisionDetail])
 def one_decision(decision_id: UUID, principal: Signed) -> dict[str, Any]:
-    """One decision of any outcome, with its evidence, the constraint that filtered it or the gaps that withheld it."""
+    """One decision of any outcome, with its evidence, the constraint that filtered it or the gaps that withheld it. A
+    shown match whose job the caller's hard constraints now exclude reads as filtered."""
     with db.transaction(principal.user_id) as conn:
         found = ledger.decision_by_id(conn, principal.user_id, decision_id)
     if found is None:
