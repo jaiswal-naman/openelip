@@ -135,6 +135,14 @@ def seed(engine) -> SimpleNamespace:
         )
         stamp(conn, {w.old: "2026-11-22T06:00:00Z", w.shown: "2026-11-23T06:00:00Z", w.gapped: "2026-11-23T06:01:00Z"})
         stamp(conn, {w.filtered: "2026-11-23T06:02:00Z"})
+        # Her constraints are older than the decisions above: a constraint is named as the reason for a decision only if
+        # it already existed when the decision was made, and the stamps put the decisions in the past.
+        conn.execute(text("SELECT set_config('app.maintenance', 'on', true)"))
+        conn.execute(
+            text("UPDATE constraints SET created_at = CAST(:at AS timestamptz) WHERE user_id = :u"),
+            {"at": "2026-11-20T00:00:00Z", "u": w.ada},
+        )
+        conn.execute(text("SELECT set_config('app.maintenance', 'off', true)"))
     return w
 
 
@@ -206,6 +214,25 @@ def test_a_constraint_the_person_has_since_removed_leaves_the_kind_and_no_statem
         service.remove_constraint(conn, world.ada, UUID(world.floor))
     rows = ok(world.client.get("/v1/decisions", params={"outcome": "filtered"}))
     assert [r["constraint"] for r in rows] == [{"id": None, "kind": "salary_floor", "statement": None}]
+
+
+def test_a_constraint_replaced_after_the_decision_is_not_named_as_the_one_that_filtered_the_job(world, engine):
+    """The job was filtered under the old pay floor, and the new floor may let it through, so the ledger cannot say the
+    new sentence removed it. A replaced constraint reads like a removed one: the kind stays, the sentence does not."""
+    with engine.begin() as conn:
+        service.set_constraint(
+            conn,
+            world.ada,
+            "salary_floor",
+            {"salary_floor": {"amount": 1_500_000, "currency": "INR"}},
+            "Nothing below 15 lakh a year.",
+        )
+    nobody = {"id": None, "kind": "salary_floor", "statement": None}
+    rows = ok(world.client.get("/v1/decisions", params={"outcome": "filtered"}))
+    assert [r["constraint"] for r in rows] == [nobody]
+    assert ok(world.client.get(f"/v1/decisions/{world.filtered}"))["constraint"] == nobody
+    (row,) = ok(world.client.get("/v1/decisions", params={"job_id": world.cheap.id}))
+    assert row["constraint"] == nobody  # the stored decision for the job, not a fresh check
 
 
 def test_the_filters_narrow_the_list_by_outcome_reason_and_date(world):
