@@ -278,7 +278,7 @@ def propose_action(
     worker connection. Pass the step id in `inputs` (`{"step_id": ...}`): proposing again for the same step returns the
     action already made."""
     run = conn.execute(
-        text("SELECT id, user_id, campaign_id FROM agent_runs WHERE id = :id FOR UPDATE"), {"id": run_id}
+        text("SELECT id, user_id, campaign_id FROM agent_runs WHERE id = :id FOR NO KEY UPDATE"), {"id": run_id}
     ).one()
     step_id = (inputs or {}).get("step_id")
     if step_id is not None:

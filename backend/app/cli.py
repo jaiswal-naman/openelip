@@ -193,7 +193,33 @@ def _demo_seed_tailor(args: argparse.Namespace) -> int:
     return 0
 
 
+def _graphs_check(args: argparse.Namespace) -> int:
+    """List campaign threads parked before a node the current graph no longer has: exit 1 when there are any."""
+    from app.campaigns import graph
+    from app.guardian import runtime
+
+    stuck = graph.missing_nodes_by_thread(runtime.saver(), graph.compiled())
+    for thread, node in stuck.items():
+        print(f"{thread} parked before {node}")
+    print(f"{len(stuck)} thread(s) parked before a node that no longer exists")
+    return 1 if stuck else 0
+
+
+def _graphs_reseat(args: argparse.Namespace) -> int:
+    """Delete the checkpoints of the threads parked before `--node` and start them again from their tables."""
+    from app.campaigns import graph
+    from app.guardian import runtime
+
+    stuck = graph.missing_nodes_by_thread(runtime.saver(), graph.compiled())
+    chosen = [thread for thread, node in stuck.items() if node == args.node]
+    asked = graph.reseat(runtime.saver(), chosen)
+    print(f"{len(chosen)} thread(s) reset, {asked} campaign(s) asked to start again")
+    return 0
+
+
 COMMANDS: dict[tuple[str, str], Callable[[argparse.Namespace], int | None]] = {
+    ("graphs", "check"): _graphs_check,
+    ("graphs", "reseat"): _graphs_reseat,
     ("queue", "list"): _queue_list,
     ("queue", "retry"): _queue_retry,
     ("ingest", "run"): _ingest_run,
@@ -240,6 +266,14 @@ def build_parser() -> argparse.ArgumentParser:
     outcome = resolve.add_mutually_exclusive_group(required=True)
     outcome.add_argument("--sent", dest="sent", action="store_true", help="the message was delivered")
     outcome.add_argument("--failed", dest="sent", action="store_false", help="the message was not delivered")
+
+    graphs = groups.add_parser("graphs", help="campaign graph threads in flight").add_subparsers(
+        dest="command", required=True
+    )
+    graphs.add_parser("check", help="list threads parked before a node the graph no longer has (exit 1 if any)")
+    graphs.add_parser("reseat", help="reset those threads so route places each campaign from its tables").add_argument(
+        "--node", required=True, help="the removed node the threads are parked before"
+    )
 
     models = groups.add_parser("models", help="the model registry").add_subparsers(dest="command", required=True)
     models.add_parser("sync", help="load config/models.toml into model_registry")
