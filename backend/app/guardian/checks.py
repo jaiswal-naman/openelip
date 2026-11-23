@@ -31,9 +31,31 @@ from app.trust import api as trust
 from .budget import limits_reached
 from .policy import SubjectGate
 
-GUARDIAN_VERSION = "guardian-2026-11-a"
+GUARDIAN_VERSION = "guardian-2026-11-b"
 CHECK_KINDS = ("citations", "consent", "scope", "budget", "injection", "rate_limit")
 MAX_FOLLOW_UPS = 2  # per campaign (N11)
+SESSION_QUESTIONS = 40  # assumption, AI_SYSTEM 8: questions one Twin session takes (twin.api.SESSION_QUESTIONS; a test
+# keeps the two equal, since the Guardian may not import the Twin)
+SESSION_COST_MICROUSD = 500_000  # assumption, AI_SYSTEM 8: $0.50 of model cost for one Twin session
+# INDEX decision 30: which topic each kind of confirmed fact belongs to (twin.logic.FACT_TOPIC; a test keeps them equal)
+TWIN_FACT_TOPIC = {
+    "role": "experience",
+    "achievement": "experience",
+    "skill": "skills",
+    "certification": "skills",
+    "education": "education",
+    "project": "projects",
+    "other": "other",
+}
+OPEN_PERMISSIONS = ("answer", "ask_me")
+DEFAULT_PERMISSION = "ask_me"  # AI_SYSTEM 8.2: no row means ask me; pay and contact are never open
+LOCKED_TOPICS = ("current_pay", "contact_details")
+TWIN_TOPICS = frozenset(
+    {
+        "experience", "skills", "education", "projects", "availability", "work_authorization", "location",
+        "expected_pay", "motivation", "current_pay", "contact_details", "other",
+    }
+)  # fmt: skip
 
 # The reason codes of the two citation outcomes (the registered check returns one of these, or None)
 CITATION_UNRESOLVED = "citation_unresolved"
@@ -110,6 +132,26 @@ class CheckInput:
     campaign_exhausted: bool = False
     month_exhausted: bool = False
     input_flags: tuple[str, ...] = ()
+    twin: "TwinInput | None" = None  # a twin_answer's own inputs (the fields above that do not apply stay empty)
+
+
+@dataclass(frozen=True)
+class TwinInput:
+    """What the checks of a `twin_answer` read: the payload's parts, the candidate's confirmed facts it cites, which
+    topics are open, whether the introduction consent still stands and how much of the session is used."""
+
+    kind: str  # answer | relay
+    topic: str
+    permission: str  # the candidate's permission for the topic now
+    body: str
+    sentences: tuple[tuple[str, tuple[str, ...]], ...]  # (text, cited fact ids)
+    cited_fact_ids: tuple[str, ...]
+    facts: Mapping[str, dict[str, Any]]  # the cited facts that are confirmed and usable, by id
+    open_topics: frozenset[str]
+    consistent: bool  # the payload names this session, its organization and its introduction
+    consent: bool
+    questions: int
+    spent_microusd: int
 
 
 # ---- reading the world (the only database reads) -------------------------------------------------------------------
@@ -138,6 +180,8 @@ def gather(
     """Read what the checks need. A fact that is not usable, a dossier of another campaign and a claim index out of
     range
     are simply absent, which the citation check reports as unresolved."""
+    if action_type == "twin_answer":
+        return gather_twin(conn, payload, provenance, gate)
     texts = text_fields(action_type, payload)
     declared = provenance.get("fields") or {}
     sources = {name: str(declared.get(name, "model")) for name in texts}
@@ -207,6 +251,87 @@ def gather(
         campaign_exhausted=campaign_exhausted,
         month_exhausted=month_exhausted,
         input_flags=tuple(str(x) for x in provenance.get("input_flags") or ()),
+    )
+
+
+def topic_permissions(conn: Connection, user_id: UUID) -> dict[str, str]:
+    """The candidate's permission for every topic: their rows, `ask_me` for a topic with none, `never` for pay and
+    contact details whatever a row says."""
+    found = {
+        str(r.topic): str(r.permission)
+        for r in conn.execute(
+            text("SELECT topic::text AS topic, permission::text AS permission FROM twin_scopes WHERE user_id = :u"),
+            {"u": user_id},
+        )
+    }
+    return {
+        **{topic: found.get(topic, DEFAULT_PERMISSION) for topic in sorted(TWIN_TOPICS)},
+        **dict.fromkeys(LOCKED_TOPICS, "never"),
+    }
+
+
+def topic_permission(conn: Connection, user_id: UUID, topic: object) -> str:
+    """The permission for one topic; a topic that is not one of the twelve counts as never."""
+    permissions = topic_permissions(conn, user_id)
+    return permissions.get(str(topic), "never") if str(topic) in TWIN_TOPICS else "never"
+
+
+def gather_twin(
+    conn: Connection, payload: Mapping[str, Any], provenance: Mapping[str, Any], gate: SubjectGate
+) -> CheckInput:
+    """Read what the six checks need for a `twin_answer` (the gate is the session). Nothing here calls a model."""
+    user_id = gate.user_id
+    kind = str(payload.get("kind"))
+    topic = str(payload.get("topic"))
+    sentences = tuple(
+        (str(item.get("text") or ""), tuple(str(x) for x in item.get("fact_ids", ())))
+        for item in payload.get("sentences") or []
+    )
+    cited = tuple(str(x) for x in payload.get("cited_fact_ids") or ())
+    wanted = {fid for _, ids in sentences for fid in ids} | set(cited)
+    usable = {str(row["id"]): row for row in profile.usable_facts(conn, user_id) if str(row["id"]) in wanted}
+    permissions = topic_permissions(conn, user_id)
+    session = conn.execute(
+        text(
+            """SELECT s.introduction_id, s.organization_id,
+                      has_active_consent(i.user_id, 'introduction', i.organization_id, i.role_id) AS consent,
+                      (SELECT count(*) FROM twin_messages m WHERE m.session_id = s.id AND m.author = 'employer')
+                        AS questions,
+                      COALESCE((SELECT sum(l.cost_microusd) FROM llm_calls l JOIN agent_runs r ON r.id = l.agent_run_id
+                                WHERE r.twin_session_id = s.id), 0) AS spent
+                 FROM twin_sessions s JOIN introductions i ON i.id = s.introduction_id
+                WHERE s.id = :s AND s.user_id = :u"""
+        ),
+        {"s": gate.id, "u": user_id},
+    ).one_or_none()
+    consistent = (
+        session is not None
+        and str(payload.get("session_id")) == str(gate.id)
+        and str(payload.get("introduction_id")) == str(session.introduction_id)
+        and str(payload.get("organization_id")) == str(session.organization_id)
+    )
+    body = str(payload.get("body") or "")
+    return CheckInput(
+        action_type="twin_answer",
+        gate=gate,
+        texts={"body": body},
+        sources={"body": "candidate" if kind == "relay" else "model"},
+        recipient=None,
+        input_flags=tuple(str(x) for x in provenance.get("input_flags") or ()),
+        twin=TwinInput(
+            kind=kind,
+            topic=topic,
+            permission=permissions.get(topic, "never"),
+            body=body,
+            sentences=sentences,
+            cited_fact_ids=cited,
+            facts=usable,
+            open_topics=frozenset(t for t, p in permissions.items() if p in OPEN_PERMISSIONS),
+            consistent=consistent,
+            consent=bool(session.consent) if session is not None else False,
+            questions=int(session.questions) if session is not None else 0,
+            spent_microusd=int(session.spent) if session is not None else 0,
+        ),
     )
 
 
@@ -375,8 +500,94 @@ def check_rate_limit(inp: CheckInput) -> CheckResult:
     return CheckResult("rate_limit", True, None, {})
 
 
+def _twin_citations(tw: TwinInput) -> CheckResult:
+    """A drafted answer cites only confirmed facts of this candidate whose topic is open, in every sentence, and says
+    nothing outside its sentences. A relay is the candidate's own words: the check does not apply."""
+    if tw.kind == "relay":
+        return CheckResult("citations", True, None, {"applies": False})
+    if not tw.sentences or not tw.body.strip():
+        return CheckResult("citations", False, CITATION_UNRESOLVED, {"why": "no_sentences"})
+    left = tw.body
+    for sentence, _ in tw.sentences:
+        if sentence not in left:
+            return CheckResult("citations", False, CITATION_UNRESOLVED, {"why": "text_not_accounted_for"})
+        left = left.replace(sentence, "", 1)
+    if left.strip(" \n\t\r.,;:!?-—–"):
+        return CheckResult("citations", False, CITATION_UNRESOLVED, {"why": "text_not_accounted_for"})
+    seen: set[str] = set()
+    for sentence, ids in tw.sentences:
+        if not ids:
+            return CheckResult("citations", False, CITATION_UNRESOLVED, {"why": "uncited_sentence"})
+        for fact_id in ids:
+            fact = tw.facts.get(fact_id)
+            if fact is None:
+                return CheckResult("citations", False, CITATION_UNRESOLVED, {"why": "fact_not_confirmed"})
+            if TWIN_FACT_TOPIC.get(str(fact["kind"])) not in tw.open_topics:
+                return CheckResult("citations", False, CITATION_UNRESOLVED, {"why": "topic_closed"})
+            seen.add(fact_id)
+    if seen != set(tw.cited_fact_ids):
+        return CheckResult("citations", False, CITATION_UNRESOLVED, {"why": "cited_ids_differ"})
+    return CheckResult("citations", True, None, {"sentences": len(tw.sentences)})
+
+
+def _twin_scope(tw: TwinInput) -> CheckResult:
+    """Nothing about pay or contact details reaches the employer: not in the body, any sentence or the statement of any
+    cited fact (the employer reads those as quotes), and nothing on a topic the candidate closed."""
+    if not tw.consistent:
+        return CheckResult("scope", False, "restricted_data", {"what": "recipient"})
+    if tw.permission == "never":
+        return CheckResult("scope", False, "topic_not_open", {"topic": tw.topic})
+    found = {m.kind for m in trust.restricted_matches(tw.body)}
+    for sentence, _ in tw.sentences:
+        found |= {m.kind for m in trust.restricted_matches(sentence)}
+    if found:
+        return CheckResult("scope", False, "restricted_data", {"what": sorted(found)})
+    for fact_id, fact in tw.facts.items():
+        if trust.restricted_matches(str(fact["statement"])):
+            return CheckResult("scope", False, "restricted_data", {"what": "cited_fact", "fact_id": fact_id})
+    return CheckResult("scope", True, None, {})
+
+
+def _twin_injection(inp: CheckInput, tw: TwinInput) -> CheckResult:
+    """A drafted answer holds no address or link that the cited facts do not hold. Does not apply to a relay."""
+    if tw.kind == "relay":
+        return CheckResult("injection", True, None, {"applies": False})
+    if inp.input_flags:
+        return CheckResult("injection", False, "injection_suspected", {"flags": sorted(set(inp.input_flags))})
+    known = " ".join(str(f["statement"]) for f in tw.facts.values()).lower()
+    for item in _outside_strings(tw.body):
+        if item.lower() not in known:
+            return CheckResult("injection", False, "injection_suspected", {"what": "outside_address"})
+    return CheckResult("injection", True, None, {})
+
+
+def _twin_rate_limit(tw: TwinInput) -> CheckResult:
+    if tw.questions > SESSION_QUESTIONS:
+        return CheckResult("rate_limit", False, "limit_reached", {"limit": "questions", "of": SESSION_QUESTIONS})
+    if tw.spent_microusd >= SESSION_COST_MICROUSD:
+        return CheckResult("rate_limit", False, "limit_reached", {"limit": "cost", "of": SESSION_COST_MICROUSD})
+    return CheckResult("rate_limit", True, None, {})
+
+
+def run_twin(inp: CheckInput) -> list[CheckResult]:
+    """The six checks of a `twin_answer`, in the order of CHECK_KINDS. It has no model call: the model budget does not
+    apply (the session's own cost cap does, in rate_limit)."""
+    tw = inp.twin
+    assert tw is not None
+    return [
+        _twin_citations(tw),
+        CheckResult("consent", tw.consent, None if tw.consent else "consent_missing", {"purpose": "introduction"}),
+        _twin_scope(tw),
+        CheckResult("budget", True, None, {"applies": False}),
+        _twin_injection(inp, tw),
+        _twin_rate_limit(tw),
+    ]
+
+
 def run(inp: CheckInput, *, principal: UUID | None) -> list[CheckResult]:
     """All six checks, in the order of CHECK_KINDS."""
+    if inp.twin is not None:
+        return run_twin(inp)
     return [
         check_citations(inp, principal=principal),
         check_consent(inp),

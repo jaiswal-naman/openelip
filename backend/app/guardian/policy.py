@@ -15,14 +15,21 @@ from uuid import UUID
 
 from sqlalchemy import Connection
 
-POLICY_VERSION = "policy-2026-11-a"
+POLICY_VERSION = "policy-2026-11-b"
 
 ACTION_TYPES = ("submit_application", "send_follow_up", "twin_answer")
 # The types that always need the candidate's approval, whatever the dial row says (GRD-01; the database agrees).
 ALWAYS_APPROVED = frozenset({"submit_application", "send_follow_up"})
-# Types whose checks do not exist yet: the Twin's arrive in Phase 9.
-NOT_AVAILABLE = frozenset({"twin_answer"})
 LEVELS = ("ask_first", "tell_me_after", "never")
+
+
+@dataclass(frozen=True)
+class TwinPolicy:
+    """What key one needs to know about a `twin_answer` besides the dial: whether it is a drafted answer or the
+    candidate's relayed reply, and the candidate's permission for its topic (`answer`, `ask_me` or `never`)."""
+
+    kind: str  # answer | relay
+    topic_permission: str
 
 
 @dataclass(frozen=True)
@@ -62,10 +69,31 @@ class PolicyResult:
     reason_code: str | None = None
 
 
-def decide(action_type: str, *, dial: str, gate: SubjectGate | None) -> PolicyResult:
-    """Key one. `dial` is the candidate's level for this type (`ask_first` when no row). A missing subject is closed."""
-    if action_type not in ACTION_TYPES or action_type in NOT_AVAILABLE:
+def decide(action_type: str, *, dial: str, gate: SubjectGate | None, twin: TwinPolicy | None = None) -> PolicyResult:
+    """Key one. `dial` is the candidate's level for this type (`ask_first` when no row). A missing subject is closed.
+
+    A `twin_answer` is decided only for a Twin session subject and with its `twin` facts: the standing yes (an answer,
+    dial `tell_me_after`, topic permission `answer`, an accepted introduction, which the open subject means) is `allow`;
+    a topic set to `never` is `deny topic_not_open`; a drafted answer under dial `never` is denied (the candidate's own
+    relayed reply is not, and always waits for the candidate); everything else asks."""
+    if action_type not in ACTION_TYPES:
         return PolicyResult("deny", "type_not_available")
+    if action_type == "twin_answer":
+        if twin is None or gate is None or gate.kind != "twin":
+            return PolicyResult("deny", "type_not_available")
+        if gate.closed:
+            return PolicyResult("deny", "session_closed")
+        if not gate.user_active:
+            return PolicyResult("deny", "account_inactive")
+        if twin.topic_permission == "never":
+            return PolicyResult("deny", "topic_not_open")
+        if twin.kind == "relay":
+            return PolicyResult("ask")
+        if dial == "never":
+            return PolicyResult("deny", "dial_never")
+        if dial == "tell_me_after" and twin.topic_permission == "answer":
+            return PolicyResult("allow")
+        return PolicyResult("ask")
     if gate is None or gate.closed:
         return PolicyResult("deny", "campaign_closed")
     if not gate.user_active:

@@ -98,7 +98,9 @@ def _approval(view: dict[str, Any], detail: dict[str, Any] | None = None) -> dic
         "payload": view["payload"],
         "payload_hash": view["payload_hash"],
         "editable_fields": view["editable_fields"],
-        "needs_reply": False,  # a Twin question needing the candidate's reply arrives in Phase 9
+        "needs_reply": view["type"] == "twin_answer"
+        and (view["payload"] or {}).get("kind") == "relay"
+        and view["status"] == "pending",  # the Twin has no answer and waits for the candidate's own words
         "checks": view["checks"],
         "undo_until": view["undo_until"],
         "outcome_code": view["outcome_code"],
@@ -142,7 +144,8 @@ class ApproveIn(BaseModel):
 
     payload_hash: str = Field(min_length=1, max_length=128)
     edits: dict[str, Any] | None = None
-    reply: Any = None  # a Twin answer's reply: Phase 9; refused here
+    reply: Any = None  # a Twin question's reply: the Twin's hook checks it; any other approval refuses it
+    save_to_record: bool = False  # the reply may also be proposed as a change to the record (the Twin's hook)
 
 
 class RejectIn(BaseModel):
@@ -168,22 +171,31 @@ def approve(approval_id: UUID, body: ApproveIn, write: Idempotent) -> Response:
     """Say yes to exactly the payload the person saw. The answer is recorded now and `release` is `pending`: the worker
     runs both keys again and schedules or blocks the action, and the page polls until it is `scheduled` or `blocked`.
     With `edits` this approval is `rejected` (note `edited`) and the replacement action follows the same way."""
-    if body.reply is not None:
-        raise ApiError(
-            422,
-            "validation_failed",
-            "Replies to employer questions arrive with the Twin; this approval takes none.",
-            {"fields": [{"field": "reply", "issue": "not_supported"}]},
-        )
 
     def effect(conn: Connection) -> dict[str, Any]:
         view = guardian.approval_view(conn, write.user_id, approval_id)
         if view is None:
             raise _not_found()
+        hook = guardian.approve_hook(view["type"])
+        extra: dict[str, Any] = {}
+        edits = body.edits
+        if hook is None:
+            if body.reply is not None:
+                raise ApiError(
+                    422,
+                    "validation_failed",
+                    "Replies to employer questions belong to the Twin; this approval takes none.",
+                    {"fields": [{"field": "reply", "issue": "not_supported"}]},
+                )
+        else:
+            # the hook runs first, in this transaction: a refused decision below rolls its writes back with it
+            result = hook(conn, write.user_id, view, reply=body.reply, save_to_record=body.save_to_record)
+            edits = result.edits if result.edits is not None else body.edits
+            extra = result.extra
         decision = guardian.decide(
-            conn, write.user_id, approval_id, approve=True, payload_hash=body.payload_hash, edits=body.edits
+            conn, write.user_id, approval_id, approve=True, payload_hash=body.payload_hash, edits=edits
         )
-        return {**_decision(decision, view["type"]), "release": decision.release}
+        return {**_decision(decision, view["type"]), "release": decision.release, **extra}
 
     return write.run(effect)
 

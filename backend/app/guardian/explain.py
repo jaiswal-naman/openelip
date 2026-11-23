@@ -28,7 +28,12 @@ TEMPLATES: dict[str, str] = {
         "Text the agent read carried an instruction or an address that does not come from your record or the "
         "employer's own site, so the draft was held."
     ),
-    "limit_reached": "Two follow-ups were already sent for this campaign, which is the most allowed.",
+    "limit_reached": (
+        "A limit was reached, so this was held: two follow-ups for a campaign, or 40 questions or 50 cents of model "
+        "cost for one Twin conversation."
+    ),
+    "topic_not_open": "You have not opened this topic to the Twin, so it was not answered.",
+    "session_closed": "This conversation with the employer is closed, so nothing was sent.",
     # pauses
     "candidate": "You paused this campaign.",
     "scam_suspected": 'The posting looks like a scam, so work stopped before anything was shared: "{quote}"',

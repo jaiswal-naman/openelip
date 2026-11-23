@@ -29,7 +29,7 @@ def verdict(action_type, dial="ask_first", gate=GATE):
 
 
 def test_the_policy_version_is_named():
-    assert policy.POLICY_VERSION == "policy-2026-11-a"
+    assert policy.POLICY_VERSION == "policy-2026-11-b"
 
 
 @pytest.mark.parametrize("action_type", ["submit_application", "send_follow_up"])

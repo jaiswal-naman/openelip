@@ -9,13 +9,16 @@ caller gives. The API can therefore never write a passing check; the worker reru
 
 Every status change that matters publishes `guardian.action_changed` (cause `a{id}.{status}`) when the action
 belongs to a
-campaign, so the campaign's thread wakes.
+campaign, so the campaign's thread wakes. A `twin_answer` belongs to a Twin session instead: its thread wakes through
+`guardian.twin_action_changed`, published only from `decide` (a rejection), `release` (scheduled or blocked),
+`expire_due` and `cancel_open`, never from `propose_action`, whose result the Twin's graph handles in the same run
+(INDEX decision 36).
 """
 
 import hashlib
 import json
 from collections.abc import Iterator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -37,7 +40,11 @@ HELD_MINIMUM = timedelta(minutes=1)  # a resumed follow-up keeps at least this m
 EDITABLE_FIELDS: dict[str, list[str]] = {
     "submit_application": ["answers[].answer", "cover_note"],
     "send_follow_up": ["subject", "body"],
+    "twin_answer": [
+        "body"
+    ],  # only a relay: the candidate's reply (a drafted answer is approved or rejected, not edited)
 }
+TWIN_EVENT = "guardian.twin_action_changed"
 MAX_EDIT_LENGTH = 5000  # assumption: characters in one edited field
 
 
@@ -93,6 +100,24 @@ def _changed(conn: Connection, action_id: int, campaign_id: UUID | None, user_id
         )
 
 
+def _twin_changed(
+    conn: Connection, action_id: int, user_id: UUID, action_type: str, inputs: Mapping[str, Any] | None, status: str
+) -> None:
+    """Tell the Twin's thread that one of its actions moved: one `twin.resume` job whose cause is `a{id}.{status}`.
+    Nothing for any other action type."""
+    question_id = (inputs or {}).get("question_id")
+    if action_type != "twin_answer" or question_id is None:
+        return
+    cause = f"a{action_id}.{status}"
+    events.publish(
+        conn,
+        TWIN_EVENT,
+        {"question_id": str(question_id), "cause": cause, "agent_action_id": action_id, "status": status},
+        key=f"{question_id}:{cause}",
+        user_id=user_id,
+    )
+
+
 @contextmanager
 def _two_key_errors(conn: Connection, action_id: int) -> Iterator[None]:
     """Run one statement in a savepoint; a refusal by the two-key trigger becomes `409 conflict` with the action's
@@ -122,9 +147,26 @@ def _evidence(provenance: Mapping[str, Any]) -> list[dict[str, Any]]:
     return list(found.values())
 
 
-def _decide(conn: Connection, gate: policy.SubjectGate, action_type: str) -> policy.PolicyResult:
-    """Key one, with the dial read now."""
-    return policy.decide(action_type, dial=autonomy.level_of(conn, gate.user_id, action_type), gate=gate)
+def _decide(
+    conn: Connection, gate: policy.SubjectGate, action_type: str, payload: Mapping[str, Any] | None = None
+) -> policy.PolicyResult:
+    """Key one, with the dial (and for a Twin answer the topic's permission) read now."""
+    twin = None
+    if action_type == "twin_answer" and gate.kind == "twin":
+        shape = payload or {}
+        twin = policy.TwinPolicy(
+            str(shape.get("kind")), checks.topic_permission(conn, gate.user_id, shape.get("topic"))
+        )
+    return policy.decide(action_type, dial=autonomy.level_of(conn, gate.user_id, action_type), gate=gate, twin=twin)
+
+
+def _gate_for(conn: Connection, campaign_id: UUID | None, twin_session_id: UUID | None) -> policy.SubjectGate | None:
+    """The subject an action belongs to: its campaign, or its Twin session; None when neither can be read."""
+    if campaign_id is not None:
+        return policy.read_gate(conn, "campaign", campaign_id)
+    if twin_session_id is not None:
+        return policy.read_gate(conn, "twin", twin_session_id)
+    return None
 
 
 def _run_checks(
@@ -137,9 +179,9 @@ def _run_checks(
     provenance: Mapping[str, Any],
 ) -> list[checks.CheckResult]:
     """Key two on the payload as it stands, with the six check rows written. The model call of the citation check is
-    charged to the campaign."""
+    charged to the campaign. A Twin answer's checks call no model."""
     inp = checks.gather(conn, action_type, payload, provenance, gate, action_id=action_id)
-    with attributed(campaign_id=gate.id, agent_run_id=run_id):
+    with attributed(campaign_id=gate.id, agent_run_id=run_id) if gate.kind == "campaign" else nullcontext():
         results = checks.run(inp, principal=gate.user_id)
     for check in results:
         conn.execute(
@@ -256,9 +298,9 @@ def _insert_action(
 
 
 def _gate_of(conn: Connection, run: Any) -> policy.SubjectGate:
-    gate = policy.read_gate(conn, "campaign", run.campaign_id) if run.campaign_id else None
+    gate = _gate_for(conn, run.campaign_id, run.twin_session_id)
     if gate is None:
-        raise LookupError("the run has no campaign the Guardian can read")
+        raise LookupError("the run has no campaign or Twin session the Guardian can read")
     return gate
 
 
@@ -278,9 +320,24 @@ def propose_action(
     worker connection. Pass the step id in `inputs` (`{"step_id": ...}`): proposing again for the same step returns the
     action already made."""
     run = conn.execute(
-        text("SELECT id, user_id, campaign_id FROM agent_runs WHERE id = :id FOR NO KEY UPDATE"), {"id": run_id}
+        text("SELECT id, user_id, campaign_id, twin_session_id FROM agent_runs WHERE id = :id FOR NO KEY UPDATE"),
+        {"id": run_id},
     ).one()
     step_id = (inputs or {}).get("step_id")
+    question_id, twin_kind = (inputs or {}).get("question_id"), (inputs or {}).get("kind")
+    if action_type == "twin_answer" and question_id is not None and twin_kind is not None:
+        found = conn.execute(
+            text(
+                """SELECT a.id, a.status::text AS status, p.id AS approval_id FROM agent_actions a
+                   LEFT JOIN approvals p ON p.agent_action_id = a.id
+                   WHERE a.agent_run_id = :r AND a.action_type = 'twin_answer' AND a.inputs ->> 'question_id' = :q
+                     AND a.inputs ->> 'kind' = :k AND a.inputs ->> 'replaces' IS NULL
+                   ORDER BY a.id LIMIT 1"""
+            ),
+            {"r": run_id, "q": str(question_id), "k": str(twin_kind)},
+        ).one_or_none()
+        if found is not None:
+            return Proposed(found.id, found.status, found.approval_id, ())
     if step_id is not None:
         found = conn.execute(
             text(
@@ -295,9 +352,9 @@ def propose_action(
         if found is not None:
             return Proposed(found.id, found.status, found.approval_id, ())
     gate = _gate_of(conn, run)
-    result = _decide(conn, gate, action_type)
-    if result.decision == "allow":
-        raise RuntimeError("an allow decision does not exist before the Twin (Phase 9)")
+    result = _decide(conn, gate, action_type, payload)
+    if result.decision == "allow" and action_type != "twin_answer":
+        raise RuntimeError("only a Twin answer can be allowed without the candidate's approval")
     action_id = _insert_action(
         conn,
         run,
@@ -318,6 +375,10 @@ def propose_action(
     if reason is not None:
         _block(conn, row, reason)
         return Proposed(action_id, "blocked", None, tuple(checks.failed(results)))
+    if result.decision == "allow":  # the Twin's standing yes: both keys passed and no approval is needed
+        _move(conn, action_id, "scheduled")
+        log.event("guardian.scheduled", action_id=action_id, kind=action_type)
+        return Proposed(action_id, "scheduled", None, ())
     approval_id: UUID = conn.execute(
         text(
             """INSERT INTO approvals (user_id, agent_action_id, expires_at)
@@ -346,6 +407,8 @@ def apply_edits(
     fields of EDITABLE_FIELDS may change: a follow-up's subject and body; a packet's cover note and the `answer` of an
     answer given as `{"question_id", "answer"}`. Anything else is `422 validation_failed`."""
     allowed = {"send_follow_up": {"subject", "body"}, "submit_application": {"cover_note", "answers"}}.get(action_type)
+    if action_type == "twin_answer" and payload.get("kind") == "relay":
+        allowed = {"body"}  # the candidate's reply; a drafted answer cannot be edited, it would lose its citations
     if allowed is None:
         raise _invalid("edits", "not_editable")
     for name in edits:
@@ -395,7 +458,8 @@ def decide(
     row = conn.execute(
         text(
             """SELECT p.id, p.status::text AS status, p.expires_at <= now() AS is_expired, a.id AS action_id,
-                      a.campaign_id, a.action_type::text AS action_type, a.payload, a.status::text AS action_status
+                      a.campaign_id, a.action_type::text AS action_type, a.payload, a.inputs,
+                      a.status::text AS action_status
                FROM approvals p JOIN agent_actions a ON a.id = p.agent_action_id
                WHERE p.id = :id AND p.user_id = :u FOR UPDATE OF p"""
         ),
@@ -431,6 +495,8 @@ def decide(
     if approval_status == "rejected":
         _move(conn, row.action_id, "rejected", outcome_code="edited" if edited else "rejected")
         _changed(conn, row.action_id, row.campaign_id, user_id, "rejected")
+        if not edited:  # an edit's replacement is released by the worker, which tells the Twin then
+            _twin_changed(conn, row.action_id, user_id, row.action_type, row.inputs, "rejected")
     if approve:
         queue.enqueue(
             conn,
@@ -479,15 +545,16 @@ def _release(conn: Connection, approval_id: UUID, edits: Mapping[str, Any] | Non
         text(
             """SELECT p.status::text AS approval_status, p.note AS approval_note, a.id, a.user_id, a.campaign_id,
                       a.agent_run_id, a.action_type::text AS action_type, a.status::text AS status, a.payload, a.inputs,
-                      a.organization_id
+                      a.organization_id, r.twin_session_id
                FROM approvals p JOIN agent_actions a ON a.id = p.agent_action_id
+               JOIN agent_runs r ON r.id = a.agent_run_id
                WHERE p.id = :id FOR UPDATE OF a"""
         ),
         {"id": approval_id},
     ).one_or_none()
     if row is None:
         return "noop"
-    gate = policy.read_gate(conn, "campaign", row.campaign_id) if row.campaign_id else None
+    gate = _gate_for(conn, row.campaign_id, row.twin_session_id)
     if gate is None:
         return "noop"
     provenance = (row.inputs or {}).get("provenance") or {}
@@ -495,13 +562,15 @@ def _release(conn: Connection, approval_id: UUID, edits: Mapping[str, Any] | Non
         return _release_edited(conn, row, gate, provenance, edits)
     if row.approval_status != "approved" or row.status != "awaiting_approval":
         return "noop"
-    result = _decide(conn, gate, row.action_type)
+    result = _decide(conn, gate, row.action_type, row.payload)
     results = _run_checks(conn, row.id, row.agent_run_id, gate, row.action_type, row.payload, provenance)
     reason = _first_reason(result, results)
     if reason is not None:
         _block(conn, row, reason)
+        _twin_changed(conn, row.id, row.user_id, row.action_type, row.inputs, "blocked")
         return "blocked"
     _schedule(conn, row)
+    _twin_changed(conn, row.id, row.user_id, row.action_type, row.inputs, "scheduled")
     return "scheduled"
 
 
@@ -528,9 +597,17 @@ def _release_edited(
         "sentences": [s for s in provenance.get("sentences") or [] if s.get("field") not in written],
     }
     run = conn.execute(
-        text("SELECT id, user_id, campaign_id FROM agent_runs WHERE id = :id"), {"id": original.agent_run_id}
+        text("SELECT id, user_id, campaign_id, twin_session_id FROM agent_runs WHERE id = :id"),
+        {"id": original.agent_run_id},
     ).one()
-    result = _decide(conn, gate, original.action_type)
+    result = _decide(conn, gate, original.action_type, payload)
+    # a Twin answer's replacement keeps the question and kind, so the Twin's thread recognises it (campaign actions
+    # keep only `replaces`, as in Phase 7)
+    kept = (
+        {k: v for k, v in (original.inputs or {}).items() if k != "provenance"}
+        if original.action_type == "twin_answer"
+        else {}
+    )
     action_id = _insert_action(
         conn,
         run,
@@ -539,7 +616,7 @@ def _release_edited(
         provenance=new_provenance,
         decision=result.decision,
         organization_id=original.organization_id,
-        inputs={"replaces": original.id},
+        inputs={**kept, "replaces": original.id},
         summary=f"{original.action_type.replace('_', ' ').capitalize()} edited by you.".capitalize(),
     )
     results = _run_checks(conn, action_id, run.id, gate, original.action_type, payload, new_provenance)
@@ -556,14 +633,19 @@ def _release_edited(
         {"a": action_id},
     )
     row = conn.execute(
-        text("SELECT id, user_id, campaign_id, action_type::text AS action_type FROM agent_actions WHERE id = :id"),
+        text(
+            """SELECT id, user_id, campaign_id, action_type::text AS action_type, inputs FROM agent_actions
+               WHERE id = :id"""
+        ),
         {"id": action_id},
     ).one()
     reason = _first_reason(result, results)
     if reason is not None:
         _block(conn, row, reason)
+        _twin_changed(conn, row.id, row.user_id, row.action_type, row.inputs, "blocked")
         return "blocked"
     _schedule(conn, row)
+    _twin_changed(conn, row.id, row.user_id, row.action_type, row.inputs, "scheduled")
     return "scheduled"
 
 
@@ -613,35 +695,53 @@ def expire_due(conn: Connection) -> int:
         moved = conn.execute(
             text(
                 """UPDATE agent_actions SET status = 'expired', outcome_code = 'expired'
-                   WHERE id = :id AND status = 'awaiting_approval' RETURNING user_id, campaign_id"""
+                   WHERE id = :id AND status = 'awaiting_approval'
+                   RETURNING user_id, campaign_id, action_type::text AS action_type, inputs"""
             ),
             {"id": found.agent_action_id},
         ).one_or_none()
         if moved is not None:
             _changed(conn, found.agent_action_id, moved.campaign_id, moved.user_id, "expired")
+            _twin_changed(conn, found.agent_action_id, moved.user_id, moved.action_type, moved.inputs, "expired")
     return len(rows)
 
 
-def cancel_open(conn: Connection, campaign_id: UUID, note: str) -> dict[str, int]:
+def cancel_open(
+    conn: Connection, campaign_id: UUID | None, note: str, *, session_id: UUID | None = None
+) -> dict[str, int]:
     """A campaign is cancelled (CMP-07): its pending approvals expire with `note`, its awaiting and scheduled
     actions are
     cancelled and its waiting messages cancelled. A message already sending or sent keeps its action `scheduled` for the
-    settle sweep. Runs on the connection the caller gives (the API's, for the candidate's own cancel)."""
+    settle sweep. Runs on the connection the caller gives (the API's, for the candidate's own cancel).
+
+    With `session_id` (and no campaign) it does the same for the open `twin_answer` actions of that Twin session, which
+    the Twin's `close_session` calls; each cancelled action tells the Twin's thread."""
+    if (campaign_id is None) == (session_id is None):
+        raise ValueError("give exactly one of campaign_id and session_id")
+    scope = (
+        "a.campaign_id = :c"
+        if session_id is None
+        else """a.action_type = 'twin_answer'
+                AND a.agent_run_id IN (SELECT r.id FROM agent_runs r WHERE r.twin_session_id = :c)"""
+    )
+    owner = campaign_id if session_id is None else session_id
     expired = conn.execute(
         text(
-            """UPDATE approvals SET status = 'expired', decided_at = now(), note = :note
-               WHERE status = 'pending' AND agent_action_id IN (SELECT id FROM agent_actions WHERE campaign_id = :c)
-               RETURNING agent_action_id"""
+            f"""UPDATE approvals SET status = 'expired', decided_at = now(), note = :note
+                WHERE status = 'pending'
+                  AND agent_action_id IN (SELECT a.id FROM agent_actions a WHERE {scope})
+                RETURNING agent_action_id"""
         ),
-        {"c": campaign_id, "note": note},
+        {"c": owner, "note": note},
     ).all()
     open_rows = conn.execute(
         text(
-            """SELECT id, user_id, status::text AS status FROM agent_actions
-               WHERE campaign_id = :c AND kind = 'outside_action' AND status IN ('awaiting_approval', 'scheduled')
-               ORDER BY id FOR UPDATE"""
+            f"""SELECT a.id, a.user_id, a.status::text AS status, a.action_type::text AS action_type, a.inputs
+                FROM agent_actions a
+                WHERE {scope} AND a.kind = 'outside_action' AND a.status IN ('awaiting_approval', 'scheduled')
+                ORDER BY a.id FOR UPDATE OF a"""
         ),
-        {"c": campaign_id},
+        {"c": owner},
     ).all()
     scheduled = [r.id for r in open_rows if r.status == "scheduled"]
     cancelled_messages = outbox.cancel_for_actions(conn, scheduled, "cancelled")
@@ -652,6 +752,7 @@ def cancel_open(conn: Connection, campaign_id: UUID, note: str) -> dict[str, int
             continue
         _move(conn, found.id, "cancelled", outcome_code="cancelled")
         _changed(conn, found.id, campaign_id, found.user_id, "cancelled")
+        _twin_changed(conn, found.id, found.user_id, found.action_type, found.inputs, "cancelled")
         cancelled += 1
     return {
         "approvals_expired": len(expired),
@@ -766,6 +867,8 @@ def _view(row: Any) -> dict[str, Any]:
     found = dict(row._mapping)
     found["payload_hash"] = payload_hash_of(found["payload"])
     found["editable_fields"] = EDITABLE_FIELDS.get(found["type"], [])
+    if found["type"] == "twin_answer" and (found["payload"] or {}).get("kind") != "relay":
+        found["editable_fields"] = []  # only the candidate's reply is editable, never a drafted answer
     return found
 
 

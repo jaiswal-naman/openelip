@@ -33,7 +33,7 @@ class Attribution:
     """Whose work the model calls inside `attributed` are: the campaign and the agent run they are charged to, and the
     ledger ids of the calls made so far (a `model_call` recorder row stores them, and its cost is their sum)."""
 
-    campaign_id: UUID
+    campaign_id: UUID | None  # None for work that belongs to no campaign (a Twin question's calls)
     agent_run_id: UUID
     call_ids: list[int] = field(default_factory=list)
 
@@ -45,7 +45,7 @@ _ATTRIBUTION: ContextVar[Attribution | None] = ContextVar("llm_attribution", def
 
 
 @contextmanager
-def attributed(*, campaign_id: UUID, agent_run_id: UUID) -> Iterator[Attribution]:
+def attributed(*, campaign_id: UUID | None, agent_run_id: UUID) -> Iterator[Attribution]:
     """Charge every model call made inside the block, however deep (match, tailor and apply included), to a campaign and
     an agent run: `llm_calls.campaign_id` and `agent_run_id` are written for each, and the new ids are appended to the
     yielded Attribution's `call_ids`. Outside a block both columns stay NULL."""
