@@ -12,7 +12,7 @@ from sqlalchemy import text
 from app.hiring import jobs as hiring_jobs  # noqa: F401  (importing it is how the worker loads the template)
 from app.hiring import org_mail
 from app.platform import config, relay
-from app.platform.relay import Outgoing, Refusal
+from app.platform.relay import Outgoing, Refusal, is_undeliverable
 from tests.hiring import world
 from tests.hiring.factories import make_candidate, make_member, make_org
 
@@ -91,7 +91,8 @@ def test_an_example_test_address_is_never_sent_to(conn):
     _, payload = queue_invitation(conn, org, email="someone@mail.example.test")
     world.act_as(conn, "app_worker")
 
-    assert org_mail.resolve(conn, payload) == Refusal("cancelled", "undeliverable")
+    out = org_mail.resolve(conn, payload)
+    assert isinstance(out, Outgoing) and is_undeliverable(conn, out.to)  # the relay core refuses it (plan 08-01)
 
 
 def test_an_address_that_belongs_to_a_synthetic_account_is_never_sent_to(conn):
@@ -100,4 +101,5 @@ def test_an_address_that_belongs_to_a_synthetic_account_is_never_sent_to(conn):
     _, payload = queue_invitation(conn, org)
     world.act_as(conn, "app_worker")
 
-    assert org_mail.resolve(conn, payload) == Refusal("cancelled", "undeliverable")
+    out = org_mail.resolve(conn, payload)
+    assert isinstance(out, Outgoing) and is_undeliverable(conn, out.to)  # the relay core refuses it (plan 08-01)

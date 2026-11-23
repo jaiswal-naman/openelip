@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import Connection, text
 
 from app.platform import config, relay
-from app.platform.relay import Outgoing, Refusal, is_undeliverable
+from app.platform.relay import Outgoing, Refusal
 
 
 def _line(value: str) -> str:
@@ -69,8 +69,6 @@ def resolve_accepted(conn: Connection, payload: dict[str, Any]) -> Outgoing | Re
     to = _notice_recipient(conn, row.organization_id, row.created_by)
     if to is None:
         return Refusal("cancelled", "no_recipient")
-    if is_undeliverable(conn, to):
-        return Refusal("cancelled", "undeliverable")
     settings = config.get()
     due: datetime = row.answer_due_at.astimezone(ZoneInfo(row.timezone))
     link = f"{settings.app_base_url.rstrip('/')}/hire/shortlist/{row.role_id}"
@@ -100,8 +98,6 @@ def resolve_answered(conn: Connection, payload: dict[str, Any]) -> Outgoing | Re
     ).one_or_none()
     if row is None or row.answer is None:
         return Refusal("cancelled", "stale")
-    if is_undeliverable(conn, row.email):
-        return Refusal("cancelled", "undeliverable")
     settings = config.get()
     organization, title = _line(row.name), _line(row.title)
     body = (

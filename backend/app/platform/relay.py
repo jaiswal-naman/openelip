@@ -53,8 +53,24 @@ class Refusal:
     code: str
 
 
-def relay_once(conn: Connection) -> int:
-    """Send the rows that are due and return how many were sent."""
+@dataclass(frozen=True)
+class Captured:
+    """A resolved message handed to a capture sink instead of the mail server (the wind tunnel; nothing leaves the
+    machine). The outbox row's own ids let the caller tie it to the action that made it."""
+
+    outbox_id: UUID
+    template: str
+    to: str
+    subject: str
+    body: str
+    headers: dict[str, str]
+    agent_action_id: int | None
+    dedupe_key: str | None
+
+
+def relay_once(conn: Connection, capture: Callable[[Captured], None] | None = None) -> int:
+    """Send the rows that are due and return how many were sent. With `capture`, every resolved message is handed to
+    it and settled `sent`; SMTP is never opened in that pass."""
     _expire_and_reconcile(conn)
     conn.commit()
     sent = 0
@@ -63,7 +79,7 @@ def relay_once(conn: Connection) -> int:
         conn.commit()  # `sending` is now visible to every other relay
         if row is None:
             break
-        sent += _deliver(conn, row)
+        sent += _deliver(conn, row, capture)
         conn.commit()
     return sent
 
@@ -107,7 +123,7 @@ def _claim(conn: Connection) -> RowMapping | None:
                 """UPDATE outbox SET status = 'sending', locked_at = now(), attempts = attempts + 1
                    WHERE id = (SELECT id FROM outbox WHERE status = 'pending' AND not_before <= now()
                                ORDER BY not_before, created_at LIMIT 1 FOR UPDATE SKIP LOCKED)
-                   RETURNING id, template, payload, attempts"""
+                   RETURNING id, template, payload, attempts, agent_action_id, dedupe_key"""
             )
         )
         .mappings()
@@ -115,16 +131,36 @@ def _claim(conn: Connection) -> RowMapping | None:
     )
 
 
-def _deliver(conn: Connection, row: RowMapping) -> int:
+def _deliver(conn: Connection, row: RowMapping, capture: Callable[[Captured], None] | None = None) -> int:
     """Work out who gets what, send it, and record the outcome. Returns 1 when the message was sent."""
     outbox_id, kind = row["id"], row["template"]
     resolver = RESOLVERS.get(kind)
     resolved = resolver(conn, row["payload"]) if resolver else Refusal("failed", "unknown_template")
+    # the one check, for every template; a capturing pass never leaves the machine, and the wind tunnel's own people
+    # are on example.test, so it sees their mail
+    if capture is None and isinstance(resolved, Outgoing) and is_undeliverable(conn, resolved.to):
+        resolved = Refusal("cancelled", "undeliverable")
     conn.commit()  # no transaction stays open while talking to the mail server
     if isinstance(resolved, Refusal):
         _settle(conn, outbox_id, resolved.status, resolved.code)
         log.event("outbox.refused", outbox_id=outbox_id, kind=kind, outcome=resolved.code)
         return 0
+    if capture is not None:
+        capture(
+            Captured(
+                outbox_id,
+                kind,
+                resolved.to,
+                resolved.subject,
+                resolved.body,
+                dict(resolved.headers),
+                row["agent_action_id"],
+                row["dedupe_key"],
+            )
+        )
+        _settle(conn, outbox_id, "sent", message_id=f"windtunnel:{outbox_id}")
+        log.event("outbox.send", outbox_id=outbox_id, kind=kind, outcome="captured")
+        return 1
     settings = config.get()
     message_id = f"<{outbox_id}@{settings.mail_from.rpartition('@')[2]}>"  # the operator finds the row by this id
     verdict = _send(settings, _message(settings, message_id, resolved))
@@ -156,8 +192,6 @@ def _resolve_signin(conn: Connection, payload: dict[str, Any]) -> Outgoing | Ref
     ).one_or_none()
     if login is None or login.is_used or login.is_expired:
         return Refusal("cancelled", "stale")  # replaced by a newer code, already used, or past its life
-    if is_undeliverable(conn, login.email):
-        return Refusal("cancelled", "undeliverable")
     subject, body = mail.signin(config.get().product_name, code, max(1, login.minutes_left))
     return Outgoing(login.email, subject, body)
 
@@ -168,8 +202,9 @@ RESOLVERS: dict[str, Callable[[Connection, dict[str, Any]], Outgoing | Refusal]]
 
 
 def is_undeliverable(conn: Connection, address: str) -> bool:
-    """ARCHITECTURE 5.5: never to an example.test address (reserved, it cannot exist) or to a synthetic account. Every
-    resolver asks this of its recipient."""
+    """ARCHITECTURE 5.5: never to an example.test address (reserved, it cannot exist) or to a synthetic account. The
+    relay
+    asks this once of every resolved recipient."""
     domain = address.rpartition("@")[2].lower()
     if domain == "example.test" or domain.endswith(".example.test"):
         return True
