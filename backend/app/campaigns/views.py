@@ -389,7 +389,7 @@ def _packet(conn: Connection, user_id: UUID, steps: list[Any], actions: list[Any
 
 
 def _missing_topics(claims: list[Any]) -> list[str]:
-    """The topics no claim covers; a dossier whose claims carry no topic (none written by the Researcher) reports none."""
+    """The topics no claim covers; a dossier whose claims name no topic reports none."""
     topical = [c for c in claims if isinstance(c, dict) and c.get("topic")]
     return [] if claims and not topical else research.missing_topics(topical)
 

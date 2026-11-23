@@ -2,7 +2,7 @@
 
 Rows are built with the 07-01 factories in the shapes the INDEX "Step outputs" contract fixes, committed, and read as
 the real `app_api` role (db.transaction and the HTTP client), so row-level security and the grants apply. The graph is
-never run. Everything is invented. Every sentence under test is a code template, so the tests compare it to the template.
+never run. Everything is invented. Every sentence under test is a code template, compared to the template.
 """
 
 from datetime import datetime, timedelta, timezone
