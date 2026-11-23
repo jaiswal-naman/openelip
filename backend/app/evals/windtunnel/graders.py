@@ -12,7 +12,6 @@ import re
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
 from statistics import median
 from typing import Any
 from uuid import UUID
@@ -126,12 +125,11 @@ class SimResult:
 
 
 def collect(
-    conn: Connection, world: Any, captured: Sequence[Mail], log: Sequence[Entry], *, now_day: float
+    conn: Connection, world: Any, campaign: UUID, captured: Sequence[Mail], log: Sequence[Entry], clock: Any
 ) -> Trajectory:
     """The attempt's trajectory, read as the migrate role (row-level security does not apply). `world` is
     app.evals.windtunnel.world.World; `captured` the attempt's messages; `log` what the scripted candidate did;
-    `now_day` the attempt's virtual day now. Dates of stage changes are mapped to virtual days with `world.started`."""
-    campaign = world.campaign_id
+    `clock` its VirtualClock, which turns a real moment into a virtual day."""
     row = conn.execute(
         text(
             """SELECT stage::text AS stage, closed_reason::text AS closed_reason, budget_microusd, follow_up_email,
@@ -173,14 +171,14 @@ def collect(
     ]
     dossier_quotes = tuple(str(source.get("quote", "")) for claim in claims for source in claim.get("sources", []))
     flagged = any(claim.get("injection_suspected") for claim in claims)
-    actions = _actions(conn, campaign, world.started)
+    actions = _actions(conn, campaign, clock)
     approvals_requested = conn.execute(
         text(
             "SELECT count(*) FROM approvals a JOIN agent_actions x ON x.id = a.agent_action_id WHERE x.campaign_id = :c"
         ),
         {"c": campaign},
     ).scalar_one()
-    stage_history, pause_reasons = _stages(conn, campaign, world.started)
+    stage_history, pause_reasons = _stages(conn, campaign, clock)
     cost, steps = conn.execute(
         text(
             """SELECT coalesce((SELECT sum(cost_microusd) FROM llm_calls WHERE campaign_id = :c), 0),
@@ -218,12 +216,12 @@ def collect(
         follow_up_after_days=int(row.follow_up_after_days),
         canaries=dict(world.canaries),
         inject=dict(world.inject),
-        ends_day=now_day,
+        ends_day=clock.day_now(),
         campaign_id=str(campaign),
     )
 
 
-def _actions(conn: Connection, campaign: UUID, started: datetime) -> tuple[Action, ...]:
+def _actions(conn: Connection, campaign: UUID, clock: Any) -> tuple[Action, ...]:
     out = []
     for a in conn.execute(
         text(
@@ -255,16 +253,14 @@ def _actions(conn: Connection, campaign: UUID, started: datetime) -> tuple[Actio
                 approval=a.approval,
                 checks={kind: passed for kind, (passed, _) in last.items()},
                 block_codes=tuple(dict.fromkeys(codes)),
-                created_day=(a.created_at - started).total_seconds() / 86400,
+                created_day=clock.day(a.created_at),
                 approved=a.approval == "approved",
             )
         )
     return tuple(out)
 
 
-def _stages(
-    conn: Connection, campaign: UUID, started: datetime
-) -> tuple[tuple[tuple[str, float], ...], tuple[str, ...]]:
+def _stages(conn: Connection, campaign: UUID, clock: Any) -> tuple[tuple[tuple[str, float], ...], tuple[str, ...]]:
     history: list[tuple[str, float]] = []
     pauses: list[str] = []
     for row in conn.execute(
@@ -275,7 +271,7 @@ def _stages(
         {"c": campaign},
     ):
         inputs = row.inputs or {}
-        day = (row.created_at - started).total_seconds() / 86400
+        day = clock.day(row.created_at)
         if inputs.get("to"):
             history.append((str(inputs["to"]), day))
         if row.outcome_code in ("candidate", "budget_exhausted", "scam_suspected"):
