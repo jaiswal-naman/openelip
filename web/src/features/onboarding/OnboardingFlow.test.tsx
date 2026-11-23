@@ -66,7 +66,7 @@ describe("onboarding", () => {
   it("starts at the AI processing consent, names the step, and shows the sheet to a person who has not agreed", async () => {
     renderWithApi(<OnboardingFlow />, { ...aiRoutes({ agreed: false }), "GET /v1/me/record": ok(recordView()) });
     expect(screen.getByRole("heading", { level: 1, name: "AI processing" })).toBeInTheDocument();
-    expect(screen.getByText("Step 1 of 5")).toBeInTheDocument();
+    expect(screen.getByText("Step 1 of 6")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Agree" })).toBeInTheDocument();
     expect(screen.getByText("Example Model Provider")).toBeInTheDocument();
   });
@@ -194,7 +194,7 @@ describe("onboarding", () => {
     nav.search = "step=constraints";
     renderWithApi(<OnboardingFlow />, { ...aiRoutes(), "GET /v1/me/record": ok(recordView()) });
     expect(screen.getByRole("heading", { level: 1, name: "Your hard constraints" })).toBeInTheDocument();
-    expect(screen.getByText("Step 4 of 5")).toBeInTheDocument();
+    expect(screen.getByText("Step 4 of 6")).toBeInTheDocument();
     expect(await screen.findByLabelText("Countries you want jobs in")).toBeInTheDocument(); // the first card is open
     expect(screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
       "Location",
@@ -221,26 +221,34 @@ describe("onboarding", () => {
     expect(within(note).getByRole("link", { name: "your record page" })).toHaveAttribute("href", "/app/record");
   });
 
-  it("asks for preferences on the last step, and Finish leads to the end", async () => {
+  it("asks for preferences on step 5, and Finish leads to the time zone and first matches", async () => {
     const user = userEvent.setup();
     nav.search = "step=preferences";
     renderWithApi(<OnboardingFlow />, { ...aiRoutes(), "GET /v1/me/record": ok(recordView()) });
     expect(screen.getByRole("heading", { level: 1, name: "Your preferences" })).toBeInTheDocument();
-    expect(screen.getByText("Step 5 of 5")).toBeInTheDocument();
+    expect(screen.getByText("Step 5 of 6")).toBeInTheDocument();
     expect(await screen.findByRole("textbox", { name: "A preference, or something you will not accept" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Finish" }));
-    expect(nav.push).toHaveBeenCalledWith("/onboarding?step=done");
+    expect(nav.push).toHaveBeenCalledWith("/onboarding?step=matches");
   });
 
-  it("ends on a panel that links to the record, with what it holds", async () => {
+  it("ends on step 6, the time zone and first matches, with Back to the preferences and no Continue", async () => {
+    const user = userEvent.setup();
+    nav.search = "step=matches";
+    renderWithApi(<OnboardingFlow />, { ...aiRoutes(), "GET /v1/me/record": ok(recordView()) });
+    expect(screen.getByRole("heading", { level: 1, name: "Time zone and first matches" })).toBeInTheDocument();
+    expect(screen.getByText("Step 6 of 6")).toBeInTheDocument();
+    expect(await screen.findByText(/Your brief arrives by 07:00 in/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Finish" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(nav.push).toHaveBeenCalledWith("/onboarding?step=preferences");
+  });
+
+  it("no longer knows the old last step: ?step=done opens the first step", async () => {
     nav.search = "step=done";
-    renderWithApi(<OnboardingFlow />, {
-      ...aiRoutes(),
-      "GET /v1/me/record": ok(recordView({ facts: [fact({ status: "confirmed" })] })),
-    });
-    expect(screen.getByRole("heading", { level: 1, name: "Your record is ready" })).toBeInTheDocument();
-    expect(await screen.findByText("1 confirmed facts")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open your record" })).toHaveAttribute("href", "/app/record");
+    renderWithApi(<OnboardingFlow />, aiRoutes({ agreed: false }));
+    expect(await screen.findByRole("heading", { level: 1, name: "AI processing" })).toBeInTheDocument();
   });
 
   it("sends a signed-out person to sign in and back to onboarding", async () => {

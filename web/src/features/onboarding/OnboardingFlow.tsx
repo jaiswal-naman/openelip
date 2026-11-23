@@ -5,13 +5,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
-import { LinkButton } from "@/components/ui/LinkButton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { LocalTime } from "@/components/ui/Viewer";
 import { useMe } from "@/features/auth/queries";
 import { AiConsentSheet } from "@/features/consent/AiConsentSheet";
 import { useAiConsent } from "@/features/consent/useAiConsent";
-import { recordQuery, unconfirmedFactsQuery } from "@/features/record/api";
+import { unconfirmedFactsQuery } from "@/features/record/api";
 import { AiOffNotice } from "@/features/record/AiOffNotice";
 import { ConstraintCards } from "@/features/record/ConstraintCards";
 import { FactReview } from "@/features/record/FactReview";
@@ -20,11 +19,12 @@ import { PreferenceInput } from "@/features/record/PreferenceInput";
 import { useResume } from "@/features/record/useResume";
 import { useApi } from "@/lib/api/context";
 import styles from "./onboarding.module.css";
+import { MatchesStep } from "./MatchesStep";
 import { UploadStep } from "./UploadStep";
 
-// The five steps of this phase. Time zone and first matches (FRONTEND_UI 3.2 step 6) belong to the matches phase.
-const STEPS = ["consent", "upload", "facts", "constraints", "preferences"] as const;
-type Step = (typeof STEPS)[number] | "done";
+// The six steps of FRONTEND_UI 3.2. The last, time zone and first matches, is step 6.
+const STEPS = ["consent", "upload", "facts", "constraints", "preferences", "matches"] as const;
+type Step = (typeof STEPS)[number];
 
 const TITLES: Record<Step, string> = {
   consent: "AI processing",
@@ -32,7 +32,7 @@ const TITLES: Record<Step, string> = {
   facts: "Check what we read",
   constraints: "Your hard constraints",
   preferences: "Your preferences",
-  done: "Your record is ready",
+  matches: "Time zone and first matches",
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -41,13 +41,14 @@ const SIGN_IN = `/sign-in?next=${encodeURIComponent("/onboarding")}`;
 const INTAKE: Step = "constraints";
 
 function parseStep(raw: string | null): Step {
-  return raw === "done" || (STEPS as readonly string[]).includes(raw ?? "") ? (raw as Step) : "consent";
+  return (STEPS as readonly string[]).includes(raw ?? "") ? (raw as Step) : "consent";
 }
 
 /**
  * Onboarding (FRONTEND_UI 3.2): consent to AI processing, upload a resume, confirm the facts read from it, then the
- * intake. The step is in the address (?step=), and so is the resume being read (&doc=), so a reload or the back button
- * lands where the person was. Every step works without AI: a person who says "Not now" skips the two that need it.
+ * intake, and last the time zone the morning brief is read in and the first matches. The step is in the address (?step=),
+ * and so is the resume being read (&doc=), so a reload or the back button lands where the person was. Every step works
+ * without AI: a person who says "Not now" skips the two that need it.
  */
 export function OnboardingFlow() {
   const router = useRouter();
@@ -73,8 +74,8 @@ export function OnboardingFlow() {
 
   const address = (next: Step, doc: string | null) => `/onboarding?step=${next}${doc ? `&doc=${doc}` : ""}`;
   const go = (next: Step, doc: string | null = documentId) => router.push(address(next, doc));
-  const index = STEPS.indexOf(step as (typeof STEPS)[number]);
-  const after = STEPS[index + 1] ?? "done";
+  const index = STEPS.indexOf(step);
+  const after = STEPS[index + 1];
   const before = index > 0 ? STEPS[index - 1] : null;
   // The first two steps carry their own buttons (Agree, Choose a file); from the facts on, one Continue moves along.
   const hasNext = step === "facts" || step === "constraints" || step === "preferences";
@@ -82,7 +83,7 @@ export function OnboardingFlow() {
   return (
     <div className={styles.flow}>
       <header className={styles.head}>
-        <p className="t-label muted">{step === "done" ? "All steps done" : `Step ${index + 1} of ${STEPS.length}`}</p>
+        <p className="t-label muted">{`Step ${index + 1} of ${STEPS.length}`}</p>
         <h1 className={`t-page ${styles.title}`} ref={heading} tabIndex={-1}>
           {TITLES[step]}
         </h1>
@@ -118,7 +119,7 @@ export function OnboardingFlow() {
             <PreferenceInput />
           </>
         )}
-        {step === "done" && <DonePanel />}
+        {step === "matches" && <MatchesStep />}
       </div>
 
       {(before !== null || hasNext) && (
@@ -251,26 +252,5 @@ function FactsStep({ documentId, onUpload }: { documentId: string | null; onUplo
       {resume.data && <HiddenTextPanel chars={resume.data.hidden_text_chars} flags={resume.data.hidden_text_flags} />}
       <FactReview facts={facts} document={resume.data && resume.data.lines ? { id: resume.data.id, lines: resume.data.lines } : undefined} />
     </>
-  );
-}
-
-/** The end of this phase's onboarding: what the record holds now, and the page where all of it can be changed. */
-function DonePanel() {
-  const api = useApi();
-  const record = useQuery(recordQuery(api));
-  return (
-    <div className={styles.stack}>
-      <p>Your record holds what you confirmed. You can change any of it on your record page, and every change is logged there.</p>
-      {record.data && (
-        <p className={styles.counts}>
-          <span>{record.data.facts.length} confirmed facts</span>
-          <span>{record.data.constraints.length} hard constraints</span>
-          <span>{record.data.preferences.length} preferences</span>
-        </p>
-      )}
-      <LinkButton href="/app/record" variant="primary">
-        Open your record
-      </LinkButton>
-    </div>
   );
 }
