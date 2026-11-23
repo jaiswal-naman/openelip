@@ -117,6 +117,17 @@ def _fresh(conn: Connection, run_id: UUID) -> bool:
     )
 
 
+def _already_asked(conn: Connection, role: OpenRole, user_id: UUID) -> bool:
+    """A shortcut, so a sweep does not build a preview for a candidate asked long ago. It is not the guard: the unique
+    key introductions_once and ON CONFLICT DO NOTHING are, for two jobs that race."""
+    return bool(
+        conn.execute(
+            text("SELECT EXISTS (SELECT 1 FROM introductions WHERE role_id = :role AND user_id = :u)"),
+            {"role": role.id, "u": user_id},
+        ).scalar_one()
+    )
+
+
 def ask_from_run(conn: Connection, role: OpenRole, run_id: UUID) -> AskOutcome:
     """Ask each candidate the run introduced who has no introduction for this role yet. Only a run finished in the last
     24 hours is used. Stops at the first answer_clock refusal (the organization owes an answer): the rest wait for the
@@ -125,10 +136,7 @@ def ask_from_run(conn: Connection, role: OpenRole, run_id: UUID) -> AskOutcome:
     if not _fresh(conn, run_id):
         return AskOutcome(0, 0, False)
     for selection in match.role_selections(conn, run_id):
-        if conn.execute(
-            text("SELECT EXISTS (SELECT 1 FROM introductions WHERE role_id = :role AND user_id = :u)"),
-            {"role": role.id, "u": selection.user_id},
-        ).scalar_one():
+        if _already_asked(conn, role, selection.user_id):
             continue
         frozen = preview.build(conn, selection.user_id, selection)
         if frozen is None:

@@ -59,6 +59,17 @@ class BriefAction(BaseModel):
     body: dict[str, str] | None = None
 
 
+class BriefIntroduction(BaseModel):
+    """An employer asking whether the person would like to talk about a role. The person answers on Today; nothing about
+    what they would share is here."""
+
+    kind: Literal["introduction"]
+    introduction_id: UUID
+    organization_name: str = Field(json_schema_extra=UNTRUSTED)
+    role_title: str = Field(json_schema_extra=UNTRUSTED)
+    expires_at: datetime
+
+
 class BriefDecision(BaseModel):
     """One thing waiting for the person: a match, or the record changes someone suggested. A match nobody assessed
     (is_assessed false) has no requirement table and no verdict: the search ranked it, no model has read it."""
@@ -84,7 +95,7 @@ class BriefDetail(BaseModel):
     local_date: date
     status: BriefStatus
     delivery: BriefDelivery
-    decisions: list[BriefDecision]
+    decisions: list[Annotated[BriefIntroduction | BriefDecision, Field(discriminator="kind")]]
     done_since_last_brief: list[BriefDone]
     open_record_proposals: int
 

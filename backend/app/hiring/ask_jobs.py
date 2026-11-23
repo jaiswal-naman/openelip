@@ -43,6 +43,9 @@ def ask_candidates(conn: Connection, payload: dict[str, Any]) -> None:
         log.event("hiring.ask_skipped", role_id=role.id, outcome="answers_overdue")
         return
     candidates = asks.pool(conn, role)
+    if not candidates:  # an empty run would replace the counts the employer sees (role_preview reads the latest run)
+        log.event("hiring.ask_skipped", role_id=role.id, outcome="empty_pool")
+        return
     result = match.run_role(role.id, role.job_id, candidates, score_limit=SCORE_LIMIT)
     outcome = asks.ask_from_run(conn, role, result.run_id)
     log.event(
