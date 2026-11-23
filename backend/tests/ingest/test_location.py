@@ -74,6 +74,10 @@ UNKNOWN = [
     "",
     None,
     "N/A",
+    "NA",  # not Namibia: this is how "not applicable" and "North America" are written
+    "NaN",  # a missing value, not the town in Thailand
+    "null",
+    "Valley",
     "TBD",
     "Various",
     "Remote",
@@ -239,6 +243,9 @@ FORMS = [
     ("Washington, DC", ("US", "Washington")),
     ("Washington D.C.", ("US", "Washington")),
     ("Washington", ("US", None)),  # the state
+    ("Washington State", ("US", None)),
+    ("Remote - US & Canada", ("US", None)),  # the first country listed
+    ("Taipei City", ("TW", "Taipei")),
     ("Winston-Salem, NC", ("US", "Winston-Salem")),
     ("Guinea-Bissau", ("GW", None)),
     ("Brooklyn, NY", ("US", "New York City")),

@@ -87,7 +87,7 @@ COUNTRY_NAMES = {
 # Places that name no one country (GUIDELINE rule 7). The first one in a string ends the search: "EMEA; London" is unknown.
 REGIONS = frozenset(
     "emea apac latam dach mena anz eu eea nordics benelux baltics scandinavia europe asia africa oceania americas "
-    "global worldwide international est edt cst cdt mst mdt pst pdt cet gmt utc ist bst".split()
+    "global worldwide international na est edt cst cdt mst mdt pst pdt cet gmt utc ist bst".split()
     + ["the americas", "north america", "south america", "latin america", "central america", "middle east"]
     + ["asia pacific", "european union"]
 )
@@ -99,7 +99,7 @@ QUALIFIERS = frozenset(
     "offices hq headquarters warehouse campus site plant factory store branch field home metro metropolitan area "
     "greater downtown midtown central north south east west center centre hub annex plaza based only update "
     "location locations multiple various other open any all tbd tba tbc none unknown full part time contract "
-    "permanent temporary ncr rural urban region district".split()
+    "permanent temporary ncr rural urban region district state national city nan null undefined bay valley".split()
 )
 # Small words between a qualifier and a place ("Remote in Germany"). Lower case only: "IN" is a code.
 CONNECTIVES = frozenset({"in", "the", "of", "within", "near", "across"})
@@ -297,9 +297,11 @@ def _token(words: list[str], g: _Gazetteer, code_ok: bool) -> _Token | None:
         return None
     if found := _readings(key, g):
         return _Token(tuple(found), key, False)
-    if len(words) == 1 and code_ok:
+    if len(words) == 1:
         word = words[0].replace(".", "").upper() if _INITIALS.fullmatch(words[0]) else words[0]
-        if word.isalpha() and word.isupper() and (codes := _code_readings(word, g)):
+        if word == "US":  # a country anywhere in capitals ("US & Canada"), never the pronoun "us"
+            return _Token((_Reading("country", "US"),), key, False)
+        if code_ok and word.isalpha() and word.isupper() and (codes := _code_readings(word, g)):
             return _Token(tuple(codes), key, True)
     return None
 
