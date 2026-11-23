@@ -439,6 +439,9 @@ def test_a_company_excluded_after_the_run_takes_that_job_off_the_list_and_off_it
     data = ok(world.client.get("/v1/matches", params={"date": DAY}))
 
     assert [m["decision_id"] for m in data["matches"]] == [str(world.first)]  # the Hooli posting is gone
+    # The run's counts are read now too, so the summary never calls a violator shown: of the run's two matches, one is
+    # now a job the constraints filter. withheld is the run's own.
+    assert (data["run"]["shown"], data["run"]["withheld"], data["run"]["filtered"]) == (1, 1, 389)
     refused(world.client.get(f"/v1/matches/{world.second}"), 404, "not_found")
     kept = ok(world.client.get(f"/v1/matches/{world.first}"))
     states = {c["kind"]: c["state"] for c in kept["constraint_checks"]}
@@ -479,6 +482,7 @@ def test_a_location_changed_after_the_run_takes_off_every_job_it_now_excludes(wo
     data = ok(world.client.get("/v1/matches", params={"date": DAY}))
 
     assert data["matches"] == [] and data["run"]["id"] == str(world.run)  # both postings are in India
+    assert (data["run"]["shown"], data["run"]["withheld"], data["run"]["filtered"]) == (0, 1, 390)  # not "2 shown"
     for decision in (world.first, world.second):
         refused(world.client.get(f"/v1/matches/{decision}"), 404, "not_found")
     held = ok(world.client.get(f"/v1/decisions/{world.first}"))

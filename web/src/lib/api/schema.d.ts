@@ -573,7 +573,8 @@ export interface paths {
         /**
          * Decision Ledger
          * @description The decision ledger, newest first. ?job_id= returns the stored decision for one job, or checks that job against
-         *     the caller's hard constraints on the spot (no model call, nothing stored) and returns filtered or not_evaluated.
+         *     the caller's hard constraints on the spot (no model call, nothing stored) and returns filtered or not_evaluated. A
+         *     shown match whose job the caller's hard constraints now exclude is reported as filtered, by the filters too.
          */
         get: operations["decision_ledger_v1_decisions_get"];
         put?: never;

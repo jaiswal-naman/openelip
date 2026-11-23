@@ -321,7 +321,8 @@ def decision_ledger(
     cursor: After = None,
 ) -> dict[str, Any]:
     """The decision ledger, newest first. ?job_id= returns the stored decision for one job, or checks that job against
-    the caller's hard constraints on the spot (no model call, nothing stored) and returns filtered or not_evaluated."""
+    the caller's hard constraints on the spot (no model call, nothing stored) and returns filtered or not_evaluated. A
+    shown match whose job the caller's hard constraints now exclude is reported as filtered, by the filters too."""
     outcomes = _one_of(outcome, MATCH_OUTCOMES, "outcome") if outcome else None
     if reason is not None and reason not in MATCH_REASONS:
         raise ApiError(400, "invalid_request", f"reason is not one of: {', '.join(MATCH_REASONS)}.")
