@@ -19,7 +19,7 @@ jobs:
   backend:
     name: backend (lint, types, imports, migrations, tests)
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30 # the cooperative, persona and suite tests wait on real undo windows (a one-minute floor the database enforces)
     services:
       db:
         image: pgvector/pgvector:pg17
@@ -77,11 +77,11 @@ jobs:
   eval-gate:
     name: eval gate (${{ matrix.suite }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30 # wind_tunnel waits on real undo windows; the others take minutes
     strategy:
       fail-fast: false
       matrix:
-        suite: [harness_smoke, resume_extraction, requirement_extraction, evidence_faithfulness, constraint_property, tailoring_integrity, chat, record_proposals, injection, role_intake, dossier, agent_drafts, guardian] # later phases add their gold sets here
+        suite: [harness_smoke, resume_extraction, requirement_extraction, evidence_faithfulness, constraint_property, tailoring_integrity, chat, record_proposals, injection, role_intake, dossier, agent_drafts, guardian, wind_tunnel] # later phases add their gold sets here
     services:
       db:
         image: pgvector/pgvector:pg17

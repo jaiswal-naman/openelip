@@ -128,7 +128,9 @@ def test_shift_moves_the_finish_time_of_finished_steps_of_that_campaign_only(eng
             )
         clock.shift(conn, mine.campaign, timedelta(days=7))
         finished = {
-            w: conn.execute(text("SELECT finished_at FROM campaign_steps WHERE campaign_id = :c"), {"c": w}).scalar_one()
+            w: conn.execute(
+                text("SELECT finished_at FROM campaign_steps WHERE campaign_id = :c"), {"c": w}
+            ).scalar_one()
             for w in (mine.campaign, other.campaign)
         }
         assert abs(finished[mine.campaign] - (now - timedelta(days=7))) < timedelta(seconds=2)

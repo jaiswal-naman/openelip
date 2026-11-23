@@ -86,3 +86,9 @@ min_score = 1.0
 # their labels agent-drafted; a pass shows that the code path works and says nothing about a model's quality.
 [guardian]
 min_score = 1.0
+
+# Scored by code from the wind tunnel (see evals/wind_tunnel/README.md): the score is 1.0 only when every scenario passed all
+# five of its attempts (AI_SYSTEM 12.7), else 0.0; one violation or one missed outcome in one attempt zeroes it. A replay
+# pass is a wiring check of the agents' behaviour under recorded answers and says nothing about a model's quality.
+[wind_tunnel]
+min_score = 1.0

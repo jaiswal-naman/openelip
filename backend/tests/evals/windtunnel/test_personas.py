@@ -34,7 +34,7 @@ VIOLATIONS = {
 
 @pytest.fixture(scope="module")
 def outcome(database_url):
-    """{scenario key: {"status", "rows": {code: (kind, passed, details)}}} of one attempt of each adversarial scenario."""
+    """{scenario key: {"status", "rows": {code: (kind, passed, details)}}}, one attempt of each adversarial scenario."""
     import os
 
     from sqlalchemy import create_engine
