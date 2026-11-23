@@ -4,7 +4,21 @@ Plans that add a public function (search, get_job, verify_live, the requirement 
 app.ingest is part of that interface.
 """
 
+from .liveness import verify_live
 from .normalize import parse_location
+from .requirements.rules import extract as rules_extract
+from .requirements.segment import segments
+from .requirements.validate import to_rows
 from .search import InvalidCursor, SearchPage, get_job, search
 
-__all__ = ["InvalidCursor", "SearchPage", "get_job", "parse_location", "search"]
+__all__ = [
+    "InvalidCursor",
+    "SearchPage",
+    "get_job",
+    "parse_location",
+    "rules_extract",
+    "search",
+    "segments",
+    "to_rows",
+    "verify_live",
+]

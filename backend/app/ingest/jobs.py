@@ -18,7 +18,7 @@ from app.platform import log
 from app.platform.queue import enqueue, handler
 from app.platform.scheduler import every
 
-from . import discover, embedding
+from . import discover, embedding, extraction
 from .adapters import URLS, fetch_postings
 from .fetch import mark_duplicates, store
 
@@ -29,6 +29,12 @@ FETCH_PERIOD_SECONDS = FETCH_EVERY_HOURS * 3600
 # How often the jobs that have no vector yet are embedded. An assumption to tune after measuring.
 EMBED_EVERY_MINUTES = 5
 every("ingest.embed_sweep", EMBED_EVERY_MINUTES * 60)(embedding.embed_sweep)
+
+# How often jobs whose requirements are missing or out of date are queued for extraction, which needs a model route
+# (the sweep queues nothing without one). An assumption to tune after measuring.
+EXTRACT_EVERY_MINUTES = 15
+every("ingest.extract_sweep", EXTRACT_EVERY_MINUTES * 60)(extraction.extract_sweep)
+handler("ingest.extract")(extraction.extract)
 
 # The first fetch of a slot queues the slot's one dedupe job, this long after, so most of the batch is in by then.
 # ponytail: a fixed wait. Enqueue it from the last fetch of the slot once the slot's job count is tracked.
