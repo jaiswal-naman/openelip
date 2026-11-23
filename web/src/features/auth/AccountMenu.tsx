@@ -50,6 +50,11 @@ export function AccountMenu() {
               <MenuItem id="settings" href="/app/settings?section=privacy" textValue="Settings" className={menu.item}>
                 <span>Settings</span>
               </MenuItem>
+              {(me.data.organizations ?? []).length > 0 && (
+                <MenuItem id="hiring" href="/hire/roles" textValue="Hiring desk" className={menu.item}>
+                  <span>Hiring desk</span>
+                </MenuItem>
+              )}
               <MenuItem id="sign-out" textValue="Sign out" className={menu.item}>
                 <LogOutIcon />
                 <span>Sign out</span>

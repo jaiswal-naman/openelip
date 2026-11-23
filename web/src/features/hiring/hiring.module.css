@@ -1,0 +1,316 @@
+/* The hiring desk (FRONTEND_UI 3.12 to 3.17). Tokens only. */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8) var(--sp-16);
+}
+
+.orgName {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  font-weight: 600;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4) var(--sp-16);
+  border-bottom: 1px solid var(--line);
+}
+
+.nav a {
+  padding: var(--sp-8) 0;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+}
+
+.nav a[aria-current="page"] {
+  border-bottom-color: var(--accent-strong);
+  color: var(--text);
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8) var(--sp-16);
+}
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-4) var(--sp-12);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line-strong);
+  border-inline-start: 4px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.bannerLabel {
+  color: var(--bad);
+  font-weight: 700;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  min-width: 0;
+  padding: var(--sp-16) var(--sp-20);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  max-width: 28rem;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8) var(--sp-12);
+}
+
+.problem {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.words {
+  overflow-wrap: anywhere;
+}
+
+/* ---- tables become cards on a phone ---- */
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.column {
+  padding: var(--sp-8) var(--sp-12);
+  border-bottom: 1px solid var(--line-strong);
+  color: var(--muted);
+  text-align: start;
+  vertical-align: bottom;
+}
+
+.cell {
+  padding: var(--sp-12);
+  border-top: 1px solid var(--line);
+  font-weight: 400;
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+.cards {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  .tableWrap.swap {
+    display: none;
+  }
+
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-12);
+  }
+}
+
+/* ---- intake ---- */
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--sp-24);
+}
+
+@media (max-width: 52rem) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.textarea {
+  width: 100%;
+  min-height: 14rem;
+  padding: var(--sp-12);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+
+.textarea[data-focus-visible] {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.source {
+  max-height: 12rem;
+  overflow-y: auto;
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--sp-12);
+}
+
+.count {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.countValue {
+  font-size: var(--fs-section);
+  font-weight: 700;
+}
+
+.blockers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4) var(--sp-16);
+}
+
+/* ---- dialogs (the same look as the dismiss dialog) ---- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-16);
+  background: rgb(0 0 0 / 0.55);
+}
+
+.modal {
+  width: min(100%, 34rem);
+  max-height: 100%;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding: var(--sp-24);
+  outline: none;
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+}
+
+/* ---- the answer clock ---- */
+
+.clock {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem var(--sp-8);
+  border: 1px solid currentColor;
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono);
+  font-size: var(--fs-pill);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.clock[data-tone="neutral"] {
+  color: var(--muted);
+}
+
+.clock[data-tone="amber"] {
+  color: var(--warn);
+}
+
+.clock[data-tone="red"] {
+  color: var(--bad);
+}
+
+.clock[data-tone="overdue"] {
+  border-color: var(--bad);
+  background: var(--bad);
+  color: var(--bg);
+}
+
+/* ---- shortlist ---- */
+
+.badge {
+  display: inline-flex;
+  padding: 0.2rem var(--sp-8);
+  border: 1px solid var(--accent-strong);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-pill);
+  font-weight: 600;
+}
+
+.shared {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+.facts li {
+  overflow-wrap: anywhere;
+}

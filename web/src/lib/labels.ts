@@ -23,6 +23,13 @@ export const ERROR_MESSAGES = {
   dependency_unavailable: "A service this needs is unavailable. Try again shortly.",
   network_error: "Could not reach the server. Nothing was changed. Check your connection and try again.",
   unreadable_response: "The server's answer could not be read. Nothing was changed. Try again.",
+  // The hiring desk (FRONTEND_UI 6.4)
+  answers_overdue: "New introductions are paused until overdue answers are given.",
+  preview_changed: "What would be shared changed. Review it again.",
+  pay_range_required: "Publishing needs a pay range.",
+  requirements_unconfirmed: "Publishing needs every requirement confirmed.",
+  quota_exhausted: "No serious-interest signals left this week. They reset on Monday (UTC).",
+  already_resolved: "This changed in another tab or by an agent. Showing the latest.",
 } as const;
 
 export type KnownErrorCode = keyof typeof ERROR_MESSAGES;
@@ -36,9 +43,17 @@ export function waitPhrase(seconds: number): string {
 }
 
 /** The sentence a person reads for a failed call. Unknown codes get the generic one, with the request id for the operator. */
-export function messageFor(failure: Pick<ApiFailure, "code" | "requestId" | "retryAfterSeconds">): string {
+export function messageFor(failure: Pick<ApiFailure, "code" | "requestId" | "retryAfterSeconds"> & { details?: Record<string, unknown> }): string {
   if (failure.code === "rate_limited" && failure.retryAfterSeconds !== null) {
     return `Too many attempts. Try again in ${waitPhrase(failure.retryAfterSeconds)}.`;
+  }
+  if (failure.code === "conflict" && failure.details?.state === "answers_overdue") return ERROR_MESSAGES.answers_overdue;
+  if (failure.code === "quota_exhausted" && typeof failure.details?.resets_at === "string") {
+    const reset = new Date(failure.details.resets_at);
+    if (!Number.isNaN(reset.getTime())) {
+      const date = reset.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+      return `No serious-interest signals left this week. They reset on ${date} (UTC).`;
+    }
   }
   const known = (ERROR_MESSAGES as Record<string, string>)[failure.code];
   if (known !== undefined && failure.code !== "internal_error") return known;
@@ -167,4 +182,54 @@ export const BRIEF_FREQUENCY_LABELS: Record<Schemas["BriefSettings"]["frequency"
   daily: "Daily",
   weekly: "Weekly",
   paused: "Paused",
+};
+
+// ---- The hiring desk (HIR-01 to HIR-08) -----------------------------------------------------------------------------------
+// FRONTEND_UI 3.12 to 3.17, 4.7 and 6.4 word these. Typed from the generated schema where the API has an enum.
+
+export const ROLE_STATUS_LABELS: Record<Schemas["RoleView"]["status"], string> = {
+  draft: "Draft",
+  open: "Open",
+  closed: "Closed",
+};
+
+export const ORG_ROLE_LABELS: Record<Schemas["Member"]["role"], string> = {
+  owner: "Owner",
+  admin: "Admin",
+  member: "Member",
+};
+
+export const MEMBER_STATUS_LABELS: Record<Schemas["Member"]["status"], string> = {
+  active: "Active",
+  invited: "Invited (pending)",
+  removed: "Removed",
+};
+
+/** The introduction states an employer can meet. The shortlist holds only accepted ones. */
+export const INTRODUCTION_STATUS_LABELS = {
+  asked: "Asked",
+  accepted: "Accepted",
+  declined: "Declined",
+  expired: "Expired",
+  withdrawn: "Withdrawn",
+} as const;
+
+export const EMPLOYER_ANSWER_LABELS = { yes: "Answered yes", no: "Answered no" } as const;
+
+/** FRONTEND_UI 3.14: the preset reasons, in the order shown. A preset fills the reason box, which stays editable. */
+export const ANSWER_PRESETS = [
+  { label: "Strong fit", text: "Strong fit for the role." },
+  { label: "Skills gap", text: "The skills the role needs are not shown clearly enough." },
+  { label: "Experience gap", text: "The role needs more experience than the record shows." },
+  { label: "Location mismatch", text: "The location or working arrangement does not match the role." },
+  { label: "Pay mismatch", text: "The pay range does not match what was shared." },
+  { label: "Role filled", text: "The role has been filled." },
+  { label: "Role on hold", text: "The role is on hold." },
+  { label: "Other", text: "Other: " },
+] as const;
+
+
+export const PUBLISH_BLOCKER_LABELS: Record<Schemas["RoleView"]["blockers"][number], string> = {
+  requirements_unconfirmed: "confirmed requirements",
+  pay_range_required: "pay range",
 };
