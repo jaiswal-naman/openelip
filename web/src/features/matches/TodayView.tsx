@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Tab, TabList, TabPanel, Tabs } from "react-aria-components";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { AiOffNotice, EmptyState, ErrorState } from "@/components/ui/States";
@@ -60,11 +60,14 @@ export function TodayView() {
   // Decisions come first when there are any, while the brief is still loading, and when it could not be loaded (so the
   // failure is seen); a brief that holds none, or none yet, opens on the matches.
   const briefKnown = brief.data !== undefined && !brief.isError;
-  const view: View = (VIEWS as readonly string[]).includes(asked ?? "")
-    ? (asked as View)
-    : openId !== null || waiting > 0 || !briefKnown
-      ? "decisions"
-      : "matches";
+  const firstUseful: View = openId !== null || waiting > 0 || !briefKnown ? "decisions" : "matches";
+  // Chosen once, when the brief and the introductions have both arrived: accepting the last open ask must not move the
+  // person to Matches while the sheet closes, because the introduction they just accepted is listed under Decisions.
+  const [opened, setOpened] = useState<View | null>(null);
+  if (opened === null && briefKnown && (introductions.data !== undefined || introductions.isError)) {
+    setOpened(firstUseful);
+  }
+  const view: View = (VIEWS as readonly string[]).includes(asked ?? "") ? (asked as View) : (opened ?? firstUseful);
   const held = useQuery({ ...whyNotQuery(api, date ?? ""), enabled: view === "why-not" && date !== null });
 
   const matches = day.data?.matches ?? [];
