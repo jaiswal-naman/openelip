@@ -1,5 +1,5 @@
-"""CMP-04, GRD-04, GRD-07 (plan 07-06, task 3): what waits for the candidate's approval and what their agents did are items
-of the morning brief, in the app and in the email, with links into the app and nothing to decide from email.
+"""CMP-04, GRD-04, GRD-07 (plan 07-06, task 3): what waits for the candidate's approval and what their agents did are
+items of the morning brief, in the app and in the email, with links into the app and nothing to decide from email.
 
 Compose and the email resolver run on the rolled-back `conn`; one API test commits and reads GET /v1/briefs/{id} as the
 real app_api role. Campaigns, actions and approvals come from the 07-01 factories. Everything is invented.
