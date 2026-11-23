@@ -4,6 +4,7 @@ Plans that add a public function (search, get_job, verify_live, the requirement 
 app.ingest is part of that interface.
 """
 
+from .direct import DirectRequirement, close_direct_job, publish_direct_job
 from .liveness import verify_live
 from .normalize import parse_location
 from .requirements.rules import extract as rules_extract
@@ -13,13 +14,16 @@ from .requirements.validate import RequirementRow, ValidationResult, to_rows
 from .search import InvalidCursor, SearchPage, get_job, search
 
 __all__ = [
+    "DirectRequirement",
     "InvalidCursor",
     "RequirementRow",
     "SearchPage",
     "ValidationResult",
+    "close_direct_job",
     "extract_requirements",
     "get_job",
     "parse_location",
+    "publish_direct_job",
     "rules_extract",
     "search",
     "segments",
