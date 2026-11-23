@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AccountMenu } from "@/features/auth/AccountMenu";
+import { ChatOpener } from "@/features/chat/ChatOpener";
 import { PRODUCT_NAME } from "@/lib/product";
 import { BrandMark } from "../icons/icons";
 import styles from "./header.module.css";
@@ -23,6 +24,7 @@ export function SiteHeader() {
             <NavLink href="/trust">Trust</NavLink>
           </nav>
           <div className={styles.tools}>
+            <ChatOpener />
             <ThemeToggle />
             <AccountMenu />
           </div>

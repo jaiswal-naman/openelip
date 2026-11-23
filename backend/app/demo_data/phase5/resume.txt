@@ -1,0 +1,11 @@
+Demo Candidate (invented: this resume is made up for the OpenElip demo and describes no real person)
+Software engineer at Globex Demo, 2016 to 2019.
+Built the nightly Quillscript billing pipeline.
+Reduced report time by 40 percent.
+Site reliability engineer at Initech Demo, 2024 to 2025.
+Ran the PostgreSQL failover rehearsals.
+Wrote the on-call handbook.
+Skills:
+Python
+Git
+Linux
