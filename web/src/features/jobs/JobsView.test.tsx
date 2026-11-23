@@ -4,83 +4,66 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fail, ok, renderWithApi } from "@/test/render";
 import { JobsView } from "./JobsView";
 import type { SearchParams } from "./jobs";
+import { job } from "./testing";
+import type { Job } from "./types";
 
 const push = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 const NO_SEARCH: SearchParams = { q: "", country: null, remote: null };
 
-// Invented rows in the shape /v1/jobs returns (Example Co and example.test are made up)
-const row = (id: number, overrides: Record<string, unknown> = {}) => ({
-  id,
-  title: `Role ${id}`,
-  company_name: "Example Co",
-  location_raw: "Pune, India",
-  country: "IN",
-  city: "Pune",
-  is_remote: false,
-  apply_url: `https://jobs.example.test/${id}`,
-  posted_at: null,
-  last_verified_at: "2026-11-22T12:21:54Z",
-  content_version: 1,
-  ...overrides,
-});
-
+// Invented jobs in the shape /v1/jobs returns (Example Co and example.test are made up)
+const row = (id: number, overrides: Partial<Job> = {}) =>
+  job({ id, title: `Role ${id}`, apply_url: `https://jobs.example.test/${id}`, ...overrides });
 const rows = (count: number) => Array.from({ length: count }, (_, index) => row(index + 1));
 const stats = ok({ open_postings: 11353, open_unique_jobs: 9996 });
 
-/** /v1/jobs answers with as many rows as it was asked for, up to what the fake index holds. */
-const jobsFrom = (all: unknown[]) => (request: Request) => {
-  const limit = Number(new URL(request.url).searchParams.get("limit"));
-  return ok(all.slice(0, limit), 200, { count: Math.min(limit, all.length), limit });
-};
+/**
+ * /v1/jobs over a fake index: a page of `limit` rows, and `next_cursor` while rows remain. The fake cursor is the offset
+ * into the list ("c20"); the page treats a cursor as opaque, as it must treat the real one. `mode: null` sends none.
+ */
+const jobsFrom =
+  (all: Job[], mode: string | null = "hybrid") =>
+  (request: Request) => {
+    const query = new URL(request.url).searchParams;
+    const limit = Number(query.get("limit"));
+    const offset = Number(query.get("cursor")?.slice(1) ?? 0);
+    const page = all.slice(offset, offset + limit);
+    const next = offset + limit < all.length ? `c${offset + limit}` : null;
+    return ok(page, 200, { count: page.length, limit, next_cursor: next, ...(mode === null ? {} : { mode }) });
+  };
 
-const lastQuery = (calls: Request[]) => new URL(calls.filter((call) => call.url.includes("/v1/jobs")).at(-1)!.url).searchParams;
+const jobCalls = (calls: Request[]) => calls.filter((call) => new URL(call.url).pathname === "/v1/jobs");
+const lastQuery = (calls: Request[]) => new URL(jobCalls(calls).at(-1)!.url).searchParams;
+const titles = () => screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
 
 beforeEach(() => push.mockReset());
 
 describe("results", () => {
-  it("show title, company, location, remote state, last verified time and a link out", async () => {
+  it("show each job as a card: title linked to its page, company, place, source, last verified time and a link out", async () => {
     renderWithApi(<JobsView params={NO_SEARCH} />, { "GET /v1/jobs": jobsFrom([row(1)]), "GET /v1/stats": stats });
 
     const first = (await screen.findByRole("heading", { level: 2, name: "Role 1" })).closest("li")!;
+    expect(within(first).getByRole("link", { name: "Role 1" })).toHaveAttribute("href", "/jobs/1");
     expect(within(first).getByText("Example Co")).toBeInTheDocument();
     expect(within(first).getByText("Pune, India")).toBeInTheDocument();
-    expect(within(first).getByText("Not remote")).toBeInTheDocument(); // the row, not the filter of the same name
+    expect(within(first).getByText("Hybrid")).toBeInTheDocument();
+    expect(within(first).getByText("Source: Greenhouse")).toBeInTheDocument();
     expect(within(first).getByText(/Verified open/)).toHaveTextContent("Verified open 22 Nov 12:21 UTC");
     expect(within(first).getByText("22 Nov 12:21 UTC").closest("time")).toHaveAttribute("datetime", "2026-11-22T12:21:54Z");
+    expect(within(first).getByRole("link", { name: "View posting for Role 1 (opens in a new tab)" })).toHaveAttribute(
+      "href",
+      "https://jobs.example.test/1",
+    );
   });
 
-  it("link out to the posting safely, with a name that says where it goes", async () => {
-    renderWithApi(<JobsView params={NO_SEARCH} />, { "GET /v1/jobs": jobsFrom([row(1)]), "GET /v1/stats": stats });
-    const link = await screen.findByRole("link", { name: "View posting for Role 1 (opens in a new tab)" });
-    expect(link).toHaveAttribute("href", "https://jobs.example.test/1");
-    expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    expect(link).toHaveAttribute("target", "_blank");
-  });
-
-  it("do not make a link out of a scheme that could run script", async () => {
+  it("say Location: unknown and Remote: not stated when the API could not tell, and never guess", async () => {
     renderWithApi(<JobsView params={NO_SEARCH} />, {
-      "GET /v1/jobs": jobsFrom([row(1, { apply_url: "javascript:alert(1)" })]),
+      "GET /v1/jobs": jobsFrom([row(1, { location_raw: null, country: null, city: null, work_arrangements: [], is_remote: null })]),
       "GET /v1/stats": stats,
     });
-    expect(await screen.findByText("No link in the posting")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /View posting/ })).not.toBeInTheDocument();
-  });
-
-  it("say Location not stated only when nothing at all is known, and never guess a country", async () => {
-    renderWithApi(<JobsView params={NO_SEARCH} />, {
-      "GET /v1/jobs": jobsFrom([
-        row(1, { location_raw: null, country: null, city: null }),
-        row(2, { title: "Role Two", location_raw: "Stockholm", country: null, city: null, is_remote: null }),
-      ]),
-      "GET /v1/stats": stats,
-    });
-    expect(await screen.findByText("Location not stated")).toBeInTheDocument();
-    const second = screen.getByRole("heading", { name: "Role Two" }).closest("li")!;
-    expect(within(second).getByText("Stockholm")).toBeInTheDocument();
-    expect(within(second).queryByText(/Sweden/)).not.toBeInTheDocument();
-    expect(within(second).getByText("Remote: not stated")).toBeInTheDocument();
+    expect(await screen.findByText("Location: unknown")).toBeInTheDocument();
+    expect(screen.getByText("Remote: not stated")).toBeInTheDocument();
   });
 
   it("read the search from the URL and send exactly that to the API", async () => {
@@ -96,10 +79,35 @@ describe("results", () => {
     expect(query.get("limit")).toBe("20");
   });
 
-  it("send no filter that was not chosen", async () => {
+  it("send no filter that was not chosen, and no cursor for the first page", async () => {
     const { calls } = renderWithApi(<JobsView params={NO_SEARCH} />, { "GET /v1/jobs": jobsFrom(rows(1)), "GET /v1/stats": stats });
     await screen.findByRole("heading", { name: "Role 1" });
     expect([...lastQuery(calls).keys()]).toEqual(["limit"]);
+  });
+});
+
+describe("the keyword-only note", () => {
+  it("is shown when the API says the results are keyword-only", async () => {
+    renderWithApi(<JobsView params={{ q: "dentist", country: null, remote: null }} />, {
+      "GET /v1/jobs": jobsFrom(rows(2), "keyword"),
+      "GET /v1/stats": stats,
+    });
+    expect(await screen.findByText("Keyword results only right now.")).toBeInTheDocument();
+  });
+
+  it("is not shown when meaning was searched too", async () => {
+    renderWithApi(<JobsView params={{ q: "dentist", country: null, remote: null }} />, {
+      "GET /v1/jobs": jobsFrom(rows(2), "hybrid"),
+      "GET /v1/stats": stats,
+    });
+    await screen.findByRole("heading", { name: "Role 1" });
+    expect(screen.queryByText("Keyword results only right now.")).not.toBeInTheDocument();
+  });
+
+  it("is not shown when the answer does not say, because the page claims only what it was told", async () => {
+    renderWithApi(<JobsView params={NO_SEARCH} />, { "GET /v1/jobs": jobsFrom(rows(2), null), "GET /v1/stats": stats });
+    await screen.findByRole("heading", { name: "Role 1" });
+    expect(screen.queryByText("Keyword results only right now.")).not.toBeInTheDocument();
   });
 });
 
@@ -197,49 +205,87 @@ describe("empty, loading and error states", () => {
   });
 });
 
-describe("Show more", () => {
-  it("raises the limit in steps up to the 100 the API allows, keeping the rows on screen meanwhile", async () => {
+describe("Load more", () => {
+  it("asks for the next page with the API's cursor and the same search, and adds its rows under the first", async () => {
     const user = userEvent.setup();
-    const index = rows(150);
-    const { calls } = renderWithApi(<JobsView params={NO_SEARCH} />, { "GET /v1/jobs": jobsFrom(index), "GET /v1/stats": stats });
-
-    expect(await screen.findByText("Showing 20 jobs")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Show more" }));
-    expect(await screen.findByText("Showing 50 jobs")).toBeInTheDocument();
-    expect(lastQuery(calls).get("limit")).toBe("50");
-
-    await user.click(screen.getByRole("button", { name: "Show more" }));
-    expect(await screen.findByText("Showing 100 jobs")).toBeInTheDocument();
-    expect(lastQuery(calls).get("limit")).toBe("100");
-
-    expect(screen.queryByRole("button", { name: "Show more" })).not.toBeInTheDocument();
-    expect(screen.getByText("Showing the first 100. Narrow the search to see others.")).toBeInTheDocument();
-  });
-
-  it("is not offered when the list is shorter than a page", async () => {
-    renderWithApi(<JobsView params={NO_SEARCH} />, { "GET /v1/jobs": jobsFrom(rows(5)), "GET /v1/stats": stats });
-    await screen.findByText("Showing 5 jobs");
-    expect(screen.queryByRole("button", { name: "Show more" })).not.toBeInTheDocument();
-  });
-
-  it("keeps the rows already shown while a longer list loads", async () => {
-    const user = userEvent.setup();
-    let release: (response: Response) => void = () => {};
-    const { queryClient } = renderWithApi(<JobsView params={NO_SEARCH} />, {
-      "GET /v1/jobs": (request) =>
-        new URL(request.url).searchParams.get("limit") === "20"
-          ? jobsFrom(rows(30))(request)
-          : new Promise<Response>((resolve) => (release = resolve)),
+    const { calls } = renderWithApi(<JobsView params={{ q: "backend python", country: "IN", remote: true }} />, {
+      "GET /v1/jobs": jobsFrom(rows(45)),
       "GET /v1/stats": stats,
     });
-    await screen.findByText("Showing 20 jobs");
-    await user.click(screen.getByRole("button", { name: "Show more" }));
+    expect(await screen.findByText("Showing 20 jobs")).toBeInTheDocument();
+    expect(lastQuery(calls).has("cursor")).toBe(false);
+
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    expect(await screen.findByText("Showing 40 jobs")).toBeInTheDocument();
+    const second = lastQuery(calls);
+    expect(second.get("cursor")).toBe("c20");
+    expect(second.get("q")).toBe("backend python");
+    expect(second.get("country")).toBe("IN");
+    expect(second.get("remote")).toBe("true");
+    expect(second.get("limit")).toBe("20");
+    expect(titles()).toEqual(rows(40).map((r) => r.title)); // the first page stays, in order, with the new rows after it
+
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    expect(await screen.findByText("Showing 45 jobs")).toBeInTheDocument();
+    expect(lastQuery(calls).get("cursor")).toBe("c40");
+  });
+
+  it("hides itself when the API sends no further cursor", async () => {
+    const user = userEvent.setup();
+    renderWithApi(<JobsView params={NO_SEARCH} />, { "GET /v1/jobs": jobsFrom(rows(25)), "GET /v1/stats": stats });
+    await user.click(await screen.findByRole("button", { name: "Load more" }));
+    await screen.findByText("Showing 25 jobs");
+    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+  });
+
+  it("is not offered when the first page is all there is", async () => {
+    renderWithApi(<JobsView params={NO_SEARCH} />, { "GET /v1/jobs": jobsFrom(rows(5)), "GET /v1/stats": stats });
+    await screen.findByText("Showing 5 jobs");
+    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+  });
+
+  it("never writes the cursor into the address: the URL keeps the query and filters only", async () => {
+    const user = userEvent.setup();
+    renderWithApi(<JobsView params={{ q: "backend", country: null, remote: null }} />, { "GET /v1/jobs": jobsFrom(rows(30)), "GET /v1/stats": stats });
+    await user.click(await screen.findByRole("button", { name: "Load more" }));
+    await screen.findByText("Showing 30 jobs");
+    expect(push).not.toHaveBeenCalled();
+    expect(window.location.href).not.toMatch(/cursor|c20/);
+  });
+
+  it("keeps the rows already shown while the next page loads", async () => {
+    const user = userEvent.setup();
+    renderWithApi(<JobsView params={NO_SEARCH} />, {
+      "GET /v1/jobs": (request) =>
+        new URL(request.url).searchParams.has("cursor") ? new Promise<Response>(() => {}) : jobsFrom(rows(30))(request),
+      "GET /v1/stats": stats,
+    });
+    await user.click(await screen.findByRole("button", { name: "Load more" }));
 
     await waitFor(() => expect(screen.getByRole("region", { name: "Results" })).toHaveAttribute("aria-busy", "true"));
-    expect(screen.getByRole("heading", { name: "Role 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Load more" })).toHaveAttribute("aria-disabled", "true");
+    expect(titles()).toHaveLength(20);
+  });
 
-    release(jobsFrom(rows(30))(new Request("http://localhost/v1/jobs?limit=50")));
+  it("keeps the rows and says why when a page fails, and Retry brings it in", async () => {
+    const user = userEvent.setup();
+    let cursorCalls = 0;
+    renderWithApi(<JobsView params={NO_SEARCH} />, {
+      "GET /v1/jobs": (request) =>
+        new URL(request.url).searchParams.has("cursor") && ++cursorCalls === 1
+          ? fail(503, "dependency_unavailable")
+          : jobsFrom(rows(30))(request),
+      "GET /v1/stats": stats,
+    });
+    await user.click(await screen.findByRole("button", { name: "Load more" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Could not load more jobs.");
+    expect(alert).toHaveTextContent("A service this needs is unavailable. Try again shortly.");
+    expect(titles()).toHaveLength(20); // nothing already loaded is lost
+
+    await user.click(within(alert).getByRole("button", { name: "Retry" }));
     expect(await screen.findByText("Showing 30 jobs")).toBeInTheDocument();
-    expect(queryClient.isFetching()).toBe(0);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

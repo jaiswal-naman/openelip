@@ -74,6 +74,7 @@ The route list is the one in OVERVIEW.md, as updated by the design review. Five 
 |---|---|---|---|
 | `/` | Public | What the product does, honest status, links to `/jobs` and `/trust` | DOC-01 (statement of independence), EVL-05 |
 | `/jobs` | Public | Search open jobs with source and last-verified time | IDX-04, IDX-05, IDX-06 |
+| `/jobs/[id]` | Public | One job: fields, source and verified-open time, requirements with highlighted spans | IDX-05, IDX-06, IDX-08 |
 | `/trust` | Public | Model providers, sub-processors, data handling, invariants | TRU-04, PLT-05, TRU-05 |
 | `/sign-in` | Public | Emailed one-time code | PLT-02 |
 | `/unsubscribe` | Public | One-click brief unsubscribe from an email link | BRF-03 |
@@ -97,7 +98,7 @@ The route list is the one in OVERVIEW.md, as updated by the design review. Five 
 | `/control/evals` | Mission control | Scoreboard of recorded eval runs only, for any signed-in user | EVL-01 to EVL-05 |
 | `/control/costs` | Mission control | The person's own model cost per campaign and per month | GRD-05, PLT-04 |
 
-State that belongs in the URL instead of a new route: the "why not" view (`/app/today?view=why-not`), the open decision or introduction (`/app/today?decision=<id>`, so an email link can open it), settings sections (`/app/settings?section=privacy`), recorder filters (`/control/recorder?campaign=<id>&step=<id>`), job search query and filters, board filters, and the selected evidence row (`/app/matches/[id]?req=<id>`).
+State that belongs in the URL instead of a new route: the "why not" view (`/app/today?view=why-not`), the open decision or introduction (`/app/today?decision=<id>`, so an email link can open it), settings sections (`/app/settings?section=privacy`), recorder filters (`/control/recorder?campaign=<id>&step=<id>`), job search query and filters, board filters, and the selected evidence row (`/app/matches/[id]?req=<id>`), the selected requirement on a job page (`/jobs/[id]?req=<ordinal>`).
 
 ### 2.3 Navigation model
 
@@ -784,6 +785,8 @@ Example content. The total count is read from the API at request time.
 ```
 
 Search works with no model key (local embeddings). When the response's `meta.mode` says results are keyword-only, a note says "Keyword results only right now." Unknown location stays "unknown" (IDX-06). Every result shows its source and last-verified time (IDX-05). Pagination is "Load more" with a cursor; the URL keeps the query, not the cursor. **Requirements.** IDX-04, IDX-05, IDX-06.
+
+**Job page (`/jobs/[id]`).** Public, no account; each result's title opens it. It shows the job's fields (place, work arrangement, employment type, pay), saying "Not stated in the posting" where the posting does not say and "Location: unknown" where the place could not be read, then the source board and "Verified open" time (IDX-05) and the posting text. The requirements are listed under Required and Preferred with their counts, as buttons that toggle. Selecting one marks the exact words it quotes in the posting (the highlight in 4.2, built as `HighlightedText` in `web/src/ui/patterns/`), scrolls the mark into view, announces "Job sentence highlighted." and writes `?req=<ordinal>` to the address, so a reload or a shared link lands on the same highlight; a `?req=` that matches no requirement is ignored. Spans are counted in Unicode code points, the unit Python and PostgreSQL use, so the page cuts the text with `Array.from` and never with JavaScript's UTF-16 string indexes, which are wrong after any emoji. A requirement whose text is not found at its span shows "Withheld: citation did not resolve", marks nothing and cannot be selected. A job whose current version has not been read for requirements says "Requirements have not been extracted for this version yet." (with no model key none are), and one that was read and held none says "No requirements were found in this posting." A closed job shows "Closed" with its date and no link to the posting. An id the API does not know, a job that is not listed, and an address that is not an id all show the not-found page. **Requirements.** IDX-05, IDX-06, IDX-08.
 
 ### 3.24 Trust (`/trust`)
 
@@ -1522,10 +1525,10 @@ Every v1 requirement is listed, including the two added by the design review (TR
 | PLT-08 | No screen | CI; the front-end jobs are listed in section 11 |
 | IDX-01 to IDX-03 | `/jobs` | Validated; results are open, de-duplicated jobs |
 | IDX-04 | `/jobs` | Search box, country and remote filters |
-| IDX-05 | `/jobs`, Today, match detail | Source and "Verified open" time |
-| IDX-06 | `/jobs`, match detail | "Location: unknown" |
+| IDX-05 | `/jobs`, `/jobs/[id]`, Today, match detail | Source and "Verified open" time |
+| IDX-06 | `/jobs`, `/jobs/[id]`, match detail | "Location: unknown" |
 | IDX-07 | Today | "Verified open" time on brief matches |
-| IDX-08 | Match detail | Highlight spans (4.2) |
+| IDX-08 | `/jobs/[id]`, match detail | Highlight spans (4.2) |
 | IDX-09 | No screen | The instance operator's command line |
 | REC-01 | `/onboarding` step 3 | Fact list with source lines |
 | REC-02 | Onboarding, `/app/record` | Confirm, Fix, Reject |

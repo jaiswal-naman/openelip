@@ -105,7 +105,9 @@ def make_database() -> Iterator[Callable[[str], URL]]:
     created: list[URL] = []
 
     def make(name: str) -> URL:
-        url = TEST_URL.set(database=name)
+        # Prefixed with the main test database's name, so two test runs on one server (each with its own
+        # TEST_DATABASE_URL) never create or force-drop each other's scratch databases.
+        url = TEST_URL.set(database=f"{(TEST_URL.database or '').removesuffix('_test')}_{name}")
         create_database(url, replace=True)
         created.append(url)
         return url

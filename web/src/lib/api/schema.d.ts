@@ -47,9 +47,31 @@ export interface paths {
         };
         /**
          * Search Jobs
-         * @description Keyword search over open, de-duplicated jobs. Results carry no fit claims.
+         * @description Search open, de-duplicated, listed jobs by keywords and by meaning. Results carry no fit claims.
+         *
+         *     meta.mode says what ran: hybrid falls back to keyword when no job has a vector yet or the model is unavailable.
          */
         get: operations["search_jobs_v1_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Job
+         * @description One listed job, open or closed, with its plain-text description and its requirements with character spans.
+         */
+        get: operations["read_job_v1_jobs__job_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -235,6 +257,17 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[JobDetail] */
+        Envelope_JobDetail_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["JobDetail"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[Me] */
         Envelope_Me_: {
             /** Success */
@@ -257,6 +290,18 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[list[Job]] */
+        Envelope_list_Job__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: components["schemas"]["Job"][] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** ErrorBody */
         ErrorBody: {
             /** Code */
@@ -272,6 +317,108 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** Job */
+        Job: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Company Name */
+            company_name: string;
+            /** Location Raw */
+            location_raw: string | null;
+            /** Country */
+            country: string | null;
+            /** City */
+            city: string | null;
+            /** Work Arrangements */
+            work_arrangements: ("onsite" | "hybrid" | "remote")[];
+            /** Is Remote */
+            is_remote: boolean | null;
+            /**
+             * Employment Type
+             * @enum {string}
+             */
+            employment_type: "full_time" | "part_time" | "contract" | "internship" | "temporary" | "unknown";
+            pay: components["schemas"]["Pay"] | null;
+            /** Apply Url */
+            apply_url: string;
+            source: components["schemas"]["JobSource"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            /** Posted At */
+            posted_at: string | null;
+            /**
+             * Last Verified At
+             * Format: date-time
+             */
+            last_verified_at: string;
+            /** Content Version */
+            content_version: number;
+        };
+        /** JobDetail */
+        JobDetail: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Company Name */
+            company_name: string;
+            /** Location Raw */
+            location_raw: string | null;
+            /** Country */
+            country: string | null;
+            /** City */
+            city: string | null;
+            /** Work Arrangements */
+            work_arrangements: ("onsite" | "hybrid" | "remote")[];
+            /** Is Remote */
+            is_remote: boolean | null;
+            /**
+             * Employment Type
+             * @enum {string}
+             */
+            employment_type: "full_time" | "part_time" | "contract" | "internship" | "temporary" | "unknown";
+            pay: components["schemas"]["Pay"] | null;
+            /** Apply Url */
+            apply_url: string;
+            source: components["schemas"]["JobSource"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            /** Posted At */
+            posted_at: string | null;
+            /**
+             * Last Verified At
+             * Format: date-time
+             */
+            last_verified_at: string;
+            /** Content Version */
+            content_version: number;
+            /** Description */
+            description: string;
+            /** Closed At */
+            closed_at: string | null;
+            /** Requirements Version */
+            requirements_version: number | null;
+            /** Requirements */
+            requirements: components["schemas"]["Requirement"][];
+        };
+        /** JobSource */
+        JobSource: {
+            /**
+             * Ats
+             * @enum {string}
+             */
+            ats: "greenhouse" | "lever" | "ashby" | "direct";
+            /** Board */
+            board: string;
         };
         /** Me */
         Me: {
@@ -290,6 +437,37 @@ export interface components {
              */
             created_at: string;
         };
+        /** Pay */
+        Pay: {
+            /** Min */
+            min: number | null;
+            /** Max */
+            max: number | null;
+            /** Currency */
+            currency: string;
+        };
+        /** Requirement */
+        Requirement: {
+            /** Id */
+            id: number;
+            /** Ordinal */
+            ordinal: number;
+            /** Text */
+            text: string;
+            /**
+             * Importance
+             * @enum {string}
+             */
+            importance: "required" | "preferred";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "skill" | "experience" | "education" | "certification" | "authorization" | "location" | "other";
+            span: components["schemas"]["Span"];
+            /** Min Years */
+            min_years: number | null;
+        };
         /** SessionRequest */
         SessionRequest: {
             /** Email */
@@ -298,6 +476,13 @@ export interface components {
             code: string;
             /** Timezone */
             timezone?: string | null;
+        };
+        /** Span */
+        Span: {
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
         };
         /** Subprocessor */
         Subprocessor: {
@@ -378,7 +563,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -388,8 +575,11 @@ export interface operations {
             query?: {
                 q?: string;
                 country?: string | null;
+                city?: string | null;
                 remote?: boolean | null;
                 limit?: number;
+                cursor?: string | null;
+                mode?: "hybrid" | "keyword";
             };
             header?: never;
             path?: never;
@@ -403,7 +593,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["Envelope_list_Job__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_job_v1_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_JobDetail_"];
                 };
             };
             /** @description Validation Error */

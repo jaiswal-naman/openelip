@@ -1,0 +1,113 @@
+{
+  "_comment": "INVENTED DATA for the OpenElip browser tests. Every company, posting and address here is made up; nothing is a real job. The boards are never fetched (the seed marks them inactive) and the apply links use example.test, which never resolves.",
+  "boards": {
+    "greenhouse": { "board": "e2e-fixture-quillfeather", "company": "Quillfeather Labs" },
+    "lever": { "board": "e2e-fixture-brindlewood", "company": "Brindlewood Systems" },
+    "ashby": { "board": "e2e-fixture-tessellate", "company": "Tessellate Works" }
+  },
+  "last_verified_at": "2026-11-22T12:21:54Z",
+  "bulk_description": "INVENTED POSTING for the OpenElip browser tests: {company} is a fictional company and this text describes no real job. As a software engineer you will design, build and run services.",
+  "bulk": [
+    { "ats": "greenhouse", "title": "Software Engineer, Payments", "location_raw": "Pune, India", "country": "IN", "city": "Pune", "work_arrangements": ["hybrid"], "employment_type": "full_time" },
+    { "ats": "greenhouse", "title": "Senior Software Engineer, Search", "location_raw": "Bengaluru, India", "country": "IN", "city": "Bengaluru", "work_arrangements": ["hybrid"], "employment_type": "full_time" },
+    { "ats": "greenhouse", "title": "Software Engineer, Mobile", "location_raw": "Berlin, Germany", "country": "DE", "city": "Berlin", "work_arrangements": ["onsite"], "employment_type": "full_time" },
+    { "ats": "greenhouse", "title": "Staff Software Engineer, Infrastructure", "location_raw": "Austin, TX, United States", "country": "US", "city": "Austin", "work_arrangements": ["remote", "hybrid"], "employment_type": "full_time" },
+    { "ats": "greenhouse", "title": "Software Engineer in Test", "location_raw": "London, United Kingdom", "country": "GB", "city": "London", "work_arrangements": ["onsite", "hybrid"], "employment_type": "contract" },
+    { "ats": "greenhouse", "title": "Backend Software Engineer, Billing", "location_raw": "Toronto, Canada", "country": "CA", "city": "Toronto", "work_arrangements": ["hybrid"], "employment_type": "full_time" },
+    { "ats": "greenhouse", "title": "Frontend Software Engineer", "location_raw": "Pune, India", "country": "IN", "city": "Pune", "work_arrangements": ["remote"], "employment_type": "full_time" },
+    { "ats": "greenhouse", "title": "Data Software Engineer", "location_raw": "Singapore", "country": "SG", "city": "Singapore", "work_arrangements": ["onsite"], "employment_type": "full_time" },
+    { "ats": "greenhouse", "title": "Software Engineer, Developer Tools", "location_raw": "Dublin, Ireland", "country": "IE", "city": "Dublin", "work_arrangements": ["hybrid"], "employment_type": "part_time" },
+    { "ats": "greenhouse", "title": "Principal Software Engineer", "location_raw": "Sydney, Australia", "country": "AU", "city": "Sydney", "work_arrangements": ["onsite"], "employment_type": "full_time" },
+    { "ats": "greenhouse", "title": "Software Engineer Intern", "location_raw": "Bengaluru, India", "country": "IN", "city": "Bengaluru", "work_arrangements": ["onsite"], "employment_type": "internship" },
+    { "ats": "greenhouse", "title": "Software Engineer, Security", "location_raw": "Remote, United States", "country": "US", "city": null, "work_arrangements": ["remote"], "employment_type": "full_time" },
+    { "ats": "lever", "title": "Software Engineer, Platform", "location_raw": "Hyderabad, India", "country": "IN", "city": "Hyderabad", "work_arrangements": ["hybrid"], "employment_type": "full_time" },
+    { "ats": "lever", "title": "Senior Software Engineer, Data", "location_raw": "Paris, France", "country": "FR", "city": "Paris", "work_arrangements": ["onsite"], "employment_type": "full_time" },
+    { "ats": "lever", "title": "Software Engineer, Reliability", "location_raw": "New York, NY, United States", "country": "US", "city": "New York", "work_arrangements": ["hybrid"], "employment_type": "full_time" },
+    { "ats": "lever", "title": "Software Engineer, Growth", "location_raw": "Madrid, Spain", "country": "ES", "city": "Madrid", "work_arrangements": ["hybrid"], "employment_type": "full_time" },
+    { "ats": "lever", "title": "Software Engineer, Machine Learning Platform", "location_raw": "Zurich, Switzerland", "country": "CH", "city": "Zurich", "work_arrangements": ["onsite"], "employment_type": "full_time" },
+    { "ats": "lever", "title": "Software Engineer, Integrations", "location_raw": "Remote, India", "country": "IN", "city": null, "work_arrangements": ["remote"], "employment_type": "contract" },
+    { "ats": "lever", "title": "Staff Software Engineer, Storage", "location_raw": "Seattle, WA, United States", "country": "US", "city": "Seattle", "work_arrangements": ["hybrid"], "employment_type": "full_time" },
+    { "ats": "lever", "title": "Software Engineer, Internal Tools", "location_raw": "Chennai, India", "country": "IN", "city": "Chennai", "work_arrangements": ["onsite"], "employment_type": "temporary" },
+    { "ats": "lever", "title": "Software Engineer, APIs", "location_raw": "Amsterdam, Netherlands", "country": "NL", "city": "Amsterdam", "work_arrangements": ["hybrid"], "employment_type": "full_time" },
+    { "ats": "ashby", "title": "Software Engineer, Observability", "location_raw": "Mumbai, India", "country": "IN", "city": "Mumbai", "work_arrangements": ["hybrid"], "employment_type": "full_time" },
+    { "ats": "ashby", "title": "Senior Software Engineer, Edge", "location_raw": "Lisbon, Portugal", "country": "PT", "city": "Lisbon", "work_arrangements": ["remote", "hybrid"], "employment_type": "full_time" },
+    { "ats": "ashby", "title": "Software Engineer, Compilers", "location_raw": "Munich, Germany", "country": "DE", "city": "Munich", "work_arrangements": ["onsite"], "employment_type": "full_time" },
+    { "ats": "ashby", "title": "Software Engineer, Analytics", "location_raw": "Pune, India", "country": "IN", "city": "Pune", "work_arrangements": ["hybrid"], "employment_type": "full_time" },
+    { "ats": "ashby", "title": "Software Engineer, Search Quality", "location_raw": "Warsaw, Poland", "country": "PL", "city": "Warsaw", "work_arrangements": ["hybrid"], "employment_type": "full_time" },
+    { "ats": "ashby", "title": "Software Engineer, Billing", "location_raw": "Denver, CO, United States", "country": "US", "city": "Denver", "work_arrangements": ["remote"], "employment_type": "full_time" },
+    { "ats": "ashby", "title": "Software Engineer, Messaging", "location_raw": "Tokyo, Japan", "country": "JP", "city": "Tokyo", "work_arrangements": ["onsite"], "employment_type": "full_time" },
+    { "ats": "ashby", "title": "Software Engineer, Growth Platform", "location_raw": "Remote", "country": null, "city": null, "work_arrangements": [], "employment_type": "unknown" }
+  ],
+  "special": [
+    {
+      "external_id": "inv-quokka-unknown",
+      "ats": "lever",
+      "title": "Quokka Platform Engineer",
+      "location_raw": null,
+      "country": null,
+      "city": null,
+      "work_arrangements": [],
+      "employment_type": "unknown",
+      "description": "INVENTED POSTING for the OpenElip browser tests: Brindlewood Systems is a fictional company. This posting gives no place, no pay and no employment type, and no software engineer was ever hired for it."
+    },
+    {
+      "external_id": "inv-quokka-requirements",
+      "ats": "greenhouse",
+      "title": "Quokka Backend Software Engineer",
+      "location_raw": "Pune, India",
+      "country": "IN",
+      "city": "Pune",
+      "work_arrangements": ["hybrid"],
+      "employment_type": "full_time",
+      "pay": { "min": 120000, "max": 150000, "currency": "USD" },
+      "description": "INVENTED POSTING for the OpenElip browser tests: Quillfeather Labs is a fictional company.\n\nAbout the role\nYou will build and run backend services for a pretend product.\n\nWhat you need\n5 years of Python experience.\nExperience with PostgreSQL in production.\n\nNice to have\nFamiliarity with Kubernetes.\nKnowing Go is a plus.\n",
+      "requirements": [
+        { "ordinal": 1, "importance": "required", "kind": "experience", "text": "5 years of Python experience" },
+        { "ordinal": 2, "importance": "required", "kind": "experience", "text": "Experience with PostgreSQL in production" },
+        { "ordinal": 3, "importance": "preferred", "kind": "skill", "text": "Familiarity with Kubernetes" },
+        { "ordinal": 4, "importance": "preferred", "kind": "skill", "text": "Knowing Go" }
+      ]
+    },
+    {
+      "external_id": "inv-quokka-emoji",
+      "ats": "ashby",
+      "title": "Quokka Emoji Software Engineer",
+      "location_raw": "Lisbon, Portugal",
+      "country": "PT",
+      "city": "Lisbon",
+      "work_arrangements": ["remote"],
+      "employment_type": "full_time",
+      "description": "🚀🎉 INVENTED POSTING for the OpenElip browser tests: Tessellate Works is a fictional company.\nYou need 3 years of Python.\nExperience with Kubernetes is a plus.\n",
+      "requirements": [
+        { "ordinal": 1, "importance": "required", "kind": "experience", "text": "3 years of Python" },
+        { "ordinal": 2, "importance": "preferred", "kind": "skill", "text": "Experience with Kubernetes" }
+      ]
+    },
+    {
+      "external_id": "inv-quokka-closed",
+      "ats": "greenhouse",
+      "title": "Quokka Retired Software Engineer",
+      "location_raw": "Pune, India",
+      "country": "IN",
+      "city": "Pune",
+      "work_arrangements": ["onsite"],
+      "employment_type": "full_time",
+      "status": "closed",
+      "closed_at": "2026-11-21T06:12:00Z",
+      "last_verified_at": "2026-11-20T18:00:00Z",
+      "description": "INVENTED POSTING for the OpenElip browser tests: Quillfeather Labs is a fictional company. This role closed and is kept only so the page can show a closed job."
+    },
+    {
+      "external_id": "inv-quokka-unlisted",
+      "ats": "lever",
+      "title": "Quokka Unlisted Software Engineer",
+      "location_raw": "Pune, India",
+      "country": "IN",
+      "city": "Pune",
+      "work_arrangements": ["hybrid"],
+      "employment_type": "full_time",
+      "is_listed": false,
+      "description": "INVENTED POSTING for the OpenElip browser tests: Brindlewood Systems is a fictional company. This job is not listed, so the public pages must answer as if it did not exist."
+    }
+  ]
+}

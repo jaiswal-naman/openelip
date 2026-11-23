@@ -1,0 +1,85 @@
+{
+  "note": "INVENTED TEST DATA. Every company, posting and query in this file was written for the tests of plan 02-05. None is a real posting or a real employer. It exists to prove that a plain-English query finds a posting that shares no word with it; it is not a benchmark of search quality.",
+  "postings": [
+    {
+      "key": "dental",
+      "title": "Dental Hygienist",
+      "department": "Clinical",
+      "description": "Northwood Smile Studio is a neighbourhood dentistry clinic. As our hygienist you will scale and polish patients' molars, take radiographs, apply fluoride varnish and coach families on gum care. You will work chairside with two dentists. A current dental hygiene licence is required."
+    },
+    {
+      "key": "trucker",
+      "title": "Long-Haul Truck Operator",
+      "department": "Logistics",
+      "description": "Brightline Freight runs refrigerated loads between regional depots on overnight interstate routes. You will hold a Class A commercial licence, complete pre-trip inspections of the tractor and trailer, log your hours of service and keep cargo temperature in range. Home most weekends."
+    },
+    {
+      "key": "pastry",
+      "title": "Pastry Chef",
+      "department": "Kitchen",
+      "description": "The pastry kitchen at Harbourview Hotel is looking for a chef to laminate dough for croissants, temper chocolate, pipe choux and assemble tiered gateaux for banquets and weddings. Early starts, a food-safety certificate and a steady hand are essential."
+    },
+    {
+      "key": "nurse",
+      "title": "Intensive Care Nurse",
+      "department": "Critical Care",
+      "description": "Join a twelve-bed intensive care ward where you will monitor ventilators, adjust drug infusions at the bedside and coordinate with the resuscitation team for adults who are critically ill. Registered nurse licence and ACLS certification required."
+    },
+    {
+      "key": "electrician",
+      "title": "Residential Electrician",
+      "department": "Field Services",
+      "description": "Pull cable, mount consumer units, and fit sockets, switches and ceiling lights in houses under construction. Test every circuit, sign off compliance certificates and keep the site tidy. NVQ level 3 or equivalent."
+    },
+    {
+      "key": "teacher",
+      "title": "Year 2 Class Teacher",
+      "department": "Primary",
+      "description": "Teach phonics, number bonds and storytelling to a class of seven-year-olds in a village primary school. Plan lessons, mark workbooks and meet parents once a term. Qualified teacher status is required."
+    },
+    {
+      "key": "backend",
+      "title": "Backend Software Engineer",
+      "department": "Engineering",
+      "description": "Design and operate REST services and PostgreSQL schemas in Python, write automated tests, review pull requests and join the on-call rota one week in six."
+    },
+    {
+      "key": "analyst",
+      "title": "Data Analyst",
+      "department": "Insights",
+      "description": "Query the warehouse with SQL, build dashboards in a BI tool and present weekly revenue and churn figures to the commercial team. Comfort with statistics and a curious mind matter more than years of experience."
+    },
+    {
+      "key": "copywriter",
+      "title": "Marketing Copywriter",
+      "department": "Brand",
+      "description": "Craft persuasive headlines, newsletters and social posts, brief the designers and keep every campaign in our brand voice. A portfolio of published pieces is required."
+    },
+    {
+      "key": "warehouse",
+      "title": "Warehouse Operative",
+      "department": "Fulfilment",
+      "description": "Pick, pack and dispatch parcels, drive a reach truck, scan stock into bays and keep aisles clear. A forklift licence is an advantage. Shifts rotate between mornings and afternoons."
+    },
+    {
+      "key": "accountant",
+      "title": "Staff Accountant",
+      "department": "Finance",
+      "description": "Reconcile ledgers, prepare month-end journals, file VAT returns and support the external audit for a group of three companies. Professional accounting qualification preferred."
+    },
+    {
+      "key": "designer",
+      "title": "Graphic Designer",
+      "department": "Creative",
+      "description": "Create brand identities, packaging artwork and flyer layouts in Illustrator and InDesign, and present concepts to clients. A strong portfolio is essential."
+    }
+  ],
+  "queries": [
+    {"query": "help people fix their teeth", "target": "dental"},
+    {"query": "spend my nights behind the wheel of a big lorry delivering goods across the country", "target": "trucker"},
+    {"query": "look after seriously unwell people who cannot breathe on their own", "target": "nurse"},
+    {"query": "put wiring and lamps into homes that are being built", "target": "electrician"},
+    {"query": "educate small kids to read and do sums", "target": "teacher"},
+    {"query": "create programs that run on servers and talk to databases", "target": "backend"}
+  ]
+}

@@ -1,0 +1,189 @@
+# Location gold sample
+
+400 real job postings' location inputs, each labelled with the country and city they state, or null when they state
+none. It grades the location parser (IDX-06: country and city correct at least 95% of the time on this sample, and a
+place nobody stated stays unknown).
+
+**Status: labels drafted by an agent, review pending.** Every row says `labeller: "agent"`. The maintainer reviews at
+least 20% of the test split (60 of the 300 rows, taken from the 260 that are scored, see "Rows left out of the test
+score") before any accuracy figure from this sample is published. Until then a report must say "labels drafted by an
+agent, review pending". The review is also where the 10 judgement calls in `GUIDELINE.md` ("Decisions made while
+labelling") should be read first.
+
+## Files
+
+| File | What it is |
+|---|---|
+| `GUIDELINE.md` | The labelling rules with worked examples, and the decisions made while labelling. |
+| `sample.jsonl` | 400 rows: `id, split, ats, board, external_id, location_raw, country_hint, remote_hint, label_country, label_city, labeller`. |
+| `build_sample.py` | Draws the sample from the live boards (build) or validates the committed file (`--check`). |
+| `score.py` | The `location_accuracy` suite: runs `parse_location` over a split, scores it, and records the run. |
+| `baseline.json` | The one recorded run on the test split, written by `score.py --record --report`. |
+
+`location_raw`, `country_hint` and `remote_hint` are what the board published. `label_country` is an ISO 3166-1 alpha-2
+code or null. `label_city` is a city name or null. Null means the inputs do not say.
+
+## Where it came from
+
+- **Source:** the three public job-board endpoints the index itself reads (Greenhouse, Lever, Ashby), fetched on
+  2026-11-23 for the 71 boards that were active in the index that day (43 Greenhouse, 19 Ashby, 9 Lever). No board
+  failed. Only the location fields and ids are kept; no posting text is stored in this file.
+- **Exclusions:** a posting whose description, title or location contains an email address or a phone-number pattern is
+  left out before the draw: 2,240 of 11,360 fetched postings (19.7%). Almost all are email addresses (generic careers,
+  accommodations or privacy contacts); the phone pattern is deliberately loose and may drop a few postings that merely
+  contain a long number. This is a selection effect: 58 of the 71 boards had postings left, and a company that puts an
+  address in every posting is absent from the sample altogether.
+- **Pool:** 9,120 postings (Greenhouse 6,346, Ashby 2,383, Lever 391).
+- **Draw:** `random.Random(20261122)`, proportional by ATS with the largest-remainder rule: Greenhouse 278, Ashby 105,
+  Lever 17, from 47 boards. The pool is sorted by `(ats, board, external_id)` before drawing, so the order boards
+  answered in cannot change the result. The 400 drawn rows are then shuffled with the same generator and the first 100
+  are `dev`, the other 300 `test` (dev: 73 Greenhouse, 20 Ashby, 7 Lever; test: 205, 85 and 10).
+- **Not reproducible later:** boards change every day, so running `build_sample.py` again gives a different pool. The
+  committed file is the record, and the script refuses to overwrite it.
+
+## How it was labelled
+
+An agent read each of the 220 distinct `(location_raw, country_hint, remote_hint)` inputs in the sample and labelled
+it from `GUIDELINE.md`, once, then copied the label to every row with that input, so equal inputs always have equal
+labels. No location parser or gazetteer was run or read, and the index's own `country` and `city` columns were not
+looked at. The guideline's rules and examples were written before the first row was read; ten cases they did not
+settle were decided while labelling and are listed at the end of the guideline with their row counts.
+
+## What the labels look like
+
+| | Rows |
+|---|---|
+| Country labelled | 391 (US 204, IN 51, CA 21, GB 20, SG 15, JP 13, MX 11, IE 9, AU 7, 22 other countries 40) |
+| Null country and null city | 9 (6 test, 3 dev) |
+| City null with a country labelled | 59 (for example "Remote - United States", "California") |
+| Country hint present | 117 |
+| `remote_hint` true or false | 98 (70 true, 28 false) |
+
+## Limits to keep in mind
+
+- **Few unknowns.** Only 9 rows are null and null, 6 of them in the test split and 4 of those among the 260 scored
+  rows. With zero wrong guesses on 4 attempts the 95% upper bound is about 3/4, so this sample can show that the parser
+  does not guess on the commonest unclear strings but cannot bound how often it guesses. A separate synthetic
+  "unreadable strings" slice (labelled as synthetic, reported apart) would be the way to measure that.
+- **No ambiguous bare city.** No real row names a city that exists in several countries without a clue (the
+  "Cambridge" case in `GUIDELINE.md` rule 4), so that branch is covered by the guideline but not by this data.
+- **United States heavy.** 51% of the rows are US; 14 countries have a single row.
+- **One day's postings, three ATS products.** Nothing here speaks for other boards or other days.
+
+## The test split is frozen
+
+The 100 `dev` rows are for building and debugging the parser. The 300 `test` rows are for one recorded run. Tuning code
+or rules against the test split is not allowed (AI_SYSTEM 12.1, rule 3), and a failing test row is reported, not
+patched around. If review finds a wrong label, correct the label, say so in the commit message, and re-run; never change
+the code to fit a label.
+
+## Rows left out of the test score
+
+**Status: labels drafted by an agent, review pending.** The test split was frozen for scoring, but it was not hidden
+from development. The labeller read all 400 rows, `GUIDELINE.md` quotes inputs of test rows under "Decisions made while
+labelling" (for example "US-CA-Menlo Park", "CH-Zurich-Observe", "Mexico - Update Location"), and the parser's unit tests
+(`backend/tests/ingest/test_location.py`) spell out 23 strings that only test rows carry, some by coincidence
+("Toronto") and others through those quotations. The Phase 2 verification found this after the first recorded run.
+
+The 40 test rows whose input is written out in either file, and occurs in no dev row, are listed in `EXCLUDED` in
+`score.py`. They stay in `sample.jsonl`, are left out of every test score, and the recorded run names their ids. A test
+finds them again from the two files, so quoting another test input in either one fails the test until the row is listed
+and the run is made again. Neither the parser nor a label was changed. A row that a dev row also carries is not left out:
+equal inputs have equal labels, and the dev split exists for building the parser.
+
+What changed in the number: the first run (`adad9274-2e77-45b3-927a-7eedd728d121`, 298 of 300) scored all 300 rows and is
+replaced by the run below. The parser was right on all 40 left-out rows, so the two misses are the same and the figure is
+a little lower on the smaller set: 258 of 260 (0.9923) instead of 298 of 300 (0.9933). The bars were written for "the
+test rows" and keep their values; the population they apply to went from 300 rows to 260 after that first run, which is
+a change of the set made after seeing a result, and is stated here for that reason.
+
+## Pre-registered bars
+
+Written on 2026-11-23, before any run of `score.py` on the test split (AI_SYSTEM 12.1: fix the metric and the bar
+before the run; a changed bar is a new, dated pre-registration).
+
+On the 300 test rows, both must hold (since the first run, on the 260 that are scored; see "Rows left out of the test
+score"):
+
+- `location_accuracy >= 0.95`. A row is correct when the predicted country equals `label_country` and the predicted
+  city equals `label_city`. Cities are compared through GeoNames' names and alternate names (the suite's own reading of
+  GeoNames, apart from the parser's tables), so "Bengaluru" matches the label "Bangalore" and "New York City" matches
+  "New York". A null equals a null and nothing else.
+- `location_guessed == 0`. A row is guessed when a label is null and the parser returned a value for it. Rows are
+  counted, not fields.
+
+Reported with counts and a 95% Wilson interval, always beside the words "labels drafted by an agent, review pending":
+no figure from this sample is final until the maintainer has reviewed 60 of the 300 test rows. One recorded run, read
+once; a miss is reported as a miss and the code is not tuned against these rows.
+
+**What the guessed bar can and cannot show.** Only 4 of the 260 scored test rows are labelled null for both country and
+city (6 of the 300 before 40 were left out), so `location_guessed = 0` on them is weak evidence: with zero guesses in 4
+attempts the 95% upper bound on the guess rate is about 3/4 (AI_SYSTEM 12.1, rule 2). Rows with a country but a null
+city ("Remote - United States") are further chances to guess a city, and the report counts them, but no row names an
+ambiguous city with nothing to settle it, so that branch of the parser is covered by
+`backend/tests/ingest/test_location.py` and not by this data. Read the guessed bar as "no guess on the strings the
+sample holds", not as a rate.
+
+The harness gate reads `metrics.score`, so for this suite `score` is the accuracy, or 0 when any row was guessed; the
+honest numbers are `location_accuracy` and `location_guessed`. The floor is in `evals/thresholds.toml`.
+
+## Recorded run on the test split (2026-11-23)
+
+**Labels drafted by an agent, review pending.** One run of `score.py --record` on the 260 scored test rows (the 300 less
+the 40 of "Rows left out of the test score"), made at commit `91bd6f0` against the same parser as the first run
+(`parser_sha256` in the run's config is unchanged). The run is `673aa2d8-ecbe-4a70-8e24-0204e85475f9`; `baseline.json`
+is that run as the database holds it, with the ids it left out (the database was a scratch one ending in `_test`, not
+the live one). It replaces the first run, `adad9274-2e77-45b3-927a-7eedd728d121` (298 of 300 rows), which counted rows
+that were not unseen.
+
+| | |
+|---|---|
+| Rows correct | 258 of 260: `location_accuracy` 0.9923, 95% Wilson interval 0.9724 to 0.9979 |
+| `location_guessed` | 0 (the chances to guess: 4 rows with no country label, 46 with no city label, 4 with neither) |
+| Bars | `location_accuracy >= 0.95` met; `location_guessed == 0` met |
+
+The two wrong rows, neither a guess:
+
+- `loc-264`, "Remote - D.C., USA", label US and Washington. The parser reads a bare "D.C." as a state-level cue, so it
+  returns US and no city.
+- `loc-375`, "Barcelona", label ES and Barcelona. The city in Spain (1.69 million) is about twice the one in Venezuela
+  (0.82 million), not ten times, so the parser leaves country and city unknown.
+
+The parser was not changed after this run. Both are open for the maintainer: a bare "D.C." could be read as Washington,
+and a short list of famous cities, or a country prior per board, would settle "Barcelona".
+
+What this number does and does not show:
+
+- The labels were drafted by one agent and not yet reviewed, so the figure is provisional until 60 test rows have been
+  checked. If review corrects a label, correct the label, say so in the commit message and run again; never change the
+  code to fit a label.
+- The 100 development rows were used to build the parser, so their 100 of 100 is not a result.
+- `location_guessed = 0` is evidence about the 4 unknown rows and the 46 rows with no city label, which is little (see
+  the bars section above). It is not a guess rate.
+- The 260 rows are not all as unseen as a held-out set should be: 133 of them have an input that a dev row carries too.
+  Equal inputs have equal labels, so those rows say little about inputs the parser never saw.
+- One day's postings from three ATS products: the interval describes this sample, not job postings in general.
+
+## Commands
+
+```
+uv run --project backend python evals/location/build_sample.py --check   # offline, validates sample.jsonl
+uv run --project backend python evals/location/score.py --split dev      # development rows, with every miss
+```
+
+The test split, recorded (needs a migrated database; never the live one):
+
+```
+DATABASE_URL_WORKER=postgresql://app_worker:...@127.0.0.1:5433/<name>_test \
+  uv run --project backend python evals/location/score.py --record --report evals/location/baseline.json
+cd backend && python -m app.evals gate location_accuracy --run <the run id it printed>
+```
+
+A recorded run cannot be deleted, so `--record` refuses unless the database `DATABASE_URL_WORKER` names ends in `_test`
+or is exactly `evals` (the CI eval job's database). `--live` writes to any other one; use it only on purpose.
+
+`score.py` is not in the `SUITES` table of `backend/app/evals/runner.py`: that table is for suites replayed through a
+model, and this one calls none, so `python -m app.evals run` does not know it. `score.py --record` writes the same
+tables, and `gate` judges the run from them.
+
+Building needs the internet and a read-only `DATABASE_URL`, and refuses to run while `sample.jsonl` exists.

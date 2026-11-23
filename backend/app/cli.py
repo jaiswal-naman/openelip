@@ -3,13 +3,14 @@
 Run:  python -m app.cli <group> <command>
 
 Each command calls a function its owning module provides, imported when the command runs. A command whose function
-does not exist yet says so and exits 2.
+does not exist yet says so and exits 2. A command may return an exit code; one that returns nothing exits 0.
 """
 
 import argparse
 import sys
 import time
 from collections.abc import Callable, Sequence
+from pathlib import Path
 from uuid import UUID
 
 QUEUE_STATUSES = ["queued", "running", "succeeded", "dead"]
@@ -87,6 +88,45 @@ def _sources_discover(args: argparse.Namespace) -> None:
     print("discovery queued; the worker runs it")
 
 
+def _sources_import(args: argparse.Namespace) -> int:
+    """Register the live boards named in a file (one name per line). A file that cannot be read exits 2."""
+    from app.ingest import discover
+    from app.platform import db
+
+    try:
+        names = Path(args.path).read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError) as error:
+        print(f"cannot read {args.path}: {type(error).__name__}", file=sys.stderr)
+        return 2
+    # Operator actions are meant to leave a trust.audit row (Phase 3); the merge of the two phases adds it here.
+    with db.transaction(role="worker") as conn:
+        result = discover.import_boards(conn, names, dry_run=args.dry_run)
+    prefix = "dry run, nothing written: " if args.dry_run else ""
+    print(
+        f"{prefix}probed {result.probed}, registered {result.registered}, already known {result.already_known}, "
+        f"rejected {len(result.rejected)}"
+    )
+    for name in result.rejected:
+        print(f"  not a board name: {name[:80]}")
+    return 0
+
+
+def _jobs_verify(args: argparse.Namespace) -> int:
+    """alive and closed exit 0, a check that could not tell exits 3, a job that does not exist exits 2."""
+    from sqlalchemy import text
+
+    from app.ingest import liveness
+    from app.platform import db
+
+    with db.transaction(role="worker") as conn:
+        if conn.execute(text("SELECT 1 FROM jobs WHERE id = :id"), {"id": args.job_id}).first() is None:
+            print(f"job {args.job_id} does not exist", file=sys.stderr)
+            return 2
+        alive = liveness.verify_live(conn, args.job_id)
+    print("unknown" if alive is None else "alive" if alive else "closed")
+    return 3 if alive is None else 0
+
+
 def _outbox_resolve(args: argparse.Namespace) -> None:
     from app.platform import relay
 
@@ -103,11 +143,13 @@ def _models_sync(args: argparse.Namespace) -> None:
     print(f"{count} model routes synced")
 
 
-COMMANDS: dict[tuple[str, str], Callable[[argparse.Namespace], None]] = {
+COMMANDS: dict[tuple[str, str], Callable[[argparse.Namespace], int | None]] = {
     ("queue", "list"): _queue_list,
     ("queue", "retry"): _queue_retry,
     ("ingest", "run"): _ingest_run,
     ("sources", "discover"): _sources_discover,
+    ("sources", "import"): _sources_import,
+    ("jobs", "verify"): _jobs_verify,
     ("outbox", "resolve"): _outbox_resolve,
     ("models", "sync"): _models_sync,
 }
@@ -128,6 +170,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     sources = groups.add_parser("sources", help="job-board sources").add_subparsers(dest="command", required=True)
     sources.add_parser("discover", help="find which candidate boards exist")
+    board_import = sources.add_parser(
+        "import", help="register the live boards named in a file, one board name per line"
+    )
+    board_import.add_argument("path")
+    board_import.add_argument("--dry-run", action="store_true", help="probe and report, write nothing")
+
+    jobs = groups.add_parser("jobs", help="single jobs").add_subparsers(dest="command", required=True)
+    jobs.add_parser("verify", help="check a job's apply link and close the job if it is gone").add_argument(
+        "job_id", type=int
+    )
 
     outbox = groups.add_parser("outbox", help="outgoing email").add_subparsers(dest="command", required=True)
     resolve = outbox.add_parser("resolve", help="settle a row left in `unknown`")
@@ -144,11 +196,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        COMMANDS[(args.group, args.command)](args)
+        return COMMANDS[(args.group, args.command)](args) or 0
     except NotImplementedError:
         print(f"{args.group} {args.command}: not implemented yet", file=sys.stderr)
         return 2
-    return 0
 
 
 if __name__ == "__main__":

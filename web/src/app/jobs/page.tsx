@@ -1,7 +1,7 @@
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import { JobsView } from "@/features/jobs/JobsView";
-import { PAGE_SIZE, parseSearch, searchToQueryString } from "@/features/jobs/jobs";
+import { parseSearch, searchToQueryString } from "@/features/jobs/jobs";
 import { jobsQuery, openCountQuery } from "@/features/jobs/queries";
 import { serverApi } from "@/lib/api/server";
 import { makeQueryClient } from "@/lib/query";
@@ -18,7 +18,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   const queryClient = makeQueryClient();
   const api = await serverApi();
   await Promise.all([
-    queryClient.prefetchQuery(jobsQuery(api, params, PAGE_SIZE)),
+    queryClient.prefetchInfiniteQuery(jobsQuery(api, params)),
     queryClient.prefetchQuery(openCountQuery(api)),
   ]);
 
@@ -26,7 +26,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
     <div className="container page">
       <header>
         <h1 className="t-page">Open jobs</h1>
-        <p className="muted">Keyword search over open jobs from public company boards. No account needed.</p>
+        <p className="muted">Search open jobs from public company boards by meaning and by keyword. No account needed.</p>
       </header>
       <HydrationBoundary state={dehydrate(queryClient)}>
         <JobsView key={searchToQueryString(params)} params={params} />

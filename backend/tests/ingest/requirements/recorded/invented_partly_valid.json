@@ -1,0 +1,8 @@
+[
+  {
+    "requirements": [
+      {"segments": [3], "quote": "5+ years of Go", "importance": "required", "kind": "experience", "min_years": 5},
+      {"segments": [99], "quote": null, "importance": "preferred", "kind": "skill", "min_years": null}
+    ]
+  }
+]

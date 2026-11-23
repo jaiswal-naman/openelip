@@ -10,7 +10,7 @@ from app.platform import db
 
 def test_the_application_connects_as_its_own_role_on_the_test_database(database_url):
     with db.transaction() as conn:
-        assert conn.execute(text("SELECT current_user, current_database()")).one() == ("app_api", "app_test")
+        assert conn.execute(text("SELECT current_user, current_database()")).one() == ("app_api", database_url.database)
     with db.transaction(role="worker") as conn:
         assert conn.execute(text("SELECT current_user")).scalar_one() == "app_worker"
 

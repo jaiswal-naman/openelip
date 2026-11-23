@@ -1,0 +1,13 @@
+[
+  {
+    "requirements": [
+      {"segments": [99], "quote": null, "importance": "required", "kind": "skill", "min_years": null},
+      {"segments": [98], "quote": "Go", "importance": "required", "kind": "skill", "min_years": null}
+    ]
+  },
+  {
+    "requirements": [
+      {"segments": [97], "quote": null, "importance": "required", "kind": "skill", "min_years": null}
+    ]
+  }
+]

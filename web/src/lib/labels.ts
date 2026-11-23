@@ -1,4 +1,5 @@
 import type { ApiFailure } from "./api/errors";
+import type { components } from "./api/schema";
 
 /**
  * One plain message per API error code a Phase 1 screen can meet (API.md 1.11, FRONTEND_UI 6.4), plus two codes the
@@ -44,3 +45,42 @@ export function messageFor(failure: Pick<ApiFailure, "code" | "requestId" | "ret
   const id = failure.requestId ? `, and if it repeats, the request id is ${failure.requestId}` : "";
   return `Something went wrong on the server. Nothing was sent. Try again${id}.`;
 }
+
+// ---- The job screens (IDX-05, IDX-06, IDX-08) ---------------------------------------------------------------------------
+// Typed from the generated API types, so a code the API adds without a label here fails the type check, and
+// jobLabels.test.ts compares the keys with web/openapi.json (FRONTEND_UI 6.2).
+
+type Schemas = components["schemas"];
+
+/** FRONTEND_UI 6.3: what to say when the posting does not say, and when the system could not tell. Never a dash or a guess. */
+export const NOT_STATED = "Not stated in the posting";
+export const LOCATION_UNKNOWN = "Location: unknown";
+export const REMOTE_NOT_STATED = "Remote: not stated";
+
+/** Where a posting came from. `direct` is an employer's own role, which the public API never lists. */
+export const ATS_LABELS: Record<Schemas["JobSource"]["ats"], string> = {
+  greenhouse: "Greenhouse",
+  lever: "Lever",
+  ashby: "Ashby",
+  direct: "Direct",
+};
+
+export const WORK_ARRANGEMENT_LABELS: Record<Schemas["Job"]["work_arrangements"][number], string> = {
+  onsite: "On-site",
+  hybrid: "Hybrid",
+  remote: "Remote",
+};
+
+export const EMPLOYMENT_TYPE_LABELS: Record<Schemas["Job"]["employment_type"], string> = {
+  full_time: "Full time",
+  part_time: "Part time",
+  contract: "Contract",
+  internship: "Internship",
+  temporary: "Temporary",
+  unknown: NOT_STATED,
+};
+
+export const IMPORTANCE_LABELS: Record<Schemas["Requirement"]["importance"], string> = {
+  required: "Required",
+  preferred: "Preferred",
+};

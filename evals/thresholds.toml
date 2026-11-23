@@ -3,3 +3,15 @@
 
 [harness_smoke]
 min_score = 1.0   # five invented items, exact match: anything below 1.0 means the runner or the gate is broken
+
+# Scored by code, not replayed: run evals/location/score.py --record, then gate that run (see evals/location/README.md).
+# The bars were written before the first run: accuracy 0.95 and no guessed row. A guessed row zeroes the run's score.
+[location_accuracy]
+min_score = 0.95
+
+# Scored by code and replayed from recordings: run evals/requirement_extraction/score.py --record, then gate that run
+# (see evals/requirement_extraction/README.md). The score is 1.0 only when every bar that applies holds (every stored
+# citation resolves, and the replay does not fall below the stored baseline), else 0.0. The recordings are built from
+# the heading rules, so a pass shows that the code path works and says nothing about a model's quality.
+[requirement_extraction]
+min_score = 1.0

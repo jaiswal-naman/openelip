@@ -5,8 +5,9 @@ from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import make_url
 
 # What information_schema must show after `alembic upgrade head`, as "column udt_name" ("?" marks a nullable column).
-# Transcribed by hand from DATA_MODEL 3.3, 3.7 and 3.13 (the Phase 1 tables) and from the old db/schema.sql (the three
-# adopted job tables), so a change to either side that the other does not follow fails here. Not autogenerate.
+# Transcribed by hand from DATA_MODEL 3.3, 3.7 and 3.13 (the Phase 1 tables) and 3.5 (the job index, converted in
+# place by revision p2_0201_job_index), so a change to either side that the other does not follow fails here.
+# Not autogenerate.
 EXPECTED = {
     "users": """
         id uuid; email text; display_name text?; status user_status; is_synthetic bool; timezone text
@@ -46,17 +47,26 @@ EXPECTED = {
         id int8; eval_run_id uuid; item_key text; slice text?; source_user_id uuid?; expected jsonb?; actual jsonb?
         is_passed bool; score float4?""",
     "job_sources": """
-        id int8; ats text; token text; company_name text; is_active bool; last_fetched_at timestamptz?
-        last_status text?""",
+        id int8; ats ats_type; token text; company_name text; organization_id uuid?; is_active bool
+        last_fetched_at timestamptz?; last_status fetch_status?; consecutive_failures int4; created_at timestamptz""",
     "jobs": """
         id int8; source_id int8; external_id text; title text; company_name text; location_raw text?; country bpchar?
-        city text?; is_remote bool?; employment_type text?; department text?; description text; apply_url text
-        posted_at timestamptz?; content_hash text; content_version int4; dedupe_key text; canonical_job_id int8?
-        status text; first_seen_at timestamptz; last_verified_at timestamptz; closed_at timestamptz?; search tsvector?
-        embedding vector?""",
+        city text?; work_arrangements _work_arrangement; employment_type employment_type; employment_type_raw text?
+        seniority seniority; salary_min int4?; salary_max int4?; salary_currency bpchar?
+        visa_sponsorship visa_sponsorship; department text?; description text; apply_url text; posted_at timestamptz?
+        content_hash text; content_version int4; change_note text?; materially_changed_at timestamptz; dedupe_key text
+        canonical_job_id int8?; is_listed bool; status job_status; first_seen_at timestamptz
+        last_verified_at timestamptz; closed_at timestamptz?; apply_checked_at timestamptz?; apply_check_ok bool?
+        requirements_version int4?; search tsvector?; embedding vector?; embedding_model text?""",
     "fetch_runs": """
-        id int8; source_id int8; started_at timestamptz; finished_at timestamptz?; status text; http_status int4?
-        jobs_seen int4; jobs_new int4; jobs_changed int4; jobs_closed int4; error text?""",
+        id int8; source_id int8; started_at timestamptz; finished_at timestamptz?; status fetch_status
+        http_status int4?; jobs_seen int4; jobs_new int4; jobs_changed int4; jobs_closed int4; error text?""",
+    "skills": """
+        id int4; external_id text; name text; category text?; aliases _text; taxonomy_version text""",
+    "job_requirements": """
+        id int8; job_id int8; content_version int4; ordinal int2; importance requirement_importance
+        kind requirement_kind; text text; span int4range; skill_ids _int4; min_years int2?; prompt_version text
+        llm_call_id int8?; created_at timestamptz""",
 }
 
 
