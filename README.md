@@ -12,7 +12,7 @@ Most job tools hand you a list. OpenElip is being built to do the work behind th
 - **Dealbreakers enforced in code.** A job that breaks a stated hard constraint is filtered by the database before any model sees it.
 - **Reasons you can check.** Each match is a requirement-by-requirement table that points at the exact sentence in the job post and the exact line in your resume.
 - **Done for you, decided by you.** A crew of agents researches the company, prepares the application and drafts follow-ups. Nothing leaves the system without your yes.
-- **Local first.** One `docker compose up`. Search runs with no API key. Language-model features use a key you supply, or a local model through an OpenAI-compatible endpoint.
+- **Local first.** One `docker compose up`, one person, one computer: open the app and you are in, with no account to make. Search runs with no API key. Language-model features use a key you paste into the app, or a local model through an OpenAI-compatible endpoint.
 
 ## Status
 
@@ -21,7 +21,7 @@ Phases 1 to 4 are built: the platform, the searchable job index, the career reco
 | Area | State |
 |---|---|
 | One command starts the stack: database, API, worker, web app, one-origin proxy, local mail catcher | **Working.** A fresh clone was started and checked with `scripts/fresh-clone-check.ps1` on 22 November 2026 |
-| Sign-in with a six-digit code sent by email, server-side session, sign-out | **Working** (in development the email lands in the local mail catcher) |
+| Local mode (the default in `.env.example`): opening the app signs you in as its owner, with no sign-in page and no code; the model API key is pasted into the app and stored encrypted. Server mode (`APP_MODE=server`): sign-in with a six-digit code sent by email, server-side session, sign-out | **Working**, both. Local mode answers only to localhost, 127.0.0.1 and [::1] (a web page that points its own name at your computer is refused), and the server will not start in local mode when `APP_BASE_URL` is not a localhost address. **Not run in a browser on the Docker stack yet**: the local-mode browser test (`web/tests/e2e/local-mode.spec.ts`) passed against the API and `next dev` on a developer machine, and runs on the Compose stack in the `local` job of `e2e.yml`. In server mode in development the email lands in the local mail catcher |
 | Writes that are safe to repeat (idempotency keys), an outbox and an email relay that never sends a message twice | **Working** |
 | Background jobs in PostgreSQL: unique keys, leases, retries, dead letters, a scheduler | **Working** |
 | Model gateway: one entry point, schema-checked answers, one cost row per call, `503 ai_disabled` when no provider is set | **Working** with the built-in fake provider and recorded answers. The Anthropic, OpenAI and OpenAI-compatible adapters are written and tested against stub clients; **no live model call has been made yet** (see below) |
@@ -66,22 +66,24 @@ Requirements: Docker with Compose. Running the tests also needs [uv](https://doc
 
 ```bash
 cp .env.example .env
-docker compose up
+docker compose up -d
 ```
 
-The first start builds two images, so it takes a few minutes. When it settles:
+The first start builds two images, so it takes a few minutes. Then open http://localhost:8080 and paste your model API key (Anthropic or OpenAI) when the app asks. That is the whole setup: there is no account to make and nothing to sign in to, because `.env.example` runs the app in local mode (`APP_MODE=local`), for one person on their own computer. You can skip the key and look around; anything that needs a language model says so until you add one. When it settles:
 
 | What | Where |
 |---|---|
 | The app | http://localhost:8080 |
-| Mail catcher (sign-in codes arrive here) | http://localhost:8025 |
+| Mail catcher (server mode only: sign-in codes arrive here) | http://localhost:8025 |
 | PostgreSQL 17 with pgvector | 127.0.0.1:5433 |
 
 Every port is published on `127.0.0.1` only, so nothing is reachable from another machine. `.env.example` holds development-only keys and passwords that are public in this repository; the server refuses them as soon as `APP_BASE_URL` is not a localhost address. Change a port in `.env` (`APP_HTTP_PORT`, `APP_MAIL_PORT`, `APP_DB_PORT`) if one is taken.
 
-### Sign in
+### Local mode and server mode
 
-Open http://localhost:8080/sign-in, enter any email address and choose Send code. Open the mail catcher at http://localhost:8025, read the six-digit code and type it in. The session lasts until you sign out. The mail catcher keeps the email in memory; nothing is sent to the outside.
+Local mode is for one person on their own computer. The first visit makes the one owner account (its address is `owner@example.test`, a reserved name, so no mail is ever sent to it) and opens a session for it; a later visit uses the same account. The API answers the routes that do this only when the request names your own computer (`localhost`, `127.0.0.1` or `[::1]`), so a web page that points its own domain at your computer cannot sign itself in, and the server refuses to start in local mode when `APP_BASE_URL` is not a localhost address. A database that already holds two or more accounts came from server mode, and local mode refuses it rather than choose one.
+
+Server mode (`APP_MODE=server`, also what an unset `APP_MODE` means) is for a server other people can reach, and is the sign-in this project started with: open http://localhost:8080/sign-in, enter any email address and choose Send code. Open the mail catcher at http://localhost:8025, read the six-digit code and type it in. The session lasts until you sign out. The mail catcher keeps the email in memory; nothing is sent to the outside.
 
 ### Fill the job index
 
@@ -97,11 +99,11 @@ Jobs appear at http://localhost:8080/jobs as the fetches finish. A worker runs o
 
 ### With no model key
 
-Sign-in, the job index and search need no key. Anything that needs a language model answers `503 ai_disabled`. `.env.example` sets `LLM_PROVIDER=fake`: a built-in provider that replays recorded answers, makes no network call and costs nothing, so the screens that show model use (`/trust`, `/control/costs`) can be seen without a key. Its cost rows read zero because nothing was paid. It has an answer only for a task that has a recording, and none of the resume tasks has one here, so a resume you upload is refused as `ai_disabled` within a second (the three resume tasks read a real model only after a passed run on the resume gold set: see `evals/resume_extraction/facts/README.md`).
+The job index and search need no key. Anything that needs a language model answers `503 ai_disabled` until you paste one into the app (or set one in `.env`). To see the screens that show model use (`/trust`, `/control/costs`) with no key, set `LLM_PROVIDER=fake` in `.env`: a built-in provider that replays recorded answers, makes no network call and costs nothing. The setup page then offers "Skip for now, explore with demo data". Its cost rows read zero because nothing was paid. It has an answer only for a task that has a recording, and none of the resume tasks has one here, so a resume you upload is refused as `ai_disabled` within a second (the three resume tasks read a real model only after a passed run on the resume gold set: see `evals/resume_extraction/facts/README.md`).
 
 ### Use a real model
 
-Set these in `.env`, then run `docker compose up -d`:
+In local mode, paste the key into the app (the setup page, shown on the first visit; it is stored encrypted in the database, with the data key in `.env`, and only its last four characters are ever shown again). Or set these in `.env`, then run `docker compose up -d`; what is in `.env` wins over a key saved in the app:
 
 | Provider | Settings |
 |---|---|
@@ -115,7 +117,7 @@ Set these in `.env`, then run `docker compose up -d`:
 docker compose exec worker python -m app.platform.llm ping --email you@example.com
 ```
 
-Then sign in as that address, open http://localhost:8080/control/costs and confirm a row for the task `ping` with a cost above zero.
+Then sign in as that address, open http://localhost:8080/control/costs and confirm a row for the task `ping` with a cost above zero. In local mode there is no sign-in, and the address to use is the owner's, `--email owner@example.test`: any other address makes a second account, which local mode refuses.
 
 ### Tests and checks
 

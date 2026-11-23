@@ -13,9 +13,11 @@ x-backend: &backend
   image: ${COMPOSE_PROJECT_NAME:-openelip}-backend:dev
 
 # Settings the API and the worker share. They must agree on the three keys, because the API seals sign-in codes and the
-# worker opens them. An empty value means "use the application's default" (backend/app/platform/config.py).
+# worker opens them. An empty value means "use the application's default" (backend/app/platform/config.py); for APP_MODE
+# that default is server, and .env.example sets local.
 x-backend-env: &backend-env
   APP_ENV: ${APP_ENV:-development}
+  APP_MODE: ${APP_MODE:-}
   APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
   APP_PRODUCT_NAME: ${APP_PRODUCT_NAME:-}
   APP_DATA_KEYS: ${APP_DATA_KEYS:-}
@@ -116,6 +118,8 @@ services:
     image: ${COMPOSE_PROJECT_NAME:-openelip}-web:dev
     environment:
       API_INTERNAL_URL: http://api:8000
+      # The same setting the API reads: in local mode (APP_MODE=local) the web app never shows the sign-in page.
+      APP_MODE: ${APP_MODE:-}
     healthcheck:
       # /sign-in answers 200 even when the API is down, so the web server's health does not depend on the API's.
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/sign-in').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
