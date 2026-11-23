@@ -17,7 +17,7 @@ from uuid import UUID
 from sqlalchemy import Connection, text
 from sqlalchemy.exc import DBAPIError
 
-from app.platform import outbox
+from app.platform import events, outbox
 from app.platform.errors import ApiError
 from app.trust import api as trust
 
@@ -309,6 +309,12 @@ def accept(
         entity_table="introductions",
         entity_id=str(introduction_id),
         organization_id=row.organization_id,
+    )
+    events.publish(
+        conn,
+        "introduction.accepted",
+        {"introduction_id": str(introduction_id), "user_id": str(user_id)},
+        key=str(introduction_id),
     )
     organization = _role_fields(conn, introduction_id).organization_name
     return {
