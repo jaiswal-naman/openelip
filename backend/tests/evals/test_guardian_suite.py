@@ -2,8 +2,8 @@
 policy engine and the six real checks, and fails the gate when any one part is switched off.
 
 The gold set is agent-drafted and its recorded answers are built from the labels, so every number here proves the code
-path and says nothing about a model (invariant 8). The runs write to the test database the conftest points the four
-logins at, with LLM_PROVIDER=fake; nothing calls the network.
+path and says nothing about a model (invariant 8). The runs use the private database and the fake provider that
+tests/evals/conftest.py sets up; nothing calls the network.
 """
 
 import filecmp
@@ -17,7 +17,6 @@ from sqlalchemy import text
 
 from app.evals import EVALS, gate, runner
 from app.guardian import checks, explain, policy
-from app.platform import config
 
 SUITE = "guardian"
 SUITE_DIR = EVALS / SUITE
@@ -42,13 +41,6 @@ score = load("guardian_score", SUITE_DIR / "score.py")
 build = load("guardian_build", SUITE_DIR / "build.py")
 GOLD = score.load_gold()
 DEGRADED = sorted((SUITE_DIR / "degraded").glob("*.json"))
-
-
-@pytest.fixture(autouse=True)
-def fake_provider(monkeypatch):
-    """LLM_PROVIDER=fake for the runs, as CI sets it; the replay never calls a model."""
-    monkeypatch.setenv("LLM_PROVIDER", "fake")
-    assert config.get().llm_provider == "fake"
 
 
 def metrics_of(engine, run_id):
