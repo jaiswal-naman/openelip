@@ -85,8 +85,9 @@ def test_pause_records_the_reason_with_quoted_signals_and_holds_scheduled_follow
     assert (change[0], change[1]) == ("Campaign paused: scam_suspected.", "scam_suspected")
     assert change[2] == {"reason": "scam_suspected", "signals": signals}
     assert scalar(engine, "SELECT not_before::text FROM outbox") == "infinity"
+    # the action events (proposal, release) also wake the campaign now that plan 07-05 subscribes to them
     keys = [r[0] for r in rows(engine, "SELECT unique_key FROM queue_jobs WHERE kind = 'campaign.resume'")]
-    assert keys == [f"campaign.resume:{world.campaign}:pause.1"]
+    assert [k for k in keys if ":pause." in k] == [f"campaign.resume:{world.campaign}:pause.1"]
     with db.transaction(world.user) as conn:  # the gate now reads the reason
         gate = guardian_gate(conn, world.campaign)
     assert gate.paused_reason == "scam_suspected"

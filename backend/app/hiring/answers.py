@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import Connection, text
 from sqlalchemy.exc import DBAPIError
 
-from app.platform import outbox
+from app.platform import events, outbox
 from app.platform.errors import ApiError
 from app.trust import api as trust
 
@@ -106,6 +106,12 @@ def answer(conn: Connection, caller: UUID, introduction_id: UUID, verdict: str, 
         entity_table="introductions",
         entity_id=str(introduction_id),
         organization_id=seen.organization_id,
+    )
+    events.publish(
+        conn,
+        "introduction.answered",
+        {"introduction_id": str(introduction_id), "user_id": str(seen.user_id), "answer": verdict},
+        key=str(introduction_id),
     )
     organization = conn.execute(
         text("SELECT name FROM organizations WHERE id = :o"), {"o": seen.organization_id}
