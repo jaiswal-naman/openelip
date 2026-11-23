@@ -1237,6 +1237,15 @@ CREATE UNIQUE INDEX interest_signals_organization_week ON interest_signals (orga
   WHERE sender_side = 'organization';
 ```
 
+**Accepted deviation (W5, Phase 6): the candidate's address is stored in employer-readable rows.** `introductions.share_preview`
+(readable by `employer_read`, but only once the introduction is accepted) and `shortlist_entries.shared_payload` hold
+`on_employer_yes.email`, the address released only after the employer answers yes. Row-level security does not withhold it
+before that answer; Python does: `employer_email()` in `hiring/introductions.py` (lines 60-65, used at 123-124 and in `hiring/answers.py` at 169-171) returns
+the address only when `employer_answer = 'yes'`, and the employer's responses never carry `on_employer_yes` itself. The test that
+guards it is `tests/hiring/test_invariant_4.py` (lines 108-110): the employer's responses before a yes carry neither the address nor `on_employer_yes`. Follow-up:
+store no address in either column and read it from `users` at answer time through a SECURITY DEFINER function gated on
+`employer_answer = 'yes'`, so the database withholds it too.
+
 Phase 6 addition (plan 06-01): `role_requirements` references its role by the pair `(role_id, organization_id)` (`FOREIGN KEY (role_id, organization_id) REFERENCES roles (id, organization_id)`, with `roles` gaining `UNIQUE (id, organization_id)`), not by `role_id` alone as the block above shows. The member policy of 5.4 only checks that the caller belongs to the row's `organization_id`, so without the pair a member of one organization could attach an item that names their own organization to another organization's role. `db/sql/p6_0601_tables.sql` has the live definition.
 
 ### 3.10 campaigns and guardian
