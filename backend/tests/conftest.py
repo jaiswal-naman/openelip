@@ -24,7 +24,7 @@ REPO = Path(__file__).resolve().parents[2]
 DEFAULT_TEST_URL = "postgresql://app:app_local_only@127.0.0.1:5433/app_test"
 # Everything the application writes or the tests insert; the job index is included because tests commit fixture rows.
 DATA_TABLES = (
-    "users, sessions, login_codes, idempotency_keys, outbox, queue_jobs, llm_calls, model_registry, "
+    "users, sessions, login_codes, idempotency_keys, outbox, queue_jobs, llm_calls, model_registry, local_model_key, "
     "eval_runs, eval_items, fetch_runs, jobs, job_sources, "
     "match_runs, match_decisions, match_evidence, feedback_events, briefs, brief_items, "
     "tailored_resumes, resume_edits, application_packets, applications, application_events, "

@@ -1795,6 +1795,14 @@ CREATE TRIGGER twin_questions_delete_thread AFTER DELETE ON twin_messages
 
 Phase 7 (plan 07-01): revision `p7_0702_langgraph` runs the schema statements (`db/sql/p7_0702_schema.sql`), `PostgresSaver.setup()` on a separate autocommit connection as `app_owner`, and the deletion function and the campaign trigger (`db/sql/p7_0702_delete_thread.sql`); the Twin trigger waits for `twin_messages` (Phase 9). It records `LANGGRAPH_MIGRATION_COUNT` and `LANGGRAPH_MIGRATIONS_SHA256` of `PostgresSaver.MIGRATIONS`, which `tests/db/test_langgraph_schema.py` compares with the installed library. Both revisions are listed in section 8.
 
+### 3.16 local mode: the model key and the owner
+
+Revision `l1_local_mode` (APP_MODE=local, API.md 2.23). It adds one table and one function; nothing else changes, and server mode never touches either.
+
+`local_model_key` has at most one row (`singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton)`): `provider` (`anthropic` or `openai`), `api_key_sealed` (the person's API key as a Fernet token under `APP_DATA_KEYS`, so the key is never in the database in the clear), `key_last4` (the last four characters, the only part any route returns) and `updated_at`. Row-level security is on: `app_api` and `app_worker` read it, because the API process and the worker both call models; only `app_api` writes it, and only inside a transaction that has a signed-in person (`app_user_id() IS NOT NULL`). `app_worker` has `SELECT` and nothing else, `app_match` has no right on it. It holds no data about a person, so the deletion registry lists it as `no_personal_data`.
+
+`local_owner(p_create boolean)` is `SECURITY DEFINER` (like `user_for_verified_email`: row-level security hides every account from a request that has no user id yet, and the request that signs the owner in has none). It returns `(owner_id, real_accounts)`, counting the accounts that are not synthetic. With exactly one it returns that account; with none and `p_create` it makes the owner (`owner@example.test`, not synthetic, so no feature excludes the owner, on a reserved domain, so the relay never mails it) under an advisory lock, so two first requests make one account; with two or more `owner_id` is NULL. `EXECUTE` is granted to `app_api` only.
+
 ## 4. Constraints that carry the invariants
 
 The application checks everything too. These are the checks that hold even when application code is wrong. Every trigger function that reads other tables is `SECURITY DEFINER` with a fixed `search_path`, so it sees the rows it must check regardless of the caller's row-level security.

@@ -39,6 +39,8 @@ Three terms are used exactly as the design review defined them:
 2. `POST /v1/auth/sessions` with the email and the code. On success the server sets the session cookie and returns the account, not a token. The first successful sign-in creates the account.
 3. `DELETE /v1/auth/sessions/current` signs out: the session is revoked at once and the cookie is cleared.
 
+**Local mode** (`APP_MODE=local`, set in `.env.example`) is for one person on their own computer. There is no code: `POST /v1/auth/local` opens a session for the owner, the one account that is not synthetic, and returns the same envelope and sets the same cookie as `POST /v1/auth/sessions`. The first call makes the account (address `owner@example.test`, which is reserved, so the relay never sends it mail, and which is not marked synthetic, so nothing excludes the owner from a feature); later calls reuse it. A database that already holds two or more real accounts came from server mode and is refused with `409 conflict` (`details.state` is `several_accounts`); a database with exactly one real account signs that person in. The server refuses to start with `APP_MODE=local` unless `APP_BASE_URL` is a localhost address. Local mode has no emailed code: `POST /v1/auth/codes` and `POST /v1/auth/sessions` answer `404` there, so a web page cannot make a second account through them (a second real account would lock local mode out). Without `APP_MODE`, or with `APP_MODE=server`, nothing here exists and `POST /v1/auth/local` and every route in 2.23 answers `404`. Every local-mode route also answers `403 forbidden` unless the request's `Host` header is exactly `localhost`, `127.0.0.1` or `[::1]`, with or without a port. That check is what stops DNS rebinding: a page on another domain can make that domain resolve to `127.0.0.1`, but the browser still sends the page's own domain as `Host`. The proxy passes the `Host` header on unchanged.
+
 Code rules (**assumptions**, tunable by configuration): six digits, valid for 10 minutes, at most 5 wrong attempts per code, and a new code invalidates the previous one. The same code request is used to confirm account deletion (2.20).
 
 **The session cookie, as a contract.**
@@ -119,7 +121,7 @@ Cursor pagination only. Lists accept `limit` (1 to 100, default 20) and `cursor`
 
 ### 1.6 Idempotency keys
 
-Every `POST`, `PUT`, `PATCH` and `DELETE` under `/v1` requires an `Idempotency-Key` header (PLT-03), except `POST /v1/auth/codes`, `POST /v1/auth/sessions`, `POST /v1/briefs/unsubscribe` and the webhook receiver. None of those four uses the session cookie; their own code, signed token or event id plays the key's role.
+Every `POST`, `PUT`, `PATCH` and `DELETE` under `/v1` requires an `Idempotency-Key` header (PLT-03), except `POST /v1/auth/codes`, `POST /v1/auth/sessions`, `POST /v1/auth/local`, `POST /v1/briefs/unsubscribe` and the webhook receiver. None of those five uses the session cookie; their own code, signed token or event id plays the key's role (for `POST /v1/auth/local`, the `Host` check of 1.2 and the required JSON body).
 
 | Rule | Detail |
 |---|---|
@@ -327,6 +329,7 @@ Columns: **Caller** uses the codes in 1.2. **Req** lists the requirement ids ser
 |---|---|---|---|---|---|
 | POST | `/v1/auth/codes` | Email a one-time code. Always `202` with the same body | P | PLT-02 | 1 |
 | POST | `/v1/auth/sessions` | Exchange email and code for the session cookie; creates the account on first sign-in | P | PLT-02 | 1 |
+| POST | `/v1/auth/local` | Local mode only: open a session for the owner with no code. The body `{"timezone": ...}` is required, its field is optional and is used only when this call makes the account. `404` in server mode, `403` for a `Host` that is not this computer, `409` when the database holds two or more real accounts (1.2) | P (local mode) | PLT-02 | L |
 | DELETE | `/v1/auth/sessions/current` | Sign out: revoke this session and clear the cookie | U | PLT-02 | 1 |
 
 ### 2.3 `/v1/me`: account, consents, Career Record, candidate agent tokens
@@ -588,7 +591,19 @@ Eval runs are started by CI and the command line, not by the API.
 
 Each of these was considered and left out because no v1 requirement needs it: deleting a single document or chat session (account deletion covers it), sharing resume files with employers (the frozen preview is shared instead), employer search over candidates, a consent endpoint group (consents are given through `PATCH /v1/me` or by the action that needs them), instance-wide operator views and any operator endpoint (G8; the instance operator uses the command line), an API trigger for eval runs, an OAuth flow at `/mcp` (v2), and operator endpoints for board import (IDX-09 is the existing discovery command).
 
-**Count:** 111 endpoints under `/v1` (two of them, `GET /v1/jobs` and `GET /v1/stats`, already exist and stay compatible), plus `GET /healthz` and `POST /mcp` with 6 tools.
+**Count:** 111 endpoints under `/v1` (two of them, `GET /v1/jobs` and `GET /v1/stats`, already exist and stay compatible), plus `GET /healthz` and `POST /mcp` with 6 tools. The four local-mode endpoints of 2.2 and 2.23 exist only with `APP_MODE=local` and are not in the count.
+
+### 2.23 `/v1/local` and `/v1/settings`: local mode
+
+Local mode only (1.2): `404` in server mode, `403` unless the `Host` header names this computer. Phase **L** is local mode, built after phase 8. The model key is the one setting the owner changes from the app; everything else in `.env` stays there.
+
+| Method | Path | Purpose | Caller | Req | Phase |
+|---|---|---|---|---|---|
+| GET | `/v1/local/status` | What the web needs before it shows anything: `{mode: "local", has_owner, model: {provider, key_set, key_last4, source}}`. `provider` is the one in use (`anthropic`, `openai`, `openai_compatible` for a model server you run, or `fake` for recorded answers); `key_set` is true when it has a key (or needs none); `key_last4` is the last four characters; `source` is `environment` or `app`. Never the key | P (local mode) | PLT-05 | L |
+| PUT | `/v1/settings/model-key` | Save the model key: `{provider: "anthropic" or "openai", api_key}`. The key is 8 to 512 visible ASCII characters (surrounding spaces are dropped), is stored sealed with the data keys (`APP_DATA_KEYS`) and is never returned or logged; the answer is the `model` object above. `409 conflict` (`details.state` is `set_in_environment`) when `LLM_PROVIDER` or an API key in the environment already settles the model, because the environment wins and a saved key would go unused. The owner only (`403` for any other account) | U (the owner) | PLT-05 | L |
+| DELETE | `/v1/settings/model-key` | Remove the saved key. `204`, also when there is none. The owner only | U (the owner) | PLT-05 | L |
+
+Both the API and the worker read the saved key, each at most once every ten seconds, so a key saved in the app reaches the worker within that time.
 
 ---
 

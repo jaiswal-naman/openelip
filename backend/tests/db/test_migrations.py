@@ -17,8 +17,8 @@ REPO = Path(__file__).resolve().parents[3]
 # converted in place by revision p2_0201_job_index), 3.6 and 3.7 for the match and brief tables of plan 04-01
 # (outbox is 3.7's and Phase 1's), 3.8 and 3.12 for the tailor, apply and chat tables of plan 05-01 (plus the Phase 5
 # column chat_messages.finish_reason), 3.9 for the hiring tables of plan 06-01 and 3.10 for the campaign and Guardian
-# tables of plan 07-01, 3.13 for the wind-tunnel tables and view of plan 08-01, so a change to either side that the
-# other does not follow fails here.
+# tables of plan 07-01, 3.13 for the wind-tunnel tables and view of plan 08-01, and local mode's model key (revision
+# l1_local_mode), so a change to either side that the other does not follow fails here.
 # Not autogenerate.
 EXPECTED = {
     "users": """
@@ -223,6 +223,8 @@ EXPECTED = {
     "sim_results": """
         id int8; sim_run_id uuid; kind sim_result_kind; code text; passed bool; details jsonb
         created_at timestamptz""",
+    "local_model_key": """
+        singleton bool; provider text; api_key_sealed text; key_last4 text; updated_at timestamptz""",
     # a view: information_schema reports every view column as nullable
     "sim_scenario_verdicts": """
         eval_run_id uuid?; scenario_id uuid?; attempts int8?; attempts_passed int8?; passed bool?""",
@@ -368,7 +370,8 @@ def test_the_phase_5_revision_sits_on_the_phase_4_one_and_the_merge_with_phase_6
     config.set_main_option("script_location", str(REPO / "db"))
     script = ScriptDirectory.from_config(config)
     assert script.get_revision(REVISION).down_revision == PREVIOUS
-    assert script.get_heads() == ["p8_0801_wind_tunnel"]  # Phase 8 (plan 08-01) sits on Phase 7's head
+    assert script.get_heads() == ["l1_local_mode"]  # local mode sits on Phase 8's head
+    assert script.get_revision("l1_local_mode").down_revision == "p8_0801_wind_tunnel"
     assert script.get_revision("p8_0801_wind_tunnel").down_revision == "p7_0702_langgraph"
     assert script.get_revision("p7_0702_langgraph").down_revision == "p7_0701_campaigns_guardian"
     assert script.get_revision("p7_0701_campaigns_guardian").down_revision == "p56_merge_chat_hiring"
@@ -449,3 +452,42 @@ def test_the_wind_tunnel_revision_goes_down_to_the_phase_7_head_leaving_nothing_
             assert _names(c, "SELECT tablename FROM pg_tables WHERE tablename = ANY(:n)", n=tables) == sorted(tables)
     finally:
         engine.dispose()
+
+
+def test_the_local_mode_revision_goes_down_to_the_wind_tunnel_leaving_nothing_and_up_again(make_database, alembic_run):
+    url = make_database("l1down_test")
+    engine = _engine(url)
+    try:
+        alembic_run("upgrade", url, "l1_local_mode")
+        alembic_run("downgrade", url, "p8_0801_wind_tunnel")
+        with engine.connect() as c:
+            assert _names(c, "SELECT relname FROM pg_class WHERE relname = 'local_model_key'") == []
+            assert _names(c, "SELECT proname FROM pg_proc WHERE proname = 'local_owner'") == []
+        alembic_run("upgrade", url, "head")
+        with engine.connect() as c:
+            assert _names(c, "SELECT tablename FROM pg_tables WHERE tablename = 'local_model_key'") == [
+                "local_model_key"
+            ]
+            assert _names(c, "SELECT proname FROM pg_proc WHERE proname = 'local_owner'") == ["local_owner"]
+    finally:
+        engine.dispose()
+
+
+def test_local_mode_tables_belong_to_the_owner_and_the_grants_are_as_narrow_as_the_design_says(engine):
+    with engine.connect() as c:
+        assert _names(c, "SELECT tableowner FROM pg_tables WHERE tablename = 'local_model_key'") == ["app_owner"]
+        assert c.execute(text("SELECT relrowsecurity FROM pg_class WHERE relname = 'local_model_key'")).scalar_one()
+        rights = {
+            (role, right): c.execute(
+                text("SELECT has_table_privilege(:r, 'local_model_key', :p)"), {"r": role, "p": right}
+            ).scalar_one()
+            for role in ("app_api", "app_worker", "app_match")
+            for right in ("SELECT", "INSERT", "UPDATE", "DELETE")
+        }
+    assert {key for key, granted in rights.items() if granted} == {
+        ("app_api", "SELECT"),
+        ("app_api", "INSERT"),
+        ("app_api", "UPDATE"),
+        ("app_api", "DELETE"),
+        ("app_worker", "SELECT"),
+    }

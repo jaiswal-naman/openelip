@@ -116,6 +116,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/local": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Local Session
+         * @description Local mode only (API.md 2.2): open a session for the owner with no code. Same cookie as create_session.
+         */
+        post: operations["create_local_session_v1_auth_local_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/sessions/current": {
         parameters: {
             query?: never;
@@ -153,6 +173,45 @@ export interface paths {
          *     anything in the body (T-3-01).
          */
         patch: operations["update_me_v1_me_patch"];
+        trace?: never;
+    };
+    "/v1/local/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Local Status */
+        get: operations["local_status_v1_local_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/settings/model-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Model Key
+         * @description Save the provider and key, sealed. The environment wins: if it already names the provider or holds a key for it,
+         *     nothing saved here would be used, so that is a 409 instead of a silent no-op.
+         */
+        put: operations["put_model_key_v1_settings_model_key_put"];
+        post?: never;
+        /** Delete Model Key */
+        delete: operations["delete_model_key_v1_settings_model_key_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/control/costs": {
@@ -2770,6 +2829,17 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[LocalStatus] */
+        Envelope_LocalStatus_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["LocalStatus"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[MatchDetail] */
         Envelope_MatchDetail_: {
             /** Success */
@@ -2797,6 +2867,17 @@ export interface components {
             /** Success */
             success: boolean;
             data: components["schemas"]["Member"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[ModelState] */
+        Envelope_ModelState_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["ModelState"] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -3537,6 +3618,25 @@ export interface components {
             /** Level */
             level: string;
         };
+        /**
+         * LocalSessionRequest
+         * @description POST /v1/auth/local. The body is required (and so must be JSON) only so that a cross-site form cannot send it.
+         */
+        LocalSessionRequest: {
+            /** Timezone */
+            timezone?: string | null;
+        };
+        /** LocalStatus */
+        LocalStatus: {
+            /**
+             * Mode
+             * @constant
+             */
+            mode: "local";
+            /** Has Owner */
+            has_owner: boolean;
+            model: components["schemas"]["ModelState"];
+        };
         /** MatchDetail */
         MatchDetail: {
             /**
@@ -3740,6 +3840,30 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** ModelKeyRequest */
+        ModelKeyRequest: {
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "anthropic" | "openai";
+            /** Api Key */
+            api_key: string;
+        };
+        /**
+         * ModelState
+         * @description The model the installation would call, and whether it has a key. Never the key itself.
+         */
+        ModelState: {
+            /** Provider */
+            provider: string;
+            /** Key Set */
+            key_set: boolean;
+            /** Key Last4 */
+            key_last4: string | null;
+            /** Source */
+            source: ("environment" | "app") | null;
         };
         /**
          * NewConstraint
@@ -5115,6 +5239,39 @@ export interface operations {
             };
         };
     };
+    create_local_session_v1_auth_local_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocalSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Me_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     end_session_v1_auth_sessions_current_delete: {
         parameters: {
             query?: never;
@@ -5187,6 +5344,90 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Envelope_Me_"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    local_status_v1_local_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_LocalStatus_"];
+                };
+            };
+        };
+    };
+    put_model_key_v1_settings_model_key_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelKeyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ModelState_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_model_key_v1_settings_model_key_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -312,6 +312,45 @@
         }
       }
     },
+    "/v1/auth/local": {
+      "post": {
+        "summary": "Create Local Session",
+        "description": "Local mode only (API.md 2.2): open a session for the owner with no code. Same cookie as create_session.",
+        "operationId": "create_local_session_v1_auth_local_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Me_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/auth/sessions/current": {
       "delete": {
         "summary": "End Session",
@@ -410,6 +449,118 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/local/status": {
+      "get": {
+        "summary": "Local Status",
+        "operationId": "local_status_v1_local_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_LocalStatus_"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/settings/model-key": {
+      "put": {
+        "summary": "Put Model Key",
+        "description": "Save the provider and key, sealed. The environment wins: if it already names the provider or holds a key for it,\nnothing saved here would be used, so that is a 409 instead of a silent no-op.",
+        "operationId": "put_model_key_v1_settings_model_key_put",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ModelState_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Model Key",
+        "operationId": "delete_model_key_v1_settings_model_key_delete",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -9071,6 +9222,47 @@
         ],
         "title": "Envelope[JobDetail]"
       },
+      "Envelope_LocalStatus_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocalStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[LocalStatus]"
+      },
       "Envelope_MatchDetail_": {
         "properties": {
           "success": {
@@ -9193,6 +9385,47 @@
           "meta"
         ],
         "title": "Envelope[Member]"
+      },
+      "Envelope_ModelState_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[ModelState]"
       },
       "Envelope_Organization_": {
         "properties": {
@@ -11682,6 +11915,47 @@
         ],
         "title": "LevelIn"
       },
+      "LocalSessionRequest": {
+        "properties": {
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          }
+        },
+        "type": "object",
+        "title": "LocalSessionRequest",
+        "description": "POST /v1/auth/local. The body is required (and so must be JSON) only so that a cross-site form cannot send it."
+      },
+      "LocalStatus": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "const": "local",
+            "title": "Mode"
+          },
+          "has_owner": {
+            "type": "boolean",
+            "title": "Has Owner"
+          },
+          "model": {
+            "$ref": "#/components/schemas/ModelState"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "has_owner",
+          "model"
+        ],
+        "title": "LocalStatus"
+      },
       "MatchDetail": {
         "properties": {
           "decision_id": {
@@ -12359,6 +12633,76 @@
           "created_at"
         ],
         "title": "MessageView"
+      },
+      "ModelKeyRequest": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "anthropic",
+              "openai"
+            ],
+            "title": "Provider"
+          },
+          "api_key": {
+            "type": "string",
+            "pattern": "^[\\x21-\\x7e]{8,512}$",
+            "title": "Api Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "api_key"
+        ],
+        "title": "ModelKeyRequest"
+      },
+      "ModelState": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "key_set": {
+            "type": "boolean",
+            "title": "Key Set"
+          },
+          "key_last4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Last4"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "environment",
+                  "app"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "key_set",
+          "key_last4",
+          "source"
+        ],
+        "title": "ModelState",
+        "description": "The model the installation would call, and whether it has a key. Never the key itself."
       },
       "NewConstraint": {
         "properties": {
