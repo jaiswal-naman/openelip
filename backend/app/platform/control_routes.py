@@ -1,7 +1,9 @@
 """The signed-in person's own cost view (API.md 2.19 and 3.17).
 
 The models are the contract: the web types are generated from them. The ledger is read under the caller's user id, so
-row-level security returns only their own rows; no query here filters by person.
+row-level security returns only their own rows; no query here filters by person. model_registry has no row-level
+security, but the join to it can only reach the models those rows point at, so a person never sees a model that only
+someone else's calls used.
 """
 
 from typing import Any, Literal
