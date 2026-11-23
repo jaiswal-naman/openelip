@@ -94,4 +94,33 @@ verifier wrongly discards is measured too.
 
 ## Decisions made while labelling
 
-(Added after the set was written; see the end of this file.)
+Judgement calls made while the thirty pairs were written. They are where a second rater is most likely to disagree, so
+a rater starts here. The rules above are as first committed; these were added after the set was written.
+
+1. **A new verb is fine, a new claim is not.** "Built" to "Developed", "Created", "Delivered" or "Produced", "Wrote" to
+   "Produced", and "Cut" to "Reduced" keep the claim and are supported. "Built and ran" does not: running a service is
+   more than building it. Four rephrases written that way ("Built and ran", "Kept ... running", "alongside the security
+   team", "Cut" for "Improved") were reworded before any label was committed.
+2. **A confirmed skill is not support for a bullet.** A tool the candidate said in chat ("from Figma designs" on a
+   bullet that never mentions Figma) is a confirmed skill, so layer 1 lets the name through, but nothing ties it to this
+   work. Such an edit is unsupported and layer 2 is the check that should say so (`not_entailed`).
+3. **Any word of the posting counts as a term of the job.** A word of a requirement text that no cited fact holds
+   ("designs" from "Design systems") is `new_entity`, whether or not it is a tool.
+4. **Numbers are by value.** "35%", "35 percent" and "thirty-five" are the same number; "thirty percent" for a fact that
+   says 30% is supported. A count is not a team ("one mentee" is not "a team of junior developers": `not_entailed`).
+5. **Dates.** The year alone is supported by a fact that says "March 2021". A month a fact does not give is
+   `changed_date` even when the year is right. A bullet that does not say 2019 is not a 2019 bullet because its role
+   began in 2019.
+6. **Titles.** A bullet may name its own role's title ("as Backend Engineer"); it may not add "Senior", "Lead", "Staff",
+   "Principal", "Head" or "Director", or name another role's title. A word of that kind a cited fact or the role heading
+   above the bullet already uses is fine.
+7. **Inflated scope is a change of verb.** "Helped", "contributed to", "supported" and "worked with" become "led",
+   "owned", "ran", "organised" or "managed". "Maintained" becomes "looked after" (supported).
+8. **A lower-case tool or claim that no rule can see is `layer1_gap`**, labelled `not_entailed`: "using cron",
+   "reported them to leadership", "trained analysts on it", "using customer revenue data".
+9. **A paraphrased add is any addition to the fact's own words**, including a category word ("HubSpot CRM", "Apache
+   Airflow", "Figma design tool", "Ansible automation").
+10. **A reorder that keeps the order the resume already has is not an edit.** The pipeline drops it, so none is seeded.
+11. **A remove names the fact it removes as its support.** It adds no words, so nothing else supports it.
+12. **Where two reasons apply, the first in the order wins.** An edit that names another employer and adds a number is
+    `changed_employer`.
