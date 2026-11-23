@@ -400,7 +400,7 @@ The brief email's `List-Unsubscribe` header names this `POST` URL. Its visible l
 | POST | `/v1/chat/sessions` | Open a session: `kind` is `onboarding` (the guided intake that proposes constraints and preferences) or `open` | C | REC-03, CHT-01 | 4 |
 | GET | `/v1/chat/sessions` | List sessions | C | CHT-01 | 4 |
 | GET | `/v1/chat/sessions/{session_id}/messages` | Transcript, including citations and proposal references | C | CHT-01 | 4 |
-| POST | `/v1/chat/sessions/{session_id}/messages` | Send a message. `202` with the reply's `message_id` and `stream_url`; generation starts at once | C | CHT-01, CHT-02, CHT-03, CHT-04 | 4 |
+| POST | `/v1/chat/sessions/{session_id}/messages` | Send a message: `content`, and optionally `context_job_id` (a job id; it becomes the agent's context for this message, so the panel's "context: Acme" reaches it). `202` with the reply's `message_id` and `stream_url`; generation starts at once | C | CHT-01, CHT-02, CHT-03, CHT-04 | 4 |
 | GET | `/v1/chat/sessions/{session_id}/messages/{message_id}/stream` | Server-sent events for one reply; reconnect with `Last-Event-ID` (section 4.2) | C | CHT-01 | 4 |
 | POST | `/v1/chat/sessions/{session_id}/messages/{message_id}/stop` | Stop generating; the partial reply is kept with `finish_reason: "stopped"` | C | CHT-01 | 4 |
 
@@ -419,10 +419,14 @@ The brief email's `List-Unsubscribe` header names this `POST` URL. Its visible l
 | Method | Path | Purpose | Caller | Req | Phase |
 |---|---|---|---|---|---|
 | GET | `/v1/applications` | The tracker: each application with its status history and timestamps | C | APP-01 | 5 |
-| POST | `/v1/applications` | Record that the candidate applied (`status: applied`), optionally linking a campaign | C | APP-01, CMP-01 | 5 |
+| POST | `/v1/applications` | Record that the candidate applied (`status: applied`): `job_id`, optionally `application_packet_id` and `occurred_at` (default now); optionally linking a campaign (Phase 7). `201` | C | APP-01, CMP-01 | 5 |
 | POST | `/v1/applications/{application_id}/status` | Record a new status with the time it happened | C | APP-01, CMP-01 | 5 |
+| POST | `/v1/applications/packets` | Prepare the application packet for a job: the tailored resume, drafted answers to the common questions, a short note. `202`; one current packet per job (Phase 5; campaign packets come in Phase 7) | C | APP-02 | 5 |
+| GET | `/v1/applications/packets` | The caller's packets; `?job_id=` limits the list to one job | C | APP-02 | 5 |
+| GET | `/v1/applications/packets/{packet_id}` | One packet: status, answers with the facts they cite, the note | C | APP-02 | 5 |
+| GET | `/v1/applications/packets/{packet_id}/file?format=pdf` | The packet rendered as a PDF | C | APP-02 | 5 |
 
-Applications keep the five APP-01 statuses; `talking` is a campaign stage only. A status recorded on a linked application moves its campaign: `applied` to `applied`, `interview` to `interview`, `offer` to `offer`, and `rejected` or `no_response` to `closed` with that reason. Recording `applied` also marks the campaign's `submit_application` action `executed`. The application packet (APP-02) is produced by a campaign and read with `GET /v1/campaigns/{campaign_id}`.
+Applications keep the five APP-01 statuses; `talking` is a campaign stage only. A status recorded on a linked application moves its campaign: `applied` to `applied`, `interview` to `interview`, `offer` to `offer`, and `rejected` or `no_response` to `closed` with that reason. Recording `applied` also marks the campaign's `submit_application` action `executed`. The application packet (APP-02) is produced by a campaign and read with `GET /v1/campaigns/{campaign_id}`. Until campaigns exist (Phase 5), a packet is prepared on request for one job with the four `/v1/applications/packets` routes above; each person has one current packet per job, and asking again supersedes it. A person has one application per job (`409 conflict`, `details.state` `application_exists`; `same_status` for a status equal to the current one), and a new status may not predate the current one or lie more than five minutes in the future (`422 validation_failed`).
 
 ### 2.11 `/v1/campaigns`
 
@@ -562,7 +566,7 @@ Eval runs are started by CI and the command line, not by the API.
 
 Each of these was considered and left out because no v1 requirement needs it: deleting a single document or chat session (account deletion covers it), sharing resume files with employers (the frozen preview is shared instead), employer search over candidates, a consent endpoint group (consents are given through `PATCH /v1/me` or by the action that needs them), instance-wide operator views and any operator endpoint (G8; the instance operator uses the command line), an API trigger for eval runs, an OAuth flow at `/mcp` (v2), and operator endpoints for board import (IDX-09 is the existing discovery command).
 
-**Count:** 107 endpoints under `/v1` (two of them, `GET /v1/jobs` and `GET /v1/stats`, already exist and stay compatible), plus `GET /healthz` and `POST /mcp` with 6 tools.
+**Count:** 111 endpoints under `/v1` (two of them, `GET /v1/jobs` and `GET /v1/stats`, already exist and stay compatible), plus `GET /healthz` and `POST /mcp` with 6 tools.
 
 ---
 
@@ -1930,7 +1934,7 @@ data: {"message_id":"1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c02","finish_reason":"comp
 | `text.delta` | `text` | The next piece of reply text, in order |
 | `tool.start` | `call_id`, `tool` | The chat agent called one of its own read tools |
 | `tool.result` | `call_id`, `tool`, `refs` | The tool returned. Only ids are sent, never tool output text |
-| `citation` | `kind` (`decision`, `job`, `fact`, `constraint`, `campaign`) and the matching ids | A ledger entry the answer rests on (CHT-01) |
+| `citation` | `kind` (`decision`, `job`, `fact`, `constraint`, `campaign`), the matching ids, and `alias` (Phase 5: the marker, such as `d1`, that the reply text carries as `[[d1]]`, so the client can place the chip) | A ledger entry the answer rests on (CHT-01) |
 | `proposal` | `event_id`, `entity`, `operation`, `before`, `after`, `statement` | A record change was proposed. The client shows confirm and decline, which call `/v1/me/events/{event_id}/confirm` or `/decline` (CHT-03) |
 | `message.snapshot` | `text` (everything so far), `citations`, `proposals` | Sent first on a reconnect, so the client can replace its partial copy |
 | `message.end` | `message_id`, `finish_reason` (`complete`, `length`, `stopped`, `interrupted`), `usage`, `cost_usd` | The reply is complete and stored |
@@ -2369,7 +2373,7 @@ Resend's exact signed-content format and event names were not confirmed on its o
 | TLR-02 | Verifier results and discard reasons in `GET /v1/tailored-resumes/{id}` |
 | TLR-03 | `POST /v1/tailored-resumes/{id}/decisions`, `GET /v1/tailored-resumes/{id}/file` |
 | APP-01 | `GET` and `POST /v1/applications`, `POST /v1/applications/{id}/status` |
-| APP-02 | `GET /v1/campaigns/{id}` (`packet`); `submit_application` approvals |
+| APP-02 | `POST` and `GET /v1/applications/packets`, `GET /v1/applications/packets/{id}` and `.../file` (Phase 5); `GET /v1/campaigns/{id}` (`packet`); `submit_application` approvals |
 | HIR-01 | `/v1/orgs` member endpoints (row-level isolation is tested below the API) |
 | HIR-02 | `POST /v1/roles`, `PATCH`, `PUT .../requirements`, `POST .../publish` (`422 pay_range_required`) |
 | HIR-03 | `GET /v1/roles/{id}/preview` |
