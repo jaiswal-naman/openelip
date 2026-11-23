@@ -28,7 +28,10 @@ from app.profile import events, models, service
 from tests.chat.fixtures import harness
 from tests.match.factories import make_user
 
-MESSAGE = "I would also take jobs in Pune. I know Rust now, and please keep it full time."
+MESSAGE = (
+    "I would also take jobs in Pune. I know Rust now, and please keep it full time. "
+    "I am interested in fintech and in data engineer roles, I want no crypto firms, and I know Go too."
+)
 UUID_TEXT = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
 
@@ -178,10 +181,17 @@ def test_a_new_skill_a_new_preference_and_a_removal_come_back_as_events_the_stre
         said(
             item("fact", "skill", "I know Rust now", statement="Knows Rust.", text="Rust"),
             item(
-                "preference", "industry", "also take jobs", statement="Interested in fintech.", text="fintech", weight=1
+                "preference",
+                "industry",
+                "I am interested in fintech",
+                statement="Interested in fintech.",
+                text="fintech",
+                weight=1,
             ),
-            item("preference", "target_title", "keep it full time", operation="remove", text="data engineer"),
-            item("constraint", "employment_type", "keep it full time", operation="remove"),
+            item("preference", "target_title", "data engineer roles", operation="remove", text="data engineer"),
+            item(
+                "constraint", "employment_type", "keep it full time", operation="remove", statement="Keep it full time."
+            ),
         )
     )
     created, preference, removed_title, removed_constraint = propose(world.ada, MESSAGE, principal=world.ada)
@@ -207,8 +217,8 @@ def test_a_preference_weight_that_changes_is_an_update_and_a_dealbreaker_always_
 ):
     answer(
         said(
-            item("preference", "target_title", "also take jobs", text="Data Engineer", weight=3),
-            item("preference", "untyped_dealbreaker", "also take jobs", text="no crypto firms"),
+            item("preference", "target_title", "data engineer roles", text="Data Engineer", weight=3),
+            item("preference", "untyped_dealbreaker", "no crypto firms", text="no crypto firms"),
         )
     )
     update, dealbreaker = propose(world.ada, MESSAGE, principal=world.ada)
@@ -277,6 +287,33 @@ def test_the_quote_must_match_exactly_not_nearly(engine, world, answer):
     dropped(engine, world, answer, item("fact", "skill", "I know  Rust", text="Rust"), why=QUOTE)  # other spacing
 
 
+def test_a_quote_that_is_in_the_message_but_says_nothing_about_the_proposal_is_dropped(engine, world, answer):
+    """ "this posting" is a substring of the candidate's message and of nothing they said about Kubernetes."""
+    vague = "quote_too_vague"
+    asked = "What does this posting want from me?"
+    dropped(engine, world, answer, item("fact", "skill", "this posting", text="Kubernetes"), why=vague, message=asked)
+    # a quote that is too short is dropped even when it carries the word; one that names the skill is kept
+    dropped(engine, world, answer, item("fact", "skill", "Go", text="Go"), why=vague, message="Go")
+    answer(said(item("fact", "skill", "I know Go", text="Go")))
+    assert len(propose(world.ada, "I know Go", principal=world.ada)) == 1
+
+
+def test_a_quote_names_the_proposed_words_by_their_stems_and_a_list_needs_one_new_entry_in_it(engine, world, answer):
+    answer(said(item("preference", "target_title", "data engineering roles", text="data engineer", weight=1)))
+    assert len(propose(world.ada, "I want data engineering roles", principal=world.ada)) == 1
+    answer(
+        said(
+            item(
+                "constraint",
+                "excluded_company",
+                "never show me Hooli Demo",
+                company_names=["Globex Demo", "Hooli Demo"],
+            )
+        )
+    )
+    assert len(propose(world.ada, "Please never show me Hooli Demo", principal=world.ada)) == 1
+
+
 def test_a_fact_of_kind_role_is_dropped_because_experience_goes_through_the_resume(engine, world, answer):
     role = item("fact", "role", "I know Rust now", text="Staff engineer at Initech Demo")
     dropped(engine, world, answer, role, why="not_allowed")
@@ -302,15 +339,47 @@ def test_a_field_of_another_entity_is_not_allowed_either_and_a_fact_is_never_rem
 REFUSED = "validation_failed"  # the code of the record's own refusal of a value
 FLOOR = "salary_floor"
 NOT_RIGHT = [  # (item, the code it is dropped with)
-    (item("constraint", "location", "take jobs in Pune", country_codes=["India"]), REFUSED),
-    (item("constraint", "location", "take jobs in Pune"), REFUSED),  # no country at all
-    (item("constraint", FLOOR, "keep it full time", salary_floor={"amount": -5, "currency": "INR"}), REFUSED),
-    (item("constraint", FLOOR, "keep it full time", salary_floor={"amount": 30, "currency": "rupees"}), REFUSED),
-    (item("constraint", "remote_policy", "take jobs in Pune", arrangements=["office"]), REFUSED),
-    (item("constraint", "seniority", "keep it full time", seniorities=["boss"]), REFUSED),
-    (item("preference", "industry", "also take jobs", text="fintech"), REFUSED),  # no weight
-    (item("preference", "industry", "also take jobs", text="fintech", weight=9), REFUSED),
-    (item("preference", "industry", "also take jobs", weight=2), REFUSED),  # nothing wanted
+    (
+        item("constraint", "location", "take jobs in Pune", statement="Take jobs in Pune.", country_codes=["India"]),
+        REFUSED,
+    ),
+    (item("constraint", "location", "take jobs in Pune", statement="Take jobs in Pune."), REFUSED),  # no country at all
+    (
+        item(
+            "constraint",
+            FLOOR,
+            "keep it full time",
+            statement="Keep it full time.",
+            salary_floor={"amount": -5, "currency": "INR"},
+        ),
+        REFUSED,
+    ),
+    (
+        item(
+            "constraint",
+            FLOOR,
+            "keep it full time",
+            statement="Keep it full time.",
+            salary_floor={"amount": 30, "currency": "rupees"},
+        ),
+        REFUSED,
+    ),
+    (
+        item(
+            "constraint", "remote_policy", "take jobs in Pune", statement="Take jobs in Pune.", arrangements=["office"]
+        ),
+        REFUSED,
+    ),
+    (
+        item("constraint", "seniority", "keep it full time", statement="Keep it full time.", seniorities=["boss"]),
+        REFUSED,
+    ),
+    (item("preference", "industry", "I am interested in fintech", text="fintech"), REFUSED),  # no weight
+    (item("preference", "industry", "I am interested in fintech", text="fintech", weight=9), REFUSED),
+    (
+        item("preference", "industry", "I am interested in fintech", statement="Interested in fintech.", weight=2),
+        REFUSED,
+    ),  # nothing wanted
     (item("fact", "skill", "I know Rust now"), "no_value"),  # no skill named
 ]
 
@@ -415,7 +484,7 @@ def test_the_same_change_declined_thirty_one_days_ago_is_offered_again(engine, w
 
 def test_a_different_value_for_the_same_field_is_not_held_back_by_a_decline(engine, world, answer):
     decline(engine, world.ada, 5, **RUST)
-    answer(said(item("fact", "skill", "I know Rust now", text="Go")))
+    answer(said(item("fact", "skill", "I know Go too", text="Go")))
     assert len(propose(world.ada, MESSAGE, principal=world.ada)) == 1
 
 
@@ -447,7 +516,9 @@ def test_a_declined_constraint_is_matched_by_its_typed_value_not_by_the_words_th
 
 def test_a_declined_removal_is_not_proposed_again(engine, world, answer):
     decline(engine, world.ada, 4, entity="constraint", operation="remove", entity_id=UUID(world.full_time))
-    removal = item("constraint", "employment_type", "keep it full time", operation="remove")
+    removal = item(
+        "constraint", "employment_type", "keep it full time", operation="remove", statement="Keep it full time."
+    )
     dropped(engine, world, answer, removal, why="declined_before")
 
 
@@ -469,7 +540,9 @@ def test_the_same_change_twice_in_one_answer_is_proposed_once(engine, world, ans
 
 
 def test_only_the_first_five_items_of_an_answer_are_considered(engine, world, answer):
-    skills = [item("fact", "skill", "I know Rust now", text=f"Skill {n}") for n in range(8)]
+    skills = [
+        item("fact", "skill", MESSAGE, text=word) for word in "Pune Rust jobs time fintech crypto firms roles".split()
+    ]
     answer(said(*skills))
     assert len(propose(world.ada, MESSAGE, principal=world.ada)) == proposals.MAX_PROPOSALS == 5
 

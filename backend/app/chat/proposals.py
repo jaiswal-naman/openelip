@@ -15,6 +15,7 @@ the person's constraints, preferences and facts are as they were until the candi
 
 import hashlib
 import json
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -36,6 +37,15 @@ PROMPT_VERSION = hashlib.sha256(PROMPT.encode()).hexdigest()[:12]  # the templat
 DECLINE_MEMORY = timedelta(days=30)  # assumption: AI_SYSTEM 4.8, a change declined this recently is not offered again
 MAX_PROPOSALS = 5  # assumption: items taken from one message; the schema cannot bound the list
 MAX_QUOTE = 500  # the change log keeps the quote as the proposal's reason, and the record allows 500 characters
+# A quote must be long enough to hold a subject and a statement ("I know Go" is 9 characters, "no Globex" 9) and carry
+# the proposed words. 8 is the floor under which a quote is a word or two ("Go", "yes"); the length alone proves nothing,
+# the words check (_says) is the test. A vague quote such as "this posting" is long enough and still refused by it.
+MIN_QUOTE = 8
+STEM = 5  # characters compared of each word, so "engineer" matches "engineering" and "pipelines" "pipeline"
+_FILLER = frozenset(
+    "a an and are as at be but by for from has have i in is it its my of on only or our so that the this to was with "
+    "you your".split()
+)
 MAX_SHOWN = 200  # assumption: characters of a skill, certification or preference shown to the model
 
 # What a proposal may touch (the allow-list): every constraint kind, every preference kind the record accepts, and the
@@ -204,6 +214,28 @@ def _plan(item: ProposalItem, row: Mapping[str, Any] | None, after: dict[str, An
     return _Plan(item.entity, operation, target, shown, after, item.statement, item.evidence_quote, key)
 
 
+def _stems(words: str) -> set[str]:
+    return {w[:STEM] for w in re.findall(r"[^\W_]+", words.lower()) if w not in _FILLER}
+
+
+def _says(item: ProposalItem) -> bool:
+    """The quote must be about what is proposed (05-FIXES B3). The words the proposal writes in free text must be in it:
+    all the words of a skill or title; for a list of companies or cities (which holds the ones the record has already)
+    all the words of at least one entry. When the value is coded (a country, an amount, an arrangement) the statement's
+    content words stand in for it, and at least half of them must be. Words are compared by their first STEM
+    characters, case aside."""
+    value, quote = item.value, _stems(item.evidence_quote)
+    entries = [*(value.cities or []), *(value.company_names or [])]
+    if value.text and not _stems(value.text) <= quote:
+        return False
+    if entries and not any(_stems(entry) <= quote for entry in entries if _stems(entry)):
+        return False
+    if value.text or entries:
+        return True
+    said = _stems(item.statement)
+    return not said or 2 * len(said & quote) >= len(said)
+
+
 def _check(item: ProposalItem, user_text: str, current: Current, declined: set[tuple[Any, ...]]) -> _Plan | str:
     """One proposal against the rules of AI_SYSTEM 4.8. Returns the plan, or the code of the rule it broke."""
     if not item.evidence_quote.strip() or item.evidence_quote not in user_text:
@@ -234,6 +266,8 @@ def _check(item: ProposalItem, user_text: str, current: Current, declined: set[t
     planned = _plan(item, row, after, same)
     if isinstance(planned, str):
         return planned
+    if len(item.evidence_quote.strip()) < MIN_QUOTE or not _says(item):
+        return "quote_too_vague"  # "this posting" is in the message and says nothing about what is proposed
     return "declined_before" if planned.key in declined else planned
 
 

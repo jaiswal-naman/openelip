@@ -258,7 +258,9 @@ _CLAIMS = (
         rf"\s+(?:\w+\s+and\s+)?{_DONE_PASSIVE}\b",
         re.IGNORECASE,
     ),
-    re.compile(r"\byour\s+[\w'-]+(?:\s+[\w'-]+){0,3}\s+(?:is|are)\s+now\b", re.IGNORECASE),  # "your salary target is now 0"
+    re.compile(
+        r"\byour\s+[\w'-]+(?:\s+[\w'-]+){0,3}\s+(?:is|are)\s+now\b", re.IGNORECASE
+    ),  # "your salary target is now 0"
     re.compile(r"^\W*done\b\s*[:!.]", re.IGNORECASE),  # "Done: ..."
 )
 _DENIAL = re.compile(r"\b(?:not|never|no|nothing|cannot|unable|without)\b|n't|\bcan\s*not\b", re.IGNORECASE)
