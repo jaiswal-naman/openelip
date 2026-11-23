@@ -123,7 +123,7 @@ Gate 'eval gate (each suite: replay, then gate)' {
         $env:LLM_PROVIDER = 'fake'
         In-Backend {
             Step uv @('run', '--frozen', 'alembic', 'upgrade', 'head')
-            foreach ($suite in 'harness_smoke', 'requirement_extraction') {
+            foreach ($suite in 'harness_smoke', 'resume_extraction', 'requirement_extraction') {
                 if ($suite -eq 'requirement_extraction') {
                     $output = & uv run --frozen python ../evals/requirement_extraction/score.py --record
                 } else {
