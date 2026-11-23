@@ -2073,6 +2073,7 @@ dev = [
     { name = "import-linter" },
     { name = "mypy" },
     { name = "pytest" },
+    { name = "pyyaml" },
     { name = "reportlab" },
     { name = "ruff" },
 ]
@@ -2107,6 +2108,7 @@ dev = [
     { name = "import-linter", specifier = "==2.17" },
     { name = "mypy" },
     { name = "pytest", specifier = ">=8" },
+    { name = "pyyaml", specifier = ">=6.0.4" },
     { name = "reportlab", specifier = ">=5.1.0" },
     { name = "ruff" },
 ]

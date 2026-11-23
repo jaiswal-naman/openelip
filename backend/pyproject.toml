@@ -34,6 +34,7 @@ dev = [
   "mypy",
   "import-linter==2.17",
   "reportlab>=5.1.0",
+  "pyyaml>=6.0.4",  # tests/evals/test_evl01_coverage.py parses ci.yml
 ]
 
 [build-system]
