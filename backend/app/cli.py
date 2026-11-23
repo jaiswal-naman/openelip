@@ -220,7 +220,7 @@ def _demo_seed_tailor(args: argparse.Namespace) -> int:
 
 
 def _graphs_check(args: argparse.Namespace) -> int:
-    """List campaign and Twin threads parked before a node the current graph no longer has: exit 1 when there are any."""
+    """List campaign and Twin threads parked before a node the graph no longer has: exit 1 when there are any."""
     from app.campaigns import graph
     from app.guardian import runtime
     from app.twin import graph as twin_graph
