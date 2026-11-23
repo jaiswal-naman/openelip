@@ -118,7 +118,7 @@ A task carrying candidate data runs only under an `ai_processing` consent naming
 
 A task has two halves. The **code half** is fixed per release: input model, output model (Pydantic), prompt template and validator. The **data half** is its route in the versioned routing configuration: the model (a `model_registry` row), prompt version, mode, effort, output cap, timeout, data class and an optional fallback route.
 
-`model_registry` holds provider, model name, micro-dollar prices with `price_checked_at`, a retention note and `is_active`; there is no status column. **A route may name a model for a task only when a passed gold-set run for that task and model exists** (`eval_runs.config` records models and prompt versions under test); CI checks the routing configuration against recorded runs. A retired model is `is_active = false`, and its routes fall back or return `unavailable`. A route change also needs shadow replay (12.9). The prompt version is the template's content hash (`llm_calls.prompt_version`); a role's prompt and tool configuration and the LangGraph graph version are `agent_runs.config_version`.
+`model_registry` holds provider, model name, micro-dollar prices with `price_checked_at`, a retention note and `is_active`; there is no status column. **A route may name a model for a task only when a passed gold-set run for that task and model exists** (`eval_runs.config` records models and prompt versions under test); CI checks the routing configuration against recorded runs. Until that CI check is built, the extraction sweep makes the check for `job.requirements.extract` itself: it queues no job, and logs `unproven`, unless `eval_runs` holds a passed `requirement_extraction` run on the test split, by the model method, whose config names the route's model and the current prompt version. A retired model is `is_active = false`, and its routes fall back or return `unavailable`. A route change also needs shadow replay (12.9). The prompt version is the template's content hash (`llm_calls.prompt_version`); a role's prompt and tool configuration and the LangGraph graph version are `agent_runs.config_version`.
 
 Default routes at launch; effort values are starting points for a per-task effort sweep, as the provider recommends ([effort](https://platform.claude.com/docs/en/build-with-claude/effort), verified).
 
@@ -1223,7 +1223,9 @@ Used in `eval_runs.metrics`, `eval_items` and on the scoreboard.
 |---|---|
 | `resume_field_f1`, `resume_lines_resolved` | Resume extraction |
 | `hidden_text_recall`, `visible_text_removed_rate` | Hidden text |
+| `location_accuracy`, `location_guessed` | Location parsing (IDX-06) |
 | `req_item_f1`, `req_importance_accuracy`, `req_run_agreement` | Requirement extraction |
+| `req_spans_resolved` (absolute: the share of extracted requirement items whose span resolves to the posting text; bar 1.0) | Requirement extraction, every run |
 | `evidence_faithful_rate`, `false_met_required_rate`, `citation_reject_rate` | Evidence faithfulness, production |
 | `tailor_unsupported_passed`, `tailor_discard_rate` | Tailoring integrity |
 | `recall_at_300`, `recall_at_40`, `ndcg_at_5`, `precision_at_5`, `cost_per_candidate_day_usd` | Matching benchmark |

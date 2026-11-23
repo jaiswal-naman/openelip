@@ -60,7 +60,7 @@ These values are fixed by this schema. API payloads, agent code and screens shou
 | Agent token scopes | `agent_tokens.scopes` | Principal `candidate` (issued with an `agent_access` consent): `matches:read`, `explanations:read`. Principal `organization` (issued by an owner or admin): `twin:ask`, `introductions:request` |
 | Brief | `users.brief_frequency`, `brief_items.kind` | `daily`, `weekly`, `paused`; item kinds `match`, `approval`, `activity`, `introduction` |
 | Wind tunnel | `sim_scenarios.persona`, `sim_results.code` | Personas `cooperative` (control), `silent`, `lowball`, `scam`, `hidden_instruction`. Violation codes `constraint_break`, `invented_claim`, `privacy_leak`, `unauthorized_action`, `duplicate_send`, `followed_hidden_instruction`; outcome codes `goal_reached` plus names defined in each scenario |
-| Eval suites | `eval_runs.suite` | `resume_extraction`, `requirement_extraction`, `evidence_faithfulness`, `tailoring_integrity`, `matching_benchmark`, `injection`, `constraint_property`, `wind_tunnel`, `record_proposals`, `chat`, `dossier`, `twin`, `guardian`, `agent_drafts`, `harness_smoke` (the harness's own smoke suite: it proves the runner and the gate, never product quality) |
+| Eval suites | `eval_runs.suite` | `resume_extraction`, `requirement_extraction`, `evidence_faithfulness`, `tailoring_integrity`, `matching_benchmark`, `injection`, `constraint_property`, `wind_tunnel`, `record_proposals`, `chat`, `dossier`, `twin`, `guardian`, `agent_drafts`, `harness_smoke` (the harness's own smoke suite: it proves the runner and the gate, never product quality), `location_accuracy` (share of labelled postings whose country and city are read correctly, IDX-06; added in Phase 2 because no other suite fits it) |
 | Instance operator | (no column) | Acts through the command line; audit rows use `actor_type` `operator` |
 | Application | `applications.status` | `applied`, `interview`, `offer`, `rejected`, `no_response` |
 | Consent purposes | `consents.purpose` | `terms`, `ai_processing`, `brief_email`, `open_to_introductions`, `introduction` (per organization and role), `agent_access` |
@@ -377,7 +377,8 @@ CREATE TYPE queue_status        AS ENUM ('queued', 'running', 'succeeded', 'dead
 CREATE TYPE eval_suite          AS ENUM ('resume_extraction', 'requirement_extraction', 'evidence_faithfulness',
                                          'tailoring_integrity', 'matching_benchmark', 'injection',
                                          'constraint_property', 'wind_tunnel', 'record_proposals', 'chat',
-                                         'dossier', 'twin', 'guardian', 'agent_drafts', 'harness_smoke');
+                                         'dossier', 'twin', 'guardian', 'agent_drafts', 'harness_smoke',
+                                         'location_accuracy');  -- location_accuracy: share of labelled postings whose country and city are read correctly (IDX-06)
 CREATE TYPE eval_status         AS ENUM ('running', 'passed', 'failed', 'error');
 CREATE TYPE sim_persona         AS ENUM ('silent', 'lowball', 'scam', 'hidden_instruction', 'cooperative');
 CREATE TYPE sim_run_status      AS ENUM ('running', 'passed', 'failed', 'error');

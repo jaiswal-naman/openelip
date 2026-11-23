@@ -1,33 +1,30 @@
 "use client";
 
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { EmptyState, ErrorState, ProgressLine } from "@/components/ui/States";
 import { Count } from "@/components/ui/Viewer";
 import { useApi } from "@/lib/api/context";
-import { hasFilters, LIMIT_STEPS, PAGE_SIZE, type SearchParams } from "./jobs";
+import { hasFilters, type SearchParams } from "./jobs";
 import styles from "./jobs.module.css";
 import { JobList, JobsSkeleton } from "./JobList";
+import { LoadMore } from "./LoadMore";
 import { jobsQuery, openCountQuery } from "./queries";
 import { SearchForm } from "./SearchForm";
 
 /**
- * The search form and its results. The page remounts this with a new `key` whenever the URL's search changes, so
- * "Show more" starts again at one page for a new search.
+ * The search form and its results. The page remounts this with a new `key` whenever the URL's search changes, so a new
+ * search starts again at its first page. "Load more" adds the next page by the API's cursor, which stays out of the URL.
  */
 export function JobsView({ params }: { params: SearchParams }) {
   const api = useApi();
-  const [limit, setLimit] = useState<number>(PAGE_SIZE);
-  // The previous rows stay on screen while a longer list loads, under the thin progress line.
-  const jobs = useQuery({ ...jobsQuery(api, params, limit), placeholderData: keepPreviousData });
+  const jobs = useInfiniteQuery(jobsQuery(api, params));
   const openCount = useQuery(openCountQuery(api));
 
-  const rows = jobs.data ?? [];
-  const nextLimit = LIMIT_STEPS.find((step) => step > limit);
-  const mayHaveMore = rows.length >= limit; // a full page: there could be more
+  const rows = jobs.data?.pages.flatMap((page) => page.rows) ?? [];
+  const keywordOnly = jobs.data?.pages[0]?.mode === "keyword";
   const filtered = hasFilters(params);
+  const nextPageFailed = jobs.isFetchNextPageError;
 
   return (
     <>
@@ -48,12 +45,15 @@ export function JobsView({ params }: { params: SearchParams }) {
             )}
           </span>
         </div>
+        {keywordOnly && <p className="t-small muted">Keyword results only right now.</p>}
         <ProgressLine active={jobs.isFetching} />
         <p role="status" className="sr-only">
           {jobs.isFetching ? "Loading jobs" : jobs.data === undefined ? "" : `${rows.length} jobs shown`}
         </p>
 
-        {jobs.isError && <ErrorState what="Could not load jobs." error={jobs.error} onRetry={() => void jobs.refetch()} />}
+        {jobs.isError && !nextPageFailed && (
+          <ErrorState what="Could not load jobs." error={jobs.error} onRetry={() => void jobs.refetch()} />
+        )}
 
         {jobs.data === undefined && jobs.isPending && <JobsSkeleton />}
 
@@ -75,16 +75,12 @@ export function JobsView({ params }: { params: SearchParams }) {
 
         {rows.length > 0 && <JobList jobs={rows} />}
 
-        {rows.length > 0 && mayHaveMore && (
-          <div className={styles.more}>
-            {nextLimit === undefined ? (
-              <p className="t-small">Showing the first {limit}. Narrow the search to see others.</p>
-            ) : (
-              <Button isPending={jobs.isFetching} onPress={() => setLimit(nextLimit)}>
-                Show more
-              </Button>
-            )}
-          </div>
+        {rows.length > 0 && jobs.hasNextPage && (
+          <LoadMore
+            isPending={jobs.isFetchingNextPage}
+            error={nextPageFailed ? jobs.error : null}
+            onLoad={() => void jobs.fetchNextPage()}
+          />
         )}
       </section>
     </>

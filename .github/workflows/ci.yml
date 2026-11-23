@@ -35,6 +35,10 @@ jobs:
           --health-retries 12
     env:
       TEST_DATABASE_URL: postgresql://app:app_local_only@localhost:5432/app_test
+      # The retrieval tests run the real embedding model, which fastembed downloads from Hugging Face (65 MB) unless it is
+      # in the folder FASTEMBED_CACHE_PATH names. That folder is kept between runs below, under the model's id.
+      EMBEDDING_MODEL: BAAI/bge-small-en-v1.5 # the model the code names by default (a test keeps the two the same)
+      FASTEMBED_CACHE_PATH: /home/runner/.cache/fastembed
     defaults:
       run:
         working-directory: backend
@@ -47,6 +51,10 @@ jobs:
           python-version: "3.11"
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.FASTEMBED_CACHE_PATH }}
+          key: fastembed-${{ env.EMBEDDING_MODEL }}
       - run: uv sync --frozen
       - name: Lint
         run: uv run --frozen ruff check app tests ../db
@@ -73,7 +81,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [harness_smoke, resume_extraction] # later phases add their gold sets here
+        suite: [harness_smoke, resume_extraction, requirement_extraction] # later phases add their gold sets here
     services:
       db:
         image: pgvector/pgvector:pg17
@@ -109,7 +117,12 @@ jobs:
       - name: Replay the recorded answers, then gate the run
         shell: bash
         run: |
-          uv run --frozen python -m app.evals run "${{ matrix.suite }}" | tee run.out
+          if [ "${{ matrix.suite }}" = "requirement_extraction" ]; then
+            # Scored by span overlap, not by exact match: the suite's own script replays, records the run and prints its id last.
+            uv run --frozen python ../evals/requirement_extraction/score.py --record | tee run.out
+          else
+            uv run --frozen python -m app.evals run "${{ matrix.suite }}" | tee run.out
+          fi
           uv run --frozen python -m app.evals gate "${{ matrix.suite }}" --run "$(tail -n 1 run.out)"
 
   web:

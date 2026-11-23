@@ -1,0 +1,116 @@
+{
+  "note": "Both runs are baselines: rules baseline, not a model quality number; labels drafted by an agent, review pending.",
+  "runs": {
+    "replay": {
+      "run_id": "34ece495-f9a9-4556-ae59-a3eb5ff69623",
+      "suite": "requirement_extraction",
+      "status": "passed",
+      "is_gate_passed": true,
+      "git_sha": "6efe3afe69afda2312a782705802eb0c8fe1af5e",
+      "finished_at": "2026-11-23T00:43:52.070945+00:00",
+      "labels": "labels drafted by an agent, review pending",
+      "note": "rules baseline, not a model quality number; recorded replay of answers built from the heading rules: it proves the code path, not model quality",
+      "config": {
+        "mode": "replay",
+        "task": "job.requirements.extract",
+        "split": "test",
+        "labels": "agent-drafted, maintainer review pending",
+        "method": "model",
+        "min_iou": 0.5,
+        "excluded": {
+          "req-049": "a near-copy of dev posting req-001 (99.9% the same text)"
+        },
+        "recording": "recordings.jsonl",
+        "prompt_version": "99b59f54d421",
+        "recording_source": "rules_fixture"
+      },
+      "metrics": {
+        "n": 39,
+        "bars": {
+          "req_spans_resolved": true
+        },
+        "score": 1.0,
+        "passed": 39,
+        "recall": 0.6308,
+        "bars_met": true,
+        "rejected": {},
+        "intervals": {
+          "recall": [
+            0.5818,
+            0.6772
+          ],
+          "precision": [
+            0.5064,
+            0.5984
+          ],
+          "req_importance_accuracy": [
+            0.8312,
+            0.9132
+          ]
+        },
+        "precision": 0.5528,
+        "gold_items": 390,
+        "req_item_f1": 0.5892,
+        "matched_items": 246,
+        "predicted_items": 445,
+        "harness_check_only": true,
+        "req_spans_resolved": 1.0,
+        "req_importance_accuracy": 0.878
+      },
+      "unclean_items": []
+    },
+    "rules": {
+      "run_id": "641a3723-6e6c-45b0-8c31-a008fcff7e36",
+      "suite": "requirement_extraction",
+      "status": "passed",
+      "is_gate_passed": true,
+      "git_sha": "6efe3afe69afda2312a782705802eb0c8fe1af5e",
+      "finished_at": "2026-11-23T00:43:53.858658+00:00",
+      "labels": "labels drafted by an agent, review pending",
+      "note": "rules baseline, not a model quality number",
+      "config": {
+        "mode": "code",
+        "split": "test",
+        "labels": "agent-drafted, maintainer review pending",
+        "method": "rules",
+        "min_iou": 0.5,
+        "excluded": {
+          "req-049": "a near-copy of dev posting req-001 (99.9% the same text)"
+        }
+      },
+      "metrics": {
+        "n": 39,
+        "bars": {
+          "req_spans_resolved": true
+        },
+        "score": 1.0,
+        "passed": 39,
+        "recall": 0.6308,
+        "bars_met": true,
+        "rejected": {},
+        "intervals": {
+          "recall": [
+            0.5818,
+            0.6772
+          ],
+          "precision": [
+            0.5064,
+            0.5984
+          ],
+          "req_importance_accuracy": [
+            0.8312,
+            0.9132
+          ]
+        },
+        "precision": 0.5528,
+        "gold_items": 390,
+        "req_item_f1": 0.5892,
+        "matched_items": 246,
+        "predicted_items": 445,
+        "req_spans_resolved": 1.0,
+        "req_importance_accuracy": 0.878
+      },
+      "unclean_items": []
+    }
+  }
+}

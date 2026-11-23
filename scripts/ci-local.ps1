@@ -113,7 +113,8 @@ Gate 'backend tests (pytest, database app_test)' {
     finally { Remove-Item Env:TEST_DATABASE_URL -ErrorAction SilentlyContinue }
 }
 
-Gate 'eval gate (harness_smoke: replay, then gate)' {
+# The same suites as the eval-gate matrix in .github/workflows/ci.yml.
+Gate 'eval gate (each suite: replay, then gate)' {
     $name = 'ci_local_evals_test'
     New-ScratchDatabase $name
     try {
@@ -122,10 +123,16 @@ Gate 'eval gate (harness_smoke: replay, then gate)' {
         $env:LLM_PROVIDER = 'fake'
         In-Backend {
             Step uv @('run', '--frozen', 'alembic', 'upgrade', 'head')
-            $output = & uv run --frozen python -m app.evals run harness_smoke
-            if ($LASTEXITCODE -ne 0) { throw "app.evals run exited with $LASTEXITCODE" }
-            $runId = ($output | Select-Object -Last 1).ToString().Trim()  # the last line is the run id; log lines come first
-            Step uv @('run', '--frozen', 'python', '-m', 'app.evals', 'gate', 'harness_smoke', '--run', $runId)
+            foreach ($suite in 'harness_smoke', 'requirement_extraction') {
+                if ($suite -eq 'requirement_extraction') {
+                    $output = & uv run --frozen python ../evals/requirement_extraction/score.py --record
+                } else {
+                    $output = & uv run --frozen python -m app.evals run $suite
+                }
+                if ($LASTEXITCODE -ne 0) { throw "$suite run exited with $LASTEXITCODE" }
+                $runId = ($output | Select-Object -Last 1).ToString().Trim()  # the last line is the run id; log lines come first
+                Step uv @('run', '--frozen', 'python', '-m', 'app.evals', 'gate', $suite, '--run', $runId)
+            }
         }
     } finally {
         'DATABASE_URL_MIGRATE', 'DATABASE_URL_WORKER', 'LLM_PROVIDER' | ForEach-Object { Remove-Item "Env:$_" -ErrorAction SilentlyContinue }

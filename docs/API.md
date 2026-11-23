@@ -534,7 +534,7 @@ Each person sees only their own work. There are no instance-wide views in v1 (ow
 | GET | `/v1/control/recorder/{entry_id}` | One entry in full for replay: input references, cited evidence, model, tokens, cost, policy decision, Guardian checks with reasons, payload | C | GRD-03 | 7 |
 | GET | `/v1/control/stream` | The per-person live event stream (section 4.3) | U | GRD-06, HIR-06, TWN-04 | 7 |
 | POST | `/v1/control/actions/{action_id}/undo` | Undo a follow-up email still in its undo window (it becomes `cancelled`) | C | GRD-04 | 7 |
-| GET | `/v1/control/costs` | The caller's model cost grouped by `month` or `task`, read from the cost ledger (`group_by=campaign` is added in Phase 7) | C | GRD-05, PLT-04 | 1 |
+| GET | `/v1/control/costs` | The caller's model cost grouped by `month` or `task`, read from the cost ledger; each row also lists the models its calls used (`provider/model_name`) and their average latency in milliseconds (`group_by=campaign` is added in Phase 7) | C | GRD-05, PLT-04 | 1 |
 | GET | `/v1/control/evals` | The scoreboard: the latest recorded run per suite and scenario; every number carries its `eval_run_id` | U | EVL-04, EVL-05 | E |
 | GET | `/v1/control/evals/runs/{eval_run_id}` | One eval run: suite, git commit, model and prompt versions, per-item results, the repeats of a wind-tunnel scenario | U | EVL-01, EVL-02, EVL-03, EVL-04 | E |
 

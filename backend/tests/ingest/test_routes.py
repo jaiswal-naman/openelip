@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy import text
 
+from app.ingest.normalize import work_arrangements_from
+
 JOB_KEYS = {
     "id", "title", "company_name", "location_raw", "country", "city", "is_remote", "apply_url", "posted_at",
     "last_verified_at", "content_version",
@@ -24,12 +26,12 @@ def index(engine, api_client):
             return c.execute(
                 text(
                     "INSERT INTO jobs (source_id, external_id, title, company_name, description, apply_url, "
-                    "content_hash, dedupe_key, country, is_remote, status, closed_at, canonical_job_id) "
+                    "content_hash, dedupe_key, country, work_arrangements, status, closed_at, canonical_job_id) "
                     "VALUES (:s, :e, :t, 'Acme', 'Build and run things', 'https://example.test/apply', 'h', 'd', "
-                    ":c, :r, :st, :ca, :can) RETURNING id"
+                    ":c, CAST(:r AS work_arrangement[]), CAST(:st AS job_status), :ca, :can) RETURNING id"
                 ),
-                {"s": source, "e": external_id, "t": title, "c": country, "r": is_remote, "st": status,
-                 "ca": closed_at, "can": canonical},
+                {"s": source, "e": external_id, "t": title, "c": country, "r": work_arrangements_from(is_remote),
+                 "st": status, "ca": closed_at, "can": canonical},
             ).scalar_one()  # fmt: skip
 
         first = add("1", "Backend Engineer", country="IN", is_remote=True)
@@ -50,7 +52,7 @@ def test_search_returns_open_unique_jobs_in_the_envelope(api_client, index):
     assert _ids(response) == {index["first"]}  # not the closed one, not the duplicate
     assert body["success"] is True and body["error"] is None
     assert body["meta"]["count"] == 1 and body["meta"]["limit"] == 20 and body["meta"]["request_id"].startswith("req_")
-    assert set(body["data"][0]) == JOB_KEYS
+    assert JOB_KEYS <= set(body["data"][0])  # every key it always had; the typed keys came with plan 02-05
 
 
 def test_without_a_query_every_open_unique_job_is_listed(api_client, index):

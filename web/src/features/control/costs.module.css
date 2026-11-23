@@ -38,6 +38,11 @@
   gap: var(--sp-8);
 }
 
+/* "provider/model-name" has no spaces to wrap at, so a narrow column breaks it instead of pushing the table wider */
+.models {
+  overflow-wrap: anywhere;
+}
+
 .share {
   display: grid;
   grid-template-columns: minmax(4rem, 1fr) 3.25rem;

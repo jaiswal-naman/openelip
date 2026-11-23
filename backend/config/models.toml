@@ -121,3 +121,18 @@ model = "local-model"   # placeholder: set this to the model name your server ru
 
 [tasks."resume.facts.summary".models.fake]
 model = "recorded"
+
+# Requirements of one public job posting (AI_SYSTEM 4.3). Real time: the gateway has no batch mode yet, and batch
+# (AI_SYSTEM 2.2) only saves money at volume. AI_SYSTEM 2.2 lists effort "low"; the gateway sends no effort setting,
+# so the model's default applies. No fallback route until a gold-set run passes for it.
+[tasks."job.requirements.extract"]
+description = "Reads one public job posting and lists what it asks of candidates, each tied to the lines it came from."
+data_class = "public"
+max_tokens = 4000       # AI_SYSTEM 2.2 (assumption)
+timeout_seconds = 60    # AI_SYSTEM 2.2 (assumption)
+
+[tasks."job.requirements.extract".models.anthropic]
+model = "claude-haiku-5-5"
+input_usd_per_mtok = 0.10     # prompts up to 100k tokens; a posting is a few thousand
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-22
