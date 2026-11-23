@@ -64,14 +64,20 @@ CREATE TABLE roles (
   CONSTRAINT roles_live_needs_pay_and_requirements CHECK (
     status = 'draft'
     OR (salary_min IS NOT NULL AND salary_max IS NOT NULL AND salary_currency IS NOT NULL
-        AND requirements_confirmed_at IS NOT NULL AND job_id IS NOT NULL AND opened_at IS NOT NULL))
+        AND requirements_confirmed_at IS NOT NULL AND job_id IS NOT NULL AND opened_at IS NOT NULL)),
+  -- Phase 6 addition: the target of role_requirements' composite key, so an item cannot name another organization's role.
+  CONSTRAINT roles_id_organization_key UNIQUE (id, organization_id)
 );
 CREATE INDEX roles_org_idx ON roles (organization_id, status);
 
 -- The employer's working list of requirements, confirmed item by item (HIR-02).
+-- Phase 6 addition: DATA_MODEL has role_id REFERENCES roles(id). Row-level security only asks whether the caller belongs
+-- to the row's organization_id, so a member of one organization could attach an item that names their own organization
+-- to another organization's role (the worker, which reads every row, would then read it into that role). The composite
+-- key below makes the item's organization the role's own, on insert and on update (the convention of DATA_MODEL 1.2).
 CREATE TABLE role_requirements (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  role_id         uuid                   NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  role_id         uuid                   NOT NULL,
   organization_id uuid                   NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   ordinal         smallint               NOT NULL,
   importance      requirement_importance NOT NULL,
@@ -80,7 +86,8 @@ CREATE TABLE role_requirements (
   span            int4range,             -- in roles.description; NULL when the employer typed the item in
   is_confirmed    boolean                NOT NULL DEFAULT false,
   created_at      timestamptz            NOT NULL DEFAULT now(),
-  UNIQUE (role_id, ordinal)
+  UNIQUE (role_id, ordinal),
+  FOREIGN KEY (role_id, organization_id) REFERENCES roles (id, organization_id) ON DELETE CASCADE
 );
 
 -- A private ask to one candidate for one role, and the employer's answer clock once accepted.

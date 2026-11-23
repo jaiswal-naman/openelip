@@ -23,6 +23,7 @@ from tests.hiring.world import (
     add_member,
     ask,
     candidate,
+    constraint_name,
     count,
     invite,
     make_org,
@@ -183,6 +184,25 @@ def test_a_member_cannot_add_a_row_to_another_organization(conn, two, table):
     with refused(conn) as caught:
         conn.execute(text(sql), params)
     assert sqlstate(caught) == "42501"
+
+
+def test_a_member_cannot_hang_a_requirement_of_their_own_organization_on_anothers_role(conn, two):
+    """The policy only asks whether the caller belongs to the row's organization_id, so a row that names their own
+    organization and another organization's role would pass it. The composite key from the requirement to its role's
+    own organization is what stops that, on insert and on update (it would otherwise be read into the other role)."""
+    a, b = two
+    insert = """INSERT INTO role_requirements (role_id, organization_id, ordinal, importance, kind, text)
+                VALUES (:r, :o, :n, 'required', 'skill', 'An item') RETURNING id"""
+    act_as(conn, "app_api", a.owner)
+    mine = conn.execute(
+        text(insert), {"r": a.role.id, "o": a.org, "n": 9}
+    ).scalar_one()  # their own role: theirs to add to
+    with refused(conn) as caught:
+        conn.execute(text(insert), {"r": b.role.id, "o": a.org, "n": 9})
+    assert sqlstate(caught) == "23503" and "role_requirements" in constraint_name(caught)
+    with refused(conn) as caught:  # and an item of their own cannot be moved onto it either (number 9 is free there)
+        conn.execute(text("UPDATE role_requirements SET role_id = :r WHERE id = :i"), {"r": b.role.id, "i": mine})
+    assert sqlstate(caught) == "23503" and "role_requirements" in constraint_name(caught)
 
 
 def test_the_api_role_has_no_delete_on_introductions_and_no_insert_either(conn, two):

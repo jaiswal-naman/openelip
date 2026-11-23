@@ -1233,6 +1233,8 @@ CREATE UNIQUE INDEX interest_signals_organization_week ON interest_signals (orga
   WHERE sender_side = 'organization';
 ```
 
+Phase 6 addition (plan 06-01): `role_requirements` references its role by the pair `(role_id, organization_id)` (`FOREIGN KEY (role_id, organization_id) REFERENCES roles (id, organization_id)`, with `roles` gaining `UNIQUE (id, organization_id)`), not by `role_id` alone as the block above shows. The member policy of 5.4 only checks that the caller belongs to the row's `organization_id`, so without the pair a member of one organization could attach an item that names their own organization to another organization's role. `db/sql/p6_0601_tables.sql` has the live definition.
+
 ### 3.10 campaigns and guardian
 
 <!-- ddl: 80_campaigns.sql -->
