@@ -67,6 +67,7 @@ SUITES: dict[str, Suite | OwnScorer] = {
         schema=SmokeLabel,
     ),
     "resume_extraction": OwnScorer("resume_extraction/facts/score.py"),
+    "evidence_faithfulness": OwnScorer("evidence_faithfulness/score.py"),
 }
 
 

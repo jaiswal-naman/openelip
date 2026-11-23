@@ -21,3 +21,9 @@ min_score = 0.95
 # the heading rules, so a pass shows that the code path works and says nothing about a model's quality.
 [requirement_extraction]
 min_score = 1.0
+
+# Scored by code and replayed from a recording built from the gold labels (see evals/evidence_faithfulness/README.md): the
+# score is 1.0 only when every pre-registered bar holds (faithful verdicts 0.90, false met on required items 0.05,
+# citation rejections 0.02), else 0.0. A pass shows that the code path works and says nothing about a model's quality.
+[evidence_faithfulness]
+min_score = 1.0
