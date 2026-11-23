@@ -455,8 +455,10 @@ Accepting an introduction starts a campaign at `applied` (2.17); its steps are `
 |---|---|---|---|---|---|
 | GET | `/v1/approvals` | Approvals, default `?status=pending`; filter by `campaign_id`, `kind` | C | BRF-02, GRD-01, CMP-03, CMP-04, TWN-02 | 7 |
 | GET | `/v1/approvals/{approval_id}` | One approval: the exact payload its action would send, its `payload_hash`, which fields may be edited, whether a `reply` is needed, the policy decision and Guardian checks already run, `expires_at` | C | GRD-01, GRD-02 | 7 |
-| POST | `/v1/approvals/{approval_id}/approve` | Say yes: body `payload_hash`, optional `edits`, and `reply` (required when the approval asks the candidate to answer a Twin question; optional `save_to_record` then proposes a record change). The action passes the policy engine and the Guardian again before it runs. The answer comes back at once with `release: "pending"`: the worker reruns both keys and schedules or blocks the action seconds later, and the page polls `GET /v1/campaigns/{id}` until it is `scheduled` or `blocked`. A `reply` is refused (`422 validation_failed`) until the Twin arrives in Phase 9 | C | CMP-03, CMP-04, GRD-02, GRD-04, TWN-02 | 7 |
+| POST | `/v1/approvals/{approval_id}/approve` | Say yes: body `payload_hash`, optional `edits`, and `reply` (required when the approval asks the candidate to answer a Twin question; optional `save_to_record` then proposes a record change). The action passes the policy engine and the Guardian again before it runs. The answer comes back at once with `release: "pending"`: the worker reruns both keys and schedules or blocks the action seconds later, and the page polls `GET /v1/campaigns/{id}` until it is `scheduled` or `blocked`. An approval whose action has no reply to take refuses one (`422 validation_failed`, `details.fields[0].issue` `not_supported`) | C | CMP-03, CMP-04, GRD-02, GRD-04, TWN-02 | 7, 9 |
 | POST | `/v1/approvals/{approval_id}/reject` | Say no, with an optional `note`. Nothing leaves the system | C | CMP-04 | 7 |
+
+**Twin approvals (Phase 9).** A `twin_answer` approval is either a drafted answer (`payload.kind` `answer`: the cited sentences; approved or rejected as it stands, `editable_fields` is empty and a `reply` or `edits` is `422 validation_failed`) or a request for the candidate's own words (`payload.kind` `relay`, `needs_reply: true`, `editable_fields` `["body"]`). A relay is approved with `reply`, required, 1 to 4,000 characters, plain text; a reply that holds an email address, a phone number, a street address, a profile link or pay words is `422 validation_failed` with `details.reason` `restricted_data` and nothing is stored. The reply is stored as the candidate's own message about the question (which the employer's reading never returns) and travels as the approval's edit, so the response shows the original approval `rejected` with note `edited` and `release: "pending"`; the worker then makes the replacement action, runs both keys on it and, when they pass, posts the `relayed` message. `save_to_record: true` also proposes the reply as a record fact (origin `agent`, waiting for the candidate's confirmation). The response adds `question: {question_id, state}` (`waiting_for_candidate` until the release), `relayed_to` (the organization's name) and `record_proposal: {event_id, status: "proposed"} | null`.
 
 An approval's kind is its action's type: `submit_application` (shown as "Application packet"), `send_follow_up` or `twin_answer`. Approvals are decided only in the app; brief emails link to the approval page. **Edits:** recorder content is immutable, so approving with `edits` rejects this approval with note `edited`, creates a new action with the edited payload, runs both keys on it, and records the candidate's yes on its approval in the same request. If a check fails on the edited payload, the new action is `blocked` and nothing is sent. The API process only records the yes and queues the release (its login cannot write an action or a check); `to`, `reply_to` and `channel` are never editable (`422 validation_failed`, `details.fields[0].field` names the field). A paused campaign is `409 conflict` (`details.state` `paused`), an expired approval `409 conflict` (`expired`). The list paginates with `limit` (default 50, at most 200) and `cursor` from `meta.next_cursor`.
 
@@ -479,12 +481,12 @@ Profile sharing is not a setting: no agent can share a profile, and only the can
 
 | Method | Path | Purpose | Caller | Req | Phase |
 |---|---|---|---|---|---|
-| GET | `/v1/twin/scopes` | The twelve Twin topics with their permission (`answer`, `ask_me`, `never`); locked topics are marked | C | TWN-03 | 8 |
-| PUT | `/v1/twin/scopes` | Replace the topic permissions; `422 topic_locked` for `current_pay` or `contact_details` | C | TWN-03 | 8 |
-| POST | `/v1/twin/questions` | An employer member asks the candidate's Twin within an accepted introduction. The answer is cited, the question waits for the candidate, or it is declined | E | TWN-01, TWN-02, TWN-03 | 8 |
-| GET | `/v1/twin/questions` | Candidate: every question and answer about them, from employer members and organization agents. Employer: `?introduction_id=` for one thread | C, E | TWN-04, TWN-01 | 8 |
+| GET | `/v1/twin/scopes` | The twelve Twin topics in order (`experience`, `skills`, `education`, `projects`, `availability`, `work_authorization`, `location`, `expected_pay`, `motivation`, `other`, `current_pay`, `contact_details`) with their permission (`answer`, `ask_me`, `never`; `ask_me` when no row); `current_pay` and `contact_details` are `never` with `locked: true`. Data `{topics: [{topic, permission, locked}]}` | C | TWN-03 | 9 |
+| PUT | `/v1/twin/scopes` | Replace the topic permissions: body `{topics: [{topic, permission}]}`; a topic left out goes back to `ask_me`. `422 topic_locked` for `current_pay` or `contact_details` set to anything but `never`, `422 validation_failed` for an unknown topic or permission or a repeated topic; nothing is saved then. Returns what GET returns | C | TWN-03 | 9 |
+| POST | `/v1/twin/questions` | An employer member asks the candidate's Twin within an accepted introduction (`Idempotency-Key`; body `{introduction_id, question}`, 5 to 1,000 characters). `201` with the question's view after waiting up to 30 seconds for the Twin's first message: the answer is cited, the question waits for the candidate, or it is declined; when the Twin has not posted by then the state is `pending` and the caller polls `GET`. A repeat of the same key returns the first response without waiting. Errors: `404 not_found` (the introduction is not visible, not accepted or another organization's, and a candidate asking), `409 conflict` with `details.state` `session_closed` or `limit_reached` (40 questions), `403 consent_required` (the candidate withdrew the introduction consent), `422 validation_failed` | E | TWN-01, TWN-02, TWN-03 | 9 |
+| GET | `/v1/twin/questions` | Candidate: every session about them with every question, the Twin's holding message and answer, their own reply, `approval_id` and `needs_reply`. Employer: `?introduction_id=` for that introduction's thread, with `questions_used` and `questions_left` and never the candidate's reply; without it an employer member gets `422`. Data `{sessions: [{session_id, introduction_id, organization: {id, name}, role: {id, title}, status, questions_used, questions_left, questions: [view]}]}` | C, E | TWN-04, TWN-01 | 9 |
 
-How a question is handled: a topic set to `never` is declined with a fixed sentence. When a confirmed fact answers it, the Twin drafts a cited answer as a `twin_answer` action; it is released at once only when the dial is `tell_me_after` and the topic is `answer` (the standing yes), and otherwise waits as an approval. When no confirmed fact answers it, the Twin posts an `unknown` message ("I need to ask") and creates a `twin_answer` approval that the candidate approves by writing a `reply` (2.12); the reply is relayed as written. An approval that expires leads the Twin to post `declined`. Twin answers have no undo window.
+How a question is handled: a topic set to `never` is declined with a fixed sentence. When a confirmed fact answers it, the Twin drafts a cited answer as a `twin_answer` action; it is released at once only when the dial is `tell_me_after` and the topic is `answer` (the standing yes), and otherwise waits as an approval. When no confirmed fact answers it, the Twin posts an `unknown` message ("I need to ask") and creates a `twin_answer` approval that the candidate approves by writing a `reply` (2.12); the reply is relayed as written. An approval that expires, or that the candidate rejects, leads the Twin to post `declined`; three restricted questions in one session close it (the third is declined with the closing sentence). Whenever an answer waits for the candidate, the employer reads a fixed holding message (`unknown`: "The candidate reviews each answer before it is shared. I have asked them."), so a question is never silent. With the dial at `never` the Twin drafts nothing and goes straight to asking the candidate. A question's `state` is derived: `pending` (no Twin message yet), `waiting_for_candidate` (the latest message is the holding one), `answered`, `relayed` (the candidate's reply, posted by the Twin) or `declined`. Twin answers have no undo window.
 
 ### 2.15 `/v1/orgs`
 
@@ -1667,7 +1669,7 @@ Response `201`:
 }
 ```
 
-With the default dial (`ask_first`) the same question returns `state: "waiting_for_candidate"`: the Twin's cited draft waits as a `twin_answer` approval and is released as `answered` once the candidate approves it.
+With the default dial (`ask_first`) the same question returns `state: "waiting_for_candidate"` with the holding message (`answer_kind: "unknown"`, "The candidate reviews each answer before it is shared. I have asked them."): the Twin's cited draft waits as a `twin_answer` approval and is released as `answered` once the candidate approves it. When the worker has not posted anything within the 30-second wait the response is `state: "pending"` with `answer: null`, and `GET /v1/twin/questions?introduction_id=` shows the answer when it arrives. Each citation is `{fact_id, quote}`: the quote is the cited fact's statement, and an employer never sees a fact outside the answer.
 
 **"I need to ask."** The same endpoint with `"question": "Would she relocate to Bengaluru full time?"`, where no confirmed fact answers it:
 
@@ -1682,7 +1684,7 @@ With the default dial (`ask_first`) the same question returns `state: "waiting_f
     "answer": {
       "author": "twin",
       "answer_kind": "unknown",
-      "body": "I need to ask Asha. Her answer will appear here once she replies.",
+      "body": "The record does not answer this. I have asked the candidate.",
       "citations": [],
       "created_at": "2026-11-23T05:03:40Z"
     }
@@ -1711,13 +1713,10 @@ Response `200`:
 {
   "success": true,
   "data": {
-    "approval": {"id": "a9b8c7d6-5e4f-4a3b-9c2d-1e0f9a8b7c62", "status": "approved", "decided_at": "2026-11-23T07:20:05Z"},
-    "action": {"id": 21311, "type": "twin_answer", "status": "executed"},
-    "question": {
-      "question_id": "7e1f3a5b-6c8d-4e0f-8a4b-c5d6e7f8a9a0",
-      "state": "relayed",
-      "answer": {"author": "candidate", "answer_kind": "relayed", "body": "Yes, I would relocate to Bengaluru from February."}
-    },
+    "approval": {"id": "a9b8c7d6-5e4f-4a3b-9c2d-1e0f9a8b7c62", "status": "rejected", "note": "edited", "decided_at": "2026-11-23T07:20:05Z"},
+    "action": {"id": 21311, "type": "twin_answer", "status": "rejected"},
+    "release": "pending",
+    "question": {"question_id": "7e1f3a5b-6c8d-4e0f-8a4b-c5d6e7f8a9a0", "state": "waiting_for_candidate"},
     "relayed_to": "Halden Robotics",
     "record_proposal": {"event_id": "9e4f1a62-7b8c-4d9e-8f0a-1b2c3d4e5f60", "status": "proposed"}
   },
@@ -1726,7 +1725,7 @@ Response `200`:
 }
 ```
 
-The candidate's words are relayed exactly and at once; Twin answers have no undo window. `save_to_record` creates a proposal; the record changes only when the candidate confirms it. Rejecting the approval instead posts `declined`, as does letting it expire.
+The reply travels as the approval's edit, so the first approval shows as `rejected` with note `edited` and `release: "pending"`; the worker runs both keys on the replacement action and, when they pass, posts the `relayed` message (author `twin`, `in_reply_to` the question) with the reply exactly as written, seconds later. The employer's reading has the holding message until then. Twin answers have no undo window. `save_to_record` creates a proposal; the record changes only when the candidate confirms it. Rejecting the approval instead posts `declined`, as does letting it expire.
 
 ### 3.15 Sending an interest signal
 
@@ -2068,7 +2067,7 @@ data: {"approval_id":"a9b8c7d6-5e4f-4a3b-9c2d-1e0f9a8b7c63","campaign_id":"3a7b9
 | `action.status` | `action_id`, `type`, `status`, `undo_until`, outbox state (`pending`, `sending`, `sent`, `failed`, `cancelled`, `unknown`), `outcome_code` | An outside action was scheduled, sent, undone, blocked with its reason, or failed (GRD-02, GRD-04) |
 | `cost.updated` | `campaign_id`, `spent_usd`, `budget_usd` | The campaign's spend changed (GRD-05) |
 | `introduction.status` | `introduction_id`, `status`, `employer_answer`, `answer_due_at` | An introduction was asked, accepted, declined, expired, withdrawn or answered (HIR-06) |
-| `twin.message` | `session_id`, `message_id`, `author`, `answer_kind` | A new Twin question or answer (TWN-04) |
+| `twin.message` | `session_id`, `message_id`, `author` (`employer`, `twin`, `candidate`), `answer_kind` (`answered`, `unknown`, `declined`, `relayed`; null for a question or a reply) | A new message the caller may read (TWN-04): the candidate hears of every question, Twin message and their own reply in their sessions; an employer member hears of questions and Twin messages of their organization and never of a candidate's reply. The event carries no text: the page reads the conversation over `GET /v1/twin/questions`. No snapshot key |
 | `error` | `code`, `message`, `is_retryable` | The stream failed |
 
 **Ids and reconnection.** `recorder.step` carries `id:` set to the `agent_actions.id` of its row, so the client can drop an entry it already holds. `campaign.stage` and every other event carry no id (Phase 8: a stage change has no row id of its own to send). A `campaign.stage` for a campaign created after the snapshot has `from: null`. The server keeps no replay buffer and ignores `Last-Event-ID` on this stream: every connect and reconnect starts with `snapshot`, and a screen that shows a list (the recorder, approvals, introductions) refetches it. Identity values can commit out of order, so replaying "everything after this id" would not be reliable anyway.

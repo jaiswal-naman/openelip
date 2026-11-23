@@ -260,7 +260,8 @@ def test_a_payload_naming_another_session_is_refused_by_scope(engine, clean):  #
     with db.transaction(world.candidate, role="worker") as conn:
         run = conn.execute(
             text(
-                "INSERT INTO agent_runs (user_id, agent_role, config_version, twin_session_id) VALUES (:u, 'twin', 't', :s) RETURNING id"
+                """INSERT INTO agent_runs (user_id, agent_role, config_version, twin_session_id)
+                   VALUES (:u, 'twin', 't', :s) RETURNING id"""
             ),
             {"u": world.candidate, "s": world.session},
         ).scalar_one()

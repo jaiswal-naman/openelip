@@ -1,7 +1,8 @@
 """The world the Twin graph tests run in (plan 09-03): an organization with a member, an open role and a candidate who
 accepted it (tests/twin/factories.py), the candidate's confirmed record (three resume facts, `f1` to `f3` to the model,
 and any invented ones a test adds), the fake provider with a recorded answer directory per case, and small helpers that
-do what the employer, the candidate and the worker do. Everything is invented (Halden Demo, Demo Candidate, example.test).
+do what the employer, the candidate and the worker do. Everything is invented (Halden Demo, Demo Candidate,
+example.test).
 
 Recordings are wiring checks, not model quality: `recorded/<case>/twin.classify.json` and `twin.answer.json` list the
 answers the fake gives in order, so each case holds more answers than its test asks for."""

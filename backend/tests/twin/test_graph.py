@@ -1,7 +1,7 @@
 """TWN-01 to TWN-04 as running behaviour (plan 09-03): employer questions driven through the real graph, the real queue,
-the real Guardian and the fake provider with recorded answers. Every path ends with the same guard (`settled`): the queue
-is drained, the question has exactly one final Twin message, no resume is queued, no checkpoint is left and no action is
-still open. Everything is invented."""
+the real Guardian and the fake provider with recorded answers. Every path ends with the same guard (`settled`): the
+queue is drained, the question has exactly one final Twin message, no resume is queued, no checkpoint is left and no
+action is still open. Everything is invented."""
 
 import json
 from datetime import timedelta

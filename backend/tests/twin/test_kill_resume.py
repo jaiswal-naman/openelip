@@ -2,8 +2,8 @@
 call, mid proposal or after a release, and restarted, ends in the same tables as an uninterrupted run, with no duplicate
 action, approval or message.
 
-Two stories run to their end: an answer the candidate approves (dial ask first) and a question the record does not answer
-that the candidate replies to. For a crash case, the phase that holds the crash point runs in
+Two stories run to their end: an answer the candidate approves (dial ask first) and a question the record does not
+answer that the candidate replies to. For a crash case, the phase that holds the crash point runs in
 tests/twin/fixtures/graph/crash_driver.py, a subprocess that kills itself with `os._exit(137)` at the named point; the
 killed job's lease is expired and reaped the way production recovers it, and the driver runs again with no crash. The
 queue's unique keys, the nodes' check-first reads, `approvals_one_per_action` and `twin_messages_one_final` make each
@@ -88,8 +88,9 @@ class Story:
         with self.engine.begin() as c:
             c.execute(
                 text(
-                    """UPDATE queue_jobs SET locked_at = now() - lease_seconds * interval '1 second' - interval '1 second'
-                       WHERE status = 'running'"""
+                    """UPDATE queue_jobs
+                          SET locked_at = now() - lease_seconds * interval '1 second' - interval '1 second'
+                        WHERE status = 'running'"""
                 )
             )
         with db.transaction(role="worker") as conn:
