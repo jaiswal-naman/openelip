@@ -275,3 +275,67 @@ def test_an_ask_is_private_no_shortlist_entry_and_no_employer_visible_row(engine
 
     assert world.fetch(engine, "SELECT 1 FROM shortlist_entries") == []
     assert world.fetch(engine, "SELECT 1 FROM interest_signals") == []
+
+
+# --- W2: the pool's predicates hold again when the ask is made from a run up to a day old ------------------------------
+
+
+def run_then(engine, role, change):
+    """Run the role against its pool, let `change` happen after the run, then ask from the run as the sweep does."""
+    result = run_role(role.id, role.job_id, pool_of(engine, role))
+    change()
+    outcome = worker(asks.ask_from_run, worker(asks.open_role, role.id), result.run_id)
+    return outcome
+
+
+def test_a_candidate_who_withdrew_ai_processing_after_the_run_is_not_asked(engine, provider):
+    provider()
+    role = make_role(engine)
+    ada, bob = make_candidate(engine), make_candidate(engine)
+
+    def withdraw():
+        with engine.begin() as c:
+            trust.withdraw_consent(c, ada.id, "ai_processing")
+
+    outcome = run_then(engine, role, withdraw)
+
+    assert [i.user_id for i in introductions(engine, role)] == [bob.id]
+    assert (outcome.asked, outcome.skipped) == (1, 1)
+
+
+def test_a_candidate_who_joined_the_organization_after_the_run_is_not_asked(engine, provider):
+    provider()
+    role = make_role(engine)
+    ada, bob = make_candidate(engine), make_candidate(engine)
+
+    def join():
+        with engine.begin() as c:
+            c.execute(
+                text(
+                    "INSERT INTO org_members (organization_id, user_id, role, status, joined_at) "
+                    "VALUES (:o, :u, 'member', 'active', now())"
+                ),
+                {"o": role.org, "u": ada.id},
+            )
+
+    outcome = run_then(engine, role, join)
+
+    assert [i.user_id for i in introductions(engine, role)] == [bob.id]
+    assert (outcome.asked, outcome.skipped) == (1, 1)
+
+
+def test_a_candidate_who_became_synthetic_is_not_asked_by_a_real_organization(engine, provider):
+    provider()
+    with engine.begin() as c:
+        real = hiring.make_org(c, "Real Hiring Co", is_synthetic=False)
+    role = make_role(engine, org=real)
+    ada = make_candidate(engine, email="real.ada@example.com", is_synthetic=False)
+
+    def becomes_synthetic():
+        with engine.begin() as c:
+            c.execute(text("UPDATE users SET is_synthetic = true WHERE id = :u"), {"u": ada.id})
+
+    outcome = run_then(engine, role, becomes_synthetic)
+
+    assert introductions(engine, role) == []
+    assert (outcome.asked, outcome.skipped) == (0, 1)

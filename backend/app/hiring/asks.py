@@ -11,6 +11,7 @@ the same role and candidate a no-op. Every ask runs in a savepoint of its own, s
 import json
 import logging
 from dataclasses import dataclass
+from collections.abc import Sequence
 from datetime import timedelta
 from uuid import UUID
 
@@ -66,22 +67,30 @@ def is_paused(conn: Connection, organization_id: UUID) -> bool:
     )
 
 
-def pool(conn: Connection, role: OpenRole) -> list[UUID]:
-    """The candidates who may be asked about this role: active accounts with a confirmed record, open to introductions
-    and agreed to AI processing, not asked about this role yet, not members of the organization, and, for a real
-    organization, not synthetic (06-INDEX 24). Hard constraints are not read here: the role run applies them first."""
-    rows = conn.execute(
-        text(
-            """SELECT u.id FROM users u
-                WHERE u.status = 'active' AND u.record_confirmed_at IS NOT NULL
+# The pool's predicates, in one place: pool() applies them to every account, and the re-check at ask time to the people
+# a role run selected, so the two cannot drift. Hard constraints are not here: the role run applies them first.
+POOL_WHERE = """u.status = 'active' AND u.record_confirmed_at IS NOT NULL
                   AND has_active_consent(u.id, 'open_to_introductions')
                   AND (:synthetic OR NOT u.is_synthetic)
                   AND NOT EXISTS (SELECT 1 FROM introductions i WHERE i.role_id = :role AND i.user_id = u.id)
                   AND NOT EXISTS (SELECT 1 FROM org_members m WHERE m.organization_id = :org AND m.user_id = u.id
-                                                                AND m.status = 'active')
-                ORDER BY u.id"""
+                                                                AND m.status = 'active')"""
+
+
+def _qualified(conn: Connection, role: OpenRole, only: Sequence[UUID] | None = None) -> list[UUID]:
+    """The accounts that satisfy every pool predicate for this role now (all of them, or only those named), by id."""
+    rows = conn.execute(
+        text(
+            f"""SELECT u.id FROM users u
+                 WHERE {POOL_WHERE} AND (CAST(:only AS uuid[]) IS NULL OR u.id = ANY(CAST(:only AS uuid[])))
+                 ORDER BY u.id"""
         ),
-        {"role": role.id, "org": role.organization_id, "synthetic": role.organization_is_synthetic},
+        {
+            "role": role.id,
+            "org": role.organization_id,
+            "synthetic": role.organization_is_synthetic,
+            "only": None if only is None else list(only),
+        },
     ).scalars()
     found = []
     for user_id in rows:
@@ -91,6 +100,13 @@ def pool(conn: Connection, role: OpenRole) -> list[UUID]:
             continue  # their wording is out of date or withdrawn: nobody is scored on it
         found.append(user_id)
     return found
+
+
+def pool(conn: Connection, role: OpenRole) -> list[UUID]:
+    """The candidates who may be asked about this role: active accounts with a confirmed record, open to introductions
+    and agreed to AI processing, not asked about this role yet, not members of the organization, and, for a real
+    organization, not synthetic (06-INDEX 24). Hard constraints are not read here: the role run applies them first."""
+    return _qualified(conn, role)
 
 
 def _refusal(error: DBAPIError) -> str | None:
@@ -132,11 +148,19 @@ def ask_from_run(conn: Connection, role: OpenRole, run_id: UUID) -> AskOutcome:
     """Ask each candidate the run introduced who has no introduction for this role yet. Only a run finished in the last
     24 hours is used. Stops at the first answer_clock refusal (the organization owes an answer): the rest wait for the
     sweep to pick them up after it is answered."""
-    asked = skipped = 0
+    asked = skipped = no_longer = 0
     if not _fresh(conn, run_id):
         return AskOutcome(0, 0, False)
-    for selection in match.role_selections(conn, run_id):
+    selections = match.role_selections(conn, run_id)
+    # The run is up to a day old: re-check the pool's predicates for the selected people now, in one query, and skip
+    # whoever withdrew ai_processing, joined the organization or no longer fits the synthetic rule since.
+    still = set(_qualified(conn, role, [selection.user_id for selection in selections]))
+    for selection in selections:
         if _already_asked(conn, role, selection.user_id):
+            continue
+        if selection.user_id not in still:
+            no_longer += 1
+            skipped += 1
             continue
         frozen = preview.build(conn, selection.user_id, selection)
         if frozen is None:
@@ -171,5 +195,7 @@ def ask_from_run(conn: Connection, role: OpenRole, run_id: UUID) -> AskOutcome:
         if created is None:
             continue  # asked meanwhile: introductions_once says no
         asked += 1
-    log.event("hiring.asked", role_id=role.id, run_id=run_id, asked=asked, skipped=skipped)
+    log.event(
+        "hiring.asked", role_id=role.id, run_id=run_id, asked=asked, skipped=skipped, no_longer_eligible=no_longer
+    )
     return AskOutcome(asked, skipped, False)
