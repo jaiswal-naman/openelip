@@ -12,7 +12,7 @@ from sqlalchemy import text
 
 from app.platform.llm import fake
 from app.tailor import privacy, service
-from tests.p5_factories import BULLET_A1, BULLET_B1, BULLET_B2, Edit, make_tailored_resume
+from tests.p5_factories import BULLET_A1, BULLET_A2, BULLET_B1, BULLET_B2, Edit, make_tailored_resume
 from tests.tailor.fixtures.service import harness
 from tests.tailor.fixtures.service.harness import key, sign_in
 
@@ -214,14 +214,107 @@ def test_an_approved_edit_whose_fact_was_corrected_since_is_left_out_of_the_file
 def test_the_data_export_carries_a_docx_for_each_tailored_resume_with_an_approved_edit(w):
     with w.engine.connect() as c:
         before = privacy.export_tailor(c, w.ada)
-    assert before.files == {}  # nothing approved yet
+    assert not [name for name in before.files if name.endswith(".docx")]  # nothing approved yet
     approve_and_reject(w)
     with w.engine.connect() as c:
         export = privacy.export_tailor(c, w.ada)
         direct = service.export_doc(c, w.ada, w.tailored)
         other = privacy.export_tailor(c, w.bob)
-    assert list(export.files) == [f"files/tailored-resumes/tailored-resume-{w.tailored}.docx"]
+    assert [n for n in export.files if n.endswith(".docx")] == [
+        f"files/tailored-resumes/tailored-resume-{w.tailored}.docx"
+    ]
     assert "ZZapproved rephrase" in docx_text(next(iter(export.files.values())))
     assert direct is not None and other.files == {}
     # the archive's rows are the person's own, discarded edits included (05-01 deviation 10)
     assert len(export.data["resume_edits"]) == 4
+
+
+# ---- a fact that changed after approval (fix A1) ----------------------------------------
+
+
+def retire(w, name):
+    with w.engine.begin() as c:
+        c.execute(text("UPDATE profile_facts SET superseded_at = now() WHERE id = :f"), {"f": w.record.facts[name]})
+
+
+@pytest.fixture
+def w2(w):
+    """Two more passed edits: (a) an addition of the skill ZZQuill, (b) a rephrase resting on a second fact."""
+    f = w.record.facts
+    with w.engine.begin() as c:
+        w.tailored2 = make_tailored_resume(
+            c,
+            w.ada,
+            w.job,
+            edits=(
+                Edit("", "ZZaddedskill", (f["skill_quillscript"],), section="skills"),
+                Edit(
+                    BULLET_A2,
+                    "ZZtwofacts rephrase",
+                    (f["bullet_initech_2"], f["skill_python"]),
+                    target_fact_id=f["bullet_initech_2"],
+                ),
+            ),
+        )
+        ids = c.execute(
+            text("SELECT id, ordinal FROM resume_edits WHERE tailored_resume_id = :t ORDER BY ordinal"),
+            {"t": w.tailored2},
+        ).all()
+    w.edit2 = {row.ordinal: str(row.id) for row in ids}
+    return w
+
+
+def decide2(w, *pairs):
+    body = {"decisions": [{"edit_id": w.edit2[n], "decision": d} for n, d in pairs]}
+    return w.client.post(f"/v1/tailored-resumes/{w.tailored2}/decisions", json=body, headers=key())
+
+
+def test_an_approved_addition_whose_fact_was_retired_is_not_exported(w2):
+    ok(decide2(w2, (1, "approved"), (2, "approved")))
+    retire(w2, "skill_quillscript")  # the base no longer shows it, so apply_edits alone would append the edit's text
+    assert "ZZaddedskill" not in docx_text(file(w2, "docx", w2.tailored2).content)
+    assert "ZZaddedskill" not in pdf_text(file(w2, "pdf", w2.tailored2).content)
+
+
+def test_an_approved_rephrase_whose_second_fact_was_retired_is_not_exported(w2):
+    ok(decide2(w2, (1, "approved"), (2, "approved")))
+    assert "ZZtwofacts rephrase" in docx_text(file(w2, "docx", w2.tailored2).content)
+    retire(w2, "skill_python")
+    resume = docx_text(file(w2, "docx", w2.tailored2).content)
+    assert "ZZtwofacts" not in resume and BULLET_A2 in resume  # the base bullet stays
+
+
+def test_the_archive_drops_such_an_edit_from_the_docx_and_labels_the_row(w2):
+    ok(decide2(w2, (1, "approved"), (2, "approved")))
+    retire(w2, "skill_quillscript")
+    with w2.engine.connect() as c:
+        export = privacy.export_tailor(c, w2.ada)
+    docx = export.files[f"files/tailored-resumes/tailored-resume-{w2.tailored2}.docx"]
+    assert "ZZaddedskill" not in docx_text(docx) and "ZZtwofacts rephrase" in docx_text(docx)
+    labels = {r["after_text"]: r["archive_label"] for r in export.data["resume_edits"]}
+    assert labels["ZZaddedskill"] == "not_exported_fact_not_usable"
+    assert labels["ZZtwofacts rephrase"] == "kept" and labels["ZZdiscarded rephrase"] == "discarded"
+
+
+def test_approving_an_edit_whose_fact_is_no_longer_usable_is_409_fact_not_usable(w2):
+    retire(w2, "skill_python")
+    error = refused(decide2(w2, (2, "approved")), 409, "conflict")
+    assert error["details"] == {"reason": "fact_not_usable"}
+    with w2.engine.connect() as c:
+        assert (
+            c.execute(text("SELECT decision::text FROM resume_edits WHERE id = :i"), {"i": w2.edit2[2]}).scalar_one()
+            == "pending"
+        )
+    ok(decide2(w2, (2, "rejected")))  # rejecting it is still allowed
+
+
+# ---- the archive says what it holds (fix A6) ----------------------------------------
+
+
+def test_the_archive_readme_says_discarded_edit_text_is_included_and_labelled(w):
+    with w.engine.connect() as c:
+        export = privacy.export_tailor(c, w.ada)
+    readme = export.files["files/tailored-resumes/README.txt"].decode()
+    assert "DISCARDED" in readme and "archive_label" in readme and "included" in readme
+    discarded = [r for r in export.data["resume_edits"] if r["archive_label"] == "discarded"]
+    assert [r["after_text"] for r in discarded] == ["ZZdiscarded rephrase"]

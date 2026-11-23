@@ -68,6 +68,7 @@ can catch then get through). Neither says anything about a model. The first live
 | `recordings/manifest.json` | `{file: {task: prompt_version}}`: every task each recording answers and the prompt it was made for. A prompt edit makes it stale until the recordings are made again. |
 | `recordings/degraded_entail.json` | One entry per pair: an entailment answer that says every claim is entailed, or `null` where no entailment call is expected. Replayed in place of the real entailment answers (`--recorded`), it is the fault the gate must fail on. |
 | `score.py` | The scorer; the Phase 1 runner calls its `run()` (`tailoring_integrity` is an `OwnScorer` entry in `SUITES`). |
+| `runs/<run id>.json` | The summary of one recorded run (metrics, counts, prompt versions, git commit), written by `export_run.py`. The runs the table below cites. |
 | `baseline.json` | The first clean replay's `supported_kept` and `supported_total`, with the id of the recorded run they came from. |
 
 A gold item is `{key, labels, candidate, allow_rephrase, facts, requirements, edits}`. `facts` are rows shaped like
@@ -101,17 +102,30 @@ not a sample of what a model writes.
 
 ## Recorded runs
 
-Every number here comes from a recorded run (`eval_runs`, in a scratch database that was dropped afterwards; the
-commands below reproduce them). All are replays, so none says anything about a model. Prompt versions at the time:
-`tailor.propose` `3309c398592d`, `verify.entail` `40dbc09c623e`.
+Every number here is in a committed file: `runs/<run id>.json` holds one run's metrics, counts, prompt versions and git
+commit (no text from any resume; written by `export_run.py`). All are replays, so none says anything about a model.
+Prompt versions: `tailor.propose` `3309c398592d`, `verify.entail` `40dbc09c623e`.
 
 | Run | Recording | Unsupported edits that passed | Supported edits kept | Pairs right | Gate |
 |---|---|---|---|---|---|
-| `670c9202-fe87-4fdd-96ab-f6af3543367d`, the first replay (before the label correction below; no baseline yet) | `recordings/` | 0 of 87 | 83 of 84 | 29 of 30 | fails: no baseline |
-| `c3c5d171-513e-43bd-898f-61acdb406f67`, after the correction (no baseline yet) | `recordings/` | 0 of 87 (95% upper bound 4.2%) | 84 of 84 | 30 of 30 | fails: no baseline, which is the gate failing closed |
-| `fa75b4ea-08e9-48a5-beb5-0b22e4af391b`, with `baseline.json` | `recordings/` | 0 of 87 | 84 of 84 | 30 of 30 | passes, score 1.000 |
-| `418d3a3e-6ccb-4be4-9c77-e7cea34fe2b7`, entailment fault | `degraded_entail.json` | 15 of 87 (every `inflated_scope` and `layer1_gap` edit) | 84 of 84 | 17 of 30 | fails, score 0.000 |
-| `1bcae464-7a21-47d7-aac0-c7caa65556cd`, `verifier.check` switched off | `recordings/` | 32 of 87 | 70 of 84 | 9 of 30 | fails, score 0.000 |
+| [`44dd265f-acd0-4a98-8d28-570b1d244ec6`](runs/44dd265f-acd0-4a98-8d28-570b1d244ec6.json), clean, with `baseline.json` | `recordings/` | 0 of 87 (95% upper bound 4.2%) | 84 of 84 | 30 of 30 | passes, score 1.000 |
+| [`b4b9c763-2ac9-48f8-bc39-5df2e9f565c0`](runs/b4b9c763-2ac9-48f8-bc39-5df2e9f565c0.json), entailment fault | `degraded_entail.json` | 15 of 87 (every `inflated_scope` and `layer1_gap` edit) | 84 of 84 | 17 of 30 | fails, score 0.000 |
+| [`d8306ed0-5b1b-48f2-bf50-65e6414921e5`](runs/d8306ed0-5b1b-48f2-bf50-65e6414921e5.json), `verifier.check` switched off | `recordings/` | 32 of 87 | 70 of 84 | 9 of 30 | fails, score 0.000 |
+
+**Where the earlier run ids went.** An earlier version of this README cited other run ids (`670c9202…`, `c3c5d171…`,
+`fa75b4ea…`, `418d3a3e…`, `1bcae464…`). Those rows lived in a scratch database that was dropped, so no file holds them.
+The three runs above were made again at the commit named in each file and reproduce the same figures: the clean run is
+`fa75b4ea…` (0 of 87, 84 of 84, 30 of 30, score 1.000), the entailment fault is `418d3a3e…` (15 of 87, 84 of 84, 17 of
+30), and the switched-off check is `1bcae464…` (32 of 87, 70 of 84, 9 of 30). Two earlier runs are not reproduced:
+`670c9202…` (the first replay, 83 of 84 and 29 of 30, made before the label correction below) cannot be, because the gold
+set it ran against no longer exists, and `c3c5d171…` (the same recordings as the clean run, but before `baseline.json`
+existed, so its gate failed closed). Their figures stay in "Changes after the first run" as history, not as evidence.
+`baseline.json` still names `c3c5d171…` as the run it was copied from; its numbers are the clean run's.
+
+Layer 1 changed after those first runs (05 fix A4: ordinals, fractions and multiplier words count as numbers, and a name
+the record or the posting writes capitalised is a new entity in any case). The three runs above are after it, and no
+number moved: no recorded edit uses such a word and none had a lower-case name the old check let through. `baseline.json`
+is unchanged and no floor was lowered.
 
 In the clean runs the pipeline gave the labelled reason for all 87 unsupported edits, and discarded 87 of 171 edits
 (`tailor_discard_rate` 0.509).
@@ -156,6 +170,8 @@ uv run python ../evals/tailoring_integrity/build_gold.py [--check | --show]
 ```
 
 A recorded run is frozen and cannot be deleted, so these commands write only to a database named `..._test` or `evals`.
+To keep a run's figures, write its summary into `runs/`:
+`uv run python ../evals/tailoring_integrity/export_run.py <run id> --kind clean|degraded_entail|verifier_check_off`.
 To change `baseline.json`, run the suite, copy `supported_kept` and `supported_total` from the recorded run's metrics
 into it with that run's id, and state the reason in the commit.
 

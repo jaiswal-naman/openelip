@@ -13,6 +13,7 @@ nothing. Nothing here sends, uploads or approves: no outbox row, no outside requ
 import hashlib
 import json
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -64,6 +65,34 @@ PACKET_QUESTIONS = (
 )
 QUESTION_IDS = tuple(q.id for q in PACKET_QUESTIONS)
 YOU_ANSWER = "You answer this"
+
+# Pay, work authorisation and start date are the candidate's alone to answer (05 fix A3). The forced questions above
+# never draft them, but a drafted answer or the note could still state one in passing ("I can start immediately"). A
+# sentence that matches any pattern below is removed and counted like any other removed sentence. This is a small
+# keyword FLOOR, not a classifier: it misses paraphrases, and layer 2 plus the candidate's own reading remain the check.
+RESERVED_TOPICS: dict[str, re.Pattern[str]] = {
+    "pay": re.compile(
+        r"\b(salary|salaries|compensation|remuneration|ctc|pay|paid|wage|wages|hourly rate|day rate|"
+        r"per (year|annum|hour|month)|lpa|rate expectations?)\b|[$£€₹]\s?\d",
+        re.IGNORECASE,
+    ),
+    "work_authorisation": re.compile(
+        r"\b(authori[sz]ed|authori[sz]ation|work permit|work visa|visa|sponsorship|sponsor|right to work|"
+        r"eligible to work|legally (able|entitled)|citizen|citizenship|permanent resident|work status)\b",
+        re.IGNORECASE,
+    ),
+    "start_date": re.compile(
+        r"\b(start date|notice period|notice|start (immediately|work|on|from|in|within|next)|"
+        r"(can|could|able to|available to|ready to|will) (start|join)|available (immediately|from|on|in)|"
+        r"join (immediately|on|from|in|within)|earliest start|immediate(ly)? (start|joiner|availability))\b",
+        re.IGNORECASE,
+    ),
+}
+
+
+def reserved_topic(sentence: str) -> str | None:
+    """The reserved topic a sentence states (see RESERVED_TOPICS), or None."""
+    return next((topic for topic, pattern in RESERVED_TOPICS.items() if pattern.search(sentence)), None)
 
 
 # ---- what the model returns ----------------------------------------
@@ -127,6 +156,8 @@ def _layer_one(
     text_ = sentence.text.strip()
     if not text_ or len(text_) > MAX_SENTENCE or sentence.dossier_claims or not sentence.facts:
         return None
+    if reserved_topic(text_) is not None:
+        return None  # pay, work authorisation and start date are the candidate's to state (A3)
     cited = [by_alias.get(alias) for alias in sentence.facts]
     if any(fact is None for fact in cited):
         return None  # an alias the request never numbered
@@ -175,6 +206,16 @@ def check_draft(
             results[key].removed += 1
     note = results.pop("note")
     return results, note
+
+
+def drop_unusable(checked: dict[str, Checked], note: Checked, facts: list[tailor.Fact], usable: set[str]) -> None:
+    """Remove, and count as removed, every kept sentence that cites a fact no longer in `usable` (05 fix A2). Changes
+    the arguments in place."""
+    by_alias = {f"f{n}": fact for n, fact in enumerate(facts, 1)}
+    for group in (*checked.values(), note):
+        kept = [s for s in group.sentences if all(by_alias[alias].id in usable for alias in s.facts)]
+        group.removed += len(group.sentences) - len(kept)
+        group.sentences = kept
 
 
 def _fact_ids(sentences: list[Sentence], by_alias: dict[str, tailor.Fact]) -> list[str]:
@@ -315,10 +356,13 @@ def draft(conn: Connection, payload: dict[str, Any]) -> None:
         raise NonRetryable("ai_disabled") from None
     except SchemaInvalid:
         raise NonRetryable("schema_invalid") from None
-    answers, cover_note, note_removed = assemble(checked, note, facts)
     stored = conn.execute(LOCK, {"id": packet_id}).one_or_none()
     if stored is None or stored.status != "draft":
         return  # a newer request superseded this one while the models answered
+    # the models took a while: a fact cited above may have been retired since, so re-read before anything is stored (A2)
+    usable = {str(f["id"]) for f in profile.usable_facts(conn, user_id)}
+    drop_unusable(checked, note, facts, usable)
+    answers, cover_note, note_removed = assemble(checked, note, facts)
     conn.execute(STORE, {"id": packet_id, "answers": json.dumps(answers), "note": cover_note})
     log.event(
         "apply.packet",

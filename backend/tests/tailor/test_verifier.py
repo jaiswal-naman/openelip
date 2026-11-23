@@ -58,7 +58,8 @@ def test_numbers_dates_and_entity_shaped_tokens_are_told_apart():
         ("two teams and a dozen reports", {"2", "12"}),
         ("1.50 and 1,250.5 and 007", {"1.5", "1250.5", "7"}),
         ("thirty percent, hundred, thousand, million", {"30", "100", "1000", "1000000"}),
-        ("Q3 2021 and FY2024 and 10x and 2M", set()),  # a digit inside a word is part of that word
+        ("Q3 2021 and FY2024 and 2M", set()),  # a digit inside a word is part of that word
+        ("10x and 2x", {"10", "2"}),  # except a multiplier (05 fix A4)
     ],
 )
 def test_numbers_are_compared_by_value_and_number_words_count(text, numbers):
@@ -388,3 +389,40 @@ def test_each_of_the_seven_reasons_is_given_to_one_seeded_edit(monkeypatch):
         ("passed", None),
     ]
     assert {e.discard_reason for e in proposal.edits if e.discard_reason} == set(REASONS) | {"not_entailed"}
+
+
+# ---- ordinals, fractions, multipliers and names in any case (05 fix A4) ----------------------------------------
+
+
+@pytest.mark.parametrize(
+    "after",
+    [
+        "Cut report build time by 30%, ranked first",
+        "Cut report build time by 30% and halved the rest",
+        "Cut report build time by 30%, a third of it by hand",
+        "Cut report build time by ½",
+        "Cut report build time by 30% and doubled throughput",
+        "Cut report build time by 30% and tripled throughput",
+        "Cut report build time by 30%, a 2x gain",
+        "Cut report build time by 30%, half the cost",
+    ],
+)
+def test_an_ordinal_fraction_or_multiplier_no_fact_states_is_changed_number(after):
+    assert rephrase(after, target="f3", supporting=("f3",)) == "changed_number"
+
+
+def test_such_a_quantity_the_supporting_fact_states_passes():
+    facts = [*candidate(), bullet("h1", "Halved report build time and ranked first of three", "role-initech")]
+    after = "Halved report build time, ranked first of three"
+    assert rephrase(after, supporting=("f15",), facts=facts, target="f15") is None
+
+
+def test_second_is_a_unit_of_time_not_an_ordinal():
+    assert scan("2,000 requests a second").numbers == {"2000"}
+
+
+def test_a_name_the_record_writes_capitalised_is_new_entity_in_lower_case_too():
+    facts = [*candidate(), bullet("g1", "Tuned Snowflake warehouses", "role-initech")]
+    assert rephrase("built python services for payments on snowflake", facts=facts) == "new_entity"
+    assert rephrase("Built Python services for payments on Snowflake", facts=facts) == "new_entity"
+    assert rephrase("Built Python services for payments", facts=facts) is None

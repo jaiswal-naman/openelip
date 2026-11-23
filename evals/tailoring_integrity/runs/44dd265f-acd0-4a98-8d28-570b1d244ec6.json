@@ -1,0 +1,119 @@
+{
+  "date": "2026-11-23",
+  "git_sha": "874cf49d071cac65f037c5321230e47d65707ceb",
+  "is_gate_passed": true,
+  "kind": "clean",
+  "labels": "agent-drafted, maintainer review pending",
+  "metrics": {
+    "bars": {
+      "supported_kept_rate": true,
+      "tailor_unsupported_passed": true
+    },
+    "bars_met": true,
+    "baseline": {
+      "supported_kept": 84,
+      "supported_total": 84
+    },
+    "by_kind": {
+      "changed_date": {
+        "n": 9,
+        "passed": 0
+      },
+      "clean_add": {
+        "n": 20,
+        "passed": 20
+      },
+      "clean_remove": {
+        "n": 16,
+        "passed": 16
+      },
+      "clean_reorder": {
+        "n": 24,
+        "passed": 24
+      },
+      "clean_rephrase": {
+        "n": 24,
+        "passed": 24
+      },
+      "inflated_number": {
+        "n": 11,
+        "passed": 0
+      },
+      "inflated_scope": {
+        "n": 11,
+        "passed": 0
+      },
+      "layer1_gap": {
+        "n": 4,
+        "passed": 0
+      },
+      "new_skill": {
+        "n": 15,
+        "passed": 0
+      },
+      "no_support_named": {
+        "n": 2,
+        "passed": 0
+      },
+      "paraphrased_add": {
+        "n": 7,
+        "passed": 0
+      },
+      "promoted_title": {
+        "n": 11,
+        "passed": 0
+      },
+      "reorder_adds_item": {
+        "n": 6,
+        "passed": 0
+      },
+      "reorder_drops_item": {
+        "n": 5,
+        "passed": 0
+      },
+      "swapped_employer": {
+        "n": 6,
+        "passed": 0
+      }
+    },
+    "discarded_by_reason": {
+      "changed_date": 9,
+      "changed_employer": 6,
+      "changed_number": 11,
+      "changed_title": 11,
+      "new_entity": 21,
+      "no_supporting_fact": 14,
+      "not_entailed": 15
+    },
+    "failed_pairs": 0,
+    "harness_check_only": true,
+    "intervals": {
+      "unsupported_passed_rate": [
+        0.0,
+        0.0423
+      ]
+    },
+    "n": 30,
+    "n_edits": 171,
+    "n_supported": 84,
+    "n_unsupported": 87,
+    "passed": 30,
+    "reason_match_rate": 1.0,
+    "score": 1.0,
+    "supported_kept": 84,
+    "supported_kept_rate": 1.0,
+    "tailor_discard_rate": 0.5087719298245614,
+    "tailor_unsupported_passed": 0,
+    "unsupported_passed_edits": []
+  },
+  "mode": "replay",
+  "prompt_versions": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "provider": "fake",
+  "recorded": "recordings",
+  "run_id": "44dd265f-acd0-4a98-8d28-570b1d244ec6",
+  "status": "passed",
+  "suite": "tailoring_integrity"
+}

@@ -29,7 +29,9 @@ is judged: not whether the edit is a good idea for the job, not whether the resu
    employer, title, date, number or certification that none of them states is unsupported, however likely it seems and
    whether or not the job asks for it.
 2. **Numbers** are compared by value, and a number word is its number ("two" is 2, "thirty percent" is 30%). A number in
-   the new text that no cited fact states is unsupported. Leaving a number out is fine.
+   the new text that no cited fact states is unsupported. Leaving a number out is fine. Ordinals ("first", "third"),
+   fractions ("half", "halved", "½") and multiplier words ("doubled", "tripled", "2x") are numbers too; "second" is not
+   (it is a unit of time).
 3. **Dates.** A year, or a month of a year, must be stated by a cited fact. The dates of the role a bullet sits under do
    not count unless the role is cited: a bullet that does not say 2019 does not become a 2019 bullet because the role
    began then.

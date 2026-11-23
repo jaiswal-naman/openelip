@@ -375,3 +375,101 @@ def test_a_long_answer_keeps_at_most_three_sentences_and_a_long_sentence_is_remo
     checked, note = packet.check_draft(draft, [fact], [], principal=None)
     assert (len(checked["why_role"].sentences), checked["why_role"].removed) == (3, 2)
     assert (note.sentences, note.removed) == ([], 1)
+
+
+# ---- a fact retired while the models answered (fix A2) ----------------------------------------
+
+
+def test_a_sentence_citing_a_fact_retired_before_the_store_is_dropped_and_counted(w):
+    recorded(w, "packet_mixed.json")
+    real = tailor.entailed
+
+    def retire_then_answer(items, *, principal):
+        verdicts = real(items, principal=principal)
+        with w.engine.begin() as c:  # the person retires the fact while verify.entail was running
+            c.execute(
+                text("UPDATE profile_facts SET superseded_at = now() WHERE id = :f"),
+                {"f": w.record.facts["bullet_initech_1"]},
+            )
+        return verdicts
+
+    w.monkeypatch.setattr(tailor, "entailed", retire_then_answer)
+    created = UUID(ok(ask(w), 202)["id"])
+    run_job(created)
+    data = ok(w.client.get(f"/v1/applications/packets/{created}"))
+    why = answers_of(data)["why_role"]
+    assert (why["status"], why["answer"], why["fact_ids"]) == ("candidate_must_answer", "", [])
+    assert why["removed_sentences"] == 3  # the two removed by the checks and the one whose fact is gone
+    assert "nightly Python" not in (data["cover_note"] or "")
+    assert str(w.record.facts["bullet_initech_1"]) not in json.dumps(data["answers"])
+
+
+# ---- pay, authorisation and start date in a drafted sentence (fix A3) ----------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("topic", "sentence"),
+    [
+        ("pay", "I expect a competitive salary."),
+        ("pay", "I am looking for 120,000 per year."),
+        ("pay", "My compensation expectation is flexible."),
+        ("pay", "I would accept $90k."),
+        ("work_authorisation", "I am authorised to work in the country."),
+        ("work_authorisation", "I will not need visa sponsorship."),
+        ("work_authorisation", "I have the right to work here."),
+        ("start_date", "I can start immediately."),
+        ("start_date", "I am available from the first of next month."),
+        ("start_date", "My notice period is two weeks."),
+    ],
+)
+def test_a_drafted_sentence_stating_pay_authorisation_or_start_date_is_removed_and_counted(
+    monkeypatch, topic, sentence
+):
+    monkeypatch.setattr(tailor, "entailed", lambda items, *, principal: [True] * len(items))
+    fact = tailor.Fact("f", "achievement", "- Built nightly Python and PostgreSQL pipelines.", {}, None, "resume")
+    good = Sentence(text="I built nightly Python and PostgreSQL pipelines.", facts=["f1"], dossier_claims=[])
+    bad = Sentence(text=sentence, facts=["f1"], dossier_claims=[])
+    assert packet.reserved_topic(sentence) == topic
+    draft = packet.PacketDraft(
+        answers=[packet.AnswerItem(question_id="why_role", status="drafted", sentences=[good, bad])],
+        note=[bad, good],
+    )
+    checked, note = packet.check_draft(draft, [fact], [], principal=None)
+    assert [s.text for s in checked["why_role"].sentences] == [good.text] and checked["why_role"].removed == 1
+    assert [s.text for s in note.sentences] == [good.text] and note.removed == 1
+
+
+def test_an_ordinary_sentence_is_not_a_reserved_topic():
+    for sentence in ("I built nightly Python and PostgreSQL pipelines.", "I led a team of three engineers."):
+        assert packet.reserved_topic(sentence) is None
+
+
+# ---- the packet PDF after a fact changed (fix A1) ----------------------------------------
+
+
+def test_the_packet_pdf_leaves_out_an_approved_edit_whose_second_fact_was_retired(w):
+    f = w.record.facts
+    with w.engine.begin() as c:
+        tailored = make_tailored_resume(
+            c,
+            w.ada,
+            w.job,
+            edits=(
+                Edit(
+                    BULLET_A1,
+                    "ZZtwofacts rephrase",
+                    (f["bullet_initech_1"], f["skill_postgresql"]),
+                    target_fact_id=f["bullet_initech_1"],
+                    decision="approved",
+                ),
+            ),
+        )
+    recorded(w, "packet_mixed.json")
+    created = UUID(ok(ask(w, tailored_resume_id=str(tailored)), 202)["id"])
+    run_job(created)
+    url = f"/v1/applications/packets/{created}/file"
+    assert "ZZtwofacts rephrase" in pdf_text(w.client.get(url, params={"format": "pdf"}).content)
+    with w.engine.begin() as c:
+        c.execute(text("UPDATE profile_facts SET superseded_at = now() WHERE id = :f"), {"f": f["skill_postgresql"]})
+    words = " ".join(pdf_text(w.client.get(url, params={"format": "pdf"}).content).split())
+    assert "ZZtwofacts" not in words and BULLET_A1 in words

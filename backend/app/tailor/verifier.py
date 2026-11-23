@@ -55,6 +55,36 @@ NUMBER_WORDS = {
     "billion": 1_000_000_000,
     "dozen": 12,
 }
+# Ordinals, fractions and multiplier words state a quantity as much as a digit does ("first", "halved", "2x"), so the
+# number check sees them (05 fix A4). By value, in the same space as the digits: "first" is 1, "half" is 0.5.
+# "second" is left out (it is also a unit of time).
+QUANTITY_WORDS = {
+    **{
+        word: str(value)
+        for value, word in enumerate("first second third fourth fifth sixth seventh eighth ninth tenth".split(), 1)
+        if word != "second"
+    },
+    "half": "0.5",
+    "halve": "0.5",
+    "halved": "0.5",
+    "halves": "0.5",
+    "½": "0.5",
+    "quarter": "0.25",
+    "quarters": "0.25",
+    "¼": "0.25",
+    "¾": "0.75",
+    "⅓": "0.33",
+    "⅔": "0.67",
+    "double": "2",
+    "doubled": "2",
+    "twice": "2",
+    "triple": "3",
+    "tripled": "3",
+    "thrice": "3",
+    "quadruple": "4",
+    "quadrupled": "4",
+}
+_MULTIPLIER = re.compile(r"(\d+(?:\.\d+)?)x")  # 2x, 10x, 1.5x
 MONTHS = {
     name: number
     for number, names in enumerate(
@@ -161,6 +191,10 @@ def scan(text: str) -> Scan:
             numbers.add(_value(word))
         elif lows[index] in NUMBER_WORDS:
             numbers.add(str(NUMBER_WORDS[lows[index]]))
+        elif lows[index] in QUANTITY_WORDS:
+            numbers.add(QUANTITY_WORDS[lows[index]])
+        elif (multiplier := _MULTIPLIER.fullmatch(lows[index])) is not None:
+            numbers.add(_value(multiplier.group(1)))
     shapes = [
         lows[index]
         for index, word in enumerate(words)
@@ -258,20 +292,30 @@ class Known:
     skill_tokens: frozenset[str]  # folded words of every confirmed skill
     skill_phrases: frozenset[tuple[str, ...]]
     job: frozenset[tuple[str, ...]]  # the terms of the requirement texts
+    names: frozenset[
+        str
+    ]  # folded name-like tokens (a capitalised word or acronym) of every fact and job text, any case
 
 
-def _known(roles: Iterable[Fact], skills: Iterable[str], job_texts: Iterable[str]) -> Known:
+def _known(roles: Iterable[Fact], skills: Iterable[str], job_texts: Iterable[str], facts: Iterable[Fact] = ()) -> Known:
     def names(key: str) -> tuple[str, ...]:
         values = (role.attributes.get(key) for role in roles)
         return tuple(dict.fromkeys(" ".join(v.split()).casefold() for v in values if isinstance(v, str) and v.strip()))
 
     skill_scans = [scan(skill) for skill in skills]
+    job_list = list(job_texts)
+    name_tokens = {
+        _fold(shape)
+        for text in [*job_list, *(part for fact in facts for part in _words_of(fact))]
+        for shape in scan(text).shapes
+    }
     return Known(
         employers=names("employer"),
         titles=names("title"),
         skill_tokens=frozenset(_fold(token) for seen in skill_scans for token in seen.tokens),
         skill_phrases=frozenset(gram for seen in skill_scans for gram in _grams(seen.tokens)),
-        job=job_phrases(job_texts),
+        job=job_phrases(job_list),
+        names=frozenset(name_tokens),
     )
 
 
@@ -299,6 +343,9 @@ def _text_reason(text: str, support: Sequence[Fact], headers: Sequence[str], kno
         return "changed_number"
     allowed = vocab.tokens | known.skill_tokens
     if any(_fold(shape) not in allowed for shape in seen.shapes):
+        return "new_entity"
+    # the same names in any case: "kubernetes" is as much a name as "Kubernetes" when the record or the job writes it so
+    if any(_fold(token) in known.names and _fold(token) not in allowed for token in seen.tokens):
         return "new_entity"
     supported = vocab.phrases | known.skill_phrases
     if any(gram in known.job and gram not in supported for gram in _grams(seen.tokens)):
@@ -336,6 +383,7 @@ def build_context(facts: Sequence[Fact], requirements: Sequence[Requirement]) ->
             [fact for fact in facts if fact.kind == "role"],
             [resume.item_text(fact) for fact in facts if fact.kind == "skill"],
             [requirement.text for requirement in requirements],
+            facts,
         ),
     )
 
