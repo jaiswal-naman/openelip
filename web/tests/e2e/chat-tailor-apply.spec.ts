@@ -123,7 +123,11 @@ test.describe("the chat, tailoring and applications demo", () => {
 
     await test.step("every edit is approved, and the export counts them", async () => {
       for (let done = 1; done <= 3; done += 1) {
-        await page.getByRole("radiogroup", { name: "Your decision on this edit" }).nth(done - 1).getByRole("radio", { name: "Approve" }).check();
+        const group = page.getByRole("radiogroup", { name: "Your decision on this edit" }).nth(done - 1);
+        // React Aria's label takes the click (the input under it is 1px), and the radio shows checked only once the
+        // server has stored the decision, so click the label and then wait for the state.
+        await group.getByText("Approve", { exact: true }).click();
+        await expect(group.getByRole("radio", { name: "Approve" })).toBeChecked();
         await expect(page.getByText("Approved", { exact: true })).toHaveCount(done);
       }
       await expect(page.getByText(/3 approved edits are used\. None are left out\./)).toBeVisible();
