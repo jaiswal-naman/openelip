@@ -45,7 +45,8 @@ export function TodayView() {
   }, [me.data, router]);
 
   const date = day.data?.local_date ?? null;
-  const decisions = brief.data?.decisions ?? [];
+  // Introduction items (brief union, Phase 6) are rendered by plan 06-07; until then Today lists only the Phase 4 kinds.
+  const decisions = (brief.data?.decisions ?? []).filter((decision) => decision.kind !== "introduction");
   const asked = params.get("view");
   const openId = params.get("decision");
   // Decisions come first when there are any, while the brief is still loading, and when it could not be loaded (so the

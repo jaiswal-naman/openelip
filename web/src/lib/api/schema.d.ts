@@ -664,10 +664,431 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Org */
+        post: operations["create_org_v1_orgs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{org_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Org */
+        get: operations["get_org_v1_orgs__org_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{org_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Invite Member
+         * @description Invite an address. One email is queued with the invitation. 403 for a plain member; 409 conflict, state invited
+         *     (already pending) or member (already belongs).
+         */
+        post: operations["invite_member_v1_orgs__org_id__members_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{org_id}/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join Org
+         * @description Accept the invitation sent to the caller's own address; any other caller gets 404.
+         */
+        post: operations["join_org_v1_orgs__org_id__join_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{org_id}/members/{member_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Member
+         * @description Remove a member or revoke an invitation. 409 conflict, state last_owner, for the last owner.
+         */
+        delete: operations["remove_member_v1_orgs__org_id__members__member_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Change Member Role
+         * @description Change a role. 403 for a plain member, or for an admin who touches an owner; 409 conflict, state last_owner.
+         */
+        patch: operations["change_member_role_v1_orgs__org_id__members__member_id__patch"];
+        trace?: never;
+    };
+    "/v1/orgs/{org_id}/claim-ownership": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Claim Ownership
+         * @description An active admin becomes owner of an organization with no active owner; else 409 conflict, state has_owner.
+         */
+        post: operations["claim_ownership_v1_orgs__org_id__claim_ownership_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Roles */
+        get: operations["list_roles_v1_roles_get"];
+        put?: never;
+        /**
+         * Create Role
+         * @description Describe a role. The requirements are read from the description (synchronously); with no model the role is
+         *     stored with none and extraction.state says ai_disabled, so the employer types them.
+         */
+        post: operations["create_role_v1_roles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roles/{role_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Role */
+        get: operations["get_role_v1_roles__role_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Role
+         * @description Change a draft. An open or closed role is 409 conflict (state open or closed).
+         */
+        patch: operations["patch_role_v1_roles__role_id__patch"];
+        trace?: never;
+    };
+    "/v1/roles/{role_id}/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Requirements
+         * @description Replace the draft's requirement list. It counts as confirmed when it is not empty and every item is.
+         */
+        put: operations["put_requirements_v1_roles__role_id__requirements_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roles/{role_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish Role
+         * @description Open the role as an unlisted job and queue the ask. 422 pay_range_required or requirements_unconfirmed (every
+         *     blocker in details.blockers); 409 conflict while answers are overdue or when the role is not a draft.
+         */
+        post: operations["publish_role_v1_roles__role_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roles/{role_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close Role
+         * @description Close an open role: asks still waiting are withdrawn; accepted introductions keep their answer obligation.
+         */
+        post: operations["close_role_v1_roles__role_id__close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roles/{role_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Role Preview
+         * @description The anonymous preview. role_preview() answers only for a member of the role's organization (NULL otherwise).
+         */
+        get: operations["role_preview_v1_roles__role_id__preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/introductions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Introductions
+         * @description Candidate: their own introductions. Employer (`role_id` or `org_id`): the accepted ones of that organization.
+         */
+        get: operations["list_introductions_v1_introductions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/introductions/{introduction_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Introduction */
+        get: operations["read_introduction_v1_introductions__introduction_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/introductions/{introduction_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Introduction */
+        post: operations["accept_introduction_v1_introductions__introduction_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/introductions/{introduction_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline Introduction */
+        post: operations["decline_introduction_v1_introductions__introduction_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/introductions/{introduction_id}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Introduction */
+        post: operations["answer_introduction_v1_introductions__introduction_id__answer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roles/{role_id}/shortlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Shortlist */
+        get: operations["read_shortlist_v1_roles__role_id__shortlist_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{org_id}/answer-clock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Answer Clock */
+        get: operations["read_answer_clock_v1_orgs__org_id__answer_clock_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Signals
+         * @description The signals the caller sent and received and the weekly quota: a candidate's own, or with `org_id` a member's
+         *     organization (candidate signals appear only after the candidate accepted).
+         */
+        get: operations["read_signals_v1_signals_get"];
+        put?: never;
+        /** Send Signal */
+        post: operations["send_signal_v1_signals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcceptBody */
+        AcceptBody: {
+            /** Share Preview Hash */
+            share_preview_hash: string;
+            /** Consent Text Version */
+            consent_text_version: string;
+        };
+        /** Accepted */
+        Accepted: {
+            introduction: components["schemas"]["Resolved"];
+            /** Shared */
+            shared: string;
+        };
+        /** AnswerBody */
+        AnswerBody: {
+            /**
+             * Answer
+             * @enum {string}
+             */
+            answer: "yes" | "no";
+            /** Reason */
+            reason: string;
+        };
+        /** Answered */
+        Answered: {
+            /** Introduction */
+            introduction: {
+                [key: string]: unknown;
+            };
+            /** Candidate Sees */
+            candidate_sees: string;
+            /** Email */
+            email: string | null;
+        };
         /** Body_unsubscribe_one_click_v1_briefs_unsubscribe_post */
         Body_unsubscribe_one_click_v1_briefs_unsubscribe_post: {
             /** List-Unsubscribe */
@@ -702,7 +1123,7 @@ export interface components {
          */
         BriefDecision: {
             /**
-             * Kind
+             * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
             kind: "match" | "record_proposals";
@@ -758,7 +1179,7 @@ export interface components {
             status: "composed" | "suppressed" | "queued" | "sent" | "failed";
             delivery: components["schemas"]["BriefDelivery"];
             /** Decisions */
-            decisions: components["schemas"]["BriefDecision"][];
+            decisions: (components["schemas"]["BriefIntroduction"] | components["schemas"]["BriefDecision"])[];
             /** Done Since Last Brief */
             done_since_last_brief: components["schemas"]["BriefDone"][];
             /** Open Record Proposals */
@@ -777,6 +1198,32 @@ export interface components {
             ref: {
                 [key: string]: string;
             };
+        };
+        /**
+         * BriefIntroduction
+         * @description An employer asking whether the person would like to talk about a role. The person answers on Today; nothing about
+         *     what they would share is here.
+         */
+        BriefIntroduction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "introduction";
+            /**
+             * Introduction Id
+             * Format: uuid
+             */
+            introduction_id: string;
+            /** Organization Name */
+            organization_name: string;
+            /** Role Title */
+            role_title: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
         };
         /** BriefListItem */
         BriefListItem: {
@@ -1030,6 +1477,10 @@ export interface components {
             evaluated?: "on_request" | null;
             job: components["schemas"]["JobBrief"];
         };
+        /** Declined */
+        Declined: {
+            introduction: components["schemas"]["Resolved"];
+        };
         /**
          * DocumentFacts
          * @description What the parse produced from this file: facts the code could confirm, items it could not (kept as unconfirmed
@@ -1120,6 +1571,28 @@ export interface components {
             /** Lines */
             lines?: components["schemas"]["DocumentLine"][] | null;
         };
+        /** Envelope[Accepted] */
+        Envelope_Accepted_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["Accepted"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[Answered] */
+        Envelope_Answered_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["Answered"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[BriefDetail] */
         Envelope_BriefDetail_: {
             /** Success */
@@ -1169,6 +1642,17 @@ export interface components {
             /** Success */
             success: boolean;
             data: components["schemas"]["DecisionDetail"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[Declined] */
+        Envelope_Declined_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["Declined"] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -1263,11 +1747,44 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[Member] */
+        Envelope_Member_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["Member"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[Organization] */
+        Envelope_Organization_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["Organization"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[PreferenceWritten] */
         Envelope_PreferenceWritten_: {
             /** Success */
             success: boolean;
             data: components["schemas"]["PreferenceWritten"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[Preview] */
+        Envelope_Preview_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["Preview"] | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -1329,6 +1846,17 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[RoleView] */
+        Envelope_RoleView_: {
+            /** Success */
+            success: boolean;
+            data: components["schemas"]["RoleView"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** Envelope[Subprocessors] */
         Envelope_Subprocessors_: {
             /** Success */
@@ -1367,6 +1895,20 @@ export interface components {
             /** Success */
             success: boolean;
             data: components["schemas"]["VersionOnly"] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[dict[str, Any]] */
+        Envelope_dict_str__Any__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            } | null;
             error: components["schemas"]["ErrorBody"] | null;
             /** Meta */
             meta: {
@@ -1457,6 +1999,32 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Envelope[list[RoleListItem]] */
+        Envelope_list_RoleListItem__: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: components["schemas"]["RoleListItem"][] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        /** Envelope[list[dict[str, Any]]] */
+        Envelope_list_dict_str__Any___: {
+            /** Success */
+            success: boolean;
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            }[] | null;
+            error: components["schemas"]["ErrorBody"] | null;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+        };
         /** ErrorBody */
         ErrorBody: {
             /** Code */
@@ -1478,6 +2046,16 @@ export interface components {
             verdict: "met" | "partly_met" | "not_met" | "no_evidence";
             /** Record Citations */
             record_citations: components["schemas"]["RecordCitation"][];
+        };
+        /** Extraction */
+        Extraction: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "extracted" | "empty" | "ai_disabled" | "failed";
+            /** Dropped */
+            dropped: number;
         };
         /** FactDecision */
         FactDecision: {
@@ -1578,6 +2156,17 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** InviteBody */
+        InviteBody: {
+            /** Email */
+            email: string;
+            /**
+             * Role
+             * @default member
+             * @enum {string}
+             */
+            role: "member" | "admin";
+        };
         /** Job */
         Job: {
             /** Id */
@@ -1641,7 +2230,7 @@ export interface components {
             title: string;
             /** Company Name */
             company_name: string;
-            pay: components["schemas"]["PayRange"] | null;
+            pay: components["schemas"]["app__match__routes__PayRange"] | null;
             /**
              * Status
              * @enum {string}
@@ -1766,7 +2355,7 @@ export interface components {
             title: string;
             /** Company Name */
             company_name: string;
-            pay: components["schemas"]["PayRange"] | null;
+            pay: components["schemas"]["app__match__routes__PayRange"] | null;
             /**
              * Status
              * @enum {string}
@@ -1843,6 +2432,16 @@ export interface components {
             brief: components["schemas"]["BriefSettings"];
             /** Capabilities */
             capabilities: string[];
+            /**
+             * Organizations
+             * @default []
+             */
+            organizations: components["schemas"]["OrganizationMembership"][];
+            /**
+             * Invitations
+             * @default []
+             */
+            invitations: components["schemas"]["OrganizationInvitation"][];
         };
         /**
          * MePatch
@@ -1854,6 +2453,30 @@ export interface components {
             /** Timezone */
             timezone?: string | null;
             brief?: components["schemas"]["BriefSettingsChange"] | null;
+        };
+        /** Member */
+        Member: {
+            /**
+             * Member Id
+             * Format: uuid
+             */
+            member_id: string;
+            /** User Id */
+            user_id: string | null;
+            /** Display Name */
+            display_name: string | null;
+            /** Email */
+            email: string | null;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "owner" | "admin" | "member";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "invited" | "active" | "removed";
         };
         /**
          * NewConstraint
@@ -1907,6 +2530,77 @@ export interface components {
             /** Weight */
             weight?: number | null;
         };
+        /** OrgCreate */
+        OrgCreate: {
+            /** Name */
+            name: string;
+            /** Timezone */
+            timezone: string;
+        };
+        /** Organization */
+        Organization: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Timezone */
+            timezone: string;
+            /** Is Synthetic */
+            is_synthetic: boolean;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "owner" | "admin" | "member";
+            /** Members */
+            members: components["schemas"]["Member"][];
+        };
+        /**
+         * OrganizationInvitation
+         * @description An open invitation to join an organization, sent to the person's address (HIR-01).
+         */
+        OrganizationInvitation: {
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /** Organization Name */
+            organization_name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "owner" | "admin" | "member";
+            /**
+             * Invited At
+             * Format: date-time
+             */
+            invited_at: string;
+        };
+        /**
+         * OrganizationMembership
+         * @description An employer organization the person is an active member of, with their role in it (HIR-01).
+         */
+        OrganizationMembership: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "owner" | "admin" | "member";
+            /** Is Synthetic */
+            is_synthetic: boolean;
+        };
         /** Pay */
         Pay: {
             /** Min */
@@ -1916,12 +2610,15 @@ export interface components {
             /** Currency */
             currency: string;
         };
-        /** PayRange */
-        PayRange: {
+        /**
+         * PayRange
+         * @description Annual pay in whole currency units (API.md 1.4).
+         */
+        "PayRange-Input": {
             /** Min */
-            min: number | null;
+            min: number;
             /** Max */
-            max: number | null;
+            max: number;
             /** Currency */
             currency: string;
         };
@@ -1941,6 +2638,34 @@ export interface components {
             preference: components["schemas"]["RecordPreference"];
             /** Record Version */
             record_version: number;
+        };
+        /**
+         * Preview
+         * @description Counts only (API.md 3.11, INDEX deviation 8). 1 to 4 are shown as "fewer than 5"; said_yes is exact because each
+         *     of them is already on the shortlist. No identifier of a person appears anywhere.
+         */
+        Preview: {
+            /**
+             * Role Id
+             * Format: uuid
+             */
+            role_id: string;
+            /** As Of */
+            as_of: string | null;
+            /** Eligible Candidates */
+            eligible_candidates: number | "fewer than 5";
+            /** Selected To Ask */
+            selected_to_ask: number | "fewer than 5";
+            /** Waiting For Reply */
+            waiting_for_reply: number | "fewer than 5";
+            /** Said Yes */
+            said_yes: number;
+            /** Said No Or Expired */
+            said_no_or_expired: number | "fewer than 5";
+            /** Suppressed Below */
+            suppressed_below: number;
+            /** Note */
+            note: string;
         };
         /** PrivacyDeletion */
         PrivacyDeletion: {
@@ -2324,6 +3049,29 @@ export interface components {
             /** Min Years */
             min_years: number | null;
         };
+        /**
+         * RequirementIn
+         * @description One line of the list the employer confirms. An item typed by hand sends no span; an extracted one may send its
+         *     span back, and keeps it only while its text is still the description at that span.
+         */
+        RequirementIn: {
+            /**
+             * Kind
+             * @default other
+             * @enum {string}
+             */
+            kind: "skill" | "experience" | "education" | "certification" | "authorization" | "location" | "other";
+            /** Text */
+            text: string;
+            /**
+             * Importance
+             * @enum {string}
+             */
+            importance: "required" | "preferred";
+            /** Is Confirmed */
+            is_confirmed: boolean;
+            span?: components["schemas"]["SpanIn"] | null;
+        };
         /** RequirementRef */
         RequirementRef: {
             /** Id */
@@ -2336,6 +3084,50 @@ export interface components {
              */
             importance: "required" | "preferred";
             job_citation: components["schemas"]["JobCitation"];
+        };
+        /** RequirementView */
+        RequirementView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "skill" | "experience" | "education" | "certification" | "authorization" | "location" | "other";
+            /** Text */
+            text: string;
+            /**
+             * Importance
+             * @enum {string}
+             */
+            importance: "required" | "preferred";
+            span: components["schemas"]["CharSpan"] | null;
+            /** Quote */
+            quote: string | null;
+            /** Is Confirmed */
+            is_confirmed: boolean;
+        };
+        /** RequirementsPut */
+        RequirementsPut: {
+            /** Requirements */
+            requirements: components["schemas"]["RequirementIn"][];
+        };
+        /** Resolved */
+        Resolved: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Status */
+            status: string;
+            /** Responded At */
+            responded_at?: string | null;
+            /** Answer Due At */
+            answer_due_at?: string | null;
         };
         /** ReviewResult */
         ReviewResult: {
@@ -2350,6 +3142,155 @@ export interface components {
              */
             status: "confirmed" | "rejected" | "superseded";
             replaced_by?: components["schemas"]["ReplacedBy"] | null;
+        };
+        /** RoleBody */
+        RoleBody: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "owner" | "admin" | "member";
+        };
+        /** RoleCreate */
+        RoleCreate: {
+            /** Country */
+            country?: string | null;
+            /** City */
+            city?: string | null;
+            /** Work Arrangements */
+            work_arrangements?: ("onsite" | "hybrid" | "remote")[] | null;
+            /** Employment Type */
+            employment_type?: ("full_time" | "part_time" | "contract" | "internship" | "temporary" | "unknown") | null;
+            /** Seniority */
+            seniority?: ("intern" | "entry" | "mid" | "senior" | "staff" | "principal" | "manager" | "director" | "executive" | "unknown") | null;
+            /** Visa Sponsorship */
+            visa_sponsorship?: ("offered" | "not_offered" | "unknown") | null;
+            /**
+             * Org Id
+             * Format: uuid
+             */
+            org_id: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            pay_range?: components["schemas"]["PayRange-Input"] | null;
+        };
+        /** RoleListItem */
+        RoleListItem: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "open" | "closed";
+            /** Said Yes */
+            said_yes: number;
+            /** Answers Owed */
+            answers_owed: number;
+            /** Answers Overdue */
+            answers_overdue: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * RolePatch
+         * @description Only the fields sent change. title and description cannot be cleared; pay_range, country and city can (null).
+         */
+        RolePatch: {
+            /** Country */
+            country?: string | null;
+            /** City */
+            city?: string | null;
+            /** Work Arrangements */
+            work_arrangements?: ("onsite" | "hybrid" | "remote")[] | null;
+            /** Employment Type */
+            employment_type?: ("full_time" | "part_time" | "contract" | "internship" | "temporary" | "unknown") | null;
+            /** Seniority */
+            seniority?: ("intern" | "entry" | "mid" | "senior" | "staff" | "principal" | "manager" | "director" | "executive" | "unknown") | null;
+            /** Visa Sponsorship */
+            visa_sponsorship?: ("offered" | "not_offered" | "unknown") | null;
+            /** Title */
+            title?: string | null;
+            /** Description */
+            description?: string | null;
+            pay_range?: components["schemas"]["PayRange-Input"] | null;
+        };
+        /** RoleView */
+        RoleView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "open" | "closed";
+            /** Country */
+            country: string | null;
+            /** City */
+            city: string | null;
+            /** Work Arrangements */
+            work_arrangements: ("onsite" | "hybrid" | "remote")[];
+            /**
+             * Employment Type
+             * @enum {string}
+             */
+            employment_type: "full_time" | "part_time" | "contract" | "internship" | "temporary" | "unknown";
+            /**
+             * Seniority
+             * @enum {string}
+             */
+            seniority: "intern" | "entry" | "mid" | "senior" | "staff" | "principal" | "manager" | "director" | "executive" | "unknown";
+            /**
+             * Visa Sponsorship
+             * @enum {string}
+             */
+            visa_sponsorship: "offered" | "not_offered" | "unknown";
+            pay_range: components["schemas"]["app__hiring__role_routes__PayRange"] | null;
+            /** Job Id */
+            job_id: number | null;
+            /** Requirements */
+            requirements: components["schemas"]["RequirementView"][];
+            /** Can Publish */
+            can_publish: boolean;
+            /** Blockers */
+            blockers: ("pay_range_required" | "requirements_unconfirmed")[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Opened At */
+            opened_at: string | null;
+            /** Closed At */
+            closed_at: string | null;
+            extraction?: components["schemas"]["Extraction"] | null;
         };
         /** RunSummary */
         RunSummary: {
@@ -2388,8 +3329,23 @@ export interface components {
             /** Timezone */
             timezone?: string | null;
         };
+        /** SignalBody */
+        SignalBody: {
+            /**
+             * Introduction Id
+             * Format: uuid
+             */
+            introduction_id: string;
+        };
         /** Span */
         Span: {
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+        };
+        /** SpanIn */
+        SpanIn: {
             /** Start */
             start: number;
             /** End */
@@ -2450,6 +3406,27 @@ export interface components {
         VersionOnly: {
             /** Record Version */
             record_version: number;
+        };
+        /**
+         * PayRange
+         * @description Annual pay in whole currency units (API.md 1.4).
+         */
+        app__hiring__role_routes__PayRange: {
+            /** Min */
+            min: number;
+            /** Max */
+            max: number;
+            /** Currency */
+            currency: string;
+        };
+        /** PayRange */
+        app__match__routes__PayRange: {
+            /** Min */
+            min: number | null;
+            /** Max */
+            max: number | null;
+            /** Currency */
+            currency: string;
         };
     };
     responses: never;
@@ -3711,6 +4688,817 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_Unsubscribed_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_org_v1_orgs_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrgCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Organization_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_org_v1_orgs__org_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Organization_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invite_member_v1_orgs__org_id__members_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Member_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    join_org_v1_orgs__org_id__join_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Organization_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_member_v1_orgs__org_id__members__member_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                org_id: string;
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_member_role_v1_orgs__org_id__members__member_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                org_id: string;
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Member_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    claim_ownership_v1_orgs__org_id__claim_ownership_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Organization_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_roles_v1_roles_get: {
+        parameters: {
+            query: {
+                org_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_RoleListItem__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_role_v1_roles_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_RoleView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_role_v1_roles__role_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_RoleView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_role_v1_roles__role_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                role_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RolePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_RoleView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_requirements_v1_roles__role_id__requirements_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                role_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequirementsPut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_RoleView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_role_v1_roles__role_id__publish_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                role_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_RoleView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_role_v1_roles__role_id__close_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                role_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_RoleView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    role_preview_v1_roles__role_id__preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Preview_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_introductions_v1_introductions_get: {
+        parameters: {
+            query?: {
+                role_id?: string | null;
+                org_id?: string | null;
+                status?: ("asked" | "accepted" | "declined" | "expired" | "withdrawn") | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_dict_str__Any___"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_introduction_v1_introductions__introduction_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                introduction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_dict_str__Any__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_introduction_v1_introductions__introduction_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                introduction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Accepted_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_introduction_v1_introductions__introduction_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                introduction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Declined_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_introduction_v1_introductions__introduction_id__answer_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                introduction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Answered_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_shortlist_v1_roles__role_id__shortlist_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_dict_str__Any___"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_answer_clock_v1_orgs__org_id__answer_clock_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_dict_str__Any__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_signals_v1_signals_get: {
+        parameters: {
+            query?: {
+                org_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_dict_str__Any__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_signal_v1_signals_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignalBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_dict_str__Any__"];
                 };
             };
             /** @description Validation Error */

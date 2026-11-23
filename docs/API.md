@@ -485,11 +485,15 @@ How a question is handled: a topic set to `never` is declined with a fixed sente
 | GET | `/v1/orgs/{org_id}` | The organization, its members with roles, and its time zone (used by the answer clock) | E | HIR-01 | 6 |
 | POST | `/v1/orgs/{org_id}/members` | Invite a person by email as `member` or `admin`; one invitation email is sent | EA | HIR-01 | 6 |
 | POST | `/v1/orgs/{org_id}/join` | The invited person, signed in with the invited address, accepts the invitation | U | HIR-01 | 6 |
-| DELETE | `/v1/orgs/{org_id}/members/{user_id}` | Remove a member. The last owner cannot be removed; when no owner is left, a remaining admin can claim ownership (FRONTEND_UI.md `/hire/team`) | EA | HIR-01 | 6 |
+| DELETE | `/v1/orgs/{org_id}/members/{member_id}` | Remove a member or revoke a pending invitation (`204`). The last owner cannot be removed; when no owner is left, a remaining admin can claim ownership (FRONTEND_UI.md `/hire/team`) | EA | HIR-01 | 6 |
+| PATCH | `/v1/orgs/{org_id}/members/{member_id}` | Change a role (`{"role": "owner" | "admin" | "member"}`); only an owner makes, demotes or removes an owner; the last owner cannot be demoted | EA | HIR-01 | 6 |
+| POST | `/v1/orgs/{org_id}/claim-ownership` | An active admin becomes owner of an organization with no active owner (`409 conflict`, `details.state` `has_owner`, otherwise) | EA | HIR-01 | 6 |
 | GET | `/v1/orgs/{org_id}/answer-clock` | What the organization owes: each accepted introduction awaiting an answer, its due time, overdue state, and whether new asks are paused | E | HIR-06 | 6 |
 | GET | `/v1/orgs/{org_id}/agent-tokens` | The organization's agent tokens: client name, scopes, status, expiry, last use | EA | NET-01, NET-02, NET-03 | 8 |
 | POST | `/v1/orgs/{org_id}/agent-tokens` | Issue an organization token (`twin:ask`, `introductions:request`); the secret is returned once | EA | NET-01, NET-02 | 8 |
 | DELETE | `/v1/orgs/{org_id}/agent-tokens/{token_id}` | Revoke a token | EA | NET-01 | 8 |
+
+Phase 6: members are addressed by `member_id` (not `user_id`) so a pending invitation, which has no user yet, can be revoked; `PATCH` and `claim-ownership` are additions. Another organization's id is `404 not_found`, never `403`. `409 conflict` carries `details.state` `invited`, `member`, `last_owner` or `has_owner`. `join` finds the invitation by the caller's address; the invited person sees pending invitations in `GET /v1/me` (`invitations`) and accepts on `/hire/roles`. `GET /v1/me` also lists `organizations` (`id`, `name`, `role`, `is_synthetic`).
 
 ### 2.16 `/v1/roles`
 
@@ -505,15 +509,19 @@ How a question is handled: a topic set to `never` is declined with a fixed sente
 | GET | `/v1/roles/{role_id}/preview` | Anonymous preview: counts only, counts below 5 suppressed | E | HIR-03 | 6 |
 | GET | `/v1/roles/{role_id}/shortlist` | Candidates who accepted this role, each with the frozen payload they agreed to share, signals, and answer state | E | HIR-05, HIR-08 | 6 |
 
+Phase 6: a role has no `version` and no `ETag`; drafts are last write wins and `If-Match` is not honoured. An open or closed role is read-only (`PATCH` and `PUT .../requirements` return `409 conflict`, `details.state` `open` or `closed`); to change a role, close it and create another. Country, city, work arrangements, employment type, seniority and `visa_sponsorship` are what the employer sets; nothing is inferred from the description. `POST /v1/roles` and a `PATCH` that changes the description answer with `extraction` (`state` `extracted`, `empty`, `ai_disabled` or `failed`, and `dropped`). `PUT .../requirements` replaces the list, so requirement ids change on each save; read them again from the answer. The preview keys are `eligible_candidates`, `selected_to_ask`, `waiting_for_reply`, `said_yes`, `said_no_or_expired`, `as_of`, `suppressed_below` and `note`; a count of 1 to 4 is the string `"fewer than 5"`, except `said_yes`, which is exact because each of those people is on the shortlist. A draft has no counts. The shortlist has no `twin` field until Phase 9. The responses of the introduction, shortlist, answer-clock and signal routes are untyped objects in `web/openapi.json` (`dict[str, Any]`); the web app types them by hand from the examples below.
+
 ### 2.17 `/v1/introductions`
 
 | Method | Path | Purpose | Caller | Req | Phase |
 |---|---|---|---|---|---|
 | GET | `/v1/introductions` | Candidate: introductions addressed to them. Employer: `?role_id=` or `?org_id=` with `?status=` | C, E | HIR-04, HIR-06 | 6 |
 | GET | `/v1/introductions/{introduction_id}` | Candidate: the ask with `share_preview` (exactly what the employer receives, fixed when the ask was made) and its hash. Employer: what was shared, the answer state and due time | C, E | HIR-04, HIR-05 | 6 |
-| POST | `/v1/introductions/{introduction_id}/accept` | Accept with the preview hash the candidate saw. One transaction: `introduction` consent, status `accepted`, `answer_due_at`, shortlist entry equal to `share_preview`, a campaign at `applied`, and the organization's notification email. No agent action and no undo | C | HIR-04, HIR-05, CMP-01 | 6 |
-| POST | `/v1/introductions/{introduction_id}/decline` | Decline privately, optional reason; the employer is never told who declined | C | HIR-04 | 6 |
+| POST | `/v1/introductions/{introduction_id}/accept` | Accept with the preview hash the candidate saw. One transaction: `introduction` consent, status `accepted`, `answer_due_at`, shortlist entry equal to `share_preview`, and the organization's notification email (Phase 6: no campaign is started, see the note below). No agent action and no undo | C | HIR-04, HIR-05, CMP-01 | 6 |
+| POST | `/v1/introductions/{introduction_id}/decline` | Decline privately, no reason is taken or stored; the employer is never told who declined | C | HIR-04 | 6 |
 | POST | `/v1/introductions/{introduction_id}/answer` | The employer answers: `answer` (`yes` or `no`) and `reason` (required, non-empty text; the UI fills it from presets). A `yes` releases the candidate's account email, as `share_preview` states | E | HIR-06 | 6 |
+
+Phase 6: accept starts no campaign (CMP-01 is Phase 7), so the response has no `campaign` field and no `introduction.accepted` event is published; the terms sentence about the Twin waits for Phase 9. Decline takes no body. The employer's list and shortlist never include the caller's own rows, and `?status=` other than `accepted` is empty for an employer. A withdrawn ask is `409 conflict` (`details.state` `closed`), a lapsed one `409 conflict` (`expired`), one already accepted or declined `409 already_resolved` (`details.resolution`). The due time is the same local time five business days later in the organization's time zone (not the end of that day).
 
 An ask with no reply after seven days becomes `expired`, which counts as no (HIR-04). The answer is due five business days after acceptance, Monday to Friday in the organization's time zone, with no holidays. While any answer is overdue, new asks pause for every role of the organization.
 
@@ -524,7 +532,7 @@ An ask with no reply after seven days becomes `expired`, which counts as no (HIR
 | POST | `/v1/signals` | Send a "serious interest" signal. Body: `introduction_id`; the server sets `sender_side` from the caller and resolves the role. A candidate may signal on a role they were asked about; the employer sees it only after acceptance. An organization signals on its own introductions | C, E | HIR-08 | 6 |
 | GET | `/v1/signals` | Signals sent and received, and the remaining weekly quota | C, E | HIR-08 | 6 |
 
-Each side may send 3 signals per UTC week starting Monday, and one per role. The web app offers employer signals only on accepted introductions; whether employers may signal before acceptance is owner decision G7.
+Each side may send 3 signals per UTC week starting Monday, and one per role. The web app offers employer signals only on accepted introductions; owner decision G7 keeps employer signals to accepted introductions, and the database refuses an organization signal on any other (Phase 6). The fourth in a week is `422 quota_exhausted` with `details.resets_at`; a second for the same role is `409 already_resolved`. `GET /v1/signals?org_id=` gives a member the organization's signals and quota; a candidate's signal shows to the employer only after acceptance.
 
 ### 2.19 `/v1/control`: runs, flight recorder, costs, evals, live stream
 
@@ -1342,21 +1350,21 @@ Response `201`:
   "success": true,
   "data": {
     "id": "5c9d1e3f-4a6b-4c8d-8e2f-a3b4c5d6e780",
-    "version": 1,
     "status": "draft",
     "title": "Staff Backend Engineer",
-    "country": "IN",
-    "city": "Bengaluru",
-    "work_arrangements": ["hybrid"],
-    "employment_type": "full_time",
-    "seniority": "staff",
+    "country": null,
+    "city": null,
+    "work_arrangements": [],
+    "employment_type": "unknown",
+    "seniority": "unknown",
     "pay_range": null,
     "requirements": [
       {"id": "8e2f4a6b-1c3d-4e5f-9a0b-c1d2e3f4a501", "kind": "experience", "text": "7+ years of backend experience", "importance": "required", "span": {"start": 76, "end": 106}, "quote": "7+ years of backend experience", "is_confirmed": false},
       {"id": "8e2f4a6b-1c3d-4e5f-9a0b-c1d2e3f4a502", "kind": "experience", "text": "Has run streaming systems in production", "importance": "required", "span": {"start": 111, "end": 151}, "quote": "have run streaming systems in production", "is_confirmed": false}
     ],
     "can_publish": false,
-    "blockers": ["pay_range_required", "requirements_unconfirmed"]
+    "blockers": ["pay_range_required", "requirements_unconfirmed"],
+    "extraction": {"state": "extracted", "dropped": 0}
   },
   "error": null,
   "meta": {"request_id": "req_01JG2CHDGY0Z"}
@@ -1378,6 +1386,8 @@ Response `201`:
 }
 ```
 
+Phase 6: the example no longer shows `version`, and the location and seniority are `null` or `unknown` until the employer sets them (nothing is inferred from the text); the full role also carries `organization_id`, `description`, `visa_sponsorship`, `job_id`, `created_at`, `opened_at` and `closed_at`.
+
 After `PATCH /v1/roles/{role_id}` with `{"pay_range": {"min": 4500000, "max": 5500000, "currency": "INR"}}` and `PUT /v1/roles/{role_id}/requirements` confirming the list, publish returns `200` with `status: "open"` and the `job_id` of the unlisted posting.
 
 ### 3.11 The anonymous preview
@@ -1391,12 +1401,10 @@ After `PATCH /v1/roles/{role_id}` with `{"pay_range": {"min": 4500000, "max": 55
     "role_id": "5c9d1e3f-4a6b-4c8d-8e2f-a3b4c5d6e780",
     "as_of": "2026-11-23T03:00:00Z",
     "eligible_candidates": 12,
-    "by_required_met": [
-      {"required_met": "all", "count": 7, "is_suppressed": false},
-      {"required_met": "all_but_one", "count": null, "is_suppressed": true}
-    ],
-    "asked": 7,
-    "accepted": 0,
+    "selected_to_ask": 7,
+    "waiting_for_reply": "fewer than 5",
+    "said_yes": 0,
+    "said_no_or_expired": 0,
     "suppressed_below": 5,
     "note": "Counts only. Groups smaller than 5 are hidden. You see a person only after they accept."
   },
@@ -1405,7 +1413,7 @@ After `PATCH /v1/roles/{role_id}` with `{"pay_range": {"min": 4500000, "max": 55
 }
 ```
 
-`eligible_candidates` counts candidates who are open to introductions, whose hard constraints the role does not break (including their excluded-company lists), and who meet the role's required items. The threshold of 5 is the recommended answer to owner decision G6. No field identifies or describes an individual.
+Phase 6: the keys are those of the database function `role_preview` plus `as_of` (the latest finished role run, or `null`); `by_required_met`, `asked` and `accepted` were replaced. `eligible_candidates` counts candidates who are open to introductions and whose hard constraints the role does not break (including their excluded-company lists); `selected_to_ask` those who also meet every required item. Both describe the latest role run only, and a later run covers only candidates not asked before. 1 to 4 appear as the string `"fewer than 5"`. The threshold of 5 is the recommended answer to owner decision G6. No field identifies or describes an individual.
 
 ### 3.12 Accepting an introduction, and what the employer then sees
 
@@ -1479,7 +1487,6 @@ Response `200`:
       "responded_at": "2026-11-23T04:10:00Z",
       "answer_due_at": "2026-11-30T18:29:59Z"
     },
-    "campaign": {"id": "3a7b9c1d-2e4f-4a6b-8c0d-e1f2a3b4c564", "stage": "applied"},
     "shared": "Halden Robotics can now see the items under 'on accept'. Your email is shared only if they answer yes."
   },
   "error": null,
@@ -1487,7 +1494,7 @@ Response `200`:
 }
 ```
 
-A hash that does not match the stored preview returns `409 preview_changed` and nothing is shared. Accepting after `expires_at` returns `409 conflict` with `details.state: "expired"`. The due time is the end of the fifth business day after acceptance in the organization's time zone (here `Asia/Kolkata`).
+A hash that does not match the stored preview returns `409 preview_changed` and nothing is shared. Accepting after `expires_at` returns `409 conflict` with `details.state: "expired"`. Phase 6: no `campaign` is returned (CMP-01 is Phase 7). The due time is the same local time five business days later in the organization's time zone (here `Asia/Kolkata`), so `answer_due_at` above is illustrative.
 
 **What the employer then sees.** `GET /v1/roles/5c9d1e3f-4a6b-4c8d-8e2f-a3b4c5d6e780/shortlist`
 
@@ -1516,7 +1523,6 @@ A hash that does not match the stored preview returns `409 preview_changed` and 
         ]
       },
       "signals": {"from_candidate": false, "from_you": true},
-      "twin": {"questions_asked": 0},
       "email": null
     }
   ],
@@ -1525,7 +1531,7 @@ A hash that does not match the stored preview returns `409 preview_changed` and 
 }
 ```
 
-`shared` is the shortlist entry's stored copy, equal to `share_preview.on_accept`; later record changes never reach it. `email` stays `null` until the employer answers `yes`.
+Phase 6: there is no `twin` field until Phase 9; the entry also carries `employer_answer_reason` and `employer_answered_at` once answered. `shared` is the shortlist entry's stored copy, equal to `share_preview.on_accept`; later record changes never reach it. `email` stays `null` until the employer answers `yes`.
 
 ### 3.13 Answering an introduction, and the answer clock
 
@@ -1560,7 +1566,7 @@ Response `200`:
 }
 ```
 
-`reason` is required for both answers and must not be empty; the web app offers preset phrases (Strong fit, Skills gap, Experience gap, Location mismatch, Pay mismatch, Role filled, Role on hold, Other) that fill it and can be edited. A `no` closes the candidate's campaign as `rejected`. A `yes` returns `email` with the candidate's account email, as the preview said, and moves the campaign to `talking`. Answering twice returns `409 already_resolved`.
+`reason` is required for both answers and must not be empty; the web app offers preset phrases (Strong fit, Skills gap, Experience gap, Location mismatch, Pay mismatch, Role filled, Role on hold, Other) that fill it and can be edited. Phase 6: there is no campaign yet, so nothing moves to `rejected` or `talking`; the answer is the whole effect. The answer's `data` always has `email`: the candidate's account email after `yes` (as the preview said), `null` after `no`. Answering twice returns `409 already_resolved`.
 
 `GET /v1/orgs/4b8c0d2e-3f5a-4b7c-9d1e-f2a3b4c5d670/answer-clock`
 
