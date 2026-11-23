@@ -31,6 +31,9 @@ class Links:
     def match(self, decision_id: UUID) -> str:
         return f"{self.base}/app/matches/{decision_id}"
 
+    def introduction(self, introduction_id: UUID) -> str:
+        return f"{self.base}/app/today?decision={introduction_id}"
+
     @property
     def today(self) -> str:
         return f"{self.base}/app/today"
@@ -63,11 +66,25 @@ def render(product_name: str, view: dict[str, Any], links: Links) -> tuple[str, 
     """The subject and the plain-text body of a brief, written from brief_view's answer."""
     matches = [d for d in view["decisions"] if d["kind"] == "match" and d["is_assessed"]]
     unassessed = [d for d in view["decisions"] if d["kind"] == "match" and not d["is_assessed"]]
+    asks = [d for d in view["decisions"] if d["kind"] == "introduction"]
     proposals = next((d for d in view["decisions"] if d["kind"] == "record_proposals"), None)
     subject = "Your morning brief"
     if matches:
         subject += f": {len(matches)} {'match' if len(matches) == 1 else 'matches'}"
     out = [f"Your morning brief for {view['local_date']}.", ""]
+    if asks:  # one line each: who asks, about what, until when; nothing of what the candidate would share
+        out += [
+            f"Introductions ({len(asks)})",
+            "An employer asks whether you would like to talk. You decide in the app.",
+            "",
+        ]
+        for item in asks:
+            by = item["expires_at"].date().isoformat()
+            out += [
+                f"- {_line(item['organization_name'])} about {_line(item['role_title'])}. Answer by {by}.",
+                f"  {links.introduction(item['introduction_id'])}",
+                "",
+            ]
     if matches:
         out += [f"Matches ({len(matches)})", ""]
         for number, item in enumerate(matches, start=1):

@@ -7,6 +7,9 @@ package is a public interface.
   run(user_id, trigger=..., local_date=...)   one matching run for a person; returns a RunResult
   retrieve(conn, user_id, mode=...)           the candidates for a person's own record (keyword, vector or hybrid)
   violations(job, constraints)                the independent checker: the hard constraints a job breaks
+  run_role(role_id, job_id, candidate_ids)    one employer role against pooled candidates: introduced or withheld
+  role_selections(conn, run_id)               the candidates a role run introduced, with their evidence
+  latest_role_run(conn, role_id)              the newest run for a role
   RANKER_VERSION                              the name of the ranking rules, stored on every run
 
 BriefMatch, RunActivity, NightlyStatus and RunResult are what they return.
@@ -16,18 +19,34 @@ from .checker import violations
 from .queries import BriefMatch, NightlyStatus, RunActivity, activity_since, brief_matches, nightly_status
 from .ranking import RANKER_VERSION
 from .retrieval import retrieve
+from .role_run import (
+    RoleEvidence,
+    RoleRunInfo,
+    RoleRunResult,
+    RoleSelection,
+    latest_role_run,
+    role_selections,
+    run_role,
+)
 from .service import RunResult, run
 
 __all__ = [
     "RANKER_VERSION",
     "BriefMatch",
+    "RoleEvidence",
+    "RoleRunInfo",
+    "RoleRunResult",
+    "RoleSelection",
     "NightlyStatus",
     "RunActivity",
     "RunResult",
     "activity_since",
+    "latest_role_run",
     "brief_matches",
     "nightly_status",
     "retrieve",
+    "role_selections",
     "run",
+    "run_role",
     "violations",
 ]

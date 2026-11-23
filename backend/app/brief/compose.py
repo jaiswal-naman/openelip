@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import Connection, text
 
+from app.hiring import api as hiring
 from app.ingest import api as ingest
 from app.match import api as match
 from app.platform import log, outbox
@@ -53,17 +54,29 @@ def compose(conn: Connection, user_id: UUID, local_date: date, *, now: datetime)
     if existing is not None:
         return existing
     person = conn.execute(text("SELECT timezone, record_confirmed_at FROM users WHERE id = :u"), {"u": user_id}).one()
+    asks = _new_asks(conn, user_id)
     matches = _still_open(conn, match.brief_matches(conn, user_id, local_date))
     since = _covers_since(conn, user_id, person.record_confirmed_at)
     activity = match.activity_since(conn, user_id, since) if since is not None else []
     waiting = profile.get_record(conn, user_id)["open_proposals"]
-    status: ComposeStatus = "composed" if matches or activity or waiting else "suppressed"
+    status: ComposeStatus = "composed" if asks or matches or activity or waiting else "suppressed"
 
     in_app_id = _insert_brief(conn, user_id, local_date, "in_app", status, since)
     if in_app_id is None:  # a concurrent compose of this person and date committed first
         raced = _existing(conn, user_id, local_date)
         assert raced is not None, "the brief the other compose made must be visible now"
         return raced
+    if asks:  # an ask comes ahead of the matches: it has a clock
+        conn.execute(
+            text(
+                """INSERT INTO brief_items (brief_id, position, user_id, kind, introduction_id)
+                   VALUES (:brief, :position, :u, 'introduction', :introduction)"""
+            ),
+            [
+                {"brief": in_app_id, "position": n, "u": user_id, "introduction": ask.introduction_id}
+                for n, ask in enumerate(asks, start=1)
+            ],
+        )
     if matches:
         conn.execute(
             text(
@@ -72,7 +85,7 @@ def compose(conn: Connection, user_id: UUID, local_date: date, *, now: datetime)
             ),
             [
                 {"brief": in_app_id, "position": n, "u": user_id, "decision": m.decision_id}
-                for n, m in enumerate(matches, start=1)
+                for n, m in enumerate(matches, start=len(asks) + 1)
             ],
         )
     email_id = outbox_id = None
@@ -89,7 +102,13 @@ def compose(conn: Connection, user_id: UUID, local_date: date, *, now: datetime)
                 not_before=release,
                 expires_at=expires,
             )
-    log.event("brief.composed", brief_id=in_app_id, status=status, items=len(matches), has_email=outbox_id is not None)
+    log.event(
+        "brief.composed",
+        brief_id=in_app_id,
+        status=status,
+        items=len(asks) + len(matches),
+        has_email=outbox_id is not None,
+    )
     return ComposeResult(in_app_id, email_id, outbox_id, status)
 
 
@@ -120,6 +139,22 @@ def _existing(conn: Connection, user_id: UUID, local_date: date) -> ComposeResul
     if row is None:
         return None
     return ComposeResult(row.id, row.email_id, row.outbox_id, cast(ComposeStatus, row.status))
+
+
+def _new_asks(conn: Connection, user_id: UUID) -> list[hiring.BriefAsk]:
+    """The person's open asks that no earlier brief of theirs has listed (06-INDEX 10: each ask once per channel). Items
+    are stored on the in-app brief and the email is written from it, so one ask is one item, in the first brief composed
+    after it was asked and in no later one."""
+    listed = set(
+        conn.execute(
+            text(
+                """SELECT i.introduction_id FROM brief_items i JOIN briefs b ON b.id = i.brief_id
+                    WHERE b.user_id = :u AND b.channel = 'in_app' AND i.kind = 'introduction'"""
+            ),
+            {"u": user_id},
+        ).scalars()
+    )
+    return [ask for ask in hiring.asks_for_brief(conn, user_id) if ask.introduction_id not in listed]
 
 
 def _still_open(conn: Connection, matches: list[match.BriefMatch]) -> list[match.BriefMatch]:

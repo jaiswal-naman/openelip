@@ -15,6 +15,7 @@ from uuid import UUID
 
 from sqlalchemy import Connection, Row, text
 
+from app.hiring import api as hiring
 from app.ingest import api as ingest
 from app.match import api as match
 from app.platform.errors import ApiError
@@ -42,7 +43,7 @@ def brief_view(conn: Connection, brief_id: UUID, user_id: UUID) -> dict[str, Any
     brief = conn.execute(text(_BRIEFS + " AND b.id = :id"), {"u": user_id, "id": brief_id}).one_or_none()
     if brief is None:
         return None
-    decisions = _match_decisions(conn, brief, user_id)
+    decisions = [*_introduction_items(conn, brief, user_id), *_match_decisions(conn, brief, user_id)]
     waiting = int(profile.get_record(conn, user_id)["open_proposals"])
     if waiting:
         decisions.append(_proposals_item(waiting))
@@ -79,6 +80,43 @@ def list_briefs(
         for r in page
     ]
     return listed, (_encode_cursor(page[-1]) if len(rows) > limit else None)
+
+
+def _introduction_items(conn: Connection, brief: Row[Any], user_id: UUID) -> list[dict[str, Any]]:
+    """The brief's asks in the order it stored them, named as they are now (an ask since expired or accepted is still
+    listed: the brief is a record of the morning). The names come from hiring.api.brief_asks, which answers for the
+    caller only, so app.user_id is set to the brief's owner for that read: it already is on the candidate's own
+    request, and it is not on the worker connection that writes the email. The previous value is put back."""
+    ids = (
+        conn.execute(
+            text(
+                "SELECT introduction_id FROM brief_items "
+                "WHERE brief_id = :b AND kind = 'introduction' ORDER BY position"
+            ),
+            {"b": brief.id},
+        )
+        .scalars()
+        .all()
+    )
+    if not ids:
+        return []
+    previous = conn.execute(text("SELECT current_setting('app.user_id', true)")).scalar() or ""
+    conn.execute(text("SELECT set_config('app.user_id', :u, true)"), {"u": str(user_id)})
+    try:
+        named = hiring.brief_asks(conn, ids)
+    finally:
+        conn.execute(text("SELECT set_config('app.user_id', :u, true)"), {"u": previous})
+    return [
+        {
+            "kind": "introduction",
+            "introduction_id": ask.introduction_id,
+            "organization_name": ask.organization_name,
+            "role_title": ask.role_title,
+            "expires_at": ask.expires_at,
+        }
+        for ask in (named.get(i) for i in ids)
+        if ask is not None
+    ]
 
 
 def _match_decisions(conn: Connection, brief: Row[Any], user_id: UUID) -> list[dict[str, Any]]:

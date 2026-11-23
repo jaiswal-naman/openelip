@@ -34,6 +34,11 @@ NOT_ASSESSED_LIMIT = 5  # assumption
 CURRENT_CONSTRAINTS = "WITH c AS (SELECT compile_constraints(:u) AS cc)"
 STILL_ALLOWED = "constraint_violations(j, c.cc) = '{}'"
 UNVERIFIED_NOW = "CAST(unverified_fields(j, c.cc) AS text[])"
+# A role run (an employer asking about a role) writes decisions with the candidate as their owner, but they are not the
+# candidate's matches: no candidate-facing read of `match_decisions d` may list one. Asked in the positive, so that
+# under row-level security (which hides a role run, whose user_id is NULL, from the API role) only the person's own
+# runs answer "not a role run".
+NOT_A_ROLE_RUN = "EXISTS (SELECT 1 FROM match_runs rr WHERE rr.id = d.match_run_id AND rr.trigger <> 'role')"
 
 
 @dataclass(frozen=True)
@@ -87,7 +92,7 @@ def brief_matches(conn: Connection, user_id: UUID, local_date: date) -> list[Bri
                       {UNVERIFIED_NOW} AS unverified
                FROM match_decisions d JOIN jobs j ON j.id = d.job_id CROSS JOIN c
                WHERE d.user_id = :u AND d.local_date = :d AND d.outcome = 'shown'
-                 AND j.status = 'open' AND {STILL_ALLOWED}
+                 AND {NOT_A_ROLE_RUN} AND j.status = 'open' AND {STILL_ALLOWED}
                ORDER BY d.rank_position"""
         ),
         {"u": user_id, "d": local_date},
@@ -100,7 +105,7 @@ def brief_matches(conn: Connection, user_id: UUID, local_date: date) -> list[Bri
                           {UNVERIFIED_NOW} AS unverified
                    FROM match_decisions d JOIN jobs j ON j.id = d.job_id CROSS JOIN c
                    WHERE d.user_id = :u AND d.local_date = :d AND d.outcome = 'withheld'
-                     AND 'not_scored' = ANY (d.reason_codes)
+                     AND 'not_scored' = ANY (d.reason_codes) AND {NOT_A_ROLE_RUN}
                      AND NOT EXISTS (SELECT 1 FROM match_runs r WHERE r.user_id = :u AND r.local_date = :d
                                                                   AND r.evidence_prompt_version IS NOT NULL)
                      AND j.status = 'open' AND {STILL_ALLOWED}
