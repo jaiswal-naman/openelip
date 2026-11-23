@@ -49,7 +49,7 @@ def close_run(conn: Connection, run_id: UUID, *, status: str = "succeeded", erro
 
 def _lock_run(conn: Connection, run_id: UUID) -> Any:
     row = conn.execute(
-        text("SELECT id, user_id, campaign_id FROM agent_runs WHERE id = :id FOR UPDATE"), {"id": run_id}
+        text("SELECT id, user_id, campaign_id FROM agent_runs WHERE id = :id FOR NO KEY UPDATE"), {"id": run_id}
     ).one_or_none()
     if row is None:
         raise LookupError("no such run")
