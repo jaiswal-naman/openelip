@@ -273,7 +273,7 @@ def make_packet(conn: Connection, user_id: UUID, job: Job, *, status: str = "rea
             "question": "What pay do you expect?",
             "answer": "",
             "fact_ids": [],
-            "status": "left_for_you",
+            "status": "candidate_must_answer",
             "removed_sentences": 0,
         },
     ]
