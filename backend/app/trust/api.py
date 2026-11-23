@@ -12,15 +12,19 @@ from .consent import (
     require_consent,
     withdraw_consent,
 )
+from .restricted import Restricted, redact_contact, restricted_matches
 
 __all__ = [
     "INTRODUCTION_TEXT_VERSION",
     "ConsentRequired",
+    "Restricted",
     "ai_processing_text_version",
     "audit_log",
     "current_consents",
     "grant_consent",
     "grant_introduction_consent",
+    "redact_contact",
     "require_consent",
+    "restricted_matches",
     "withdraw_consent",
 ]
