@@ -89,7 +89,9 @@ def test_a_member_is_active_with_the_role_asked_for_and_joins_after_the_owner(co
         m=admin.id,
     )
     assert (row.role, row.status) == ("admin", "active")
-    owner_joined = one(conn, "SELECT joined_at FROM org_members WHERE organization_id = :o AND role = 'owner'", o=org.id)
+    owner_joined = one(
+        conn, "SELECT joined_at FROM org_members WHERE organization_id = :o AND role = 'owner'", o=org.id
+    )
     assert owner_joined.joined_at < row.joined_at  # one transaction, but the clock keeps counting: ordering is testable
     world.act_as(conn, "app_api", admin.user)
     assert one(conn, "SELECT app_is_org_admin(:o) AS admin", o=org.id).admin is True
@@ -104,7 +106,12 @@ def test_an_invitation_is_an_address_with_no_person_that_the_invited_account_can
         "FROM org_members WHERE id = :m",
         m=invitation.id,
     )
-    assert (row.user_id, row.invited_email, row.status, row.role) == (None, "demo.invitee@example.test", "invited", "member")
+    assert (row.user_id, row.invited_email, row.status, row.role) == (
+        None,
+        "demo.invitee@example.test",
+        "invited",
+        "member",
+    )
     assert (row.invited_by, row.joined_at) == (org.owner, None)
     assert (invitation.user, invitation.status, invitation.email) == (None, "invited", "demo.invitee@example.test")
     invitee = make_candidate(conn, email="demo.invitee@example.test")
@@ -153,7 +160,7 @@ def test_spans_are_counted_in_code_points_so_an_emoji_before_a_requirement_does_
     role = make_role(conn, make_org(conn), description=description, requirements=[("Python is required.", "required")])
     assert resolves(conn, role.id) == [("Python is required.", "required", False, True)]
     start = one(conn, "SELECT lower(span) AS start FROM role_requirements WHERE role_id = :r", r=role.id).start
-    assert start == description.index("Python") and start != len(description[: start].encode("utf-16-le")) // 2
+    assert start == description.index("Python") and start != len(description[:start].encode("utf-16-le")) // 2
 
 
 def test_a_requirement_that_is_not_in_the_description_is_refused_at_once(conn):
@@ -183,7 +190,12 @@ def test_an_open_role_is_published_as_an_unlisted_direct_job_with_requirements_a
            FROM jobs j JOIN job_sources s ON s.id = j.source_id WHERE j.id = :j""",
         j=role.job_id,
     )
-    assert (job.is_listed, job.status, job.external_id, job.dedupe_key) == (False, "open", str(role.id), f"direct:{role.id}")
+    assert (job.is_listed, job.status, job.external_id, job.dedupe_key) == (
+        False,
+        "open",
+        str(role.id),
+        f"direct:{role.id}",
+    )
     assert (job.content_version, job.requirements_version, job.company_name) == (1, 1, "Halden Demo")
     assert (job.ats, job.is_active, job.organization_id, job.token) == ("direct", False, org.id, str(org.id))
     assert job.apply_url.endswith("/app/today") and job.salary_min == 80_000
@@ -207,20 +219,35 @@ def test_an_open_role_is_published_as_an_unlisted_direct_job_with_requirements_a
 
 def test_a_second_role_of_the_organization_shares_its_direct_source_and_another_organization_has_its_own(conn):
     org, other = make_org(conn), make_org(conn, "Brightwell Demo")
-    first, second, elsewhere = make_open_role(conn, org), make_open_role(conn, org, title="Analyst"), make_open_role(conn, other)
+    first, second, elsewhere = (
+        make_open_role(conn, org),
+        make_open_role(conn, org, title="Analyst"),
+        make_open_role(conn, other),
+    )
     sources = {
         r.job_id: r.source_id
-        for r in conn.execute(text("SELECT id AS job_id, source_id FROM jobs WHERE id = ANY(:j)"), {"j": [first.job_id, second.job_id, elsewhere.job_id]})
+        for r in conn.execute(
+            text("SELECT id AS job_id, source_id FROM jobs WHERE id = ANY(:j)"),
+            {"j": [first.job_id, second.job_id, elsewhere.job_id]},
+        )
     }
     assert sources[first.job_id] == sources[second.job_id] != sources[elsewhere.job_id]
     assert world.count(conn, "job_sources WHERE ats = 'direct'") == 2
-    assert world.count(conn, "job_sources WHERE ats = 'direct' AND is_active") == 0  # the index fetch never touches them
+    assert (
+        world.count(conn, "job_sources WHERE ats = 'direct' AND is_active") == 0
+    )  # the index fetch never touches them
     assert world.count(conn, "jobs WHERE is_listed") == 0  # and search lists none of them
 
 
 def test_an_open_role_can_carry_the_place_and_kind_of_job_a_candidate_s_constraints_are_checked_against(conn):
     role = make_open_role(
-        conn, make_org(conn), country="DE", city="Berlin", arrangements=("hybrid",), seniority="senior", employment_type="full_time"
+        conn,
+        make_org(conn),
+        country="DE",
+        city="Berlin",
+        arrangements=("hybrid",),
+        seniority="senior",
+        employment_type="full_time",
     )
     job = one(
         conn,
@@ -240,16 +267,23 @@ def test_a_candidate_is_an_invented_person_with_a_confirmed_record_and_the_conse
     candidate = make_candidate(conn)
     user = one(
         conn,
-        "SELECT email, display_name, is_synthetic, record_confirmed_at, status::text AS status FROM users WHERE id = :u",
+        "SELECT email, display_name, is_synthetic, record_confirmed_at, status::text AS status "
+        "FROM users WHERE id = :u",
         u=candidate.id,
     )
     assert user.email.endswith("@example.test") and user.display_name == "Demo Candidate"
     assert (user.is_synthetic, user.status) == (True, "active") and user.record_confirmed_at is not None
     assert (candidate.name, candidate.email) == ("Demo Candidate", user.email)
-    facts = conn.execute(
-        text("SELECT id FROM profile_facts WHERE user_id = :u AND confirmed_at IS NOT NULL ORDER BY created_at, id"),
-        {"u": candidate.id},
-    ).scalars().all()
+    facts = (
+        conn.execute(
+            text(
+                "SELECT id FROM profile_facts WHERE user_id = :u AND confirmed_at IS NOT NULL ORDER BY created_at, id"
+            ),
+            {"u": candidate.id},
+        )
+        .scalars()
+        .all()
+    )
     assert len(facts) == 3 and set(candidate.record.fact_ids) == set(facts)
     assert one(conn, "SELECT has_active_consent(:u, 'open_to_introductions') AS open", u=candidate.id).open is True
     trust.require_consent(conn, candidate.id, "ai_processing")  # does not raise
@@ -273,7 +307,8 @@ def test_an_introduced_decision_has_a_completed_role_run_and_one_evidence_row_pe
     decision = make_introduced_decision(conn, role, candidate)
     run = one(
         conn,
-        "SELECT trigger::text AS trigger, role_id, user_id, status::text AS status, finished_at FROM match_runs WHERE id = :r",
+        "SELECT trigger::text AS trigger, role_id, user_id, status::text AS status, finished_at "
+        "FROM match_runs WHERE id = :r",
         r=decision.run,
     )
     assert (run.trigger, run.role_id, run.user_id, run.status) == ("role", role.id, None, "completed")
@@ -284,7 +319,12 @@ def test_an_introduced_decision_has_a_completed_role_run_and_one_evidence_row_pe
         "FROM match_decisions WHERE id = :d",
         d=decision.id,
     )
-    assert (row.user_id, row.job_id, row.outcome, row.reasons) == (candidate.id, role.job_id, "introduced", ["selected_for_role"])
+    assert (row.user_id, row.job_id, row.outcome, row.reasons) == (
+        candidate.id,
+        role.job_id,
+        "introduced",
+        ["selected_for_role"],
+    )
     assert row.summary and row.match_run_id == decision.run
     evidence = conn.execute(
         text(
@@ -295,7 +335,11 @@ def test_an_introduced_decision_has_a_completed_role_run_and_one_evidence_row_pe
         {"d": decision.id},
     ).all()
     assert [e.job_requirement_id for e in evidence] == list(role.job_requirement_ids)
-    assert [e.verdict for e in evidence] == ["met", "met", "no_evidence"]  # every required item met, the plus unsupported
+    assert [e.verdict for e in evidence] == [
+        "met",
+        "met",
+        "no_evidence",
+    ]  # every required item met, the plus unsupported
     assert [len(e.fact_ids) for e in evidence] == [1, 1, 0]
     assert (decision.user, decision.role, decision.outcome) == (candidate.id, role.id, "introduced")
 
@@ -307,7 +351,9 @@ def test_a_withheld_decision_joins_the_same_run_and_has_no_evidence(conn):
     withheld = make_introduced_decision(conn, role, second, run=introduced.run, outcome="withheld")
     assert withheld.run == introduced.run and withheld.outcome == "withheld"
     row = one(
-        conn, "SELECT outcome::text AS outcome, reason_codes::text[] AS reasons, summary FROM match_decisions WHERE id = :d", d=withheld.id
+        conn,
+        "SELECT outcome::text AS outcome, reason_codes::text[] AS reasons, summary FROM match_decisions WHERE id = :d",
+        d=withheld.id,
     )
     assert (row.outcome, row.reasons, row.summary) == ("withheld", ["required_not_met"], None)
     assert world.count(conn, "match_evidence WHERE match_decision_id = :d", d=withheld.id) == 0
@@ -321,7 +367,8 @@ def test_verdicts_can_be_given_and_an_incomplete_set_fails_in_the_factory_not_in
     custom = [Verdict("partly_met", (fact,), "A close one."), Verdict("met", (fact,)), Verdict("no_evidence")]
     decision = make_introduced_decision(conn, role, candidate, verdicts=custom)
     got = conn.execute(
-        text("SELECT verdict::text, note FROM match_evidence WHERE match_decision_id = :d ORDER BY id"), {"d": decision.id}
+        text("SELECT verdict::text, note FROM match_evidence WHERE match_decision_id = :d ORDER BY id"),
+        {"d": decision.id},
     ).all()
     assert [tuple(g) for g in got] == [("partly_met", "A close one."), ("met", None), ("no_evidence", None)]
     with pytest.raises(AssertionError, match="one verdict per requirement"):
@@ -361,7 +408,9 @@ def test_an_ask_is_an_asked_introduction_with_a_preview_of_exactly_what_the_cand
         ("SQL is required.", "required", "met"),
         ("Experience with Airflow is a plus.", "preferred", "no_evidence"),
     ]
-    assert evidence[0]["record_quotes"] == ["Built nightly Python and SQL pipelines that cut report time by 40 percent."]
+    assert evidence[0]["record_quotes"] == [
+        "Built nightly Python and SQL pipelines that cut report time by 40 percent."
+    ]
     assert evidence[2]["record_quotes"] == []
     assert preview["on_accept"]["facts"] == [
         {"kind": "role", "statement": "Senior data engineer at Initech Demo, 2019 to 2024."}
@@ -398,7 +447,9 @@ def test_a_factory_refuses_a_connection_that_has_already_dropped_to_another_role
 
 def test_an_ask_can_be_made_in_the_past_so_that_it_has_already_expired(conn):
     role, candidate = make_open_role(conn, make_org(conn)), make_candidate(conn)
-    ask = make_ask(conn, role, candidate, asked_at=one(conn, "SELECT now() - interval '8 days' AS t").t)
+    eight_days_ago = one(conn, "SELECT now() - interval '8 days' AS moment").moment
+    ask = make_ask(conn, role, candidate, asked_at=eight_days_ago)
+    assert ask.asked_at == eight_days_ago
     assert one(conn, "SELECT CAST(:e AS timestamptz) < now() AS past", e=ask.expires_at).past is True
 
 
@@ -453,10 +504,16 @@ def test_an_accepted_introduction_has_its_scoped_consent_a_due_time_and_a_shortl
         d=row.answer_due_at,
     ).five
 
-    assert [tuple(c) for c in conn.execute(text("SELECT purpose::text, organization_id, role_id, text_version FROM consents WHERE id = :c"), {"c": accepted.consent})] == [
-        ("introduction", org.id, role.id, "introduction-2026-11")
-    ]
-    assert one(conn, "SELECT has_active_consent(:u, 'introduction', :o, :r) AS live", u=candidate.id, o=org.id, r=role.id).live
+    assert [
+        tuple(c)
+        for c in conn.execute(
+            text("SELECT purpose::text, organization_id, role_id, text_version FROM consents WHERE id = :c"),
+            {"c": accepted.consent},
+        )
+    ] == [("introduction", org.id, role.id, "introduction-2026-11")]
+    assert one(
+        conn, "SELECT has_active_consent(:u, 'introduction', :o, :r) AS live", u=candidate.id, o=org.id, r=role.id
+    ).live
 
     entry = one(
         conn,
@@ -464,7 +521,12 @@ def test_an_accepted_introduction_has_its_scoped_consent_a_due_time_and_a_shortl
         "FROM shortlist_entries WHERE id = :s",
         s=accepted.shortlist,
     )
-    assert (entry.organization_id, entry.role_id, entry.introduction_id, entry.user_id) == (org.id, role.id, accepted.id, candidate.id)
+    assert (entry.organization_id, entry.role_id, entry.introduction_id, entry.user_id) == (
+        org.id,
+        role.id,
+        accepted.id,
+        candidate.id,
+    )
     assert entry.shared_payload == row.share_preview == accepted.ask.preview and entry.contact_released_at is not None
 
 
@@ -490,6 +552,21 @@ def test_the_employer_sees_the_accepted_candidate_and_not_the_one_who_was_only_a
     assert conn.execute(text("SELECT id FROM introductions")).scalars().all() == [asked.id]
 
 
+def test_the_rows_also_commit_for_a_test_that_drives_the_api(engine):
+    """An API test builds its rows on a connection that commits, which is where the database's deferred completeness
+    check of an introduced decision runs; the tables are emptied afterwards, as the api_client fixture does."""
+    try:
+        with engine.begin() as committing:
+            org = make_org(committing)
+            make_accepted(committing, make_open_role(committing, org), make_candidate(committing))
+            make_ask(committing, make_open_role(committing, org, title="Analyst"), make_candidate(committing))
+        with engine.connect() as reading:
+            assert world.count(reading, "shortlist_entries") == 1 and world.count(reading, "introductions") == 2
+    finally:
+        with engine.begin() as cleaning:
+            cleaning.execute(text("TRUNCATE users, organizations, jobs, job_sources RESTART IDENTITY CASCADE"))
+
+
 def test_the_counts_a_member_sees_come_from_these_rows(conn):
     org = make_org(conn)
     role = make_open_role(conn, org)
@@ -497,7 +574,9 @@ def test_the_counts_a_member_sees_come_from_these_rows(conn):
     first = make_introduced_decision(conn, role, a)
     make_ask(conn, role, a, decision=first)
     make_introduced_decision(conn, role, b, run=first.run, outcome="withheld")
-    make_accepted(conn, role, c, ask=make_ask(conn, role, c, decision=make_introduced_decision(conn, role, c, run=first.run)))
+    make_accepted(
+        conn, role, c, ask=make_ask(conn, role, c, decision=make_introduced_decision(conn, role, c, run=first.run))
+    )
     world.act_as(conn, "app_api", org.owner)
     preview = conn.execute(text("SELECT role_preview(:r)"), {"r": role.id}).scalar_one()
     assert preview["eligible_candidates"] == "fewer than 5" and preview["selected_to_ask"] == "fewer than 5"
@@ -516,12 +595,19 @@ class Elsewhere:
 
 
 def test_every_factory_refuses_a_database_whose_name_does_not_end_in_test():
-    names = sorted(name for name in dir(factories) if name.startswith("make_"))
-    assert len(names) == 8  # a factory added later is covered too: it is found by its name
-    for name in names:
-        function = getattr(factories, name)
+    # The factories defined here, found by name, so one added later is covered too (make_user and the other helpers of
+    # tests/match/factories.py are imported, and are not this file's).
+    functions = [
+        function
+        for name, function in sorted(vars(factories).items())
+        if name.startswith("make_") and inspect.isfunction(function) and function.__module__ == factories.__name__
+    ]
+    assert len(functions) == 8
+    for function in functions:
         required = [
-            p for p in inspect.signature(function).parameters.values() if p.default is p.empty and p.kind is p.POSITIONAL_OR_KEYWORD
+            p
+            for p in inspect.signature(function).parameters.values()
+            if p.default is p.empty and p.kind is p.POSITIONAL_OR_KEYWORD
         ]
         with pytest.raises(RuntimeError, match="_test"):
             function(Elsewhere(), *[None] * (len(required) - 1))
