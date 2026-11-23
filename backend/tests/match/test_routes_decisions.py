@@ -1,4 +1,4 @@
-"""MAT-06, MAT-05: GET /v1/decisions and GET /v1/decisions/{decision_id}, the decision ledger and "why not" (plan 04-04).
+"""MAT-06, MAT-05: GET /v1/decisions and /v1/decisions/{decision_id}, the decision ledger and "why not" (plan 04-04).
 
 Rows are invented and built by hand with the 04-01 factories (the run pipeline of plan 04-03 is not used); the API reads
 them as the real app_api role, so row-level security is in force. A second person has rows of her own throughout.
@@ -44,8 +44,8 @@ def refused(response, status: int, code: str) -> dict:
 
 
 def stamp(conn, moments: dict[UUID, str]) -> None:
-    """Give ledger rows a creation time. The ledger is append-only; maintenance mode (what the retention sweep uses) lets
-    one transaction of the test through."""
+    """Give ledger rows a creation time. The ledger is append-only; maintenance mode (what the retention sweep uses)
+    lets one transaction of the test through."""
     conn.execute(text("SELECT set_config('app.maintenance', 'on', true)"))
     for decision, moment in moments.items():
         conn.execute(
@@ -56,7 +56,7 @@ def stamp(conn, moments: dict[UUID, str]) -> None:
 
 
 def add_evidence(conn, decision: UUID, user: UUID, job, verdicts: list[Verdict]) -> None:
-    """The verdicts of a job that was scored and then held back (a shown decision gets them from make_shown_decision)."""
+    """The verdicts of a job that was scored and then held back (a shown one gets them from make_shown_decision)."""
     for requirement, verdict in zip(job.requirement_ids, verdicts, strict=True):
         conn.execute(
             text(
@@ -116,7 +116,13 @@ def seed(engine) -> SimpleNamespace:
         )
         add_evidence(conn, w.gapped, w.ada, w.managing, [Verdict("no_evidence"), Verdict("no_evidence")])
         w.filtered = make_decision(
-            conn, w.run, w.ada, w.cheap, outcome="filtered", reasons=("hard_constraint",), violated_kinds=("salary_floor",)
+            conn,
+            w.run,
+            w.ada,
+            w.cheap,
+            outcome="filtered",
+            reasons=("hard_constraint",),
+            violated_kinds=("salary_floor",),
         )
         w.old = make_decision(
             conn, w.yesterday_run, w.ada, w.unscored, outcome="withheld", reasons=("not_scored",), retrieval_rank=1
@@ -215,7 +221,9 @@ def test_the_filters_narrow_the_list_by_outcome_reason_and_date(world):
         str(world.gapped),
         str(world.filtered),
     }
-    both = ok(get("/v1/decisions", params={"from": DAY, "to": DAY, "outcome": "withheld", "reason": "required_not_met"}))
+    both = ok(
+        get("/v1/decisions", params={"from": DAY, "to": DAY, "outcome": "withheld", "reason": "required_not_met"})
+    )
     assert ids(both) == [str(world.gapped)]
     assert ok(get("/v1/decisions", params={"from": "2030-01-01"})) == []
 

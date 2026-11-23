@@ -146,7 +146,10 @@ def check_facts_by_ids(conn, ada: Person, bob: Person) -> None:
     assert set(found) == {str(ada.confirmed), str(ada.corrected), str(ada.written)}
     assert (found[str(ada.confirmed)]["status"], found[str(ada.written)]["status"]) == ("confirmed", "superseded")
     assert not set(found) & {str(ada.unconfirmed), str(ada.rejected), str(ada.superseded)}  # never confirmed
-    assert found[str(ada.confirmed)]["provenance"]["quote"] == TEXT[41:66] and found[str(ada.written)]["provenance"] is None
+    assert (
+        found[str(ada.confirmed)]["provenance"]["quote"] == TEXT[41:66]
+        and found[str(ada.written)]["provenance"] is None
+    )
     assert api.facts_by_ids(conn, bob.id, asked) == []  # nothing of another person comes back
     assert api.facts_by_ids(conn, ada.id, []) == []
 

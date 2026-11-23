@@ -6,7 +6,7 @@ test commits stays: these tests use api_client (it empties the tables around eac
 routes' tests do. Everything here is invented. The run pipeline (plan 04-03) is not used: the rows are built by hand.
 """
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
@@ -130,10 +130,6 @@ def world(api_client, engine) -> SimpleNamespace:
     return w
 
 
-def as_text(value) -> str:
-    return str(value)
-
-
 # ---- GET /v1/matches ---------------------------------------------------------------------------------------------
 
 
@@ -191,7 +187,10 @@ def test_todays_matches_are_the_shown_decisions_of_the_date_ranked_with_the_run_
     assert citation == {
         "fact_id": str(world.record.fact_ids[1]),
         "quote": fact_text,
-        "source": {"document_id": str(world.record.document_id), "span": {"start": start, "end": start + len(fact_text)}},
+        "source": {
+            "document_id": str(world.record.document_id),
+            "span": {"start": start, "end": start + len(fact_text)},
+        },
         "is_current": True,
     }
     assert first["feedback"] == {"is_saved": False, "is_dismissed": False}
@@ -261,15 +260,13 @@ def test_the_run_of_the_day_is_the_latest_one_that_finished_and_says_when_the_ch
             filtered_count=5,
             finished_at=datetime(2030, 1, 1, tzinfo=timezone.utc),
         )
-        conn.execute(
-            text("UPDATE match_runs SET error_code = 'checker_disagreement' WHERE id = :id"), {"id": later}
-        )
+        conn.execute(text("UPDATE match_runs SET error_code = 'checker_disagreement' WHERE id = :id"), {"id": later})
     run = ok(world.client.get("/v1/matches", params={"date": DAY}))["run"]
     assert (run["id"], run["filtered"], run["checker"]) == (str(later), 5, "disagreed")
 
 
 def test_without_a_date_the_list_is_the_callers_local_today(world, monkeypatch):
-    """Ada's time zone is Asia/Kolkata, five and a half hours ahead of UTC: late on the 23rd in UTC is the 24th for her."""
+    """Ada is in Asia/Kolkata, five and a half hours ahead of UTC: late on the 23rd in UTC is the 24th for her."""
     for moment, expected in (
         (datetime(2026, 11, 23, 10, 0, tzinfo=timezone.utc), DAY),
         (datetime(2026, 11, 23, 20, 0, tzinfo=timezone.utc), TOMORROW.isoformat()),
@@ -297,7 +294,8 @@ def test_the_current_save_or_dismissal_is_on_the_match(world, engine):
             conn.execute(
                 text(
                     """INSERT INTO feedback_events (user_id, job_id, kind, dismiss_reason, created_at)
-                       VALUES (:u, :job, CAST(:kind AS feedback_kind), CAST(:reason AS dismiss_reason), clock_timestamp())"""
+                       VALUES (:u, :job, CAST(:kind AS feedback_kind), CAST(:reason AS dismiss_reason),
+                               clock_timestamp())"""
                 ),
                 {"u": world.ada, "job": job, "kind": kind, "reason": reason},
             )
@@ -331,7 +329,11 @@ def test_the_match_routes_need_a_signed_in_person(api_client):
 def test_one_match_adds_the_posting_text_the_constraint_checks_and_the_feedback(world, engine):
     with engine.begin() as conn:
         service.set_constraint(
-            conn, world.ada, "salary_floor", {"salary_floor": {"amount": 3_000_000, "currency": "INR"}}, "30 lakh a year"
+            conn,
+            world.ada,
+            "salary_floor",
+            {"salary_floor": {"amount": 3_000_000, "currency": "INR"}},
+            "30 lakh a year",
         )
         service.set_constraint(conn, world.ada, "employment_type", {"employment_types": ["full_time"]}, "Full time")
         service.set_constraint(conn, world.ada, "excluded_company", {"company_names": ["Hooli Demo"]}, "Never Hooli")

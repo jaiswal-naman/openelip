@@ -1,4 +1,4 @@
-"""MAT-08: save, unsave and dismiss a match with a reason, and a dismissal that can only propose a record change (plan 04-04).
+"""MAT-08: save, unsave and dismiss a match, and a dismissal that can only propose a record change (plan 04-04).
 
 Two kinds of test. The logic of record_feedback and of the reason-to-proposal mapping runs on the rolled-back `conn`
 fixture, as the record's service tests do. The route (validation, the Idempotency-Key, ownership and the whole
@@ -18,7 +18,15 @@ from app.platform.errors import ApiError
 from app.platform.sessions import Principal, current_user
 from app.profile import api as profile
 from app.profile import service
-from tests.match.factories import Verdict, make_decision, make_job, make_record, make_run, make_shown_decision, make_user
+from tests.match.factories import (
+    Verdict,
+    make_decision,
+    make_job,
+    make_record,
+    make_run,
+    make_shown_decision,
+    make_user,
+)
 
 
 def ok(response, status: int = 200):
@@ -131,7 +139,9 @@ def withheld(conn, user: UUID) -> UUID:
     return make_decision(conn, make_run(conn, user, trigger="on_demand"), user, job)
 
 
-def test_feedback_on_another_persons_decision_or_on_a_decision_that_is_not_a_shown_match_is_a_404_and_writes_nothing(conn):
+def test_feedback_on_another_persons_decision_or_on_a_decision_that_is_not_a_shown_match_is_a_404_and_writes_nothing(
+    conn,
+):
     ada, bob = match(conn), match(conn)
     for decision in (bob.decision, withheld(conn, ada.user), uuid4()):
         with pytest.raises(ApiError) as refused_:
@@ -188,7 +198,10 @@ def test_a_company_added_to_an_existing_exclusion_keeps_the_names_already_there(
 def test_a_company_that_is_already_excluded_under_any_spelling_proposes_nothing(conn, typed):
     m = match(conn)
     service.set_constraint(conn, m.user, "excluded_company", {"company_names": [typed]}, "Never them.")
-    assert feedback.record_feedback(conn, m.user, m.decision, "dismiss", "not_interested_company", None).proposal_event_id is None
+    assert (
+        feedback.record_feedback(conn, m.user, m.decision, "dismiss", "not_interested_company", None).proposal_event_id
+        is None
+    )
 
 
 def test_a_dismissal_of_a_role_proposes_a_negative_target_title_preference(conn):
@@ -196,17 +209,28 @@ def test_a_dismissal_of_a_role_proposes_a_negative_target_title_preference(conn)
     result = feedback.record_feedback(conn, m.user, m.decision, "dismiss", "not_interested_role", None)
     row = proposal(conn, result.proposal_event_id)
     assert (row["entity"], row["operation"], row["origin"]) == ("preference", "create", "feedback")
-    assert (row["after"]["kind"], row["after"]["value"], row["after"]["weight"]) == ("target_title", "senior data engineer", -2)
+    assert (row["after"]["kind"], row["after"]["value"], row["after"]["weight"]) == (
+        "target_title",
+        "senior data engineer",
+        -2,
+    )
     assert row["reason"] == "You dismissed Senior Data Engineer at Initech Demo as a role you are not interested in."
     profile.confirm(conn, m.user, result.proposal_event_id)
     (preference,) = profile.get_record(conn, m.user)["preferences"]
-    assert (preference["kind"], preference["value"], preference["weight"]) == ("target_title", "senior data engineer", -2)
+    assert (preference["kind"], preference["value"], preference["weight"]) == (
+        "target_title",
+        "senior data engineer",
+        -2,
+    )
 
 
 def test_a_seniority_dismissal_proposes_only_when_the_posting_states_its_seniority(conn):
     stated, silent = match(conn, seniority="senior"), match(conn)
     row = proposal(
-        conn, feedback.record_feedback(conn, stated.user, stated.decision, "dismiss", "seniority_mismatch", None).proposal_event_id
+        conn,
+        feedback.record_feedback(
+            conn, stated.user, stated.decision, "dismiss", "seniority_mismatch", None
+        ).proposal_event_id,
     )
     assert (row["after"]["kind"], row["after"]["value"], row["after"]["weight"]) == ("seniority", "senior", -2)
     unknown = feedback.record_feedback(conn, silent.user, silent.decision, "dismiss", "seniority_mismatch", None)
@@ -221,7 +245,10 @@ def test_a_location_dismissal_proposes_the_stated_city_else_the_stated_country_e
         row = proposal(conn, result.proposal_event_id)
         values.append((row["after"]["kind"], row["after"]["value"], row["after"]["weight"]))
     assert values == [("location", "bengaluru", -2), ("location", "de", -2)]
-    assert feedback.record_feedback(conn, neither.user, neither.decision, "dismiss", "location", None).proposal_event_id is None
+    assert (
+        feedback.record_feedback(conn, neither.user, neither.decision, "dismiss", "location", None).proposal_event_id
+        is None
+    )
 
 
 @pytest.mark.parametrize(
