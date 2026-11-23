@@ -77,7 +77,7 @@ POLICIES = (
     }
     | {(table, "worker_all") for table in TABLES}
     | {
-    # plan 09-01: what an organization token reads of the hiring side (accepted introductions, active consent)
+        # plan 09-01: what an organization token reads of the hiring side (accepted introductions, active consent)
         ("organizations", "agent_organizations"),
         ("roles", "agent_roles"),
         ("introductions", "agent_introductions"),
