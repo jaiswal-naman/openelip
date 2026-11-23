@@ -106,7 +106,7 @@ export function MatchesStep() {
             <ul className={styles.cards}>
               {matches.slice(0, TODAY_CARDS).map((match) => (
                 <li key={match.decision_id}>
-                  <MatchCard match={match} />
+                  <MatchCard match={match} headingLevel={3} />
                 </li>
               ))}
             </ul>

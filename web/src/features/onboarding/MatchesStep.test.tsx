@@ -52,6 +52,8 @@ describe("onboarding step 6", () => {
     const card = await screen.findByRole("article", { name: "Demo posting (invented): Quillscript Platform Engineer" });
     expect(within(card).getByRole("link", { name: /Quillscript Platform Engineer/ })).toHaveAttribute("href", expect.stringMatching(/^\/app\/matches\/[0-9a-f-]{36}$/));
     expect(within(card).getByText("Meets 2 of 2 required. 1 preferred item has no evidence.")).toBeInTheDocument();
+    // the cards sit under the step's own "Your first matches" heading, so their titles are one level below it
+    expect(within(card).getByRole("heading", { level: 3 })).toHaveTextContent("Demo posting (invented): Quillscript Platform Engineer");
     expect(screen.getByRole("link", { name: "Go to Today" })).toHaveAttribute("href", "/app/today");
   });
 

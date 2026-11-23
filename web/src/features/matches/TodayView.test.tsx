@@ -151,6 +151,7 @@ describe("Today: the matches", () => {
       "Demo posting (invented): Quillscript Platform Engineer",
       "Demo posting (invented): Data Reliability Engineer",
     ]);
+    expect(within(cards[0]).getByRole("heading", { level: 2 })).toBeInTheDocument(); // Today has no heading of its own between the page title and the cards
     expect(within(cards[0]).getByRole("link", { name: /Quillscript Platform Engineer/ })).toHaveAttribute("href", `/app/matches/${DECISION_ID}`);
     expect(within(cards[0]).getByText("Source: Lever")).toBeInTheDocument();
     expect(within(cards[1]).getByText("Pay: not stated (unverified)")).toBeInTheDocument();

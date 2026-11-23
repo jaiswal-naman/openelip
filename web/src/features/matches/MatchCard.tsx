@@ -10,18 +10,20 @@ import styles from "./today.module.css";
  * One of today's matches (MAT-02, FRONTEND_UI 3.3): the job, what it meets, what the posting leaves unsaid about the
  * constraints, where it came from and when it was last seen open. The words come from the stored match; none of it is
  * generated here. A job shown again because its posting changed says what changed (MAT-07). Everything from the posting is
- * rendered as text, never as markup (threat T-04-31).
+ * rendered as text, never as markup (threat T-04-31). The title is a level 2 heading on Today; a page that puts the cards
+ * under a heading of its own (onboarding step 6) asks for level 3, so the outline stays in order.
  */
-export function MatchCard({ match }: { match: MatchView }) {
+export function MatchCard({ match, headingLevel = 2 }: { match: MatchView; headingLevel?: 2 | 3 }) {
   const headingId = useId();
+  const Heading = headingLevel === 2 ? "h2" : "h3";
   const { job } = match;
   const words = unplacedWords(job);
   return (
     <article className={styles.card} aria-labelledby={headingId}>
       <div className={styles.cardMain}>
-        <h2 id={headingId} className={`t-card ${styles.cardTitle}`}>
+        <Heading id={headingId} className={`t-card ${styles.cardTitle}`}>
           <Link href={`/app/matches/${match.decision_id}`}>{job.title}</Link>
-        </h2>
+        </Heading>
         <p className={styles.company}>{job.company_name.trim() === "" ? "Company not stated" : job.company_name}</p>
         <p className={styles.meta}>
           <span>{locationText(job)}</span>
