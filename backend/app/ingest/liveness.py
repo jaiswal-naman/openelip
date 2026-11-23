@@ -11,6 +11,7 @@ one UPDATE writes the outcome. Each UPDATE only touches a job that is still open
 """
 
 import time
+from collections.abc import Sequence
 
 from sqlalchemy import Connection, text
 
@@ -35,6 +36,7 @@ ALIVE = text(
         WHERE id = :id AND status = 'open'"""
 )
 UNSURE = text("UPDATE jobs SET apply_check_ok = NULL, apply_checked_at = now() WHERE id = :id AND status = 'open'")
+UNCHECKED = text("SELECT id FROM jobs WHERE id = ANY(:ids) AND apply_check_ok IS NULL")
 
 
 def _ask(conn: Connection, job_id: int, apply_url: str) -> bool | None:
@@ -53,6 +55,16 @@ def _ask(conn: Connection, job_id: int, apply_url: str) -> bool | None:
         return conn.execute(ALIVE, {"id": job_id}).rowcount == 1
     conn.execute(UNSURE, {"id": job_id})
     return None
+
+
+def unchecked_apply_links(conn: Connection, job_ids: Sequence[int]) -> set[int]:
+    """The jobs among `job_ids` whose apply link has no conclusive check on their current text: the last check could
+    not tell (the site did not answer), the posting changed since (new text clears the outcome), or none was ever made.
+    A job that is not in the index is not among them. The morning brief marks these "not re-checked" (BRF-01); the
+    column is ingest's alone (ARCHITECTURE 3.3), so the brief asks here instead of reading it."""
+    if not job_ids:
+        return set()
+    return set(conn.execute(UNCHECKED, {"ids": list(job_ids)}).scalars())
 
 
 def verify_live(conn: Connection, job_id: int) -> bool | None:
