@@ -1,18 +1,21 @@
 """Plan 06-03: employer roles published as unlisted jobs on a `direct` source (ingest.api.publish_direct_job).
 
-Everything runs in the `conn` fixture's transaction as the worker role, the one that may write the index. Organizations,
-roles and the text are invented.
+Everything runs in the `conn` fixture's transaction as the API login, the one that publishes: the rows are written by
+direct_job_open and direct_job_close, which take the job's fields from the role and refuse anyone who is not a member of
+its organization (db/sql/p6_0601_publish_close.sql). Organizations, roles and the text are invented.
 """
 
 from datetime import datetime, timezone
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 from app.ingest import api, jobs
 from app.ingest.api import DirectRequirement
 from tests.hiring import world
-from tests.hiring.factories import make_org
+from tests.hiring.factories import make_org, make_role
 
 NOW = datetime(2030, 1, 1, 10, 30, tzinfo=timezone.utc)
 DESCRIPTION = "Halden Demo needs a data engineer.\nPython is required.\nSQL is required.\nAirflow is a plus."
@@ -27,34 +30,41 @@ def items(description: str = DESCRIPTION) -> list[DirectRequirement]:
     return found
 
 
-def publish(conn, org, role_id, **over):
-    fields = {
-        "organization_id": org.id,
-        "company_name": org.name,
-        "role_id": role_id,
-        "title": "Data engineer",
-        "description": DESCRIPTION,
-        "country": "IN",
-        "city": "Pune",
-        "work_arrangements": ["hybrid"],
-        "employment_type": "full_time",
-        "seniority": "senior",
-        "salary_min": 80_000,
-        "salary_max": 120_000,
-        "salary_currency": "USD",
-        "visa_sponsorship": "unknown",
-        "requirements": items(),
-        **over,
-    }
-    return api.publish_direct_job(conn, **fields)
+def draft(conn, org):
+    """A ready draft with the fields its job must copy. Made before act_as, which drops the superuser's privileges."""
+    return make_role(
+        conn,
+        org,
+        description=DESCRIPTION,
+        requirements=QUOTES,
+        pay=(80_000, 120_000, "USD"),
+        country="IN",
+        city="Pune",
+        arrangements=["hybrid"],
+        employment_type="full_time",
+        seniority="senior",
+        confirmed=True,
+    )
+
+
+def link(conn, role, job_id):
+    """What the hiring desk's publish does next, as the same API login: the role points at its job."""
+    conn.execute(text("UPDATE roles SET job_id = :job WHERE id = :id"), {"job": job_id, "id": role.id})
+
+
+def publish(conn, role):
+    return api.publish_direct_job(
+        conn, role_id=role.id, title=role.title, description=DESCRIPTION, requirements=items()
+    )
 
 
 def test_a_role_becomes_one_unlisted_open_job_on_the_organizations_direct_source(conn):
     org = make_org(conn)
-    role_id = uuid4()
-    world.act_as(conn, "app_worker", org.owner)
+    role = draft(conn, org)
+    role_id = role.id
+    world.act_as(conn, "app_api", org.owner)
 
-    job_id = publish(conn, org, role_id)
+    job_id = publish(conn, role)
 
     job = conn.execute(
         text("SELECT *, CAST(work_arrangements AS text[]) AS arrangements FROM jobs WHERE id = :id"), {"id": job_id}
@@ -84,11 +94,12 @@ def test_a_role_becomes_one_unlisted_open_job_on_the_organizations_direct_source
 
 def test_the_same_organization_reuses_its_source_and_another_organization_gets_its_own(conn):
     first, second = make_org(conn), make_org(conn, "Brightwell Demo")
-    world.act_as(conn, "app_worker", first.owner)
-
-    one = publish(conn, first, uuid4())
-    two = publish(conn, first, uuid4())
-    other = publish(conn, second, uuid4())
+    drafts = draft(conn, first), draft(conn, first), draft(conn, second)
+    world.act_as(conn, "app_api", first.owner)
+    one = publish(conn, drafts[0])
+    two = publish(conn, drafts[1])
+    world.act_as(conn, "app_api", second.owner)
+    other = publish(conn, drafts[2])
 
     source = {
         job: conn.execute(text("SELECT source_id FROM jobs WHERE id = :id"), {"id": job}).scalar_one()
@@ -103,8 +114,10 @@ def test_the_fetch_selection_skips_the_direct_source_and_search_never_returns_th
     active = conn.execute(
         text("INSERT INTO job_sources (ats, token, company_name) VALUES ('lever', 'acme', 'Acme') RETURNING id")
     ).scalar_one()
-    world.act_as(conn, "app_worker", org.owner)
-    job_id = publish(conn, org, uuid4())
+    role = draft(conn, org)
+    world.act_as(conn, "app_api", org.owner)
+    job_id = publish(conn, role)
+    world.act_as(conn, "app_worker")  # the fetch sweep runs in the worker
 
     assert jobs.queue_fetches(conn, NOW) == 1  # only the lever source
     queued = conn.execute(text("SELECT payload FROM queue_jobs WHERE kind = 'ingest.fetch'")).scalars().all()
@@ -116,11 +129,36 @@ def test_the_fetch_selection_skips_the_direct_source_and_search_never_returns_th
 
 def test_closing_sets_the_job_closed_with_its_time_and_twice_is_harmless(conn):
     org = make_org(conn)
-    world.act_as(conn, "app_worker", org.owner)
-    job_id = publish(conn, org, uuid4())
+    role = draft(conn, org)
+    world.act_as(conn, "app_api", org.owner)
+    job_id = publish(conn, role)
+    link(conn, role, job_id)
 
     api.close_direct_job(conn, job_id)
     api.close_direct_job(conn, job_id)
 
     row = conn.execute(text("SELECT status, closed_at FROM jobs WHERE id = :id"), {"id": job_id}).one()
     assert row.status == "closed" and row.closed_at is not None
+
+
+@pytest.mark.parametrize("who", ["outsider", "agent"])
+def test_opening_a_job_for_a_role_is_refused_to_a_caller_outside_its_organization_and_to_an_agent_token(conn, who):
+    org = make_org(conn)
+    role = draft(conn, org)
+    if who == "outsider":
+        world.act_as(conn, "app_api", make_org(conn, "Brightwell Demo").owner)
+    else:
+        world.act_as(conn, "app_api", org.owner, token=uuid4())
+
+    with pytest.raises(DBAPIError, match="not a member of the organization"):  # raised before any write
+        publish(conn, role)
+
+
+def test_a_role_that_already_has_its_job_gets_no_second_one(conn):
+    org = make_org(conn)
+    role = draft(conn, org)
+    world.act_as(conn, "app_api", org.owner)
+    link(conn, role, job_id=publish(conn, role))
+
+    with pytest.raises(DBAPIError, match="cannot get a new job"):
+        publish(conn, role)

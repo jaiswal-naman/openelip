@@ -273,7 +273,12 @@ def test_while_a_reply_of_the_same_person_runs_another_post_is_409_reply_running
 
     for target in (session, other):  # the rule is per person, not per session
         error = refused(say(w, target, "And another thing."), 409, "conflict")
-        assert error["details"] == {"state": "reply_running"}
+        # the details name the running reply, in whichever session it is, so the client can stop it or follow it
+        assert error["details"] == {
+            "state": "reply_running",
+            "message_id": first["message_id"],
+            "session_id": str(session),
+        }
     assert count(w.engine, "chat_messages WHERE role = 'user'") == 1
 
     gate.release.set()

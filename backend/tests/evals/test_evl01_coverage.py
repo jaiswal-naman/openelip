@@ -199,6 +199,60 @@ def test_editing_a_prompt_file_changes_its_hash_so_the_recordings_that_named_the
         assert any(task == "record.propose" for _, task in stale(manifest, versions)), suite
 
 
+# ---- the older recorded suites (05-FIXES B5) ----------------------------------------
+
+OLDER_MANIFEST = EVALS / "older_recordings_manifest.json"
+
+
+def older_current_versions() -> dict[str, str]:
+    """The current version of every prompt the three older suites' recordings answer, from the code that sends it."""
+    from app.ingest.requirements import task as requirement_task
+    from app.match import evidence
+    from app.profile.extract import workflow
+
+    return {
+        **workflow.prompt_versions(),
+        requirement_task.TASK: requirement_task.PROMPT_VERSION,
+        evidence.TASK: evidence.PROMPT_VERSION,
+    }
+
+
+def older_stale(manifest: dict, versions: dict[str, str]) -> list[tuple[str, str]]:
+    """The (suite, task) entries whose stored version is not the current one (an entry for a task nobody sends too)."""
+    return [
+        (suite, task)
+        for suite, tasks in manifest.items()
+        if suite != "note"
+        for task, version in tasks.items()
+        if versions.get(task) != version
+    ]
+
+
+def test_the_stored_prompt_versions_of_the_three_older_suites_are_the_current_prompt_hashes():
+    manifest = json.loads(OLDER_MANIFEST.read_text(encoding="utf-8"))
+    assert {name for name in manifest if name != "note"} == {
+        "resume_extraction",
+        "requirement_extraction",
+        "evidence_faithfulness",
+    }
+    assert older_stale(manifest, older_current_versions()) == [], "re-record the suite that names an old prompt version"
+    # every task the current code sends is listed: a new prompt cannot slip in without a recording
+    assert {t for suite, tasks in manifest.items() if suite != "note" for t in tasks} == set(older_current_versions())
+    baseline = json.loads((EVALS / "requirement_extraction/baseline.json").read_text(encoding="utf-8"))
+    assert (
+        baseline["runs"]["replay"]["config"]["prompt_version"]
+        == manifest["requirement_extraction"]["job.requirements.extract"]
+    )
+
+
+@pytest.mark.parametrize("task", ["resume.facts.roles", "job.requirements.extract", "match.evidence.score"])
+def test_an_edited_prompt_of_an_older_suite_makes_its_stored_version_stale(task):
+    manifest = json.loads(OLDER_MANIFEST.read_text(encoding="utf-8"))
+    edited = {**older_current_versions(), task: "0" * 12}  # as if the prompt file had changed and nothing re-recorded
+    suites = [suite for suite, tasks in manifest.items() if suite != "note" and task in tasks]
+    assert suites and [t for _, t in older_stale(manifest, edited)] == [task] * len(suites)
+
+
 # ---- the gate fails below the floor ----------------------------------------
 
 

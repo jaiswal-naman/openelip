@@ -4,6 +4,7 @@ or --live. These tests only read names; no database is connected to.
 """
 
 import pytest
+from sqlalchemy import text
 
 from app.evals import scratch
 
@@ -48,3 +49,51 @@ def test_only_the_workers_database_is_read_because_the_scripts_never_connect_as_
     worker_at(monkeypatch, "app_test")
     monkeypatch.setenv("DATABASE_URL_MIGRATE", "postgresql://app:placeholder@127.0.0.1:5433/app")
     assert scratch.refusal(live=False) is None
+
+
+# ---- a replay refuses before it writes anything (05-FIXES B6) ----------------------------------------
+
+
+@pytest.mark.parametrize(
+    "variable", ["DATABASE_URL_MIGRATE", "DATABASE_URL_API", "DATABASE_URL_WORKER", "DATABASE_URL_MATCH"]
+)
+@pytest.mark.parametrize(
+    "suite", ["injection", "chat", "record_proposals", "tailoring_integrity", "evidence_faithfulness"]
+)
+def test_a_replay_with_any_of_the_four_logins_on_a_database_that_is_not_scratch_writes_nothing(
+    engine, monkeypatch, variable, suite
+):
+    from sqlalchemy.engine import make_url
+
+    from app.evals import runner
+    from app.platform import config
+
+    real = config.get()
+    urls = {
+        "DATABASE_URL_MIGRATE": real.database_url_migrate,
+        "DATABASE_URL_API": real.database_url_api,
+        "DATABASE_URL_WORKER": real.database_url_worker,
+        "DATABASE_URL_MATCH": real.database_url_match,
+    }
+    urls[variable] = make_url(urls[variable]).set(database="app").render_as_string(hide_password=False)
+    settings = config.load({"APP_ENV": "test", "LLM_PROVIDER": "fake", **urls})
+    monkeypatch.setattr(config, "get", lambda: settings)
+    with pytest.raises(runner.NotAScratchDatabase, match="'app'"):
+        runner.run_suite(suite)
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT count(*) FROM eval_runs")).scalar_one() == 0
+
+
+def test_a_database_called_evals_is_scratch_too(monkeypatch):
+    from sqlalchemy.engine import make_url
+
+    from app.evals import runner
+    from app.platform import config
+
+    real = config.get()
+    names = {
+        name: make_url(getattr(real, name.lower())).set(database="evals").render_as_string(hide_password=False)
+        for name in ("DATABASE_URL_MIGRATE", "DATABASE_URL_API", "DATABASE_URL_WORKER", "DATABASE_URL_MATCH")
+    }
+    monkeypatch.setattr(config, "get", lambda: config.load({"APP_ENV": "test", "LLM_PROVIDER": "fake", **names}))
+    runner.refuse_unless_scratch()  # does not raise

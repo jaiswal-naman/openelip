@@ -31,7 +31,7 @@ from app.profile.extract.schemas import CandidateFact
 from app.profile.extract.workflow import extract_facts
 
 FACTS = EVALS / "resume_extraction" / "facts"
-DB_VARIABLES = ("DATABASE_URL_MIGRATE", "DATABASE_URL_API", "DATABASE_URL_WORKER")
+DB_VARIABLES = ("DATABASE_URL_MIGRATE", "DATABASE_URL_API", "DATABASE_URL_WORKER", "DATABASE_URL_MATCH")
 ROLES, EDUCATION_SKILLS, SUMMARY = (task.name for task in workflow.TASKS)
 
 

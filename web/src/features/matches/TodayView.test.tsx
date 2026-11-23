@@ -338,6 +338,33 @@ describe("Today: introductions (Phase 6)", () => {
     expect(within(lines).queryByText(/Backend engineer/)).not.toBeInTheDocument();
   });
 
+  it("stays on Decisions after the last open ask is accepted, and lists it there as accepted", async () => {
+    const user = userEvent.setup();
+    let list: object[] = [ask];
+    const signals = { sent: [], received: [], quota: { used: 0, limit: 3, resets_at: "2026-11-30T00:00:00Z" } };
+    renderWithApi(
+      <TodayView />,
+      routes({
+        [`GET /v1/briefs/${BRIEF_ID}`]: ok(brief({ decisions: [] })), // the ask is the only thing waiting
+        "GET /v1/introductions": () => ok(list),
+        [`GET /v1/introductions/${ASK}`]: () => ok(detail),
+        "GET /v1/signals": () => ok(signals),
+        [`POST /v1/introductions/${ASK}/accept`]: () => {
+          list = [{ ...ask, status: "accepted", responded_at: "2026-11-23T09:00:00Z" }];
+          return ok({});
+        },
+      }),
+    );
+    const card = await screen.findByRole("article", { name: "Halden Demo asks about Backend engineer" });
+    expect(screen.getByRole("tab", { name: "Decisions (1)" })).toHaveAttribute("aria-selected", "true");
+    await user.click(within(card).getByRole("button", { name: "Review and accept" }));
+    await user.click(await screen.findByRole("button", { name: "Accept and share" }));
+
+    const accepted = await screen.findByRole("region", { name: "Introductions you accepted" });
+    expect(accepted).toHaveTextContent("Halden Demo: Backend engineer");
+    expect(screen.getByRole("tab", { name: "Decisions (0)" })).toHaveAttribute("aria-selected", "true");
+  });
+
   it("?decision=<introduction id> opens the consent sheet, not a match", async () => {
     nav.search = `decision=${ASK}`;
     renderWithApi(<TodayView />, routes({ "GET /v1/introductions": ok([ask]), [`GET /v1/introductions/${ASK}`]: ok(detail), "GET /v1/signals": ok({ sent: [], received: [], quota: { used: 0, limit: 3, resets_at: "2026-11-30T00:00:00Z" } }) }));

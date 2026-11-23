@@ -2,9 +2,10 @@
 
 Every function takes an open connection and the signed-in person's id. Reads and draft edits run on the request's
 connection as app_api, so row-level security keeps one organization out of another: a role the caller cannot see is
-"not found" (404), never "forbidden". Publish and close run in one worker-role transaction of their own, because the
-job index (`jobs`, `job_sources`, `job_requirements`) and the withdrawal of asked introductions are not writable by
-app_api; that transaction re-checks membership itself before it touches anything.
+"not found" (404), never "forbidden". Publish and close run in one app_api transaction of their own. The job index
+(`jobs`, `job_sources`, `job_requirements`) and the withdrawal of asked introductions are not writable by app_api, so
+those writes go through three SECURITY DEFINER functions that check membership again (db/sql/p6_0601_publish_close.sql):
+the API process holds no worker login, which serves every person.
 
 A role is a draft until it is published. A draft's requirements start as what the model read from the description
 (each with its span, in code points) and become the employer's own once confirmed; items the employer typed carry no
@@ -254,7 +255,7 @@ def create(
         ),
         {"org": org_id, "caller": caller, **columns},
     ).scalar_one()
-    result = intake.extract(description, caller)
+    result = intake.extract(conn, description, caller)
     for ordinal, item in enumerate(_extracted(result.rows), start=1):
         _insert_requirement(conn, role_id, org_id, ordinal, item)
     view = _view(conn, _fetch(conn, role_id))
@@ -303,7 +304,7 @@ def update(conn: Connection, caller: UUID, role_id: UUID, changes: Mapping[str, 
 
 def _read_again(conn: Connection, caller: UUID, role: Row[Any], description: str) -> dict[str, Any]:
     """Replace the extracted items with what the new description yields; typed items keep their place after them."""
-    result = intake.extract(description, caller)
+    result = intake.extract(conn, description, caller)
     typed = conn.execute(
         text("SELECT count(*) FROM role_requirements WHERE role_id = :id AND span IS NULL"), {"id": role.id}
     ).scalar_one()
@@ -372,8 +373,7 @@ def _kept_span(description: str, item: RequirementInput) -> RequirementInput:
 
 
 def _locked_for_member(conn: Connection, role_id: UUID) -> Row[Any]:
-    """The role, locked, only when the caller is an active member of its organization (the worker role sees every row,
-    so this is the whole of the authorization: 404 for anyone else)."""
+    """The role, locked, only when the caller is an active member of its organization: 404 for anyone else."""
     row = conn.execute(
         text(_ROLE + " AND app_is_org_member(r.organization_id) FOR UPDATE OF r"), {"id": role_id}
     ).one_or_none()
@@ -416,8 +416,9 @@ def publish(caller: UUID, role_id: UUID) -> None:
     422 pay_range_required or requirements_unconfirmed (every blocker listed); 409 conflict answers_overdue while an
     answer is overdue. Nothing changes on a refusal."""
     try:
-        # The worker role, because jobs and job_sources are not writable by app_api; membership is checked below.
-        with db.transaction(caller, role="worker") as conn:
+        # The API login, under the roles policy; the job itself is written by direct_job_open, which checks membership
+        # again (the API process holds no worker login: it serves every person).
+        with db.transaction(caller) as conn:
             role = _locked_for_member(conn, role_id)
             if role.status != "draft":
                 raise _wrong_state(role.status)
@@ -438,27 +439,9 @@ def publish(caller: UUID, role_id: UUID) -> None:
                     "This organization has answers overdue, so it cannot open a role until they are answered.",
                     {"state": "answers_overdue"},
                 )
-            company = conn.execute(
-                text("SELECT name FROM organizations WHERE id = :id"), {"id": role.organization_id}
-            ).scalar_one()
             description, requirements = _job_text(role.description, items)
             job_id = publish_direct_job(
-                conn,
-                organization_id=role.organization_id,
-                company_name=company,
-                role_id=role_id,
-                title=role.title,
-                description=description,
-                country=role.country,
-                city=role.city,
-                work_arrangements=role.work_arrangements,
-                employment_type=role.employment_type,
-                seniority=role.seniority,
-                salary_min=role.salary_min,
-                salary_max=role.salary_max,
-                salary_currency=role.salary_currency,
-                visa_sponsorship=role.visa_sponsorship,
-                requirements=requirements,
+                conn, role_id=role_id, title=role.title, description=description, requirements=requirements
             )
             conn.execute(
                 text("UPDATE roles SET job_id = :job, status = 'open', opened_at = now() WHERE id = :id"),
@@ -490,14 +473,13 @@ def close(caller: UUID, role_id: UUID) -> None:
     """Close an open role: its asked introductions are withdrawn, accepted ones keep their answer obligation, the job
     is closed, and one audit row is written. 409 conflict (draft, closed) for a role that is not open."""
     try:
-        with db.transaction(caller, role="worker") as conn:  # worker: asked introductions and jobs are not app_api's
+        # The API login; asked introductions and the job are not app_api's to write, so two functions that check
+        # membership again do those writes (db/sql/p6_0601_publish_close.sql).
+        with db.transaction(caller) as conn:
             role = _locked_for_member(conn, role_id)
             if role.status != "open":
                 raise _wrong_state(role.status)
-            withdrawn = conn.execute(
-                text("UPDATE introductions SET status = 'withdrawn' WHERE role_id = :id AND status = 'asked'"),
-                {"id": role_id},
-            ).rowcount
+            withdrawn = conn.execute(text("SELECT withdraw_role_asks(:id)"), {"id": role_id}).scalar_one()
             conn.execute(text("UPDATE roles SET status = 'closed', closed_at = now() WHERE id = :id"), {"id": role_id})
             close_direct_job(conn, role.job_id)
             audit_log(

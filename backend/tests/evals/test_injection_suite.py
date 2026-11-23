@@ -222,6 +222,36 @@ def test_with_the_quote_rule_switched_off_a_proposal_quoting_a_posting_or_a_fact
     assert gate.main(SUITE, done.run_id) == 1
 
 
+def test_with_the_false_claim_check_switched_off_the_six_replies_that_say_it_is_done_fail_the_gate(world, monkeypatch):
+    monkeypatch.setattr(loop, "checked_reply", lambda reply: reply)
+    done = runner.run_suite(SUITE)
+    failed = failed_cases(world, done.run_id)
+    claiming = {c["key"] for c in CASES if c.get("claims_done")}
+    assert claiming == {"inj-01", "inj-02", "inj-03", "inj-07", "inj-11", "inj-16"}
+    assert done.status == "failed" and failed == {k: ["false_done_claim_flagged"] for k in claiming}
+
+
+def test_every_recorded_reply_that_the_check_flags_is_a_case_that_requires_the_note():
+    flagged = set()
+    for case in CASES:
+        if case["entry"] != "chat":
+            continue
+        steps = p5_env.read_json(SUITE_DIR / "recordings" / f"{case['key']}.json")
+        replies = [s["reply"] for s in steps if isinstance(s, dict) and isinstance(s.get("reply"), str)]
+        if replies and loop.claims_done(replies[-1]):
+            flagged.add(case["key"])
+    assert flagged == {c["key"] for c in CASES if c.get("claims_done")}
+
+
+def test_an_unconfirmed_case_that_stores_no_proposal_at_all_is_not_contained(world, monkeypatch):
+    monkeypatch.setattr(proposals, "_check", lambda item, user_text, current, declined: "unchanged")
+    done = runner.run_suite(SUITE)
+    failed = failed_cases(world, done.run_id)
+    unconfirmed = {c["key"] for c in CASES if c.get("proposals") == "unconfirmed"}
+    assert unconfirmed and unconfirmed <= set(failed)
+    assert all("proposals_as_allowed" in failed[k] for k in unconfirmed)
+
+
 def test_with_tailor_layer_one_switched_off_every_hijacked_edit_reaches_layer_two_and_the_gate_fails(
     world, monkeypatch
 ):
@@ -276,12 +306,25 @@ def test_with_packet_layer_one_switched_off_a_hijacked_sentence_reaches_the_care
     world, monkeypatch
 ):
     monkeypatch.setattr(apply_packet.tailor, "unsupported_reason", lambda *args, **fields: None)
+    monkeypatch.setattr(
+        apply_packet, "reserved_topic", lambda sentence: None
+    )  # fix A3's keyword floor is its own control
     done = runner.run_suite(SUITE)
     failed = failed_cases(world, done.run_id)
     packets = {c["key"] for c in CASES if c["entry"] == "packet"}
     assert done.status == "failed" and set(failed) == packets
     assert all("no_forbidden_sentence_kept" in checks for checks in failed.values())
     assert all("candidate_only_questions_blank" not in checks for checks in failed.values())  # that rule held alone
+
+
+def test_with_packet_layer_one_off_the_pay_start_date_and_authorisation_floor_still_holds_those_cases(
+    world, monkeypatch
+):
+    """Fix A3: the keyword floor removes a hijacked sentence about pay (inj-33), a start date (inj-34) or work
+    authorisation (inj-36) even with layer 1 off. The case that invents experience (inj-35) needs layer 1."""
+    monkeypatch.setattr(apply_packet.tailor, "unsupported_reason", lambda *args, **fields: None)
+    failed = failed_cases(world, runner.run_suite(SUITE).run_id)
+    assert set(failed) == {"inj-35"}
 
 
 def test_a_case_whose_recording_is_missing_ends_the_run_in_error_and_the_gate_refuses_it(world, tmp_path, capsys):

@@ -402,9 +402,9 @@ The brief email's `List-Unsubscribe` header names this `POST` URL. Its visible l
 | POST | `/v1/chat/sessions` | Open a session: `kind` is `onboarding` (the guided intake that proposes constraints and preferences) or `open` | C | REC-03, CHT-01 | 4 |
 | GET | `/v1/chat/sessions` | List sessions | C | CHT-01 | 4 |
 | GET | `/v1/chat/sessions/{session_id}/messages` | Transcript, including citations and proposal references | C | CHT-01 | 4 |
-| POST | `/v1/chat/sessions/{session_id}/messages` | Send a message: `text`, and optionally `context_job_id` (a job id; it becomes the agent's context for this message, so the panel's "context: Acme" reaches it). `202` with the reply's `message_id` and `stream_url`; generation starts at once | C | CHT-01, CHT-02, CHT-03, CHT-04 | 4 |
+| POST | `/v1/chat/sessions/{session_id}/messages` | Send a message: `text`, and optionally `context_job_id` (a job id; it becomes the agent's context for this message, so the panel's "context: Acme" reaches it). `202` with the reply's `message_id` and `stream_url`; generation starts at once. While another reply of the person is still being written, `409 conflict` with `details` `{"state": "reply_running", "message_id", "session_id"}` naming that reply, so the client can stop it or follow its stream | C | CHT-01, CHT-02, CHT-03, CHT-04 | 4 |
 | GET | `/v1/chat/sessions/{session_id}/messages/{message_id}/stream` | Server-sent events for one reply; reconnect with `Last-Event-ID` (section 4.2) | C | CHT-01 | 4 |
-| POST | `/v1/chat/sessions/{session_id}/messages/{message_id}/stop` | Stop generating; the partial reply is kept with `finish_reason: "stopped"` | C | CHT-01 | 4 |
+| POST | `/v1/chat/sessions/{session_id}/messages/{message_id}/stop` | Stop generating. The reply ends with `finish_reason: "stopped"` and its stored `text` is `''`: only a reply that ends `complete` keeps its text (the words already streamed are not kept) | C | CHT-01 | 4 |
 
 ### 2.9 `/v1/tailored-resumes`
 
@@ -415,6 +415,8 @@ The brief email's `List-Unsubscribe` header names this `POST` URL. Its visible l
 | GET | `/v1/tailored-resumes/{tailored_resume_id}` | Status, the verified edits as a per-edit diff with supporting fact ids, and how many proposed edits the verifier discarded, by `discard_reason` | C | TLR-01, TLR-02 | 5 |
 | POST | `/v1/tailored-resumes/{tailored_resume_id}/decisions` | Approve or reject edits. There is no free-text edit: new experience goes into the record first | C | TLR-03 | 5 |
 | GET | `/v1/tailored-resumes/{tailored_resume_id}/file?format=pdf` | The resume rendered on demand from approved edits only, as PDF or DOCX (`format=docx`) | C | TLR-03 | 5 |
+
+An approved edit reaches a file only while every one of its `supporting_fact_ids` is still one of the candidate's usable facts. If the candidate has since retired, rejected or corrected a fact an approved edit rests on (an added skill, or a second fact a rephrase cites), the edit is left out of the PDF and DOCX, of the packet PDF, and of the DOCX in the data archive; the base resume shows the current record. `POST .../decisions` refuses to approve such an edit: `409 conflict` with `details.reason: "fact_not_usable"` (rejecting it is allowed, and nothing in the request is applied). The data archive (3.18) keeps every edit row of `tailor.json` and labels each with `archive_label`: `discarded` (the verifier's discarded edits keep their text there, as the candidate's own data), `not_exported_fact_not_usable` (approved, but left out of every file for the reason above) or `kept`; `files/tailored-resumes/README.txt` says so.
 
 ### 2.10 `/v1/applications`
 
@@ -428,7 +430,7 @@ The brief email's `List-Unsubscribe` header names this `POST` URL. Its visible l
 | GET | `/v1/applications/packets/{packet_id}` | One packet: status, answers with the facts they cite, the note | C | APP-02 | 5 |
 | GET | `/v1/applications/packets/{packet_id}/file?format=pdf` | The packet rendered as a PDF | C | APP-02 | 5 |
 
-Applications keep the five APP-01 statuses; `talking` is a campaign stage only. A status recorded on a linked application moves its campaign: `applied` to `applied`, `interview` to `interview`, `offer` to `offer`, and `rejected` or `no_response` to `closed` with that reason. Recording `applied` also marks the campaign's `submit_application` action `executed`. The application packet (APP-02) is produced by a campaign and read with `GET /v1/campaigns/{campaign_id}`. Until campaigns exist (Phase 5), a packet is prepared on request for one job with the four `/v1/applications/packets` routes above; each person has one current packet per job, and asking again supersedes it. A person has one application per job (`409 conflict`, `details.state` `application_exists`; `same_status` for a status equal to the current one), and a new status may not predate the current one or lie more than five minutes in the future (`422 validation_failed`).
+Applications keep the five APP-01 statuses; `talking` is a campaign stage only. A status recorded on a linked application moves its campaign: `applied` to `applied`, `interview` to `interview`, `offer` to `offer`, and `rejected` or `no_response` to `closed` with that reason. Recording `applied` also marks the campaign's `submit_application` action `executed`. The application packet (APP-02) is produced by a campaign and read with `GET /v1/campaigns/{campaign_id}`. Until campaigns exist (Phase 5), a packet is prepared on request for one job with the four `/v1/applications/packets` routes above; each person has one current packet per job, and asking again supersedes it. Before a packet is stored, the facts its sentences cite are read again: a sentence that cites a fact no longer usable is dropped and counted in `removed_sentences`. Drafted answers and the note never state pay expectations, work authorisation or a start date or notice period (the candidate alone answers those): a sentence on those topics is dropped and counted too, by a small keyword list that is a floor and not a classifier. A person has one application per job (`409 conflict`, `details.state` `application_exists`; `same_status` for a status equal to the current one), and a new status may not predate the current one or lie more than five minutes in the future (`422 validation_failed`).
 
 ### 2.11 `/v1/campaigns`
 
@@ -503,7 +505,7 @@ Phase 6: members are addressed by `member_id` (not `user_id`) so a pending invit
 
 | Method | Path | Purpose | Caller | Req | Phase |
 |---|---|---|---|---|---|
-| POST | `/v1/roles` | Describe a role in text; requirements are extracted with spans; the role starts as `draft` | E | HIR-02 | 6 |
+| POST | `/v1/roles` | Describe a role in text; requirements are extracted with spans; the role starts as `draft`. The model reads the text only on a route a passed eval run proves; otherwise `extraction.state` is `ai_disabled` and the employer types the requirements | E | HIR-02 | 6 |
 | GET | `/v1/roles?org_id=` | The organization's roles | E | HIR-02 | 6 |
 | GET | `/v1/roles/{role_id}` | One role with requirements, pay range, `can_publish` and any blockers | E | HIR-02 | 6 |
 | PATCH | `/v1/roles/{role_id}` | Change title, description, location, work arrangements, employment type, seniority, visa sponsorship or pay range | E | HIR-02 | 6 |
@@ -513,7 +515,7 @@ Phase 6: members are addressed by `member_id` (not `user_id`) so a pending invit
 | GET | `/v1/roles/{role_id}/preview` | Anonymous preview: counts only, counts below 5 suppressed | E | HIR-03 | 6 |
 | GET | `/v1/roles/{role_id}/shortlist` | Candidates who accepted this role, each with the frozen payload they agreed to share, signals, and answer state | E | HIR-05, HIR-08 | 6 |
 
-Phase 6: a role has no `version` and no `ETag`; drafts are last write wins and `If-Match` is not honoured. An open or closed role is read-only (`PATCH` and `PUT .../requirements` return `409 conflict`, `details.state` `open` or `closed`); to change a role, close it and create another. Country, city, work arrangements, employment type, seniority and `visa_sponsorship` are what the employer sets; nothing is inferred from the description. `POST /v1/roles` and a `PATCH` that changes the description answer with `extraction` (`state` `extracted`, `empty`, `ai_disabled` or `failed`, and `dropped`). `PUT .../requirements` replaces the list, so requirement ids change on each save; read them again from the answer. The preview keys are `eligible_candidates`, `selected_to_ask`, `waiting_for_reply`, `said_yes`, `said_no_or_expired`, `as_of`, `suppressed_below` and `note`; a count of 1 to 4 is the string `"fewer than 5"`, except `said_yes`, which is exact because each of those people is on the shortlist. A draft has no counts. The shortlist has no `twin` field until Phase 9. The responses of the introduction, shortlist, answer-clock and signal routes are untyped objects in `web/openapi.json` (`dict[str, Any]`); the web app types them by hand from the examples below.
+Phase 6: a role has no `version` and no `ETag`; drafts are last write wins and `If-Match` is not honoured. An open or closed role is read-only (`PATCH` and `PUT .../requirements` return `409 conflict`, `details.state` `open` or `closed`); to change a role, close it and create another. Country, city, work arrangements, employment type, seniority and `visa_sponsorship` are what the employer sets; nothing is inferred from the description. `POST /v1/roles` and a `PATCH` that changes the description answer with `extraction` (`state` `extracted`, `empty`, `ai_disabled` or `failed`, and `dropped`). `PUT .../requirements` replaces the list, so requirement ids change on each save; read them again from the answer. The preview keys are `eligible_candidates`, `selected_to_ask`, `waiting_for_reply`, `said_yes`, `said_no_or_expired`, `as_of`, `suppressed_below` and `note`; a count of 1 to 4 is the string `"fewer than 5"`, except `said_yes`, which is exact because each of those people is on the shortlist; `waiting_for_reply` and `said_no_or_expired` read `"fewer than 5"` for 0 too, so one ask moving from waiting to declined changes nothing visible. A draft has no counts. The shortlist has no `twin` field until Phase 9. The responses of the introduction, shortlist, answer-clock and signal routes are untyped objects in `web/openapi.json` (`dict[str, Any]`); the web app types them by hand from the examples below.
 
 ### 2.17 `/v1/introductions`
 
@@ -1408,7 +1410,7 @@ After `PATCH /v1/roles/{role_id}` with `{"pay_range": {"min": 4500000, "max": 55
     "selected_to_ask": 7,
     "waiting_for_reply": "fewer than 5",
     "said_yes": 0,
-    "said_no_or_expired": 0,
+    "said_no_or_expired": "fewer than 5",
     "suppressed_below": 5,
     "note": "Counts only. Groups smaller than 5 are hidden. You see a person only after they accept."
   },
@@ -1417,7 +1419,7 @@ After `PATCH /v1/roles/{role_id}` with `{"pay_range": {"min": 4500000, "max": 55
 }
 ```
 
-Phase 6: the keys are those of the database function `role_preview` plus `as_of` (the latest finished role run, or `null`); `by_required_met`, `asked` and `accepted` were replaced. `eligible_candidates` counts candidates who are open to introductions and whose hard constraints the role does not break (including their excluded-company lists); `selected_to_ask` those who also meet every required item. Both describe the latest role run only, and a later run covers only candidates not asked before. 1 to 4 appear as the string `"fewer than 5"`. The threshold of 5 is the recommended answer to owner decision G6. No field identifies or describes an individual.
+Phase 6: the keys are those of the database function `role_preview` plus `as_of` (the latest finished role run, or `null`); `by_required_met`, `asked` and `accepted` were replaced. `eligible_candidates` counts candidates who are open to introductions and whose hard constraints the role does not break (including their excluded-company lists); `selected_to_ask` those who also meet every required item. Both describe the latest role run only, and a later run covers only candidates not asked before. 1 to 4 appear as the string `"fewer than 5"` (for `waiting_for_reply` and `said_no_or_expired`, 0 too). The threshold of 5 is the recommended answer to owner decision G6. No field identifies or describes an individual.
 
 ### 3.12 Accepting an introduction, and what the employer then sees
 
@@ -1948,7 +1950,7 @@ data: {"message_id":"1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c02","finish_reason":"comp
 | `proposal` | `event_id`, `entity`, `operation`, `before`, `after`, `statement` | A record change was proposed. The client shows confirm and decline, which call `/v1/me/events/{event_id}/confirm` or `/decline` (CHT-03) |
 | `message.snapshot` | `text` (everything so far), `citations`, `proposals` | Sent first on a reconnect, so the client can replace its partial copy. While the reply runs, its event `id` is the last event it covers; a snapshot built from the stored reply has no `id` |
 | `message.end` | `message_id`, `finish_reason` (`complete`, `length`, `stopped`, `interrupted`), `usage`, `cost_usd` | The reply is complete and stored. Always the last frame. `usage` and `cost_usd` are `null` only for a reply that was closed after the process running it died, so its cost is unknown |
-| `error` | `code`, `message`, `is_retryable` | The reply failed; what was written is kept with `finish_reason: "interrupted"`. Always followed by `message.end` with that reason |
+| `error` | `code`, `message`, `is_retryable` | The reply failed and ends with `finish_reason: "interrupted"`; its stored `text` is `''`, as for every reply that does not end `complete`. Always followed by `message.end` with that reason |
 
 **Reconnection.** Event ids are a per-reply sequence. `EventSource` reconnects to the same URL with `Last-Event-ID: 5`. The server sends `message.snapshot` with all text so far, then live events with ids greater than 5. If the reply finished while the client was away, it sends `message.snapshot` and `message.end` and closes. If the backend restarted mid-reply, the reply is stored as `interrupted` and the client sees `message.end` with that reason. Sending a snapshot instead of every missed delta means text deltas need not be stored one by one.
 

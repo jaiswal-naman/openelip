@@ -22,7 +22,7 @@ ALTER TABLE consents    DROP CONSTRAINT IF EXISTS consents_role_id_fkey,
 -- The tables, with their triggers, indexes, policies and grants, then the functions that served them and the types.
 DROP TABLE interest_signals, shortlist_entries, introductions, role_requirements, roles, org_members, organizations;
 DROP FUNCTION IF EXISTS introduction_role(uuid), my_org_invitations(), role_preview(uuid), suppress_small(bigint),
-                        org_directory(uuid), accept_org_invitation(uuid), create_organization(text, text),
+                        suppress_below_five(bigint), org_directory(uuid), accept_org_invitation(uuid), create_organization(text, text),
                         interest_signals_check(), shortlist_entries_check(), introductions_guard(),
                         app_is_org_admin(uuid), app_is_org_member(uuid), organization_has_overdue_answers(uuid),
                         has_active_consent(uuid, consent_purpose, uuid, uuid), consent_is_active(uuid),

@@ -1,0 +1,14 @@
+{
+  "note": "The prompt version each older recorded suite was recorded with (05-FIXES B5). tests/evals/test_evl01_coverage.py compares each with the prompt's current hash: an edit to one of these prompts fails CI until the suite is re-recorded and its entry changed here. requirement_extraction also keeps its version in baseline.json, which the same test checks.",
+  "resume_extraction": {
+    "resume.facts.roles": "e46f4679b2d0",
+    "resume.facts.education_skills": "6ddd5e456cc1",
+    "resume.facts.summary": "fbdd9facf253"
+  },
+  "requirement_extraction": {
+    "job.requirements.extract": "99b59f54d421"
+  },
+  "evidence_faithfulness": {
+    "match.evidence.score": "b2c9c732d464"
+  }
+}

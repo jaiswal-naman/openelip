@@ -134,6 +134,22 @@ describe("a draft role", () => {
     expect(await calls.find((c) => c.method === "PATCH")!.json()).toMatchObject({ pay_range: { min: 90000, max: 120000, currency: "USD" }, city: "Berlin" });
   });
 
+  it("shows which work arrangements are chosen and sends the changed set", async () => {
+    const user = userEvent.setup();
+    const { calls } = renderWithApi(<RoleIntake id={ROLE} />, { [GET_ROLE]: ok(role({ work_arrangements: ["remote"] })), [`PATCH /v1/roles/${ROLE}`]: ok(role()) });
+    const remote = await screen.findByRole("checkbox", { name: "Remote" });
+    const hybrid = screen.getByRole("checkbox", { name: "Hybrid" });
+    expect(remote).toBeChecked();
+    expect(hybrid).not.toBeChecked();
+    await user.click(hybrid);
+    await user.click(remote);
+    expect(hybrid).toBeChecked();
+    expect(remote).not.toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Save pay and location" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
+    expect(await calls.find((c) => c.method === "PATCH")!.json()).toMatchObject({ work_arrangements: ["hybrid"] });
+  });
+
   it("disables Publish and prints what is missing beside it", async () => {
     renderWithApi(<RoleIntake id={ROLE} />, { [GET_ROLE]: ok(role()) });
     const publish = await screen.findByRole("button", { name: "Publish" });

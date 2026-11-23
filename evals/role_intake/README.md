@@ -138,6 +138,14 @@ model. The targets for a live model run are the ones of AI_SYSTEM 4.3 (`req_item
 `req_importance_accuracy >= 0.90`, the same as for postings); applying them in code is part of recording the first live
 run, which needs a model key and is a manual check.
 
+## What a passed run allows
+
+Role intake in the API (`hiring/intake.py`) calls a real model only when a passed `eval_runs` row proves it: suite
+`role_intake` with `config.method = 'model'`, or suite `requirement_extraction` with method `model` on the `test` split;
+in both, `config.model` is the route's model and `config.prompt_version` the task's current prompt version. Without one,
+the role is saved with no extracted requirements (`extraction.state` `ai_disabled`) and the employer types them. The fake
+provider needs no proof.
+
 ## Commands
 
 ```

@@ -78,6 +78,22 @@ def test_it_refuses_when_any_login_it_uses_points_at_a_real_database(engine, pro
     assert scalar(engine, "SELECT count(*) FROM organizations") == 0
 
 
+def test_it_refuses_a_url_that_names_a_scratch_database_but_reaches_another(engine, provider, monkeypatch):
+    """06-VERIFICATION W3: a `dbname` query parameter overrides the URL's path, so the name check alone passed a login
+    that reached a real database. The server's answer to current_database() refuses before a row is written."""
+    employer, candidate = accounts(engine)
+    url = config.get().database_url_migrate.split("?", 1)[0] + "?dbname=postgres"
+    settings_with(monkeypatch, database_url_migrate=url)
+    monkeypatch.setattr(db, "_engines", {})  # engines are made from the settings once: make this role's again
+    try:
+        with pytest.raises(demo.SeedRefused, match=r"connected to database 'postgres', which does not end in _test"):
+            demo_hiring.seed_hiring(employer, candidate)
+    finally:
+        for made in db._engines.values():
+            made.dispose()
+    assert scalar(engine, "SELECT count(*) FROM organizations") == 0
+
+
 @pytest.mark.parametrize("name", ["anthropic", "openai", "openai_compatible"])
 def test_it_refuses_a_live_model_provider(engine, provider, monkeypatch, name):
     employer, candidate = accounts(engine)

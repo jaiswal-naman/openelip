@@ -233,6 +233,57 @@ def _sentences(text: str) -> list[str]:
     return [piece for piece in re.split(r"(?<=[.!?])(?=\s)", text) if piece]
 
 
+NOT_DONE_NOTE = (
+    "Note: I cannot apply, send messages, approve anything or change your record. Nothing was changed; "
+    "a change to your record waits for your confirmation."
+)
+# The false-claim check (05-FIXES B1). The agent has seven read and propose tools and nothing that applies, sends,
+# approves or changes the record, so no event of a turn can ever back a claim that one of those was done: a reply that
+# says so is false by construction. This is a KEYWORD FLOOR with known misses (a claim worded without these verbs, in
+# another language, or split across sentences gets through), not a classifier. A sentence that says it did NOT, or that
+# it cannot, is left alone.
+_DONE = (
+    r"(?:applied|submitted|sent|emailed|e-mailed|mailed|messaged|forwarded|approved|confirmed|recorded|saved|stored|"
+    r"added|updated|changed|edited|removed|deleted|lowered|raised|set)"
+)
+# "your hard constraints were applied to this search" is true (a search always applies them), so the passive leaves
+# "applied" out; "I applied" is still a claim.
+_DONE_PASSIVE = _DONE.replace("applied|", "")
+_BEFORE_VERB = r"(?:'ve|\s+have|\s+had|\s+just|\s+already|\s+also|\s+now|\s+successfully|\s+went\s+ahead\s+and)*"
+_CLAIMS = (
+    re.compile(rf"\b(?:I|we){_BEFORE_VERB}\s+{_DONE}\b", re.IGNORECASE),  # "I have applied", "I added the skill"
+    # "your application was approved and sent", "your location constraint has been removed", "it was submitted"
+    re.compile(
+        rf"\b(?:your\s+[\w'-]+(?:\s+[\w'-]+){{0,3}}|it|this|that|they)\s+(?:was|were|has\s+been|have\s+been)"
+        rf"\s+(?:\w+\s+and\s+)?{_DONE_PASSIVE}\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\byour\s+[\w'-]+(?:\s+[\w'-]+){0,3}\s+(?:is|are)\s+now\b", re.IGNORECASE
+    ),  # "your salary target is now 0"
+    re.compile(r"^\W*done\b\s*[:!.]", re.IGNORECASE),  # "Done: ..."
+)
+_DENIAL = re.compile(r"\b(?:not|never|no|nothing|cannot|unable|without)\b|n't|\bcan\s*not\b", re.IGNORECASE)
+
+
+def claims_done(reply: str) -> bool:
+    """True when the reply says, in a sentence that does not deny it, that something was applied, sent, approved or
+    changed (see the floor above)."""
+    return any(
+        not _DENIAL.search(sentence) and any(claim.search(sentence) for claim in _CLAIMS)
+        for sentence in _sentences(reply)
+    )
+
+
+def checked_reply(reply: str) -> str:
+    """The reply as it is stored and shown: when it claims an action the agent has no way to take, the fixed note is
+    appended after it. The check is logged without any text."""
+    if not claims_done(reply):
+        return reply
+    log.event("chat.false_claim_flagged")
+    return f"{reply.rstrip()}\n\n{NOT_DONE_NOTE}"
+
+
 def _cited(citation: Citation) -> dict[str, Any]:
     ref: str | int = int(citation.id) if citation.kind == "job" else citation.id  # a job's id is a number in the API
     return {"alias": citation.alias, "kind": citation.kind, f"{citation.kind}_id": ref}
@@ -274,8 +325,9 @@ def run_turn(
     if finish != "complete" or final["reply"] is None:
         return TurnResult("", finish, (), proposals)
     resolved = refs.resolve(final["reply"], ctx.aliases)
-    for piece in _sentences(resolved.text):
+    words = checked_reply(resolved.text)  # one place: what is streamed is what is stored
+    for piece in _sentences(words):
         emit("text.delta", {"text": piece})
     for citation in resolved.citations:
         emit("citation", _cited(citation))
-    return TurnResult(resolved.text, "complete", resolved.citations, proposals, resolved.unknown)
+    return TurnResult(words, "complete", resolved.citations, proposals, resolved.unknown)

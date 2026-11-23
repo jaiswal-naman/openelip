@@ -2,6 +2,7 @@
 
 import { useReducer, useRef, useState } from "react";
 import { useApi } from "@/lib/api/context";
+import { isFailure } from "@/lib/api/errors";
 import { createSession, postMessage, stopReply } from "./queries";
 import { newReply, type Reply, reduceReply } from "./reply";
 import { useReplyStream } from "./useReplyStream";
@@ -31,13 +32,18 @@ export function useChat() {
   const [announcement, setAnnouncement] = useState("");
   const session = useRef<string | null>(null);
   const texts = useRef(new Map<string, string>());
+  const sessionOf = useRef(new Map<string, string>()); // the session each reply belongs to: a reply found running may be in another
+  const followed = useRef(new Set<string>()); // replies picked up after a 409, not sent from this panel
 
   const open = useReplyStream((id, event, data) => {
     if (event === "text.delta" && typeof data.text === "string") texts.current.set(id, (texts.current.get(id) ?? "") + data.text);
     if (event === "message.snapshot" && typeof data.text === "string") texts.current.set(id, data.text);
     dispatch({ type: "event", id, event, data });
     // The reply is announced once, when it is whole, not word by word (FRONTEND_UI 7).
-    if (event === "message.end") setAnnouncement(texts.current.get(id) ?? "");
+    if (event === "message.end") {
+      setAnnouncement(texts.current.get(id) ?? "");
+      if (followed.current.delete(id)) setSendError(null); // the reply that blocked the message is over: say no more about it
+    }
   });
 
   const running = messages.find((message) => message.role === "assistant" && !message.reply.done);
@@ -48,6 +54,7 @@ export function useChat() {
     try {
       session.current ??= (await createSession(api)).id;
       const accepted = await postMessage(api, session.current, text, contextJobId);
+      sessionOf.current.set(accepted.message_id, session.current);
       setAnnouncement("");
       dispatch({
         type: "add",
@@ -60,16 +67,34 @@ export function useChat() {
       return true;
     } catch (error) {
       setSendError(error);
+      follow(error);
       return false;
     } finally {
       setSending(false);
     }
   }
 
+  /**
+   * A 409 `reply_running` names the reply that is still being written, one this panel does not know after a reload: show it
+   * as the running reply, so Stop is offered for it, and open its stream so waiting shows it arrive (the stream starts with a
+   * snapshot of the text so far).
+   */
+  function follow(error: unknown) {
+    if (!isFailure(error, "conflict") || error.details.state !== "reply_running") return;
+    const { message_id: id, session_id: where } = error.details;
+    if (typeof id !== "string" || typeof where !== "string") return;
+    if (messages.some((message) => message.id === id)) return; // already shown and streaming
+    sessionOf.current.set(id, where);
+    followed.current.add(id);
+    dispatch({ type: "add", messages: [{ id, role: "assistant", reply: newReply() }] });
+    open(id, `/v1/chat/sessions/${where}/messages/${id}/stream`);
+  }
+
   async function stop() {
-    if (running === undefined || session.current === null) return;
+    const where = running === undefined ? undefined : sessionOf.current.get(running.id);
+    if (running === undefined || where === undefined) return;
     try {
-      await stopReply(api, session.current, running.id);
+      await stopReply(api, where, running.id);
     } catch (error) {
       setSendError(error);
     }
