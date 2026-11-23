@@ -221,7 +221,10 @@ GRAPH = _build()
 
 
 def _sentences(text: str) -> list[str]:
-    """The text in sentence-sized pieces that join back to it exactly (white space stays with the next piece)."""
+    """The text in sentence-sized pieces that join back to it exactly (white space stays with the next piece).
+
+    ponytail: a break after every . ! or ? that a space follows, so "e.g. this" is two pieces; the pieces still join
+    to the text, and the panel announces the reply once it is complete, so a wrong break is never seen."""
     return [piece for piece in re.split(r"(?<=[.!?])(?=\s)", text) if piece]
 
 

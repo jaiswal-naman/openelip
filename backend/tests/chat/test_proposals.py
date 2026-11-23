@@ -9,6 +9,7 @@ as the app_api role (what the API uses), so row-level security is in force.
 import hashlib
 import inspect
 import json
+import logging
 import re
 from pathlib import Path
 from types import SimpleNamespace
@@ -223,39 +224,67 @@ def test_a_preference_weight_that_changes_is_an_update_and_a_dealbreaker_always_
 # ---- what is dropped, one rule at a time ----------------------------------------------------------------------------
 
 
-def dropped(engine, world, answer, *items, message=MESSAGE):
-    """Propose with these items and assert that nothing came out and nothing was stored."""
+class Drops(logging.Handler):
+    """The codes of the `chat.proposal_dropped` events logged while it is attached: why each item was dropped."""
+
+    def __init__(self) -> None:
+        super().__init__(logging.INFO)
+        self.codes: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        line = json.loads(record.getMessage())
+        if line["event"] == "chat.proposal_dropped":
+            self.codes.append(line["error_code"])
+
+
+def dropped(engine, world, answer, *items, why, message=MESSAGE):
+    """Propose with these items and assert that none came out, that each was dropped for `why` (and not for some other
+    rule that would also have caught it), and that nothing was stored."""
     answer(said(*items))
     before = record_state(engine, world.ada)
-    assert propose(world.ada, message, principal=world.ada) == []
+    drops, events_log = Drops(), logging.getLogger("app.event")
+    events_log.addHandler(drops)
+    try:
+        assert propose(world.ada, message, principal=world.ada) == []
+    finally:
+        events_log.removeHandler(drops)
+    assert drops.codes == [why] * len(items)
     assert waiting(engine, world.ada) == [] and record_state(engine, world.ada) == before
 
 
+QUOTE = "quote_not_in_message"
+
+
 def test_a_quote_that_is_not_in_the_candidates_message_is_dropped(engine, world, answer):
-    dropped(engine, world, answer, item("fact", "skill", "I know Rust and Go", text="Rust"))
+    dropped(engine, world, answer, item("fact", "skill", "I know Rust and Go", text="Rust"), why=QUOTE)
 
 
 def test_a_quote_may_not_come_from_anywhere_else(engine, world, answer):
     """Job text, a tool result or an earlier message can only reach a quote by being in the current message."""
-    dropped(engine, world, answer, item("fact", "skill", "Required: Kubernetes and Terraform", text="Kubernetes"))
+    posting = item("fact", "skill", "Required: Kubernetes and Terraform", text="Kubernetes")
+    dropped(engine, world, answer, posting, why=QUOTE)
 
 
 def test_an_empty_or_blank_quote_is_dropped_though_it_is_a_substring_of_everything(engine, world, answer):
-    dropped(engine, world, answer, item("fact", "skill", "", text="Rust"), item("fact", "skill", "   ", text="Go"))
+    blank = (item("fact", "skill", "", text="Rust"), item("fact", "skill", "   ", text="Go"))
+    dropped(
+        engine, world, answer, *blank, why=QUOTE
+    )  # by the quote rule itself, not later by the record's reason check
 
 
 def test_the_quote_must_match_exactly_not_nearly(engine, world, answer):
-    dropped(engine, world, answer, item("fact", "skill", "i know rust now", text="Rust"))  # other case
-    dropped(engine, world, answer, item("fact", "skill", "I know  Rust", text="Rust"))  # other spacing
+    dropped(engine, world, answer, item("fact", "skill", "i know rust now", text="Rust"), why=QUOTE)  # other case
+    dropped(engine, world, answer, item("fact", "skill", "I know  Rust", text="Rust"), why=QUOTE)  # other spacing
 
 
 def test_a_fact_of_kind_role_is_dropped_because_experience_goes_through_the_resume(engine, world, answer):
-    dropped(engine, world, answer, item("fact", "role", "I know Rust now", text="Staff engineer at Initech Demo"))
+    role = item("fact", "role", "I know Rust now", text="Staff engineer at Initech Demo")
+    dropped(engine, world, answer, role, why="not_allowed")
 
 
 @pytest.mark.parametrize("kind", ["achievement", "education", "project", "other", "made_up"])
 def test_a_field_that_is_not_on_the_allow_list_is_dropped(engine, world, answer, kind):
-    dropped(engine, world, answer, item("fact", kind, "I know Rust now", text="Rust"))
+    dropped(engine, world, answer, item("fact", kind, "I know Rust now", text="Rust"), why="not_allowed")
 
 
 def test_a_field_of_another_entity_is_not_allowed_either_and_a_fact_is_never_removed(engine, world, answer):
@@ -263,32 +292,37 @@ def test_a_field_of_another_entity_is_not_allowed_either_and_a_fact_is_never_rem
         engine,
         world,
         answer,
-        item(
-            "constraint", "target_title", "also take jobs", country_codes=["IN"]
-        ),  # a preference kind, not a constraint
-        item("preference", "excluded_company", "also take jobs", text="Initech Demo", weight=-2),
+        item("constraint", "target_title", "also take jobs", country_codes=["IN"]),  # a preference kind
+        item("preference", "excluded_company", "also take jobs", text="Initech Demo", weight=-2),  # a constraint kind
         item("fact", "skill", "I know Rust now", operation="remove", text="Python"),
+        why="not_allowed",
     )
 
 
-@pytest.mark.parametrize(
-    "bad",
-    [
-        item("constraint", "location", "take jobs in Pune", country_codes=["India"]),
-        item("constraint", "location", "take jobs in Pune"),  # no country at all
-        item("constraint", "salary_floor", "keep it full time", salary_floor={"amount": -5, "currency": "INR"}),
-        item("constraint", "salary_floor", "keep it full time", salary_floor={"amount": 30, "currency": "rupees"}),
-        item("constraint", "remote_policy", "take jobs in Pune", arrangements=["office"]),
-        item("constraint", "seniority", "keep it full time", seniorities=["boss"]),
-        item("preference", "industry", "also take jobs", text="fintech"),  # no weight
-        item("preference", "industry", "also take jobs", text="fintech", weight=9),
-        item("preference", "industry", "also take jobs", weight=2),  # nothing wanted
-        item("fact", "skill", "I know Rust now"),  # no skill named
-    ],
-    ids=lambda bad: f"{bad['field']}-{json.dumps(bad['value'])[:40]}",
-)
-def test_a_value_that_does_not_type_check_is_dropped_and_nothing_is_stored(engine, world, answer, bad):
-    dropped(engine, world, answer, bad)
+REFUSED = "validation_failed"  # the code of the record's own refusal of a value
+FLOOR = "salary_floor"
+NOT_RIGHT = [  # (item, the code it is dropped with)
+    (item("constraint", "location", "take jobs in Pune", country_codes=["India"]), REFUSED),
+    (item("constraint", "location", "take jobs in Pune"), REFUSED),  # no country at all
+    (item("constraint", FLOOR, "keep it full time", salary_floor={"amount": -5, "currency": "INR"}), REFUSED),
+    (item("constraint", FLOOR, "keep it full time", salary_floor={"amount": 30, "currency": "rupees"}), REFUSED),
+    (item("constraint", "remote_policy", "take jobs in Pune", arrangements=["office"]), REFUSED),
+    (item("constraint", "seniority", "keep it full time", seniorities=["boss"]), REFUSED),
+    (item("preference", "industry", "also take jobs", text="fintech"), REFUSED),  # no weight
+    (item("preference", "industry", "also take jobs", text="fintech", weight=9), REFUSED),
+    (item("preference", "industry", "also take jobs", weight=2), REFUSED),  # nothing wanted
+    (item("fact", "skill", "I know Rust now"), "no_value"),  # no skill named
+]
+
+
+def label(case):
+    return f"{case['field']}-{json.dumps(case['value'])[:40]}" if isinstance(case, dict) else case
+
+
+@pytest.mark.parametrize(("bad", "why"), NOT_RIGHT, ids=label)
+def test_a_value_that_does_not_type_check_is_dropped_and_nothing_is_stored(engine, world, answer, bad, why):
+    """The record's own checks refuse it when it is written (a savepoint: nothing is left), or code finds no value."""
+    dropped(engine, world, answer, bad, why=why)
 
 
 def test_a_value_equal_to_what_the_record_holds_is_dropped_whatever_its_order_or_case(engine, world, answer):
@@ -300,6 +334,7 @@ def test_a_value_equal_to_what_the_record_holds_is_dropped_whatever_its_order_or
         item("constraint", "location", "take jobs in Pune", country_codes=["in"], cities=["MUMBAI"]),
         item("preference", "target_title", "also take jobs", text="  DATA   engineer ", weight=2),
         item("fact", "skill", "I know Rust now", text="python"),
+        why="unchanged",
     )
 
 
@@ -310,6 +345,7 @@ def test_a_removal_of_nothing_is_dropped(engine, world, answer):
         answer,
         item("constraint", "excluded_company", "also take jobs", operation="remove"),  # none is set
         item("preference", "target_title", "also take jobs", operation="remove", text="astronaut"),
+        why="nothing_to_remove",
     )
 
 
@@ -319,18 +355,22 @@ def test_a_removal_of_nothing_is_dropped(engine, world, answer):
 )
 def test_a_statement_that_the_screen_flags_is_dropped(engine, world, answer, statement):
     assert profile.screen(statement) is not None  # the narrow screen the plan names
-    dropped(engine, world, answer, item("fact", "skill", "I know Rust now", statement=statement, text="Rust"))
+    flagged = item("fact", "skill", "I know Rust now", statement=statement, text="Rust")
+    dropped(engine, world, answer, flagged, why="protected_characteristic")
 
 
 def test_a_value_the_screen_flags_is_dropped_too(engine, world, answer):
-    dropped(engine, world, answer, item("preference", "other", "also take jobs", text="Religion: Jain", weight=1))
+    flagged = item("preference", "other", "also take jobs", text="Religion: Jain", weight=1)
+    dropped(engine, world, answer, flagged, why="protected_characteristic")
 
 
 def test_a_protected_characteristic_in_the_quote_means_nothing_is_stored(engine, world, answer):
     """The quote is kept with the proposal, so a quote that states one cannot be kept: the record's own wider screen
     refuses it when the proposal is written, and nothing is stored."""
     message = "I am 45 years old and I know Rust now"
-    dropped(engine, world, answer, item("fact", "skill", message, text="Rust"), message=message)
+    dropped(
+        engine, world, answer, item("fact", "skill", message, text="Rust"), why="validation_failed", message=message
+    )
 
 
 def test_the_same_message_may_state_a_protected_characteristic_when_the_quote_leaves_it_out(engine, world, answer):
@@ -363,7 +403,7 @@ RUST = dict(entity="fact", operation="create", after={"kind": "skill", "statemen
 
 def test_the_same_change_declined_ten_days_ago_is_not_offered_again(engine, world, answer):
     decline(engine, world.ada, 10, **RUST)
-    dropped(engine, world, answer, item("fact", "skill", "I know Rust now", text="rust"))
+    dropped(engine, world, answer, item("fact", "skill", "I know Rust now", text="rust"), why="declined_before")
 
 
 def test_the_same_change_declined_thirty_one_days_ago_is_offered_again(engine, world, answer):
@@ -401,12 +441,14 @@ def test_a_declined_constraint_is_matched_by_its_typed_value_not_by_the_words_th
             country_codes=["IN"],
             cities=["Pune", "Mumbai"],
         ),
+        why="declined_before",
     )
 
 
 def test_a_declined_removal_is_not_proposed_again(engine, world, answer):
     decline(engine, world.ada, 4, entity="constraint", operation="remove", entity_id=UUID(world.full_time))
-    dropped(engine, world, answer, item("constraint", "employment_type", "keep it full time", operation="remove"))
+    removal = item("constraint", "employment_type", "keep it full time", operation="remove")
+    dropped(engine, world, answer, removal, why="declined_before")
 
 
 def test_someone_elses_decline_is_not_this_persons(engine, world, answer):

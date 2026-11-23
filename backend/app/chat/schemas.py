@@ -21,7 +21,9 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validat
 
 MAX_TOOL_CALLS_PER_STEP = 4  # assumption: AI_SYSTEM 5.3 sets 8 calls for a whole message
 MAX_SEARCH_RESULTS = 10  # assumption: what one search_jobs call may return
-ALIAS = re.compile(r"[dfjc][0-9]{1,4}")  # d decision, j job, f fact, c constraint, then a number
+# d decision, j job, f fact, c constraint, then a number. ponytail: four digits, so 9,999 aliases of a kind in one
+# session; a session that long would need a wider pattern here and in refs.py.
+ALIAS = re.compile(r"[dfjc][0-9]{1,4}")
 
 
 def _alias(value: str) -> str:

@@ -77,7 +77,7 @@ class AliasTable:
         because a citation must never be able to point at a different thing than it did."""
         table = cls()
         for row in rows:
-            refs = row.get("refs", row)
+            refs = row.get("refs") or row
             for alias, entry in (refs.get("aliases") or {}).items():
                 parsed = _ALIAS.fullmatch(alias)
                 kind, ref = entry["kind"], str(entry["id"])

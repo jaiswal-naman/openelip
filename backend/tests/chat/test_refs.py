@@ -87,6 +87,7 @@ def test_rebuilding_does_not_depend_on_the_order_of_the_rows_or_on_a_row_repeati
     assert AliasTable.from_tool_rows(rows).to_refs() == table.to_refs()
     assert AliasTable.from_tool_rows([]).to_refs() == {}
     assert AliasTable.from_tool_rows([{"reply_id": "r1"}, {"aliases": None}]).to_refs() == {}  # a row with none
+    assert AliasTable.from_tool_rows([{"role": "tool", "refs": None}]).to_refs() == {}  # a message with no refs
 
 
 def test_a_row_may_hold_its_refs_under_a_refs_key_as_a_stored_message_does():

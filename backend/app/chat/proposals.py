@@ -36,7 +36,7 @@ PROMPT_VERSION = hashlib.sha256(PROMPT.encode()).hexdigest()[:12]  # the templat
 DECLINE_MEMORY = timedelta(days=30)  # assumption: AI_SYSTEM 4.8, a change declined this recently is not offered again
 MAX_PROPOSALS = 5  # assumption: items taken from one message; the schema cannot bound the list
 MAX_QUOTE = 500  # the change log keeps the quote as the proposal's reason, and the record allows 500 characters
-MAX_SHOWN = 200  # characters of a skill, certification or preference shown to the model
+MAX_SHOWN = 200  # assumption: characters of a skill, certification or preference shown to the model
 
 # What a proposal may touch (the allow-list): every constraint kind, every preference kind the record accepts, and the
 # facts a person can state in a sentence. Experience goes through the resume. profile.service owns the same lists and
@@ -118,7 +118,10 @@ def _text(value: object) -> str:
 
 
 def _canon(value: Any) -> Any:
-    """What a typed value says, whatever its order, case or spacing. An empty list says nothing, like None."""
+    """What a typed value says, whatever its order, case or spacing. An empty list says nothing, like None.
+
+    ponytail: company names compare as typed, not by company key, so "Initech" and "Initech Inc" count as two different
+    proposals; compare by match.checker.company_key once match.api exports it, if a duplicate card is ever reported."""
     if value is None or value == []:
         return None
     if isinstance(value, Mapping):
@@ -282,9 +285,8 @@ def propose(user_id: UUID, user_text: str, *, principal: UUID | None) -> list[Pr
                     entity_id=plan.entity_id,
                     reason=plan.quote[:MAX_QUOTE],
                 )
-            except (
-                ApiError
-            ) as refused:  # the record's own checks: a wrong type, a protected characteristic, a stale row
+            except ApiError as refused:
+                # the record's own checks refuse it: a wrong type, a protected characteristic, a row that changed
                 log.event("chat.proposal_dropped", error_code=refused.code)
                 continue
             events.append(ProposalEvent(event_id, plan.entity, plan.operation, plan.before, plan.after, plan.statement))
