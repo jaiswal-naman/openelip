@@ -44,6 +44,7 @@ test("opening the app signs the owner in with no sign-in page, asks for the mode
   await page.getByRole("button", { name: "Account: owner@example.test" }).click();
   await page.getByRole("menuitem", { name: "Hiring desk" }).click();
   await expect(page).toHaveURL(/\/hire\/roles$/);
+  await page.waitForLoadState("networkidle"); // the page is hydrated: a name typed before that is wiped when React takes over
   await page.getByLabel("Organization name").fill("Halden Studio");
   await page.getByRole("button", { name: "Create organization" }).click();
   await expect(page).toHaveURL(/\/hire\/team$/);
