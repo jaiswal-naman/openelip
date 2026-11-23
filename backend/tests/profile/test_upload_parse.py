@@ -214,6 +214,17 @@ def test_parsing_one_document_twice_adds_no_facts_and_asks_the_model_nothing_mor
     assert [f.id for f in kit.facts(document_id)] == before and len(model.calls) == calls
 
 
+def test_a_document_deleted_before_the_job_runs_ends_the_job_quietly(kit):
+    user = kit.person()
+    kit.agree(user)
+    document_id = kit.store(user, kit.docx())
+    with kit.engine.begin() as c:  # the person deleted their account while the job waited
+        c.execute(text("DELETE FROM documents WHERE id = :id"), {"id": document_id})
+    model = kit.model()
+    assert kit.run(model) == 1
+    assert (kit.job(document_id).state, kit.job(document_id).attempts) == ("succeeded", 1) and model.calls == []
+
+
 def test_two_runs_that_overlap_leave_one_set_of_facts(kit):
     user = kit.person()
     kit.agree(user)
