@@ -1,0 +1,79 @@
+[
+  {
+    "edits": [
+      {
+        "op": "rephrase",
+        "target": "f4",
+        "section": "experience",
+        "after_text": "Helped define customer churn metrics",
+        "supporting": [
+          "f4"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f2",
+        "section": "experience",
+        "after_text": "Owned the weekly sales dashboard in Tableau",
+        "supporting": [
+          "f2"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f9",
+        "section": "experience",
+        "after_text": "Supported the migration to a new data warehouse and trained analysts on it",
+        "supporting": [
+          "f9"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f7",
+        "section": "experience",
+        "after_text": "Maintained 40 SQL reports for the finance team as Principal Analyst",
+        "supporting": [
+          "f7"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "experience",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [],
+        "order": [
+          "f9",
+          "f7",
+          "f8"
+        ]
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": true
+      },
+      {
+        "edit": "e2",
+        "entailed": false
+      },
+      {
+        "edit": "e3",
+        "entailed": false
+      }
+    ]
+  }
+]

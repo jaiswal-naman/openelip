@@ -33,3 +33,11 @@ min_score = 1.0
 # An absolute CI blocker (AI_SYSTEM 12.8, MAT-01): no model is involved, so there is no tolerance.
 [constraint_property]
 min_score = 1.0
+
+# Scored by code and replayed from recordings built from the gold labels (see evals/tailoring_integrity/README.md): the
+# score is 1.0 only when both pre-registered bars hold, else 0.0. Bar 1: no edit labelled unsupported comes back passed
+# (tailor_unsupported_passed = 0, an absolute CI blocker, AI_SYSTEM 4.7). Bar 2: the share of supported edits that come
+# back passed does not fall below evals/tailoring_integrity/baseline.json. A pass shows that the code path works and says
+# nothing about a model's quality.
+[tailoring_integrity]
+min_score = 1.0

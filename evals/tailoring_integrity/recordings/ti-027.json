@@ -1,0 +1,86 @@
+[
+  {
+    "edits": [
+      {
+        "op": "rephrase",
+        "target": "f2",
+        "section": "experience",
+        "after_text": "Tracked results of 25 email campaigns as Marketing Manager",
+        "supporting": [
+          "f2"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f8",
+        "section": "experience",
+        "after_text": "Organised two trade shows",
+        "supporting": [
+          "f8"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "add_from_fact",
+        "target": null,
+        "section": "skills",
+        "after_text": "HubSpot",
+        "supporting": [
+          "f16"
+        ],
+        "requirements": [
+          "r4"
+        ],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f9",
+        "section": "experience",
+        "after_text": "Wrote product descriptions for the online shop at Fenwick Demo",
+        "supporting": [
+          "f9"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "remove",
+        "target": "f7",
+        "section": "experience",
+        "after_text": "",
+        "supporting": [
+          "f7"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f5",
+        "section": "experience",
+        "after_text": "Created the monthly marketing report in Excel",
+        "supporting": [
+          "f5"
+        ],
+        "requirements": [],
+        "order": []
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": false
+      },
+      {
+        "edit": "e2",
+        "entailed": true
+      }
+    ]
+  }
+]

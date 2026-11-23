@@ -1,0 +1,15 @@
+{
+  "labels": "agent-drafted, maintainer review pending",
+  "supported_kept": 84,
+  "supported_total": 84,
+  "supported_kept_rate": 1.0,
+  "tailor_unsupported_passed": 0,
+  "unsupported_total": 87,
+  "recorded_run": {
+    "id": "c3c5d171-513e-43bd-898f-61acdb406f67",
+    "git_sha": "4b2910e0a45cc43006b9d2c81ed6043478170ea6",
+    "recorded": "recordings",
+    "date": "2026-11-23"
+  },
+  "note": "The first clean replay of the committed recordings after the gold set's one label correction. A replay is deterministic, so a drop in supported_kept is a code change. Replay numbers are wiring checks, not model quality (README.md)."
+}

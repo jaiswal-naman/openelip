@@ -1,0 +1,73 @@
+[
+  {
+    "edits": [
+      {
+        "op": "rephrase",
+        "target": "f8",
+        "section": "experience",
+        "after_text": "Supported customer interviews at Quillon Demo",
+        "supporting": [
+          "f8"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f7",
+        "section": "experience",
+        "after_text": "Wrote requirements for six features as Senior Associate",
+        "supporting": [
+          "f7"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f9",
+        "section": "experience",
+        "after_text": "Helped to prioritise the backlog",
+        "supporting": [
+          "f9"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "experience",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [
+          "r2"
+        ],
+        "order": [
+          "f8",
+          "f7",
+          "f9"
+        ]
+      },
+      {
+        "op": "rephrase",
+        "target": "f4",
+        "section": "experience",
+        "after_text": "Worked with three engineering teams on the release plan",
+        "supporting": [
+          "f4"
+        ],
+        "requirements": [],
+        "order": []
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": true
+      }
+    ]
+  }
+]

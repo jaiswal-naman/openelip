@@ -1,0 +1,90 @@
+[
+  {
+    "edits": [
+      {
+        "op": "rephrase",
+        "target": "f9",
+        "section": "experience",
+        "after_text": "Led the security team's patching of servers",
+        "supporting": [
+          "f9"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f3",
+        "section": "experience",
+        "after_text": "Cut deployment time from 40 minutes to 12 minutes by designing distributed systems",
+        "supporting": [
+          "f3"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "skills",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [
+          "r3"
+        ],
+        "order": [
+          "f12",
+          "f10",
+          "f11",
+          "f14",
+          "f13"
+        ]
+      },
+      {
+        "op": "rephrase",
+        "target": "f5",
+        "section": "experience",
+        "after_text": "Moved 15 services to containers in 2020",
+        "supporting": [
+          "f5"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "remove",
+        "target": "f8",
+        "section": "experience",
+        "after_text": "",
+        "supporting": [
+          "f8"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f7",
+        "section": "experience",
+        "after_text": "Administered 120 Linux servers",
+        "supporting": [
+          "f7"
+        ],
+        "requirements": [],
+        "order": []
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": false
+      },
+      {
+        "edit": "e2",
+        "entailed": true
+      }
+    ]
+  }
+]

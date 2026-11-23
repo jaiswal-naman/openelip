@@ -1,0 +1,90 @@
+[
+  {
+    "edits": [
+      {
+        "op": "add_from_fact",
+        "target": null,
+        "section": "skills",
+        "after_text": "Power BI",
+        "supporting": [
+          "f17"
+        ],
+        "requirements": [
+          "r4"
+        ],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f5",
+        "section": "experience",
+        "after_text": "Built the monthly marketing report in Excel and SQL",
+        "supporting": [
+          "f5"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f3",
+        "section": "experience",
+        "after_text": "Raised email open rates by 21%",
+        "supporting": [
+          "f3"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f2",
+        "section": "experience",
+        "after_text": "Monitored results of 25 email campaigns",
+        "supporting": [
+          "f2"
+        ],
+        "requirements": [
+          "r2"
+        ],
+        "order": []
+      },
+      {
+        "op": "rephrase",
+        "target": "f4",
+        "section": "experience",
+        "after_text": "Supported the brand relaunch in 2021",
+        "supporting": [
+          "f4"
+        ],
+        "requirements": [],
+        "order": []
+      },
+      {
+        "op": "reorder",
+        "target": null,
+        "section": "skills",
+        "after_text": "",
+        "supporting": [],
+        "requirements": [
+          "r1"
+        ],
+        "order": [
+          "f11",
+          "f10",
+          "f13",
+          "f12",
+          "f14"
+        ]
+      }
+    ]
+  },
+  {
+    "items": [
+      {
+        "edit": "e1",
+        "entailed": true
+      }
+    ]
+  }
+]

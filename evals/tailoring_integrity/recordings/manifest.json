@@ -1,0 +1,119 @@
+{
+  "ti-001.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-002.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-003.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-004.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-005.json": {
+    "tailor.propose": "3309c398592d"
+  },
+  "ti-006.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-007.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-008.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-009.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-010.json": {
+    "tailor.propose": "3309c398592d"
+  },
+  "ti-011.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-012.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-013.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-014.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-015.json": {
+    "tailor.propose": "3309c398592d"
+  },
+  "ti-016.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-017.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-018.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-019.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-020.json": {
+    "tailor.propose": "3309c398592d"
+  },
+  "ti-021.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-022.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-023.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-024.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-025.json": {
+    "tailor.propose": "3309c398592d"
+  },
+  "ti-026.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-027.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-028.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-029.json": {
+    "tailor.propose": "3309c398592d",
+    "verify.entail": "40dbc09c623e"
+  },
+  "ti-030.json": {
+    "tailor.propose": "3309c398592d"
+  },
+  "degraded_entail.json": {
+    "verify.entail": "40dbc09c623e"
+  }
+}

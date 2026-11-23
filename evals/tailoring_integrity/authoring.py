@@ -11,9 +11,7 @@ facts f1..fN in the order a candidate lists them. `reqs` are 1-based positions i
 from typing import Any
 
 LABELS = "agent-drafted, maintainer review pending"
-MONTHS = (
-    "January February March April May June July August September October November December".split()
-)
+MONTHS = "January February March April May June July August September October November December".split()
 VERDICTS = {"m": "met", "p": "partly_met", "n": "no_evidence", "x": "not_met"}
 
 
@@ -25,7 +23,9 @@ def _written(date: str) -> str:
 
 def fact(tag: str, kind: str, statement: str, attributes: dict[str, Any], parent: str | None, chat: bool) -> dict:
     source = "confirmed_proposal" if chat else "resume"
-    return {"tag": tag, "kind": kind, "statement": statement, "attributes": attributes, "parent": parent, "source": source}
+    return {
+        "tag": tag, "kind": kind, "statement": statement, "attributes": attributes, "parent": parent, "source": source,
+    }  # fmt: skip
 
 
 def role(tag: str, employer: str, title: str, start: str, end: str | None = None) -> dict:
@@ -86,7 +86,11 @@ def pair(number: int, candidate: str, requirements: list[tuple], edits: list[dic
         "candidate": candidate,
         "allow_rephrase": rephrase,
         "requirements": [
-            {"importance": {"req": "required", "pref": "preferred"}[importance], "text": text, "verdict": VERDICTS.get(code)}
+            {
+                "importance": {"req": "required", "pref": "preferred"}[importance],
+                "text": text,
+                "verdict": VERDICTS.get(code),
+            }
             for importance, text, code in requirements
         ],
         "edits": edits,
@@ -105,10 +109,15 @@ CANDIDATES: dict[str, list[dict]] = {
         role("r2", "Kestrel Demo", "Data Analyst", "2016-01", "2019-02"),
         bullet("b6", "r2", "Wrote weekly SQL reports for two teams"),
         bullet("b7", "r2", "Automated the invoice export"),
-        skill("py", "Python"), skill("sql", "SQL"), skill("go", "Go"), skill("pg", "PostgreSQL"), skill("dk", "Docker"),
+        skill("py", "Python"),
+        skill("sql", "SQL"),
+        skill("go", "Go"),
+        skill("pg", "PostgreSQL"),
+        skill("dk", "Docker"),
         degree("edu", "B.Sc. Computer Science", "Lakeshore Technical College", "2012", "2016"),
         cert("cert", "Certified Scrum Master", "2018"),
-        skill("qs", "Quillscript", chat=True), skill("tf", "Terraform", chat=True),
+        skill("qs", "Quillscript", chat=True),
+        skill("tf", "Terraform", chat=True),
     ],  # fmt: skip
     # a data analyst
     "da": [
@@ -121,11 +130,15 @@ CANDIDATES: dict[str, list[dict]] = {
         bullet("b5", "r2", "Maintained 40 SQL reports for the finance team"),
         bullet("b6", "r2", "Cleaned survey data for the 2018 customer study"),
         bullet("b7", "r2", "Supported the migration to a new data warehouse"),
-        skill("tb", "Tableau"), skill("sql", "SQL"), skill("xl", "Excel"), skill("py", "Python"),
+        skill("tb", "Tableau"),
+        skill("sql", "SQL"),
+        skill("xl", "Excel"),
+        skill("py", "Python"),
         skill("st", "Statistics"),
         degree("edu", "M.Sc. Statistics", "Northgate University", "2014", "2016"),
         cert("cert", "Dashboard Design Certificate", "2019"),
-        skill("dbt", "dbt", chat=True), skill("af", "Airflow", chat=True),
+        skill("dbt", "dbt", chat=True),
+        skill("af", "Airflow", chat=True),
     ],  # fmt: skip
     # a site reliability engineer
     "sre": [
@@ -138,11 +151,15 @@ CANDIDATES: dict[str, list[dict]] = {
         bullet("b5", "r2", "Managed 120 Linux servers"),
         bullet("b6", "r2", "Wrote backup scripts in Bash"),
         bullet("b7", "r2", "Helped the security team patch servers"),
-        skill("lx", "Linux"), skill("dk", "Docker"), skill("k8", "Kubernetes"), skill("sh", "Bash"),
+        skill("lx", "Linux"),
+        skill("dk", "Docker"),
+        skill("k8", "Kubernetes"),
+        skill("sh", "Bash"),
         skill("pm", "Prometheus"),
         degree("edu", "B.Eng. Electrical Engineering", "Ashbourne College", "2011", "2015"),
         cert("cert", "Linux Administration Certificate", "2017"),
-        skill("tf", "Terraform", chat=True), skill("an", "Ansible", chat=True),
+        skill("tf", "Terraform", chat=True),
+        skill("an", "Ansible", chat=True),
     ],  # fmt: skip
     # a frontend developer
     "fe": [
@@ -154,11 +171,15 @@ CANDIDATES: dict[str, list[dict]] = {
         role("r2", "Tamsin Demo", "Web Designer", "2017-05", "2019-12"),
         bullet("b5", "r2", "Designed landing pages for 12 clients"),
         bullet("b6", "r2", "Helped launch the redesigned site in 2018"),
-        skill("js", "JavaScript"), skill("ts", "TypeScript"), skill("rc", "React"), skill("css", "CSS"),
+        skill("js", "JavaScript"),
+        skill("ts", "TypeScript"),
+        skill("rc", "React"),
+        skill("css", "CSS"),
         skill("html", "HTML"),
         degree("edu", "B.A. Graphic Design", "Riverbend College", "2013", "2017"),
         cert("cert", "Accessibility Fundamentals Certificate", "2021"),
-        skill("vue", "Vue", chat=True), skill("fg", "Figma", chat=True),
+        skill("vue", "Vue", chat=True),
+        skill("fg", "Figma", chat=True),
     ],  # fmt: skip
     # a product manager
     "pm": [
@@ -171,11 +192,15 @@ CANDIDATES: dict[str, list[dict]] = {
         bullet("b5", "r2", "Wrote requirements for six features"),
         bullet("b6", "r2", "Supported customer interviews"),
         bullet("b7", "r2", "Helped prioritise the backlog"),
-        skill("rm", "Roadmapping"), skill("sql", "SQL"), skill("jr", "Jira"), skill("ab", "A/B testing"),
+        skill("rm", "Roadmapping"),
+        skill("sql", "SQL"),
+        skill("jr", "Jira"),
+        skill("ab", "A/B testing"),
         skill("ur", "User research"),
         degree("edu", "MBA", "Fairhaven Business School", "2014", "2016"),
         cert("cert", "Certified Scrum Product Owner", "2018"),
-        skill("am", "Amplitude", chat=True), skill("fg", "Figma", chat=True),
+        skill("am", "Amplitude", chat=True),
+        skill("fg", "Figma", chat=True),
     ],  # fmt: skip
     # a marketing analyst
     "ma": [
@@ -188,10 +213,14 @@ CANDIDATES: dict[str, list[dict]] = {
         bullet("b5", "r2", "Scheduled posts for three social channels"),
         bullet("b6", "r2", "Helped organise two trade shows"),
         bullet("b7", "r2", "Wrote product descriptions for the online shop"),
-        skill("xl", "Excel"), skill("ga", "Google Analytics"), skill("seo", "SEO"), skill("mc", "Mailchimp"),
+        skill("xl", "Excel"),
+        skill("ga", "Google Analytics"),
+        skill("seo", "SEO"),
+        skill("mc", "Mailchimp"),
         skill("cw", "Copywriting"),
         degree("edu", "B.A. Marketing", "Eastfield University", "2014", "2018"),
-        skill("hs", "HubSpot", chat=True), skill("pb", "Power BI", chat=True),
+        skill("hs", "HubSpot", chat=True),
+        skill("pb", "Power BI", chat=True),
     ],  # fmt: skip
 }
 
@@ -355,8 +384,8 @@ PAIRS: list[dict] = [
         rephrase("b1", "Ran the on-call rota for six engineers"),
     ]),
     pair(12, "sre", [
-        ("req", "AWS services such as EC2 and S3", "n"), ("req", "Terraform", "p"), ("req", "Linux administration", "m"),
-        ("pref", "Python or Bash scripting", "m"), ("pref", "Ansible", "n"),
+        ("req", "AWS services such as EC2 and S3", "n"), ("req", "Terraform", "p"),
+        ("req", "Linux administration", "m"), ("pref", "Python or Bash scripting", "m"), ("pref", "Ansible", "n"),
     ], [
         add("an", reqs=[5]),
         rephrase("b5", "Managed 120 Linux servers on AWS", kind="new_skill", reason="new_entity",
@@ -411,8 +440,8 @@ PAIRS: list[dict] = [
     ], rephrase=False),
     # ---- fe: a frontend developer ----------------------------------------
     pair(16, "fe", [
-        ("req", "React and TypeScript", "m"), ("req", "Testing with Jest", "p"), ("req", "Performance optimisation", "m"),
-        ("pref", "Vue", "n"), ("pref", "GraphQL", "n"),
+        ("req", "React and TypeScript", "m"), ("req", "Testing with Jest", "p"),
+        ("req", "Performance optimisation", "m"), ("pref", "Vue", "n"), ("pref", "GraphQL", "n"),
     ], [
         add("vue", reqs=[4]),
         rephrase("b2", "Improved page load time by 35 percent", reqs=[3]),

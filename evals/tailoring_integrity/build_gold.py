@@ -120,7 +120,8 @@ def degraded_entail(items: list[dict]) -> list[Any]:
     out: list[Any] = []
     for item in items:
         claims = [edit for edit in item["edits"] if reaches_layer_2(edit)]
-        out.append({"items": [{"edit": f"e{n}", "entailed": True} for n in range(1, len(claims) + 1)]} if claims else None)
+        every_claim = {"items": [{"edit": f"e{n}", "entailed": True} for n in range(1, len(claims) + 1)]}
+        out.append(every_claim if claims else None)
     return out
 
 
@@ -161,7 +162,7 @@ def counts(items: list[dict]) -> dict[str, Any]:
         "supported": sum(e["label"] == "supported" for e in edits),
         "unsupported": sum(e["label"] == "unsupported" for e in edits),
         "kinds": dict(sorted(kinds.items())),
-        "reasons": {r: sum(e["reason"] == r for e in edits) for r in sorted({e["reason"] for e in edits if e["reason"]})},
+        "reasons": {r: sum(e["reason"] == r for e in edits) for r in sorted({e["reason"] for e in edits} - {None})},
         "ops": {op: sum(e["op"] == op for e in edits) for op in ("rephrase", "reorder", "remove", "add_from_fact")},
         "rephrase_off_pairs": sum(not item["allow_rephrase"] for item in items),
     }
