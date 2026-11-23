@@ -16,7 +16,7 @@ Most job tools hand you a list. OpenElip is being built to do the work behind th
 
 ## Status
 
-Phase 1 (the platform) is built. The table says exactly what runs today and what does not.
+Phase 1 (the platform) and phase 2 (the searchable job index) are built. The table says exactly what runs today and what does not. Every figure from a labelled set comes with the words "labels drafted by an agent, review pending": the labels were written by an agent and the maintainer has not reviewed them yet.
 
 | Area | State |
 |---|---|
@@ -27,12 +27,15 @@ Phase 1 (the platform) is built. The table says exactly what runs today and what
 | Model gateway: one entry point, schema-checked answers, one cost row per call, `503 ai_disabled` when no provider is set | **Working** with the built-in fake provider and recorded answers. The Anthropic, OpenAI and OpenAI-compatible adapters are written and tested against stub clients; **no live model call has been made yet** (see below) |
 | Web app: home, `/jobs` search, `/sign-in`, `/trust` (what this server sends data to), `/control/costs` (model cost), light and dark themes | **Working**, with automated accessibility checks on each screen in both themes |
 | Checks that no resume, chat, contact or query text reaches a log, a metric or a trace | **Working** (a test that fails when one does) |
-| Evaluation harness with a regression gate | **Working as a skeleton.** Its only suite proves the harness runs; there is **no quality gold set yet**, so no quality is claimed |
+| Evaluation harness with a regression gate | **Working.** Two gold sets exist (400 location inputs and 50 job postings with their requirements), both with labels drafted by an agent, review pending. The gate in CI replays recorded answers: a replay shows that the code path works and is **not** a quality result, and no live model has been measured |
 | Continuous integration (`.github/workflows/`) | **Written and run on a developer machine** (`scripts/ci-local.ps1`); it has not yet run on GitHub |
-| Job index from public Greenhouse, Lever and Ashby boards, closed-job detection, fetch history, duplicate folding | **Working** (the index is empty until you fill it, see below) |
-| Keyword search API with country and remote filters | **Working** |
+| Job index from public Greenhouse, Lever and Ashby boards, closed-job detection, fetch history, duplicate folding | **Working** (the index is empty until you fill it, see below). An index made before phase 2 is converted in place by one migration: back it up and rehearse it on a copy first (`db/rehearse_upgrade.py`) |
+| Search by meaning and by keywords, with country and remote filters; the board each job came from and when it was last seen open on every result and job page | **Working**, with no model key. `/jobs` and `GET /v1/jobs` take a plain-English query and fuse a keyword ranking with a vector ranking from a local embedding model. A test with invented postings and the real model shows a query finding a posting that shares no word with it. While no job has a vector yet, or the model cannot load, search falls back to keywords and the page says so. There is **no search-quality gold set**, so no search quality is claimed |
+| Scheduled refresh and apply-link re-check | **Working.** The worker refreshes every active board every 6 hours with no command, and a job that leaves its board is closed. `python -m app.cli jobs verify JOB_ID` asks a job's own apply link through a guarded fetch (it refuses private addresses) and closes the job on a 404 or 410. It is run by hand: nothing calls it before a brief is built (phase 4) |
+| Bulk board import | **Working.** `python -m app.cli sources import FILE` (one board name per line, `--dry-run` writes nothing) registers only boards that answer with live postings |
+| Location parser: country and city read from the posting's text, and left unknown when it does not say | **Working.** On 260 test rows of a 400-row labelled sample, 258 were read correctly (0.9923, 95% interval 0.9724 to 0.9979), and the parser gave a place for no row whose label says there is none; labels drafted by an agent, review pending. Only 4 rows have no country label and 46 no city label, so that second result is a weak check, not a guess rate. 40 more test rows are left out because their text is also in the parser's tests or the labelling guideline ([`evals/location/README.md`](evals/location/README.md)). A place that cannot be read shows "Location: unknown" |
+| Requirement extraction: each open job's requirements as cited items, required or preferred, with the exact words marked on the job page | **Built, and off until a model is proven.** It runs only with a model key **and** a passed live gold-set run for that model and prompt. No live run exists, so no job is extracted and job pages say the requirements are not extracted yet. The 50-posting gold set has labels drafted by an agent, review pending, and no extraction quality is claimed ([`evals/requirement_extraction/README.md`](evals/requirement_extraction/README.md)) |
 | System design: overview, requirements, roadmap, architecture, data model, API, AI system, front end | **Published** in [`docs/`](docs/OVERVIEW.md); the data model's schema and integrity rules were executed and tested on PostgreSQL |
-| Hybrid and semantic search, scheduled refresh, requirement extraction | Planned (phase 2) |
 | Career record, matching with cited evidence, morning brief | Planned (phases 3 and 4) |
 | Chat agent, resume tailoring that cannot invent, application tracking | Planned (phase 5) |
 | Hiring desk: roles, consent-first introductions, answer clock | Planned (phase 6) |
@@ -86,7 +89,7 @@ docker compose exec worker python -m app.cli queue list        # wait until inge
 docker compose exec worker python -m app.cli ingest run
 ```
 
-Jobs appear at http://localhost:8080/jobs as the fetches finish. A worker runs one fetch at a time; a pass over the 71 boards took under two minutes when this was checked on 22 November 2026.
+Jobs appear at http://localhost:8080/jobs as the fetches finish. A worker runs one fetch at a time; a pass over the 71 boards took under two minutes when this was checked on 22 November 2026. From then on the worker fetches every board again every 6 hours, and gives new and changed jobs their vectors in batches of 500 every five minutes, so a large index takes some time to become searchable by meaning (keyword search works from the start).
 
 ### With no model key
 
@@ -168,7 +171,7 @@ Unknown values stay unknown. Nothing is guessed to fill a gap.
 
 ## Stack
 
-Python, FastAPI, PostgreSQL 17 (full-text search and pgvector), Next.js 16 with React 19 for the web app, a provider-agnostic model gateway, Caddy as the one entry point, Docker Compose. Planned: local embeddings, and LangGraph for the campaign graph, approval pauses and agent loops, with its state checkpointed in PostgreSQL. No vector database product, no knowledge graph, no hosted agent platform: one database, and plain code wherever plain code is enough.
+Python, FastAPI, PostgreSQL 17 (full-text search and pgvector), Next.js 16 with React 19 for the web app, a provider-agnostic model gateway, local embeddings (fastembed with `BAAI/bge-small-en-v1.5` on the CPU, no key), Caddy as the one entry point, Docker Compose. Planned: LangGraph for the campaign graph, approval pauses and agent loops, with its state checkpointed in PostgreSQL. No vector database product, no knowledge graph, no hosted agent platform: one database, and plain code wherever plain code is enough.
 
 Start with [`docs/OVERVIEW.md`](docs/OVERVIEW.md) for the design set.
 
