@@ -80,3 +80,9 @@ min_score = 1.0
 # about a model's quality.
 [agent_drafts]
 min_score = 1.0
+
+# Scored by code and replayed (see evals/guardian/README.md): 1.0 only when every pre-registered bar holds
+# (guardian_block_recall 1.0, guardian_false_blocks 0, guardian_reason_match 1.0), else 0.0. The 60 cases are invented and
+# their labels agent-drafted; a pass shows that the code path works and says nothing about a model's quality.
+[guardian]
+min_score = 1.0

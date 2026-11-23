@@ -99,6 +99,7 @@ SUITES: dict[str, Suite | OwnScorer] = {
     "injection": OwnScorer("injection/score.py"),
     "dossier": OwnScorer("dossier/score.py"),
     "agent_drafts": OwnScorer("agent_drafts/score.py"),
+    "guardian": OwnScorer("guardian/score.py"),
 }
 
 

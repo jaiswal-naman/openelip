@@ -1,0 +1,1 @@
+{"disable": ["policy"], "note": "the scorer replays the cases with this one part switched off; the gate must fail"}

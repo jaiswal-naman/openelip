@@ -1,0 +1,14 @@
+[
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   },
+   {
+    "edit": "e2",
+    "entailed": true
+   }
+  ]
+ }
+]
