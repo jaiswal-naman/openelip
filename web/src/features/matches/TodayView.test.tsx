@@ -32,6 +32,7 @@ function routes(over: Record<string, Response | ((request: Request) => Response)
     "GET /v1/briefs": ok([{ id: BRIEF_ID, local_date: "2026-11-23", status: "composed", item_count: 1, delivery: brief().delivery }]),
     [`GET /v1/briefs/${BRIEF_ID}`]: ok(brief()),
     "GET /v1/decisions": ok([decisionView()]),
+    "GET /v1/introductions": ok([]), // no introductions unless a test says otherwise (Phase 6)
     ...over,
   };
 }
@@ -310,5 +311,36 @@ describe("Today: the tabs are URL state", () => {
     nav.search = `view=${value}`;
     renderWithApi(<TodayView />, routes());
     expect(await screen.findByRole("tab", { name: "Decisions (1)" })).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+describe("Today: introductions (Phase 6)", () => {
+  const ASK = "7a1b2c3d-0000-4000-8000-0000000000a1";
+  const GONE = "7a1b2c3d-0000-4000-8000-0000000000c3";
+  const ask = { id: ASK, status: "asked", asked_at: "2026-11-23T08:00:00Z", expires_at: "2999-11-30T09:00:00Z", responded_at: null, employer_answer: null, employer_answered_at: null, organization_name: "Halden Demo", role_title: "Backend engineer" };
+  const detail = { view: "candidate", ...ask, employer_answer_reason: null, organization: { id: "o", name: "Halden Demo", is_synthetic: true }, role: { id: "r", title: "Backend engineer", job_id: 1, country: null, city: null, work_arrangements: [], pay_range: null }, has_employer_signal: false, terms: "t", share_preview: { on_accept: { name: "n", headline: null, evidence: [], facts: [] }, on_employer_yes: { email: "e@example.test" } }, share_preview_hash: "h", consent_text_version: "v" };
+  const item = (id: string) => ({ kind: "introduction" as const, introduction_id: id, organization_name: "Halden Demo", role_title: id === ASK ? "Backend engineer" : "Old role", expires_at: "2026-11-30T09:00:00Z" });
+
+  it("counts an open ask as a decision, shows its card once, and lists only brief asks that are no longer open as lines", async () => {
+    renderWithApi(
+      <TodayView />,
+      routes({
+        "GET /v1/introductions": ok([ask]),
+        [`GET /v1/introductions/${ASK}`]: ok(detail),
+        [`GET /v1/briefs/${BRIEF_ID}`]: ok(brief({ decisions: [briefDecision(), item(ASK), item(GONE)] })),
+      }),
+    );
+    expect(await screen.findByRole("article", { name: "Halden Demo asks about Backend engineer" })).toBeInTheDocument();
+    expect(await screen.findByText("2 decisions need you.")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Decisions (2)" })).toBeInTheDocument();
+    const lines = screen.getByRole("region", { name: "Introductions in this brief" });
+    expect(within(lines).getByText(/Old role/)).toBeInTheDocument();
+    expect(within(lines).queryByText(/Backend engineer/)).not.toBeInTheDocument();
+  });
+
+  it("?decision=<introduction id> opens the consent sheet, not a match", async () => {
+    nav.search = `decision=${ASK}`;
+    renderWithApi(<TodayView />, routes({ "GET /v1/introductions": ok([ask]), [`GET /v1/introductions/${ASK}`]: ok(detail), "GET /v1/signals": ok({ sent: [], received: [], quota: { used: 0, limit: 3, resets_at: "2026-11-30T00:00:00Z" } }) }));
+    expect(await screen.findByRole("heading", { name: "Share with Halden Demo for Backend engineer?" })).toBeInTheDocument();
   });
 });
