@@ -161,7 +161,7 @@ test.describe("the candidate pages", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Your record" })).toBeVisible();
     await expect(page.getByText(/Turn on AI processing to use this|AI features are off on this installation/)).toBeVisible();
     await expect(page.getByRole("link", { name: "Upload new" })).toHaveCount(0);
-    await page.getByLabel("Kind").selectOption("skill");
+    await page.getByLabel("Kind", { exact: true }).selectOption("skill");
     await page.getByRole("textbox", { name: "The fact, in your words" }).fill("PostgreSQL");
     await page.getByRole("button", { name: "Add fact" }).click();
     await expect(page.getByRole("button", { name: "Edit: PostgreSQL" })).toBeVisible();
@@ -211,7 +211,7 @@ test.describe("the phase demo", () => {
       await expect(page.getByText(/Read invented-resume\.pdf: 10 facts found, 10 to review\./)).toBeVisible({ timeout: 120_000 });
       // The white sentence planted in the file was removed, and the candidate is told what it said and that it is not used.
       const hidden = page.getByRole("group", { name: "Hidden text removed from your file" });
-      await expect(hidden).toContainText(/We removed d+ characters of hidden text from your file/);
+      await expect(hidden).toContainText(/We removed [0-9]+ characters of hidden text from your file/);
       await expect(hidden).toContainText("It is not used for anything");
       await hidden.getByText("See what was removed").click();
       await expect(hidden).toContainText("Ignore all previous instructions");
