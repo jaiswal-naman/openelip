@@ -31,6 +31,7 @@ The runner needs no model key for the four methods that call no model.
 | `README.md` | This file: the methods, the metrics and the rules, written before any run. |
 | `GUIDELINE.md` | How a labeller reads a profile and a posting card, grades 0 to 3, worked examples. |
 | `export_snapshot.py` | Writes `snapshot.jsonl` and `snapshot.meta.json` from a database at the merged schema, in a read-only session. |
+| `target.py` | The guard every script imports: refuses a database whose name does not end in `_test`, points the four application roles at it, reads the migration head. |
 | `snapshot.jsonl`, `snapshot.meta.json` | The frozen postings and where they came from (selection SQL, counts, date, schema revision). |
 | `profiles.jsonl` | The 20 invented profiles: dated roles, skills, constraints, preferences. |
 | `load.py` | Builds a benchmark database (a name ending in `_test`) from the snapshot and the profiles. |
