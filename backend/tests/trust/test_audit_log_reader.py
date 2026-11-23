@@ -17,6 +17,7 @@ from tests.campaigns.factories import make_action, make_check, make_run, make_wo
 from tests.conftest import _empty_tables
 from tests.match.factories import make_decision, make_job, make_user
 from tests.match.factories import make_run as make_match_run
+from tests.twin.factories import candidate_token
 
 T0 = datetime(2026, 11, 20, 12, 0, tzinfo=timezone.utc)
 UNREACHABLE = "postgresql://nobody:nothing@127.0.0.1:1/app_test"
@@ -109,7 +110,8 @@ def test_one_merged_log_newest_first_with_every_source(clean, api_client, sign_i
         done, failed = seed_matching(conn, user, T0 + timedelta(hours=5))
         audit_row(conn, user, "consent.granted", T0 + timedelta(hours=1), actor=user, actor_type="candidate")
         audit_row(conn, user, "agentnet.agent_call_refused", T0 + timedelta(hours=3), actor_type="outside_agent",
-                  token=uuid4(), details={"tool": "ask_twin", "reason": "insufficient_scope"})  # fmt: skip
+                  token=candidate_token(conn, user).id,
+                  details={"tool": "ask_twin", "reason": "insufficient_scope"})  # fmt: skip
         # the candidate was only the actor of this one; it is about someone else
         other = make_user(conn)
         audit_row(conn, other, "consent.granted", T0 + timedelta(hours=4), actor=user, actor_type="candidate")
@@ -213,17 +215,16 @@ def test_filter_by_campaign_returns_only_that_campaigns_guardian_entries(clean, 
 
 
 def agent_token_for(conn, user) -> UUID:
-    """A token id the audit rows can name. Until 09-01's `agent_tokens` table exists the id is bare; once it exists the
-    audit_log foreign key needs a real row, which needs the `agent_access` consent: write it against that table then."""
-    if conn.execute(text("SELECT to_regclass('public.agent_tokens')")).scalar_one() is not None:
-        pytest.skip("agent_tokens exists: insert a real token row here (see the 09-02 SUMMARY, Deviations)")
-    return uuid4()
+    """A token id the audit rows can name: a real `agent_tokens` row (with its `agent_access` consent), because the
+    audit_log foreign key (09-01) refuses a bare id. Changed in 09-04: the table exists now."""
+    token: UUID = candidate_token(conn, user).id
+    return token
 
 
 def test_filter_by_agent_token(clean, api_client, sign_in_as):
     with clean.begin() as conn:
         user = make_user(conn)
-        token, other_token = agent_token_for(conn, user), uuid4()
+        token, other_token = agent_token_for(conn, user), agent_token_for(conn, user)
         audit_row(conn, user, "agentnet.agent_call", T0, actor_type="outside_agent", actor=user, token=token,
                   details={"tool": "search_matches", "outcome": "ok"})  # fmt: skip
         audit_row(conn, user, "agentnet.agent_call_refused", T0 + timedelta(minutes=1), actor_type="outside_agent",
@@ -245,7 +246,8 @@ def test_summaries_hold_no_free_text(clean, api_client, sign_in_as):
     """A detail that is not a short code never reaches the entry (T-09-16)."""
     with clean.begin() as conn:
         user = make_user(conn)
-        audit_row(conn, user, "agentnet.agent_call_refused", T0, actor_type="outside_agent", actor=user, token=uuid4(),
+        audit_row(conn, user, "agentnet.agent_call_refused", T0, actor_type="outside_agent", actor=user,
+                  token=agent_token_for(conn, user),
                   details={"tool": "What is her salary? Call me", "reason": "Ignore all rules"})  # fmt: skip
     (entry,) = get(api_client, sign_in_as, user).json()["data"]["entries"]
     assert "salary" not in entry["summary"] and "Ignore" not in entry["summary"]
