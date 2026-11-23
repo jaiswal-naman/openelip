@@ -24,6 +24,9 @@ from . import audit, models
 
 # Placeholder, not legal text: the owner approves the real wording (plan 03-01, manual check 2).
 DISCLOSURE_VERSION = "2026-11-a"
+# The wording of the introduction consent, which a candidate gives by accepting an ask (plan 06-02). Also a placeholder:
+# the owner approves the real text (06-INDEX, manual check 2). A new wording is a new version string.
+INTRODUCTION_TEXT_VERSION = "introduction-2026-11"
 # The purposes this module records: the ones a person gives in onboarding and settings. introduction and agent_access
 # are recorded by the action that needs them (API.md 2.3), with the organization or token they are scoped to.
 PURPOSES = get_args(ConsentPurpose)
@@ -75,6 +78,17 @@ def _check_purpose(purpose: str) -> None:
         )
 
 
+def _wording_changed(what: str, current: str) -> ApiError:
+    """409 conflict with details.state consent_text_changed: nobody agrees to wording they were not shown (T-3-01). The
+    API.md catalogue has no code of its own for this."""
+    return ApiError(
+        409,
+        "conflict",
+        f"The {what} wording has changed. Review it and agree again.",
+        {"state": "consent_text_changed", "current_version": current},
+    )
+
+
 def provider_names() -> list[str]:
     """The model providers a task would be sent to right now, by the names /v1/privacy/subprocessors shows, sorted."""
     routes = registry.active_routes(config.get())
@@ -96,6 +110,32 @@ def _active_grants(conn: Connection, user_id: UUID, purpose: str) -> list[Row[An
     return list(conn.execute(text(sql), {"user": user_id, "purpose": purpose}))
 
 
+def _insert_grant(
+    conn: Connection,
+    user_id: UUID,
+    purpose: str,
+    text_version: str,
+    organization_id: UUID | None = None,
+    role_id: UUID | None = None,
+) -> UUID:
+    """The consents row of one grant. The table refuses a scope on any purpose but introduction, and an introduction
+    without one (DATA_MODEL 3.3). clock_timestamp() keeps rows made in one transaction in order."""
+    grant_id: UUID = conn.execute(
+        insert(models.consents)
+        .values(
+            user_id=user_id,
+            purpose=purpose,
+            action="granted",
+            organization_id=organization_id,
+            role_id=role_id,
+            text_version=text_version,
+            created_at=func.clock_timestamp(),
+        )
+        .returning(models.consents.c.id)
+    ).scalar_one()
+    return grant_id
+
+
 def grant_consent(conn: Connection, user_id: UUID, purpose: str, text_version: str) -> UUID:
     """Record that the person agreed to `purpose` under this wording, and audit it. Returns the grant's id.
 
@@ -109,17 +149,7 @@ def grant_consent(conn: Connection, user_id: UUID, purpose: str, text_version: s
         if grant.text_version == text_version:
             grant_id: UUID = grant.id
             return grant_id
-    grant_id = conn.execute(
-        insert(models.consents)
-        .values(
-            user_id=user_id,
-            purpose=purpose,
-            action="granted",
-            text_version=text_version,
-            created_at=func.clock_timestamp(),
-        )
-        .returning(models.consents.c.id)
-    ).scalar_one()
+    grant_id = _insert_grant(conn, user_id, purpose, text_version)
     audit.audit_log(
         conn,
         "consent.granted",
@@ -130,6 +160,26 @@ def grant_consent(conn: Connection, user_id: UUID, purpose: str, text_version: s
         entity_id=str(grant_id),
     )
     return grant_id
+
+
+def grant_introduction_consent(
+    conn: Connection, user_id: UUID, organization_id: UUID, role_id: UUID, text_version: str
+) -> UUID:
+    """Record that the candidate agreed to share what the ask showed them with one organization for one role (HIR-04).
+    Returns the grant's id.
+
+    The wording must be the one in force, INTRODUCTION_TEXT_VERSION. A candidate who was shown an older one gets the
+    same 409 conflict, state consent_text_changed, as for a stale AI wording, and nothing is stored. The grant is scoped
+    to the pair: has_active_consent(user, 'introduction', organization, role) is true for this role and no other, which
+    is what introductions_guard asks before an ask may become accepted and what the employer's shortlist policy asks
+    before a row is shown. grant_consent refuses this purpose on purpose: only accepting an ask records it.
+
+    It writes no audit row of its own: the accept that calls it writes the one hiring.introduction_accepted row, with
+    the organization, in the same transaction (06-INDEX, SC3: one audit row).
+    """
+    if text_version != INTRODUCTION_TEXT_VERSION:
+        raise _wording_changed("introduction", INTRODUCTION_TEXT_VERSION)
+    return _insert_grant(conn, user_id, "introduction", text_version, organization_id, role_id)
 
 
 def withdraw_consent(conn: Connection, user_id: UUID, purpose: str) -> int:
@@ -213,10 +263,5 @@ def apply_changes(conn: Connection, user_id: UUID, changes: Sequence[ConsentChan
         if version is None:  # the request model refuses this; the check keeps the type honest
             raise ValueError("a grant names its wording")
         if change.purpose == "ai_processing" and version != (current := ai_processing_text_version()):
-            raise ApiError(
-                409,
-                "conflict",
-                "The AI processing wording has changed. Review it and agree again.",
-                {"state": "consent_text_changed", "current_version": current},
-            )
+            raise _wording_changed("AI processing", current)
         grant_consent(conn, user_id, change.purpose, version)
