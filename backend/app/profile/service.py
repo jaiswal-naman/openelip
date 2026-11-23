@@ -133,7 +133,8 @@ def atomic(operation: Callable[Concatenate[Connection, P], R]) -> Callable[Conca
 
 def clean_text(value: object, field: str, max_length: int = MAX_STATEMENT) -> str:
     """Text a candidate wrote, trimmed and checked. A protected characteristic is refused here (REC-07), so nothing
-    that states one reaches any table."""
+    that states one reaches any table. This is typed text, so it goes through the wide screen: plain sentences ("I am
+    45 years old") as well as labels. What a resume line says is checked by the narrow one (extract/validate.py)."""
     if not isinstance(value, str):
         raise InvalidField(field, "invalid_value")
     cleaned = value.strip()
@@ -143,7 +144,7 @@ def clean_text(value: object, field: str, max_length: int = MAX_STATEMENT) -> st
         raise InvalidField(field, "required")
     if len(cleaned) > max_length:
         raise InvalidField(field, "too_long")
-    if (category := protected.screen(cleaned)) is not None:
+    if (category := protected.screen_typed(cleaned)) is not None:
         raise ProtectedCharacteristic(category, field)
     return cleaned
 
