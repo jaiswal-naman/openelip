@@ -112,8 +112,9 @@ test.describe("the matches and morning brief demo", () => {
       await expect(marks).toHaveCount(2);
       await expect(marks.nth(0)).toHaveText("shipped services in Quillscript and PostgreSQL");
       await expect(marks.nth(1)).toHaveText("Skills: Quillscript, PostgreSQL.");
-      await expect(page.getByRole("region", { name: "Job text" }).locator("mark")).toHaveCount(1);
-      await expect(page.getByRole("region", { name: "Your resume" }).locator("mark")).toHaveCount(1);
+      // exact: the section around both panes is named "Job text and your resume", which contains both of these names
+      await expect(page.getByRole("region", { name: "Job text", exact: true }).locator("mark")).toHaveCount(1);
+      await expect(page.getByRole("region", { name: "Your resume", exact: true }).locator("mark")).toHaveCount(1);
       await expect(page.getByRole("status").filter({ hasText: "Job sentence and resume line 3 highlighted." })).toHaveCount(1);
       await expect(page).toHaveURL(/[?&]req=\d+/); // a reload or a shared link lands on the same highlight
       await expectNoViolationsInBothThemes(page);
