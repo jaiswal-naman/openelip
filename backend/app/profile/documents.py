@@ -83,7 +83,7 @@ def clean_filename(name: str | None) -> str | None:
     return shown or None
 
 
-def check_daily_limit(conn: Connection, user_id: UUID) -> None:
+def _check_daily_limit(conn: Connection, user_id: UUID) -> None:
     """429 rate_limited when the person already has PER_DAY uploads in the last 24 hours (API.md 1.8). Each upload makes
     three model calls, so this is what bounds what one account can spend.
 
@@ -115,7 +115,7 @@ def store_document(conn: Connection, user_id: UUID, filename: str | None, data: 
     if len(data) > MAX_BYTES:
         raise PayloadTooLarge()
     mime = sniff(data)
-    check_daily_limit(conn, user_id)
+    _check_daily_limit(conn, user_id)
     document_id: UUID = conn.execute(
         insert(models.documents)
         .values(
