@@ -139,7 +139,45 @@ how many, and an unjudged job counts as not relevant, which can only understate 
 
 ## Status of the data
 
-(Added after the snapshot, the profiles and the labels were made; the sections above were not changed.)
+Added after the snapshot, the profiles and the labels were made. The sections above were not changed, except that the
+files table now lists `target.py` (the guard that refuses any database whose name does not end in `_test`), which was
+written after the table.
+
+**Snapshot** (`snapshot.jsonl`, 4,995,603 bytes; `snapshot.meta.json`, 1.8 KB). Exported on 2026-11-23 from a restored
+copy of a `pg_dump` of the live index `app` (Alembic `0002_platform`, 11,357 jobs), upgraded to head, because `app` is
+below the Phase 2/3 merge and the export refuses it. `app` itself was only dumped; the copy and the dump were deleted
+afterwards. Of 9,996 open, listed, canonical postings, 2,038 were dropped because their text held an email address or a
+phone number, which left 7,958. The target was 1,000 postings and the count fell to 758 to keep the file under 5 MB.
+They come from 57 sources (Greenhouse 512, Ashby 211, Lever 35) in 19 countries; 101 of them had no country in the
+index.
+
+**What the store path changes.** `load.py` puts the postings in through `ingest.fetch.store`, which reads each place and
+arrangement again with the current parser: 87 of the 101 postings that had no country in the live index get one, 11
+get a different one, and no arrangement changes (14 postings are left with no country). The benchmark therefore ranks the
+current parser's reading of each posting, not the values the live index stored.
+
+**What the index does not hold.** No posting states pay or a level, so a salary-floor or level constraint filters
+nothing (an unstated field passes and is flagged unverified) and M4's level distance is always 0. Every posting was first
+seen on the same day, so the recency bucket is the same for all of them and cannot reorder anything: here M4 tests the
+soft preferences (target title, arrangement) only.
+
+**Profiles.** Twenty invented ones, `p01` to `p20`, written from the title mix of the snapshot (software, infrastructure,
+security and AI engineering, engineering management, solutions and sales engineering, enterprise sales, sales
+development, customer success, partnerships, product management, finance, legal, recruiting, marketing and freight
+operations). Twelve carry at least one hard constraint (location 8, remote policy 2, work authorization 1, employment type
+1, level 1, salary floor 1, excluded company 2) and eight carry none; the salary floor of `p10` and the level
+constraint of `p06` filter nothing, as above. Before the pool existed, the remote-policy constraint of `p13` was changed
+from "remote or hybrid" to "remote only": the postings state "remote" or "on-site or hybrid", so "remote or hybrid"
+accepted every posting.
+
+**Pool and labels.** 366 pairs (273 different postings) for the 20 profiles, 12 to 24 per profile; the plan expected about
+500, and the four methods overlap more than that. Grades: 0 for 114 pairs, 1 for 86, 2 for 90, 3 for 76; 166 pairs (45%)
+are relevant, and every profile has at least 4. One agent graded them in a single pass in the hidden order (the decisions
+made are at the end of `GUIDELINE.md`). A card shows the first 600 characters of a posting, which are mostly company
+boilerplate, so most grades rest on the title, the place and the arrangement.
+
+**Database name.** Load the benchmark into a database of its own (for example `app_bench_test`), not the test suite's
+database: the suite empties the tables it shares with the benchmark.
 
 ## Commands
 
