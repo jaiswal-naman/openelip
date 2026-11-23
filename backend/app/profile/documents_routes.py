@@ -178,11 +178,13 @@ async def capped(stream: AsyncIterator[bytes], limit: int) -> AsyncGenerator[byt
 
 
 async def read_upload(request: Request) -> Upload:
-    """The one file of a multipart request, in the field named file. Starlette's parser keeps a file over 1 MB on disk
-    while it arrives; the cap is applied to the stream before the parser sees it."""
+    """The one file of a multipart request, in the field named file. The cap is applied to the stream before the parser
+    sees it, and the file is kept in memory: the parser would write one over 1 MB to a temporary file on disk, which
+    would leave a resume there unencrypted for the length of the request, and it is read into memory next anyway."""
     if not request.headers.get("content-type", "").lower().startswith("multipart/form-data"):
         raise ApiError(415, "unsupported_media_type", "Send the file as multipart/form-data, in a field named file.")
     parser = MultiPartParser(request.headers, capped(request.stream(), MAX_REQUEST_BYTES), max_files=1, max_fields=0)
+    parser.spool_max_size = MAX_REQUEST_BYTES
     try:
         form = await parser.parse()
     except MultiPartException:  # its message describes the framing, not the content, but there is nothing to act on

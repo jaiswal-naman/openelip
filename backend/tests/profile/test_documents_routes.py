@@ -7,11 +7,14 @@ queue handler with the scripted model of conftest.py; consent has its own file (
 
 import asyncio
 import io
+import os
 import zipfile
+from tempfile import SpooledTemporaryFile
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import text
+from starlette import formparsers
 
 from app.platform.llm import SchemaInvalid
 from app.platform.sessions import open_sealed_bytes
@@ -45,11 +48,11 @@ def refused(response, status, code):
     return body["error"]
 
 
-def a_zip(*names):
+def a_zip(*names, body=b"x"):
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w") as archive:
         for name in names:
-            archive.writestr(name, b"x")
+            archive.writestr(name, body)
     return out.getvalue()
 
 
@@ -125,6 +128,20 @@ def test_the_route_applies_the_cap_to_the_request_while_it_streams(uploader, kit
     monkeypatch.setattr(documents_routes, "MAX_REQUEST_BYTES", 2_000)  # a small file, but over this cap
     refused(upload(uploader, kit.docx()), 413, "payload_too_large")
     nothing_stored(kit)
+
+
+def test_a_large_upload_stays_in_memory_and_never_becomes_a_temporary_file(uploader, kit, monkeypatch):
+    rolled = []
+
+    class Watched(SpooledTemporaryFile):
+        def close(self):
+            rolled.append(self._rolled)  # True once the parser has moved the file from memory to disk
+            super().close()
+
+    monkeypatch.setattr(formparsers, "SpooledTemporaryFile", Watched)
+    three_megabytes = a_zip("word/document.xml", body=os.urandom(3_000_000))  # does not compress; the type is a DOCX's
+    ok(upload(uploader, three_megabytes), 202)
+    assert rolled and set(rolled) == {False}
 
 
 def test_the_stream_is_cut_off_where_it_crosses_the_cap_and_not_read_to_the_end():
