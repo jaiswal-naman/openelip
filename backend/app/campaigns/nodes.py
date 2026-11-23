@@ -275,8 +275,10 @@ def _route(conn: Connection, campaign_id: UUID) -> str | None:
     # a closed job ends the campaign before the application is made
     if stage in ("researching", "needs_you") and c.job_status == "closed":
         return _end(conn, c) if move("closed", "job_closed", "job_closed") else None
-    # a scam signal in the posting pauses it before anything is researched, once per content version (decision 24)
-    if stage == "researching":
+    # a scam signal in the posting pauses it before anything is researched, once per content version (decision 24).
+    # An introduction campaign is made at `applied` (the accept was the application) and researches from there, so
+    # its check is made at that stage too (08-05 finding: it was skipped).
+    if stage == "researching" or (c.introduction_id is not None and stage == "applied"):
         found = guardian.scam_signals(f"{c.job_title}\n{c.job_text}")
         if found and not _flagged_before(conn, campaign_id, c.content_version):
             paused = stages.pause(
