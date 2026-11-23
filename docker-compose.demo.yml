@@ -4,6 +4,7 @@
 #   docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml up -d --build --wait
 #   cd web && DEMO_STACK=1 BASE_URL=http://localhost:8090 MAILPIT_URL=http://localhost:8026 \
 #     pnpm exec playwright test tests/e2e/matches-brief.spec.ts --project=chromium
+#   (the hiring desk demo, plan 06-07, on a fresh stack: down -v, up again, then the same command with tests/e2e/hiring-desk.spec.ts)
 #   docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml down -v      (throws it all away)
 #
 # What it changes, and why:
@@ -15,6 +16,9 @@
 #     (`python -m app.cli demo seed-matches`) refuses to write to any other database, so it can never put its invented
 #     postings into the real index.
 #   * LLM_PROVIDER=fake on the API and the worker: recorded answers, no key, no network, no cost. The seed refuses any other.
+#     LLM_FAKE_DIR (plan 06-07) adds the hiring demo's recordings, file by file: a task with a file in that folder answers from
+#     it, every other task from the fake provider's own recorded/ folder. The fake provider hands its answers out once per
+#     process, so each demo spec needs a fresh stack (down -v, then up).
 #   * The worker also holds the owner's login (DATABASE_URL_MIGRATE), because the seed writes the invented record and postings
 #     with it, and it takes no `ingest` jobs (WORKER_QUEUES), so it never fetches the real job boards: the demo's recorded
 #     answers fit the four invented postings only, and the seed refuses an index that holds others.
@@ -40,6 +44,7 @@ services:
     environment:
       APP_BASE_URL: http://localhost:${DEMO_HTTP_PORT:-8090}
       LLM_PROVIDER: fake
+      LLM_FAKE_DIR: /srv/backend/app/demo_data/hiring/recorded
       DATABASE_URL_API: postgresql://app_api:${APP_DB_API_PASSWORD:-app_api_local_only}@db:5432/app_demo_test
 
   worker:
@@ -47,6 +52,7 @@ services:
     environment:
       APP_BASE_URL: http://localhost:${DEMO_HTTP_PORT:-8090}
       LLM_PROVIDER: fake
+      LLM_FAKE_DIR: /srv/backend/app/demo_data/hiring/recorded
       DATABASE_URL_WORKER: postgresql://app_worker:${APP_DB_WORKER_PASSWORD:-app_worker_local_only}@db:5432/app_demo_test
       DATABASE_URL_MATCH: postgresql://app_match:${APP_DB_MATCH_PASSWORD:-app_match_local_only}@db:5432/app_demo_test
       DATABASE_URL_MIGRATE: postgresql://app:app_local_only@db:5432/app_demo_test
