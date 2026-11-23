@@ -293,9 +293,7 @@ def test_a_real_route_with_no_passed_eval_run_is_ai_disabled_and_the_model_is_ne
     ("suite", "extra"),
     [("requirement_extraction", {"split": "test"}), ("role_intake", {})],
 )
-def test_a_real_route_with_a_passed_run_for_its_model_and_prompt_is_called(
-    conn, provider, real_route, suite, extra
-):
+def test_a_real_route_with_a_passed_run_for_its_model_and_prompt_is_called(conn, provider, real_route, suite, extra):
     record_run(conn, suite, routed_model(), **extra)
     result = intake.extract(conn, DESCRIPTION, provider.employer)
     assert result.state == "extracted"
@@ -313,9 +311,7 @@ def test_a_real_route_with_a_passed_run_for_its_model_and_prompt_is_called(
         ("role_intake", {"model": "another-model"}),
     ],
 )
-def test_a_run_for_another_split_model_prompt_method_or_suite_proves_nothing(
-    conn, provider, real_route, suite, wrong
-):
+def test_a_run_for_another_split_model_prompt_method_or_suite_proves_nothing(conn, provider, real_route, suite, wrong):
     record_run(conn, suite, wrong.pop("model", routed_model()), **wrong)
     assert intake.extract(conn, DESCRIPTION, provider.employer).state == "ai_disabled"
     assert real_route == []
