@@ -1,7 +1,7 @@
 """Employer roles in the job index: an unlisted job per published role (plan 06-03, DATA_MODEL 11 issue 3).
 
-A role an organization publishes becomes one `jobs` row on that organization's `direct` source, so the hiring desk reuses
-requirement evidence, the constraint filter, the decision ledger and the citation trigger unchanged. The job is never
+A role an organization publishes becomes one `jobs` row on its `direct` source, so the hiring desk reuses requirement
+evidence, the constraint filter, the decision ledger and the citation trigger unchanged. The job is never
 listed (`is_listed = false`): search, matches and extraction skip it, and candidates reach the role only through its
 introduction. The source is created with `is_active = false`, which is what the index fetch selects on, so the fetch
 never visits it (there is no feed to read).
