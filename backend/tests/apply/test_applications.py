@@ -321,6 +321,11 @@ def test_the_interface_other_modules_may_import_keeps_the_names_the_chat_tool_ne
         "draft_packet",
         "get_packet",
         "request_packet",
+        # appended by plan 07-01: what campaigns read and link
+        "application_for_campaign",
+        "link_campaign",
+        "mark_packet_approved",
+        "open_application_for_job",
     }
 
 

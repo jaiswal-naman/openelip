@@ -23,7 +23,8 @@ from .packet import PacketView, current_for_job
 from .packet import draft as draft_packet
 from .packet import get as get_packet
 from .packet import request as request_packet
-from .tracker import ApplicationView, list_applications, view_one
+from .tracker import ApplicationView, list_applications
+from .tracker import _one as view_one  # the one-application read, for the hooks below
 
 __all__ = [
     "ApplicationView",

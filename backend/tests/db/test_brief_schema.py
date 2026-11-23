@@ -15,6 +15,8 @@ from sqlalchemy.exc import DBAPIError
 
 from app.brief import privacy as brief_privacy
 from app.trust import privacy
+from tests.campaigns.factories import make_action, make_approval, make_campaign
+from tests.campaigns.factories import make_run as make_agent_run
 from tests.hiring.world import ask, candidate, make_org, open_role
 from tests.match.factories import LOCAL_DATE, make_decision, make_job, make_run, make_user
 
@@ -82,6 +84,20 @@ def test_a_new_brief_starts_composed_and_a_deleted_run_leaves_it_standing(conn):
     assert conn.execute(text("SELECT match_run_id FROM briefs WHERE id = :b"), {"b": brief}).scalar_one() is None
 
 
+def real_action(conn: Connection, user: UUID, *, outside: bool = False) -> int:
+    """A recorder row of the person's own (Phase 7 added the foreign keys of brief_items to approvals and actions)."""
+    job = make_job(conn, title="Role", description="Skill.", requirements=[("Skill.", "required")])
+    campaign = make_campaign(conn, user, job.id)
+    run = make_agent_run(conn, user, campaign, "operator")
+    if outside:
+        return make_action(conn, run, kind="outside_action", status="proposed")
+    return make_action(conn, run, kind="tool_call", status="recorded")
+
+
+def real_approval(conn: Connection, user: UUID) -> UUID:
+    return make_approval(conn, real_action(conn, user, outside=True))
+
+
 # ---- what a brief lists ----------------------------------------------------------------------------------------
 
 
@@ -91,9 +107,9 @@ def test_an_item_names_exactly_the_one_thing_its_kind_says(conn):
     decision = make_decision(conn, make_run(conn, ada), ada, job)
     brief = make_brief(conn, ada)
     add_item(conn, brief, ada, 1, "match", match_decision_id=decision)
-    # approvals and agent actions are tables of later phases: those ids are plain columns until the tables exist
-    add_item(conn, brief, ada, 2, "approval", approval_id=ada)
-    add_item(conn, brief, ada, 3, "activity", agent_action_id=7)
+    # Phase 7 made approvals and agent actions real tables: those ids are foreign keys now (plan 07-01)
+    add_item(conn, brief, ada, 2, "approval", approval_id=real_approval(conn, ada))
+    add_item(conn, brief, ada, 3, "activity", agent_action_id=real_action(conn, ada))
     add_item(conn, brief, ada, 4, "introduction", introduction_id=ask(conn, open_role(conn, make_org(conn)), ada))
     assert count(conn, "brief_items WHERE brief_id = :b", b=brief) == 4
 
@@ -121,9 +137,9 @@ def test_an_item_that_does_not_say_what_it_lists_is_refused(conn, item):
 def test_a_position_in_a_brief_is_used_once_and_items_go_with_their_brief(conn):
     ada = make_user(conn)
     brief = make_brief(conn, ada)
-    add_item(conn, brief, ada, 1, "activity", agent_action_id=1)
+    add_item(conn, brief, ada, 1, "activity", agent_action_id=real_action(conn, ada))
     with refused(conn) as caught:
-        add_item(conn, brief, ada, 1, "activity", agent_action_id=2)
+        add_item(conn, brief, ada, 1, "activity", agent_action_id=real_action(conn, ada))
     assert caught.value.orig.sqlstate == "23505"
     conn.execute(text("DELETE FROM briefs WHERE id = :b"), {"b": brief})
     assert count(conn, "brief_items WHERE brief_id = :b", b=brief) == 0
@@ -140,7 +156,7 @@ def act_as(conn: Connection, role: str, user_id: UUID | None = None) -> None:
 def test_a_signed_in_person_reads_their_own_briefs_and_the_worker_reads_all(conn):
     ada, bob = make_user(conn), make_user(conn)
     for user in (ada, bob):
-        add_item(conn, make_brief(conn, user), user, 1, "activity", agent_action_id=1)
+        add_item(conn, make_brief(conn, user), user, 1, "activity", agent_action_id=real_action(conn, user))
     act_as(conn, "app_api", ada)
     assert count(conn, "briefs") == 1 and count(conn, "brief_items") == 1
     assert count(conn, "briefs WHERE user_id = :u", u=bob) == 0
@@ -160,7 +176,7 @@ def test_the_brief_exporter_returns_the_persons_briefs_and_items_and_nobody_else
     ada, bob = make_user(conn), make_user(conn)
     briefs = {user: make_brief(conn, user) for user in (ada, bob)}
     for user, brief in briefs.items():
-        add_item(conn, brief, user, 1, "activity", agent_action_id=1)
+        add_item(conn, brief, user, 1, "activity", agent_action_id=real_action(conn, user))
 
     export = brief_privacy.export_brief(conn, ada)
 
