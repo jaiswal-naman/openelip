@@ -1,0 +1,24 @@
+[
+ {
+  "claims": [],
+  "links": [
+   "https://dunmar-analytics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://dunmar-analytics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://dunmar-analytics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://dunmar-analytics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

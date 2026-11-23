@@ -87,6 +87,8 @@ SUITES: dict[str, Suite | OwnScorer] = {
     "chat": OwnScorer("chat/score.py"),
     "record_proposals": OwnScorer("record_proposals/score.py"),
     "injection": OwnScorer("injection/score.py"),
+    "dossier": OwnScorer("dossier/score.py"),
+    "agent_drafts": OwnScorer("agent_drafts/score.py"),
 }
 
 

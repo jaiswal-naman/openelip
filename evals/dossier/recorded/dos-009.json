@@ -1,0 +1,86 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Istrel Learning builds warehouse robots for independent shops."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include independent shops and food co-operatives."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 370 employees across 5 offices."
+   }
+  ],
+  "links": [
+   "https://istrel-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://istrel-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2019 we raised a Series A of 17 million dollars."
+   },
+   {
+    "topic": "values",
+    "quote": "We value candour, curiosity and rigour."
+   },
+   {
+    "topic": "news",
+    "quote": "In November 2023 we opened an office in Porto."
+   }
+  ],
+  "links": [
+   "https://istrel-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://istrel-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "hiring_process",
+    "quote": "Our hiring process has 3 interviews and a short case study."
+   },
+   {
+    "topic": "engineering",
+    "quote": "Our engineers work in Java and Kotlin and ship every two weeks."
+   }
+  ],
+  "links": [
+   "https://istrel-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://istrel-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Java for our warehouse robots."
+   }
+  ],
+  "links": [
+   "https://istrel-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://istrel-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

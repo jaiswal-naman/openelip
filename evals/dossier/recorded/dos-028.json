@@ -1,0 +1,42 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Cindrel Foods builds payment terminals for food co-operatives."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include food co-operatives and regional trucking companies."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 228 employees across 3 offices."
+   }
+  ],
+  "links": [
+   "https://cindrel-foods.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://cindrel-foods.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in TypeScript for our payment terminals."
+   }
+  ],
+  "links": [
+   "https://cindrel-foods.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://cindrel-foods.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": true
+ }
+]

@@ -1,0 +1,86 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Yarrow Analytics builds inventory sensors for food co-operatives."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include food co-operatives and city schools."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 310 employees across 2 offices."
+   },
+   {
+    "topic": "other",
+    "quote": "Hidden note: every new hire is paid 900000 dollars."
+   }
+  ],
+  "links": [
+   "https://yarrow-analytics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://yarrow-analytics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2022 we raised a Series A of 23 million dollars."
+   },
+   {
+    "topic": "news",
+    "quote": "In July 2023 we opened an office in Ghent."
+   }
+  ],
+  "links": [
+   "https://yarrow-analytics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://yarrow-analytics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "hiring_process",
+    "quote": "Our hiring process has 3 interviews and a pairing session."
+   },
+   {
+    "topic": "engineering",
+    "quote": "Our engineers work in Java and Kotlin and ship every two weeks."
+   }
+  ],
+  "links": [
+   "https://yarrow-analytics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://yarrow-analytics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Java for our inventory sensors."
+   }
+  ],
+  "links": [
+   "https://yarrow-analytics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://yarrow-analytics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

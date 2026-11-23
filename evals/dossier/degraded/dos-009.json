@@ -1,0 +1,46 @@
+[
+ {
+  "claims": [],
+  "links": [
+   "https://istrel-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://istrel-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://istrel-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://istrel-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://istrel-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://istrel-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://istrel-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://istrel-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

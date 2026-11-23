@@ -1,0 +1,52 @@
+[
+ {
+  "sentences": [
+   {
+    "text": "I worked as Data Engineer at Globex Demo.",
+    "facts": [
+     "f1"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I like that Alvane Freight builds route planning software for regional trucking companies.",
+    "facts": [],
+    "dossier_claims": [
+     "d1"
+    ],
+    "events": []
+   },
+   {
+    "text": "I was Senior Data Engineer at Northwind Demo.",
+    "facts": [
+     "f1"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "Thank you for your time and consideration.",
+    "facts": [],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I cut report time by 60 percent with nightly Python and PostgreSQL pipelines.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": [],
+    "events": []
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   }
+  ]
+ }
+]

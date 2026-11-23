@@ -1,0 +1,46 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Dunmar Analytics builds inventory sensors for city schools."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include city schools and regional trucking companies."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 163 employees across 5 offices."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 9999 employees across 5 offices."
+   }
+  ],
+  "links": [
+   "https://dunmar-analytics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://dunmar-analytics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Python for our inventory sensors."
+   }
+  ],
+  "links": [
+   "https://dunmar-analytics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://dunmar-analytics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

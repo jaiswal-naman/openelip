@@ -1,0 +1,42 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Alvane Freight builds route planning software for regional trucking companies."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include regional trucking companies and independent shops."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 315 employees across 3 offices."
+   }
+  ],
+  "links": [
+   "https://alvane-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://alvane-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Java for our route planning software."
+   }
+  ],
+  "links": [
+   "https://alvane-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://alvane-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

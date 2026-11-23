@@ -1,0 +1,24 @@
+[
+ {
+  "claims": [],
+  "links": [
+   "https://jorvane-payments.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://jorvane-payments.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://jorvane-payments.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://jorvane-payments.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

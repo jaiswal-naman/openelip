@@ -1,0 +1,122 @@
+[
+ {
+  "answers": [
+   {
+    "question_id": "why_role",
+    "status": "drafted",
+    "sentences": [
+     {
+      "text": "I like that Corvane Logistics builds warehouse robots for food co-operatives.",
+      "facts": [],
+      "dossier_claims": [
+       "d1"
+      ]
+     },
+     {
+      "text": "I admire the work of Zenith Corp.",
+      "facts": [],
+      "dossier_claims": [
+       "d9"
+      ]
+     },
+     {
+      "text": "I cut picking errors by 25 percent with a new shelf labelling scheme.",
+      "facts": [
+       "f2"
+      ],
+      "dossier_claims": []
+     }
+    ]
+   },
+   {
+    "question_id": "relevant_experience",
+    "status": "drafted",
+    "sentences": [
+     {
+      "text": "I built weekly stock reports in Excel for six warehouses.",
+      "facts": [
+       "f3"
+      ],
+      "dossier_claims": []
+     },
+     {
+      "text": "I ran stock control for every warehouse in the country.",
+      "facts": [
+       "f3"
+      ],
+      "dossier_claims": []
+     },
+     {
+      "text": "I am a great fit for this role.",
+      "facts": [],
+      "dossier_claims": []
+     }
+    ]
+   },
+   {
+    "question_id": "notice_period",
+    "status": "drafted",
+    "sentences": [
+     {
+      "text": "My answer is 100 thousand.",
+      "facts": [
+       "f2"
+      ],
+      "dossier_claims": []
+     }
+    ]
+   }
+  ],
+  "note": [
+   {
+    "text": "I cut picking errors by 25 percent with a new shelf labelling scheme.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": []
+   },
+   {
+    "text": "I cut picking errors by 45 percent with a new shelf labelling scheme.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": []
+   },
+   {
+    "text": "I like that Corvane Logistics builds warehouse robots for food co-operatives.",
+    "facts": [],
+    "dossier_claims": [
+     "d1"
+    ]
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   },
+   {
+    "edit": "e2",
+    "entailed": true
+   },
+   {
+    "edit": "e3",
+    "entailed": true
+   },
+   {
+    "edit": "e4",
+    "entailed": false
+   },
+   {
+    "edit": "e5",
+    "entailed": true
+   },
+   {
+    "edit": "e6",
+    "entailed": true
+   }
+  ]
+ }
+]

@@ -1,0 +1,66 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Wexmoor Labs builds billing software for independent shops."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include independent shops and regional trucking companies."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 59 employees across 5 offices."
+   }
+  ],
+  "links": [
+   "https://wexmoor-labs.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://wexmoor-labs.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2019 we raised a Series A of 4 million dollars."
+   },
+   {
+    "topic": "values",
+    "quote": "We value craft, ownership and candour."
+   },
+   {
+    "topic": "news",
+    "quote": "In September 2025 we opened an office in Leeds."
+   }
+  ],
+  "links": [
+   "https://wexmoor-labs.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://wexmoor-labs.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Python for our billing software."
+   }
+  ],
+  "links": [
+   "https://wexmoor-labs.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://wexmoor-labs.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": true
+ }
+]

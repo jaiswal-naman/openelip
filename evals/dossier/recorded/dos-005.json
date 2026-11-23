@@ -1,0 +1,66 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Elmoor Logistics builds lab testing kits for food co-operatives."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include food co-operatives and regional trucking companies."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 141 employees across 3 offices."
+   }
+  ],
+  "links": [
+   "https://elmoor-logistics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://elmoor-logistics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2020 we raised a Series B of 8 million dollars."
+   },
+   {
+    "topic": "values",
+    "quote": "We value rigour, kindness and craft."
+   },
+   {
+    "topic": "news",
+    "quote": "In January 2024 we opened an office in Turin."
+   }
+  ],
+  "links": [
+   "https://elmoor-logistics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://elmoor-logistics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Go for our lab testing kits."
+   }
+  ],
+  "links": [
+   "https://elmoor-logistics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://elmoor-logistics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": true
+ }
+]

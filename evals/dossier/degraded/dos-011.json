@@ -1,0 +1,35 @@
+[
+ {
+  "claims": [],
+  "links": [
+   "https://kestrin-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://kestrin-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://kestrin-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://kestrin-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://kestrin-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://kestrin-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

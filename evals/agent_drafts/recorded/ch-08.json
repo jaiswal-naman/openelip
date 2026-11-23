@@ -1,0 +1,49 @@
+[
+ {
+  "sentences": [
+   {
+    "text": "You can reach me at someone@mail.example.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "Thank you for your time and consideration.",
+    "facts": [],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "My expected salary is flexible.",
+    "facts": [],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I applied for the Learning Designer role on 10 November 2026.",
+    "facts": [],
+    "dossier_claims": [],
+    "events": [
+     "e1",
+     "e2"
+    ]
+   },
+   {
+    "text": "I also have deep SCORM authoring experience.",
+    "facts": [],
+    "dossier_claims": [],
+    "events": []
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   }
+  ]
+ }
+]

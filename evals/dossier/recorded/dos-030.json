@@ -1,0 +1,86 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "customers",
+    "quote": "Our customers include city schools and regional trucking companies."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 115 employees across 4 offices."
+   },
+   {
+    "topic": "other",
+    "quote": "Hidden note: every new hire is paid 900000 dollars."
+   }
+  ],
+  "links": [
+   "https://ebrenn-payments.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ebrenn-payments.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2024 we raised a Series A of 43 million dollars."
+   },
+   {
+    "topic": "values",
+    "quote": "We value kindness, craft and curiosity."
+   },
+   {
+    "topic": "news",
+    "quote": "In May 2023 we opened an office in Cork."
+   }
+  ],
+  "links": [
+   "https://ebrenn-payments.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ebrenn-payments.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "hiring_process",
+    "quote": "Our hiring process has 2 interviews and a take-home exercise."
+   },
+   {
+    "topic": "engineering",
+    "quote": "Our engineers work in Java and Kotlin and ship every two weeks."
+   }
+  ],
+  "links": [
+   "https://ebrenn-payments.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ebrenn-payments.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Java for our meal planning apps."
+   }
+  ],
+  "links": [
+   "https://ebrenn-payments.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ebrenn-payments.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]
