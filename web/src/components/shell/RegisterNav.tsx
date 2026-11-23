@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useId, useRef, useState } from "react";
 import { AccountMenu } from "@/features/auth/AccountMenu";
 import { useMe } from "@/features/auth/queries";
 import { ChatOpener } from "@/features/chat/ChatOpener";
@@ -60,18 +60,18 @@ function ModelCell() {
 export function RegisterNav({ local }: { local: boolean }) {
   const me = useMe();
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  // The page the folded register was opened on: following a link from it changes the page, which closes it
+  const [openOn, setOpenOn] = useState<string | null>(null);
+  const open = openOn === pathname;
   const button = useRef<HTMLButtonElement>(null);
   const signedIn = Boolean(me.data);
   const hiring = signedIn && (local || (me.data?.organizations ?? []).length > 0);
 
-  // A link followed from the folded register closes it
-  useEffect(() => setOpen(false), [pathname]);
 
   return (
     <>
       <div className={styles.bar}>
-        <Link href="/" className={styles.brand} aria-label={`${PRODUCT_NAME} home`}>
+        <Link href={local ? "/app/today" : "/"} className={styles.brand} aria-label={`${PRODUCT_NAME} home`}>
           <BrandMark />
           <span className={styles.wordmark}>{PRODUCT_NAME}</span>
         </Link>
@@ -81,7 +81,7 @@ export function RegisterNav({ local }: { local: boolean }) {
           className={styles.menuButton}
           aria-expanded={open}
           aria-controls="register-panel"
-          onClick={() => setOpen((was) => !was)}
+          onClick={() => setOpenOn(open ? null : pathname)}
         >
           <MenuIcon size={20} />
           <span>Menu</span>
@@ -93,7 +93,7 @@ export function RegisterNav({ local }: { local: boolean }) {
         data-open={open || undefined}
         onKeyDown={(event) => {
           if (event.key === "Escape" && open) {
-            setOpen(false);
+            setOpenOn(null);
             button.current?.focus();
           }
         }}

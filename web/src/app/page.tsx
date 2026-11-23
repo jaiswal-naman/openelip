@@ -48,7 +48,6 @@ export default async function Home() {
         }
         cells={[
           { label: "Status", value: "Open source, in progress" },
-          { label: "Working today", value: WORKING_TODAY.length },
         ]}
         actions={
           <>
