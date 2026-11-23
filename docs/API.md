@@ -236,7 +236,7 @@ Text written by someone other than the caller or the system is data, never instr
 | 422 | `quota_exhausted` | A weekly product quota is used up (interest signals); `details.resets_at` |
 | 429 | `rate_limited` | Section 1.8; `Retry-After` is set |
 | 500 | `internal_error` | Unexpected; `request_id` is the only detail |
-| 503 | `ai_disabled` | The feature needs a model and no provider is configured for that task. Search, the record and the ledger still work |
+| 503 | `ai_disabled` | The feature needs a model and no provider is configured for that task, or the provider is the fake and has no recording for it, or a real model's route has no passed gold-set run yet (AI_SYSTEM.md 2.2). Search, the record and the ledger still work |
 | 503 | `dependency_unavailable` | A model provider or the database is failing; `details.retry_after_seconds` |
 
 **Database refusals.** The database enforces several invariants with `CHECK` constraints and triggers that raise SQLSTATE 23514 with a message prefix. The API maps them, so a refusal from the last line of defence still reads correctly:

@@ -371,6 +371,21 @@ def test_with_no_model_configured_the_real_gateway_fails_the_document_as_ai_disa
     assert (kit.job(document_id).state, kit.job(document_id).attempts) == ("succeeded", 1)
 
 
+def test_with_the_fake_provider_and_no_recorded_answer_the_document_fails_as_ai_disabled_at_once(kit):
+    """The default install runs the fake provider and has no recording for a resume. The job must say so now, not retry
+    a missing file for about 13 minutes (four attempts) and then call the document a parse failure."""
+    user = kit.person()
+    kit.agree(user)
+    document_id = kit.store(user, kit.docx())
+
+    assert kit.run() == 1  # the handler as the worker registers it, with the real gateway and the fake behind it
+
+    document = kit.document(document_id)
+    assert (document.state, document.parse_error_code) == ("failed", "ai_disabled")
+    assert kit.facts(document_id) == [] and kit.count("llm_calls") == 0
+    assert (kit.job(document_id).state, kit.job(document_id).attempts) == ("succeeded", 1)  # finished, not retried
+
+
 @pytest.mark.parametrize("status", ["deleting", "suspended"])
 def test_a_parse_queued_before_the_account_was_closed_does_nothing_for_an_account_that_is_not_active(kit, status):
     """A person who asked for deletion (users.status deleting) must not have their resume sent to the provider by a job

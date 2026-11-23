@@ -398,6 +398,15 @@ def test_a_failed_document_says_why_in_a_code_and_in_words(uploader, kit):
     assert "Retry-After" not in response.headers
 
 
+def test_a_resume_the_fake_provider_has_no_recording_for_ends_as_the_ai_off_answer_on_the_first_poll(uploader, kit):
+    created = ok(upload(uploader, kit.docx()), 202)
+    assert kit.run() == 1  # the real gateway: the default install has the fake provider and no resume recordings
+    response = uploader.get(f"{URL}/{created['id']}")
+    data = ok(response)
+    assert (data["status"], data["parse_error_code"]) == ("failed", "ai_disabled")
+    assert "needs an AI model" in data["message"] and "Retry-After" not in response.headers
+
+
 def test_a_partly_read_document_succeeds_and_says_part_of_it_could_not_be_read(uploader, kit):
     created = ok(upload(uploader, kit.docx()), 202)
     kit.run(kit.model({ROLES: SchemaInvalid()}))
