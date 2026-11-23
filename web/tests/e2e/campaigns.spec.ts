@@ -141,7 +141,8 @@ test.describe("the campaign demo", () => {
       await expect(page.getByText(/Undo within \d+:\d\d/)).toBeVisible();
       await expect(page.getByText("Closing this tab does not stop the send.")).toBeVisible();
       await page.getByRole("button", { name: "Undo" }).first().click();
-      await expect(page.getByText("Undone", { exact: true }).first()).toBeVisible();
+      // The follow-up's state line reads "Undone: You undid this before it was sent." once the server agrees.
+      await expect(page.getByText(/^Undone: /).first()).toBeVisible({ timeout: 15_000 });
     });
 
     await test.step("Settings, Autonomy: set follow-ups to Never; the locked row shows its reason", async () => {
