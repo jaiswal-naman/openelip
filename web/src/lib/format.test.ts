@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCount, formatDateTime, formatMoney, formatMonth, formatPercent } from "./format";
+import { formatCount, formatDateTime, formatLatency, formatMoney, formatMonth, formatPercent } from "./format";
 
 const plain = (text: string) => text.replace(/ /g, " "); // Intl puts a no-break space after the currency code
 
@@ -35,6 +35,37 @@ describe("formatCount", () => {
     expect(formatCount(9999, "en-US")).toBe("9,999");
     expect(formatCount(10000, "en-US")).toBe("10K");
     expect(formatCount(12400, "en-US")).toBe("12.4K");
+  });
+});
+
+describe("formatLatency", () => {
+  it("shows whole milliseconds under one second", () => {
+    expect(plain(formatLatency(850, "en-US"))).toBe("850 ms");
+    expect(plain(formatLatency(0, "en-US"))).toBe("0 ms");
+    expect(plain(formatLatency(999, "en-US"))).toBe("999 ms");
+  });
+
+  it("switches to seconds with at most one decimal from one second up", () => {
+    expect(plain(formatLatency(1000, "en-US"))).toBe("1 s");
+    expect(plain(formatLatency(1234, "en-US"))).toBe("1.2 s");
+    expect(plain(formatLatency(41000, "en-US"))).toBe("41 s");
+  });
+
+  it("rounds a fraction of a millisecond first, so 999.6 ms reads as 1 s and never as '1,000 ms'", () => {
+    expect(plain(formatLatency(999.6, "en-US"))).toBe("1 s");
+  });
+
+  it("uses the viewer's decimal mark", () => {
+    expect(plain(formatLatency(1234, "de-DE"))).toBe("1,2 s");
+  });
+
+  it("keeps the number and its unit on one line", () => {
+    expect(formatLatency(850, "en-US")).toContain(" ms");
+    expect(formatLatency(1234, "en-US")).toContain(" s");
+  });
+
+  it("says Unknown for a value that is not a number, never a zero", () => {
+    expect(formatLatency(Number.NaN)).toBe("Unknown");
   });
 });
 
