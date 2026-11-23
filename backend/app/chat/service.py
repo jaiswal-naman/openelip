@@ -480,13 +480,15 @@ def _run(job: _Generation) -> _Outcome:
         spent = _spent(job.user_id, started)
         return spent.input_tokens + spent.output_tokens
 
+    # ponytail: "today" is the UTC date (TurnContext.today is left unset): no module's api.py gives chat the candidate's
+    # time zone (match.ledger.today_in is not exported). East of UTC, the early hours name yesterday to the model. Pass
+    # today=<the candidate's local date> here once an api.py exports it.
     context = loop.TurnContext(job.user_id, job.text, history, table, job.context_job_id)
     watched = {name: _watched(tool, failures) for name, tool in tools.build_tools(job.text).items()}
     try:
         result = loop.run_turn(context, watched, emit=emit, should_stop=reply.stopping, tokens_used=tokens_used)
-    except (
-        Exception
-    ) as error:  # the gateway's AIDisabled, ProviderUnavailable or SchemaInvalid, or something unforeseen
+    except Exception as error:
+        # the gateway's AIDisabled, ProviderUnavailable or SchemaInvalid, or something unforeseen
         return _Outcome(None, error, started, {})
     extra = {alias: ref for alias, ref in table.to_refs().items() if alias not in stored}
     return _Outcome(result, failures[-1] if failures else None, started, extra)

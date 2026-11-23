@@ -396,7 +396,6 @@ def test_the_stream_generators_are_async_so_waiting_costs_no_worker_thread():
 def test_two_hundred_streams_on_one_running_reply_use_no_thread_and_never_block_the_event_loop():
     reply = hub.Reply(uuid4(), uuid4(), uuid4())
     reply.emit("message.start", {})
-    before = threading.active_count()
     ticks = 0
 
     async def watcher():
@@ -409,6 +408,7 @@ def test_two_hundred_streams_on_one_running_reply_use_no_thread_and_never_block_
         return [chunk async for chunk in stream.from_hub(reply, None)]
 
     async def main():
+        threads_before = threading.active_count()
         streams = [asyncio.create_task(consume()) for _ in range(200)]
         watching = asyncio.create_task(watcher())
         await asyncio.sleep(0.3)  # 200 streams are waiting on a reply that says nothing
@@ -416,11 +416,19 @@ def test_two_hundred_streams_on_one_running_reply_use_no_thread_and_never_block_
         end_of(reply)
         results = await asyncio.gather(*streams)
         await watching
-        return results, threads_while_waiting
+        return results, threads_before, threads_while_waiting
 
-    results, threads_while_waiting = asyncio.run(main())
+    done: list = []
+    runner = threading.Thread(target=lambda: done.append(asyncio.run(main())), daemon=True)
+    runner.start()
+    runner.join(10)
+    if runner.is_alive():  # a stream waited without awaiting: it holds the loop, and nothing else could ever run
+        end_of(reply)  # lets the stuck streams finish, so no thread is left spinning
+        runner.join(10)
+        pytest.fail("the event loop was blocked while streams waited")
+    results, threads_before, threads_while_waiting = done[0]
 
-    assert threads_while_waiting <= before  # not one thread per stream, nor one per ping
+    assert threads_while_waiting <= threads_before  # not one thread per stream, nor one per ping
     assert ticks >= 10  # the loop went on running while they waited
     assert all(len(r) == 3 and r[2].startswith("id: 2\nevent: message.end\n") for r in results)
 
