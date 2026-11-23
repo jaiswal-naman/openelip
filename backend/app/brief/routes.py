@@ -84,6 +84,27 @@ class BriefDecision(BaseModel):
     note: str | None  # for example that the apply link could not be re-checked this morning
 
 
+class BriefCampaignItem(BaseModel):
+    """Something the agents wait on or did (plan 07-06): `approval` is a pending (or since decided) approval, `activity`
+    an action executed, blocked or failed. `text` is written by code and `link` is a page of the app: nothing is decided
+    from the brief or its email."""
+
+    kind: Literal["approval", "activity"]
+    campaign_id: UUID
+    text: str
+    link: str
+    status: str  # the approval's or the action's status now
+    approval_id: UUID | None = None
+    agent_action_id: int | None = None
+
+
+class BriefUndoable(BaseModel):
+    action_id: int
+    campaign_id: UUID
+    company_name: str = Field(json_schema_extra=UNTRUSTED)
+    undo_until: datetime
+
+
 class BriefDone(BaseModel):
     at: datetime
     text: str
@@ -95,9 +116,10 @@ class BriefDetail(BaseModel):
     local_date: date
     status: BriefStatus
     delivery: BriefDelivery
-    decisions: list[Annotated[BriefIntroduction | BriefDecision, Field(discriminator="kind")]]
+    decisions: list[Annotated[BriefIntroduction | BriefDecision | BriefCampaignItem, Field(discriminator="kind")]]
     done_since_last_brief: list[BriefDone]
     open_record_proposals: int
+    undoable: list[BriefUndoable]
 
 
 class Unsubscribed(BaseModel):

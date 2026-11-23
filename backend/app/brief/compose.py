@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import Connection, text
 
+from app.campaigns import api as campaigns
 from app.hiring import api as hiring
 from app.ingest import api as ingest
 from app.match import api as match
@@ -59,7 +60,10 @@ def compose(conn: Connection, user_id: UUID, local_date: date, *, now: datetime)
     since = _covers_since(conn, user_id, person.record_confirmed_at)
     activity = match.activity_since(conn, user_id, since) if since is not None else []
     waiting = profile.get_record(conn, user_id)["open_proposals"]
-    status: ComposeStatus = "composed" if asks or matches or activity or waiting else "suppressed"
+    agents = campaigns.brief_items(conn, user_id, since)  # what waits on the person, and what their agents did
+    status: ComposeStatus = (
+        "composed" if asks or matches or activity or waiting or agents.approvals or agents.activity else "suppressed"
+    )
 
     in_app_id = _insert_brief(conn, user_id, local_date, "in_app", status, since)
     if in_app_id is None:  # a concurrent compose of this person and date committed first
@@ -88,6 +92,31 @@ def compose(conn: Connection, user_id: UUID, local_date: date, *, now: datetime)
                 for n, m in enumerate(matches, start=len(asks) + 1)
             ],
         )
+    listed = len(asks) + len(matches)
+    if agents.approvals:  # soonest to expire first: campaigns.api lists them in that order
+        conn.execute(
+            text(
+                """INSERT INTO brief_items (brief_id, position, user_id, kind, approval_id)
+                   VALUES (:brief, :position, :u, 'approval', :approval)"""
+            ),
+            [
+                {"brief": in_app_id, "position": n, "u": user_id, "approval": approval_id}
+                for n, approval_id in enumerate(agents.approvals, start=listed + 1)
+            ],
+        )
+        listed += len(agents.approvals)
+    if agents.activity:
+        conn.execute(
+            text(
+                """INSERT INTO brief_items (brief_id, position, user_id, kind, agent_action_id)
+                   VALUES (:brief, :position, :u, 'activity', :action)"""
+            ),
+            [
+                {"brief": in_app_id, "position": n, "u": user_id, "action": action_id}
+                for n, action_id in enumerate(agents.activity, start=listed + 1)
+            ],
+        )
+        listed += len(agents.activity)
     email_id = outbox_id = None
     if status == "composed" and email_is_on(conn, user_id):
         release, expires = release_window(user_id, local_date, ZoneInfo(person.timezone), now)
@@ -106,7 +135,7 @@ def compose(conn: Connection, user_id: UUID, local_date: date, *, now: datetime)
         "brief.composed",
         brief_id=in_app_id,
         status=status,
-        items=len(asks) + len(matches),
+        items=listed,
         has_email=outbox_id is not None,
     )
     return ComposeResult(in_app_id, email_id, outbox_id, status)

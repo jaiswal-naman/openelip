@@ -180,6 +180,11 @@ def _run_tool(call: Any, number: int, run: _Run) -> ToolOutput:
     run.emit("tool.result", {"call_id": call_id, "tool": name, "refs": by_kind, "aliases": aliases})
     for proposal in output.proposals:
         run.emit("proposal", {**asdict(proposal), "event_id": str(proposal.event_id)})
+    for offer in output.campaign_proposals:  # an offer to start a campaign: the candidate's click starts it
+        run.emit(
+            "campaign_proposal",
+            {**asdict(offer), "campaign_id": None if offer.campaign_id is None else str(offer.campaign_id)},
+        )
     return output
 
 

@@ -101,7 +101,39 @@ class ProposeRecordChange(_Call):
     tool: Literal["propose_record_change"]
 
 
-ToolCall = GetRecord | ListMatches | GetDecision | SearchJobs | GetJob | GetApplications | ProposeRecordChange
+class GetCampaign(_Call):
+    tool: Literal["get_campaign"]
+    job: AliasText | None = None
+
+
+class GetDossier(_Call):
+    tool: Literal["get_dossier"]
+    job: AliasText
+
+
+class ExplainBlock(_Call):
+    tool: Literal["explain_block"]
+    job: AliasText
+
+
+class ProposeCampaign(_Call):
+    tool: Literal["propose_campaign"]
+    job: AliasText
+
+
+ToolCall = (
+    GetRecord
+    | ListMatches
+    | GetDecision
+    | SearchJobs
+    | GetJob
+    | GetApplications
+    | ProposeRecordChange
+    | GetCampaign
+    | GetDossier
+    | ExplainBlock
+    | ProposeCampaign
+)
 
 
 class ChatStep(BaseModel):
@@ -178,6 +210,18 @@ class ProposalEvent:
 
 
 @dataclass(frozen=True)
+class CampaignProposal:
+    """An offer to start a campaign (the SSE `campaign_proposal` event, plan 07-06). Nothing was started: the panel's
+    card starts it through POST /v1/campaigns when the candidate clicks. `campaign_id` is the job's open campaign, or
+    None."""
+
+    job_id: int
+    title: str
+    company_name: str
+    campaign_id: UUID | None
+
+
+@dataclass(frozen=True)
 class ToolOutput:
     """What a tool returns to the loop. `data` is what the model reads, and holds aliases only. `refs` holds the real
     ids it concerns by kind (decision, job, fact, constraint), for the event stream and the stored tool row.
@@ -189,3 +233,4 @@ class ToolOutput:
     source_kind: str = "tool_result"
     untrusted: bool = True
     proposals: tuple[ProposalEvent, ...] = ()
+    campaign_proposals: tuple[CampaignProposal, ...] = ()
