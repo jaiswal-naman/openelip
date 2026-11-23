@@ -30,6 +30,12 @@ DEFAULT_DATABASE_URLS: dict[Role, str] = {
     "match": "postgresql://app_match:app_match_local_only@127.0.0.1:5433/app",
 }
 LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+TRUE_WORDS = frozenset({"true", "1", "yes", "on"})
+FALSE_WORDS = frozenset({"false", "0", "no", "off"})
+# ARCHITECTURE 5.9 item 13 names LANGSMITH_TRACING and LANGCHAIN_TRACING_V2; the installed langsmith also reads the
+# other two spellings (langsmith.utils.tracing_is_enabled), so all four are refused.
+TRACING_FLAGS = ("LANGSMITH_TRACING", "LANGSMITH_TRACING_V2", "LANGCHAIN_TRACING_V2", "LANGCHAIN_TRACING")
+TRACING_KEYS = ("LANGSMITH_API_KEY", "LANGCHAIN_API_KEY")
 
 
 class ConfigError(RuntimeError):
@@ -56,6 +62,7 @@ class Settings:
     llm_base_url: str | None
     otel_endpoint: str | None
     worker_queues: tuple[str, ...]  # empty means every queue
+    tailor_rephrase: bool  # AI_SYSTEM 4.7: model rephrasing of resume lines stays off until audited
 
     def database_url(self, role: Role) -> str:
         return {
@@ -72,6 +79,18 @@ def _split(value: str | None) -> tuple[str, ...]:
 
 def is_local(base_url: str) -> bool:
     return (urlsplit(base_url).hostname or "") in LOCAL_HOSTS
+
+
+def _flag(name: str, value: str | None) -> bool:
+    """A true/false setting. Unset or empty is false; any other spelling stops the process instead of being guessed."""
+    word = (value or "").strip().lower()
+    if not word:
+        return False
+    if word in TRUE_WORDS:
+        return True
+    if word in FALSE_WORDS:
+        return False
+    raise ConfigError(f"{name} must be true or false")  # the value itself is never echoed
 
 
 def load(environ: Mapping[str, str]) -> Settings:
@@ -99,9 +118,11 @@ def load(environ: Mapping[str, str]) -> Settings:
         llm_base_url=get("LLM_BASE_URL"),
         otel_endpoint=get("OTEL_EXPORTER_OTLP_ENDPOINT"),
         worker_queues=_split(get("WORKER_QUEUES")),
+        tailor_rephrase=_flag("TAILOR_REPHRASE", get("TAILOR_REPHRASE")),  # default false (AI_SYSTEM 4.7)
     )
     _check_keys_are_usable(settings)
     _refuse_development_secrets_off_localhost(settings)
+    _refuse_tracing(environ)
     return settings
 
 
@@ -136,6 +157,17 @@ def _refuse_development_secrets_off_localhost(settings: Settings) -> None:
         raise ConfigError(
             "development secrets are in use while APP_BASE_URL is not a localhost address: " + ", ".join(in_use)
         )
+
+
+def _refuse_tracing(environ: Mapping[str, str]) -> None:
+    """ARCHITECTURE 5.9 item 13: LangSmith traces would carry prompts and state (against 9.2), so none may be on.
+
+    Only variable names are reported, never a value (a key is a secret).
+    """
+    on = [name for name in TRACING_FLAGS if _flag(name, environ.get(name))]
+    on += [name for name in TRACING_KEYS if (environ.get(name) or "").strip()]
+    if on:
+        raise ConfigError("LangSmith and LangChain tracing may not be configured; unset " + ", ".join(on))
 
 
 @lru_cache(maxsize=1)
