@@ -3,9 +3,14 @@
 recorded/<task>.json is a JSON list, consumed in order. A string is the model's text verbatim (script invalid output
 with one); anything else is dumped to JSON text (a valid answer). The gateway refuses this provider in production. A
 task with no recording raises AIDisabled("no_recording"): the same 503 ai_disabled as no provider at all.
+
+LLM_FAKE_DIR (the demo stack sets it, read at call time) names a directory of recordings that is looked at first, file
+by file: <dir>/<task>.json when that file exists, otherwise recorded/<task>.json. A task the directory has no file for
+keeps the answer it always had, so one demo's recordings never hide another phase's. replay_from(path) still wins.
 """
 
 import json
+import os
 from pathlib import Path
 
 from .adapters import Reply
@@ -26,8 +31,20 @@ def replay_from(path: Path | None) -> None:
     _given.clear()
 
 
+def _path(task: str) -> Path:
+    """The file this task is answered from: the scripted one, else the demo directory's file, else recorded/."""
+    if _source is not None:
+        return _source
+    directory = os.environ.get("LLM_FAKE_DIR")
+    if directory:
+        chosen = Path(directory) / f"{task}.json"
+        if chosen.exists():
+            return chosen
+    return _RECORDED / f"{task}.json"
+
+
 def call(task: str) -> Reply:
-    path = _source or _RECORDED / f"{task}.json"
+    path = _path(task)
     if _source is None and not path.exists():
         # A fresh install runs this provider and holds one recording (ping). A task with none has no answer to give,
         # which is what "no provider" means: AIDisabled at once, not a missing-file error the queue would retry for

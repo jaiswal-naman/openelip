@@ -216,6 +216,18 @@ export const INTRODUCTION_STATUS_LABELS = {
 
 export const EMPLOYER_ANSWER_LABELS = { yes: "Answered yes", no: "Answered no" } as const;
 
+/** FRONTEND_UI 3.3, 4.6: the candidate's side of an introduction (Today card, accepted list, settings). */
+export const CANDIDATE_INTRODUCTION_LABELS = {
+  kind: "Introduction",
+  review: "Review and accept",
+  demo: "Demo (invented)",
+  waiting: "Waiting for their answer",
+  employerSignal: "Serious interest from the employer",
+  youSentSignal: "You sent serious interest",
+  acceptedHeading: "Introductions you accepted",
+  openToIntroductions: "Open to introductions from employers",
+} as const;
+
 /** FRONTEND_UI 3.14: the preset reasons, in the order shown. A preset fills the reason box, which stays editable. */
 export const ANSWER_PRESETS = [
   { label: "Strong fit", text: "Strong fit for the role." },

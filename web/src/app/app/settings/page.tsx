@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { meQuery } from "@/features/auth/queries";
 import { BriefSettings } from "@/features/brief/BriefSettings";
+import { IntroductionsSettings } from "@/features/introductions/IntroductionsSettings";
 import styles from "@/features/privacy/privacy.module.css";
 import { PrivacySection } from "@/features/privacy/PrivacySection";
 import { subprocessorsQuery } from "@/features/trust/queries";
@@ -15,6 +16,7 @@ export const metadata: Metadata = { title: "Settings" };
 // FRONTEND_UI 3.10 orders the sections; later phases add theirs to this list.
 const SECTIONS = [
   { id: "brief", label: "Brief" },
+  { id: "introductions", label: "Introductions" },
   { id: "privacy", label: "Privacy" },
 ] as const;
 type Section = (typeof SECTIONS)[number]["id"];
@@ -27,7 +29,8 @@ type Props = { searchParams: Promise<{ section?: string | string[] }> };
  */
 export default async function SettingsPage({ searchParams }: Props) {
   const asked = (await searchParams).section;
-  const section: Section = (Array.isArray(asked) ? asked[0] : asked) === "brief" ? "brief" : "privacy";
+  const wanted = Array.isArray(asked) ? asked[0] : asked;
+  const section: Section = SECTIONS.find((item) => item.id === wanted)?.id ?? "privacy";
   const queryClient = makeQueryClient();
   const api = await serverApi();
   const me = await queryClient.fetchQuery(meQuery(api)).catch(() => undefined);
@@ -51,7 +54,7 @@ export default async function SettingsPage({ searchParams }: Props) {
             ))}
           </ul>
         </nav>
-        <HydrationBoundary state={dehydrate(queryClient)}>{section === "brief" ? <BriefSettings /> : <PrivacySection />}</HydrationBoundary>
+        <HydrationBoundary state={dehydrate(queryClient)}>{section === "brief" ? <BriefSettings /> : section === "introductions" ? <IntroductionsSettings /> : <PrivacySection />}</HydrationBoundary>
       </div>
     </div>
   );

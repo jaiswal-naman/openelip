@@ -9,6 +9,9 @@ import { LinkButton } from "@/components/ui/LinkButton";
 import { AiOffNotice, EmptyState, ErrorState } from "@/components/ui/States";
 import { LocalTime } from "@/components/ui/Viewer";
 import { useMe } from "@/features/auth/queries";
+import { BriefIntroductions, introductionItems } from "@/features/brief/BriefIntroductions";
+import { isOpenAsk, useIntroductions } from "@/features/introductions/api";
+import { TodayIntroductions } from "@/features/introductions/TodayIntroductions";
 import { useApi } from "@/lib/api/context";
 import { useViewer } from "@/lib/viewer";
 import { dayLabel } from "./day";
@@ -45,8 +48,13 @@ export function TodayView() {
   }, [me.data, router]);
 
   const date = day.data?.local_date ?? null;
-  // Introduction items (brief union, Phase 6) are rendered by plan 06-07; until then Today lists only the Phase 4 kinds.
+  // Introductions (Phase 6): each open ask is a card of its own, read from the introductions, not the brief; the brief's
+  // introduction items are listed as lines only when their ask is no longer open, so nothing shows twice.
   const decisions = (brief.data?.decisions ?? []).filter((decision) => decision.kind !== "introduction");
+  const introductions = useIntroductions();
+  const openAsks = (introductions.data ?? []).filter((item) => isOpenAsk(item));
+  const briefAsks = introductionItems(brief.data?.decisions ?? []).filter((item) => !openAsks.some((ask) => ask.id === item.introduction_id));
+  const waiting = decisions.length + openAsks.length;
   const asked = params.get("view");
   const openId = params.get("decision");
   // Decisions come first when there are any, while the brief is still loading, and when it could not be loaded (so the
@@ -54,7 +62,7 @@ export function TodayView() {
   const briefKnown = brief.data !== undefined && !brief.isError;
   const view: View = (VIEWS as readonly string[]).includes(asked ?? "")
     ? (asked as View)
-    : openId !== null || decisions.length > 0 || !briefKnown
+    : openId !== null || waiting > 0 || !briefKnown
       ? "decisions"
       : "matches";
   const held = useQuery({ ...whyNotQuery(api, date ?? ""), enabled: view === "why-not" && date !== null });
@@ -74,9 +82,9 @@ export function TodayView() {
         <p className={styles.lead}>
           {brief.data === undefined
             ? "Loading your brief."
-            : decisions.length === 0
+            : waiting === 0
               ? "Nothing needs you today."
-              : `${decisions.length} ${decisions.length === 1 ? "decision needs" : "decisions need"} you.`}
+              : `${waiting} ${waiting === 1 ? "decision needs" : "decisions need"} you.`}
         </p>
         {brief.data?.delivery.email === "sent" && brief.data.delivery.email_sent_at && (
           <p className="t-small muted">
@@ -96,7 +104,7 @@ export function TodayView() {
       <Tabs selectedKey={view} onSelectionChange={(key) => go(String(key) as View)}>
         <TabList aria-label="Today" className={styles.tabList}>
           <Tab id="decisions" className={styles.tab}>
-            Decisions{brief.data ? ` (${decisions.length})` : ""}
+            Decisions{brief.data ? ` (${waiting})` : ""}
           </Tab>
           <Tab id="matches" className={styles.tab}>
             Matches{day.data ? ` (${matches.length})` : ""}
@@ -107,6 +115,7 @@ export function TodayView() {
         </TabList>
 
         <TabPanel id="decisions" className={styles.panel}>
+          <TodayIntroductions openId={openId !== null && UUID.test(openId) ? openId : null} />
           {brief.isError ? (
             <ErrorState what="Could not load your brief." error={brief.error} onRetry={() => void brief.refetch()} />
           ) : brief.data === undefined ? (
@@ -118,7 +127,7 @@ export function TodayView() {
           ) : (
             <>
               {decisions.length === 0 ? (
-                <EmptyState>Nothing needs you today.</EmptyState>
+                openAsks.length === 0 && <EmptyState>Nothing needs you today.</EmptyState>
               ) : (
                 <ul className={styles.list}>
                   {decisions.map((decision) => {
@@ -135,6 +144,7 @@ export function TodayView() {
                   })}
                 </ul>
               )}
+              <BriefIntroductions items={briefAsks} />
               {brief.data.done_since_last_brief.length > 0 && (
                 <section aria-labelledby="done-heading" className={styles.done}>
                   <h2 id="done-heading" className="t-section">

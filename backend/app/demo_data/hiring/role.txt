@@ -1,0 +1,6 @@
+Halden Demo is hiring a backend engineer (an invented role for the OpenElip demo).
+What you'll need
+Python and SQL services in production.
+3+ years as a backend engineer.
+Experience leading a small team is a plus.
+We offer remote work across Europe.
