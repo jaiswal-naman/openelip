@@ -358,7 +358,7 @@
       },
       "patch": {
         "summary": "Update Me",
-        "description": "Grant or withdraw consents. The person is the session's, never anything in the body (T-3-01).",
+        "description": "Grant or withdraw consents and change the time zone and the brief schedule. The person is the session's, never\nanything in the body (T-3-01).",
         "operationId": "update_me_v1_me_patch",
         "parameters": [
           {
@@ -1615,10 +1615,894 @@
           }
         }
       }
+    },
+    "/v1/matches": {
+      "get": {
+        "summary": "Todays Matches",
+        "description": "The matches shown on a date, ranked, each with the requirement evidence table. Zero is a valid day.",
+        "operationId": "todays_matches_v1_matches_get",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_TodayMatches_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/matches/{decision_id}": {
+      "get": {
+        "summary": "One Match",
+        "description": "One shown match with the posting's text (for the highlights) and a check of each hard constraint.",
+        "operationId": "one_match_v1_matches__decision_id__get",
+        "parameters": [
+          {
+            "name": "decision_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Decision Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MatchDetail_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/matches/{decision_id}/feedback": {
+      "post": {
+        "summary": "Give Feedback",
+        "description": "Save, unsave or dismiss a match. A dismissal reason may propose a record change; it changes nothing until the\nperson confirms it through /v1/me/events.",
+        "operationId": "give_feedback_v1_matches__decision_id__feedback_post",
+        "parameters": [
+          {
+            "name": "decision_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Decision Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_FeedbackRecorded_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/decisions": {
+      "get": {
+        "summary": "Decision Ledger",
+        "description": "The decision ledger, newest first. ?job_id= returns the stored decision for one job, or checks that job against\nthe caller's hard constraints on the spot (no model call, nothing stored) and returns filtered or not_evaluated.",
+        "operationId": "decision_ledger_v1_decisions_get",
+        "parameters": [
+          {
+            "name": "outcome",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Outcome"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Reason"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "job_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_DecisionView__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/decisions/{decision_id}": {
+      "get": {
+        "summary": "One Decision",
+        "description": "One decision of any outcome, with its evidence, the constraint that filtered it or the gaps that withheld it.",
+        "operationId": "one_decision_v1_decisions__decision_id__get",
+        "parameters": [
+          {
+            "name": "decision_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Decision Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DecisionDetail_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/briefs": {
+      "get": {
+        "summary": "List My Briefs",
+        "description": "Past briefs, newest first: the in-app inbox. A day with nothing to say is listed as suppressed.",
+        "operationId": "list_my_briefs_v1_briefs_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_BriefListItem__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/briefs/{brief_id}": {
+      "get": {
+        "summary": "Read Brief",
+        "operationId": "read_brief_v1_briefs__brief_id__get",
+        "parameters": [
+          {
+            "name": "brief_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Brief Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_BriefDetail_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/briefs/unsubscribe": {
+      "post": {
+        "summary": "Unsubscribe One Click",
+        "description": "RFC 8058 one-click unsubscribe: withdraws the brief_email consent of the person the signed token names. No\nsession, no cookie, no redirect; asking again changes nothing. A GET to this path does nothing at all.",
+        "operationId": "unsubscribe_one_click_v1_briefs_unsubscribe_post",
+        "parameters": [
+          {
+            "name": "t",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "title": "T"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_unsubscribe_one_click_v1_briefs_unsubscribe_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Unsubscribed_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "Body_unsubscribe_one_click_v1_briefs_unsubscribe_post": {
+        "properties": {
+          "List-Unsubscribe": {
+            "type": "string",
+            "title": "List-Unsubscribe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "List-Unsubscribe"
+        ],
+        "title": "Body_unsubscribe_one_click_v1_briefs_unsubscribe_post"
+      },
+      "BriefAction": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "open",
+              "save",
+              "dismiss",
+              "review"
+            ],
+            "title": "Action"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST"
+            ],
+            "title": "Method"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "method",
+          "path"
+        ],
+        "title": "BriefAction",
+        "description": "An ordinary endpoint to call. A dismissal also needs a reason, which the person chooses when they dismiss."
+      },
+      "BriefDecision": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "match",
+              "record_proposals"
+            ],
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "x-untrusted-text": true
+          },
+          "why": {
+            "type": "string",
+            "title": "Why"
+          },
+          "ref": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Ref"
+          },
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/BriefAction"
+            },
+            "type": "array",
+            "title": "Actions"
+          },
+          "is_assessed": {
+            "type": "boolean",
+            "title": "Is Assessed"
+          },
+          "change_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Note"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "title",
+          "why",
+          "ref",
+          "actions",
+          "is_assessed",
+          "change_note",
+          "note"
+        ],
+        "title": "BriefDecision",
+        "description": "One thing waiting for the person: a match, or the record changes someone suggested. A match nobody assessed\n(is_assessed false) has no requirement table and no verdict: the search ranked it, no model has read it."
+      },
+      "BriefDelivery": {
+        "properties": {
+          "in_app": {
+            "type": "string",
+            "enum": [
+              "composed",
+              "suppressed",
+              "queued",
+              "sent",
+              "failed"
+            ],
+            "title": "In App"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "queued",
+                  "sent",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "email_sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Sent At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "in_app",
+          "email",
+          "email_sent_at"
+        ],
+        "title": "BriefDelivery",
+        "description": "in_app is the brief's own status. email is null when the person has not agreed to the email; otherwise what the\noutbox row says: queued, sent, or failed (never sent: cancelled, expired or refused)."
+      },
+      "BriefDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "local_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Local Date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "composed",
+              "suppressed",
+              "queued",
+              "sent",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "delivery": {
+            "$ref": "#/components/schemas/BriefDelivery"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/BriefDecision"
+            },
+            "type": "array",
+            "title": "Decisions"
+          },
+          "done_since_last_brief": {
+            "items": {
+              "$ref": "#/components/schemas/BriefDone"
+            },
+            "type": "array",
+            "title": "Done Since Last Brief"
+          },
+          "open_record_proposals": {
+            "type": "integer",
+            "title": "Open Record Proposals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "local_date",
+          "status",
+          "delivery",
+          "decisions",
+          "done_since_last_brief",
+          "open_record_proposals"
+        ],
+        "title": "BriefDetail"
+      },
+      "BriefDone": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "ref": {
+            "additionalProperties": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "object",
+            "title": "Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "text",
+          "ref"
+        ],
+        "title": "BriefDone"
+      },
+      "BriefListItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "local_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Local Date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "composed",
+              "suppressed",
+              "queued",
+              "sent",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count"
+          },
+          "delivery": {
+            "$ref": "#/components/schemas/BriefDelivery"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "local_date",
+          "status",
+          "item_count",
+          "delivery"
+        ],
+        "title": "BriefListItem"
+      },
+      "BriefSettings": {
+        "properties": {
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "weekly",
+              "paused"
+            ],
+            "title": "Frequency"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekday"
+          }
+        },
+        "type": "object",
+        "required": [
+          "frequency",
+          "weekday"
+        ],
+        "title": "BriefSettings",
+        "description": "How often the morning brief comes (BRF-03). Whether it also comes by email is the brief_email consent."
+      },
+      "BriefSettingsChange": {
+        "properties": {
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "weekly",
+              "paused"
+            ],
+            "title": "Frequency"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 7.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekday"
+          }
+        },
+        "type": "object",
+        "required": [
+          "frequency"
+        ],
+        "title": "BriefSettingsChange"
+      },
+      "CharSpan": {
+        "properties": {
+          "start": {
+            "type": "integer",
+            "title": "Start"
+          },
+          "end": {
+            "type": "integer",
+            "title": "End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "CharSpan"
+      },
       "CodeRequest": {
         "properties": {
           "email": {
@@ -1917,6 +2801,90 @@
         "title": "ConstraintChange",
         "description": "PATCH: what is not named stays. A constraint's kind never changes; naming another one is refused."
       },
+      "ConstraintCheck": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "location",
+              "remote_policy",
+              "work_authorization",
+              "salary_floor",
+              "employment_type",
+              "seniority",
+              "excluded_company"
+            ],
+            "title": "Kind"
+          },
+          "statement": {
+            "type": "string",
+            "title": "Statement"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "satisfied",
+              "not_stated"
+            ],
+            "title": "State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "statement",
+          "state"
+        ],
+        "title": "ConstraintCheck"
+      },
+      "ConstraintRef": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "location",
+              "remote_policy",
+              "work_authorization",
+              "salary_floor",
+              "employment_type",
+              "seniority",
+              "excluded_company"
+            ],
+            "title": "Kind"
+          },
+          "statement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Statement"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "statement"
+        ],
+        "title": "ConstraintRef",
+        "description": "The constraint that removed a job. id and statement are null when the person has since removed it."
+      },
       "ConstraintWritten": {
         "properties": {
           "constraint": {
@@ -2044,6 +3012,294 @@
           "label"
         ],
         "title": "Costs"
+      },
+      "DecisionDetail": {
+        "properties": {
+          "decision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Id"
+          },
+          "local_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Local Date"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "shown",
+                  "introduced",
+                  "withheld",
+                  "filtered"
+                ]
+              },
+              {
+                "type": "string",
+                "const": "not_evaluated"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "top_ranked",
+                "material_change",
+                "selected_for_role",
+                "weak_fit",
+                "required_not_met",
+                "below_daily_cap",
+                "citation_unresolved",
+                "already_shown",
+                "job_closed",
+                "liveness_unverified",
+                "not_scored",
+                "not_retrieved",
+                "hard_constraint",
+                "injection_suspected"
+              ]
+            },
+            "type": "array",
+            "title": "Reason Codes"
+          },
+          "constraint": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConstraintRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/Gap"
+            },
+            "type": "array",
+            "title": "Gaps"
+          },
+          "evaluated": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "on_request"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluated"
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobBrief"
+          },
+          "violated_kinds": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "location",
+                "remote_policy",
+                "work_authorization",
+                "salary_floor",
+                "employment_type",
+                "seniority",
+                "excluded_company"
+              ]
+            },
+            "type": "array",
+            "title": "Violated Kinds"
+          },
+          "unverified": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "location_not_stated",
+                "arrangement_not_stated",
+                "arrangement_ambiguous",
+                "salary_not_stated",
+                "salary_currency_differs",
+                "employment_type_not_stated",
+                "seniority_not_stated"
+              ]
+            },
+            "type": "array",
+            "title": "Unverified"
+          },
+          "rank_position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank Position"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary",
+            "x-untrusted-text": true
+          },
+          "change_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Note"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceItem"
+            },
+            "type": "array",
+            "title": "Evidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision_id",
+          "local_date",
+          "outcome",
+          "reason_codes",
+          "constraint",
+          "gaps",
+          "job",
+          "violated_kinds",
+          "unverified",
+          "rank_position",
+          "change_note",
+          "evidence"
+        ],
+        "title": "DecisionDetail"
+      },
+      "DecisionView": {
+        "properties": {
+          "decision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Id"
+          },
+          "local_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Local Date"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "shown",
+                  "introduced",
+                  "withheld",
+                  "filtered"
+                ]
+              },
+              {
+                "type": "string",
+                "const": "not_evaluated"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "top_ranked",
+                "material_change",
+                "selected_for_role",
+                "weak_fit",
+                "required_not_met",
+                "below_daily_cap",
+                "citation_unresolved",
+                "already_shown",
+                "job_closed",
+                "liveness_unverified",
+                "not_scored",
+                "not_retrieved",
+                "hard_constraint",
+                "injection_suspected"
+              ]
+            },
+            "type": "array",
+            "title": "Reason Codes"
+          },
+          "constraint": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConstraintRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/Gap"
+            },
+            "type": "array",
+            "title": "Gaps"
+          },
+          "evaluated": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "on_request"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluated"
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobBrief"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision_id",
+          "local_date",
+          "outcome",
+          "reason_codes",
+          "constraint",
+          "gaps",
+          "job"
+        ],
+        "title": "DecisionView"
       },
       "DocumentFacts": {
         "properties": {
@@ -2282,6 +3538,47 @@
         "title": "DocumentView",
         "description": "parse_error_code says why a document failed (or, on a succeeded one, that part of it could not be read:\npartial_extraction); message is the same in words. hidden_text_flags is null until the document is parsed."
       },
+      "Envelope_BriefDetail_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BriefDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[BriefDetail]"
+      },
       "Envelope_CodeRequested_": {
         "properties": {
           "success": {
@@ -2404,6 +3701,47 @@
           "meta"
         ],
         "title": "Envelope[Costs]"
+      },
+      "Envelope_DecisionDetail_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[DecisionDetail]"
       },
       "Envelope_DocumentQueued_": {
         "properties": {
@@ -2569,6 +3907,47 @@
         ],
         "title": "Envelope[FactsReviewed]"
       },
+      "Envelope_FeedbackRecorded_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedbackRecorded"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[FeedbackRecorded]"
+      },
       "Envelope_JobDetail_": {
         "properties": {
           "success": {
@@ -2609,6 +3988,47 @@
           "meta"
         ],
         "title": "Envelope[JobDetail]"
+      },
+      "Envelope_MatchDetail_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MatchDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[MatchDetail]"
       },
       "Envelope_Me_": {
         "properties": {
@@ -2938,6 +4358,88 @@
         ],
         "title": "Envelope[Subprocessors]"
       },
+      "Envelope_TodayMatches_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayMatches"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[TodayMatches]"
+      },
+      "Envelope_Unsubscribed_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Unsubscribed"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[Unsubscribed]"
+      },
       "Envelope_VersionOnly_": {
         "properties": {
           "success": {
@@ -2978,6 +4480,96 @@
           "meta"
         ],
         "title": "Envelope[VersionOnly]"
+      },
+      "Envelope_list_BriefListItem__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/BriefListItem"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[list[BriefListItem]]"
+      },
+      "Envelope_list_DecisionView__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DecisionView"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "error",
+          "meta"
+        ],
+        "title": "Envelope[list[DecisionView]]"
       },
       "Envelope_list_Job__": {
         "properties": {
@@ -3228,6 +4820,37 @@
         ],
         "title": "ErrorBody"
       },
+      "EvidenceItem": {
+        "properties": {
+          "requirement": {
+            "$ref": "#/components/schemas/RequirementRef"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "met",
+              "partly_met",
+              "not_met",
+              "no_evidence"
+            ],
+            "title": "Verdict"
+          },
+          "record_citations": {
+            "items": {
+              "$ref": "#/components/schemas/RecordCitation"
+            },
+            "type": "array",
+            "title": "Record Citations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "requirement",
+          "verdict",
+          "record_citations"
+        ],
+        "title": "EvidenceItem"
+      },
       "FactDecision": {
         "properties": {
           "fact_id": {
@@ -3379,6 +5002,125 @@
           "unconfirmed_remaining"
         ],
         "title": "FactsReviewed"
+      },
+      "FeedbackBody": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "save",
+              "unsave",
+              "dismiss"
+            ],
+            "title": "Kind"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "not_interested_role",
+                  "not_interested_company",
+                  "seniority_mismatch",
+                  "compensation",
+                  "location",
+                  "skills_mismatch",
+                  "already_applied",
+                  "explanation_wrong",
+                  "duplicate",
+                  "job_closed",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "FeedbackBody"
+      },
+      "FeedbackRecorded": {
+        "properties": {
+          "is_saved": {
+            "type": "boolean",
+            "title": "Is Saved"
+          },
+          "is_dismissed": {
+            "type": "boolean",
+            "title": "Is Dismissed"
+          },
+          "proposal_event_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Event Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_saved",
+          "is_dismissed",
+          "proposal_event_id"
+        ],
+        "title": "FeedbackRecorded"
+      },
+      "Gap": {
+        "properties": {
+          "requirement": {
+            "type": "string",
+            "title": "Requirement",
+            "x-untrusted-text": true
+          },
+          "importance": {
+            "type": "string",
+            "enum": [
+              "required",
+              "preferred"
+            ],
+            "title": "Importance"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "met",
+              "partly_met",
+              "not_met",
+              "no_evidence"
+            ],
+            "title": "Verdict"
+          }
+        },
+        "type": "object",
+        "required": [
+          "requirement",
+          "importance",
+          "verdict"
+        ],
+        "title": "Gap"
       },
       "HTTPValidationError": {
         "properties": {
@@ -3542,6 +5284,99 @@
           "content_version"
         ],
         "title": "Job"
+      },
+      "JobBoard": {
+        "properties": {
+          "ats": {
+            "type": "string",
+            "enum": [
+              "greenhouse",
+              "lever",
+              "ashby",
+              "direct"
+            ],
+            "title": "Ats"
+          },
+          "board": {
+            "type": "string",
+            "title": "Board"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ats",
+          "board"
+        ],
+        "title": "JobBoard"
+      },
+      "JobBrief": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "pay": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PayRange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "title": "Status"
+          },
+          "last_verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Verified At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "company_name",
+          "pay",
+          "status",
+          "last_verified_at"
+        ],
+        "title": "JobBrief",
+        "description": "The job as a ledger row shows it."
+      },
+      "JobCitation": {
+        "properties": {
+          "span": {
+            "$ref": "#/components/schemas/CharSpan"
+          },
+          "quote": {
+            "type": "string",
+            "title": "Quote",
+            "x-untrusted-text": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "span",
+          "quote"
+        ],
+        "title": "JobCitation",
+        "description": "Where in the posting the requirement is. The quote is the stored text at the stored span, never generated."
       },
       "JobDetail": {
         "properties": {
@@ -3756,6 +5591,377 @@
         ],
         "title": "JobSource"
       },
+      "MatchDetail": {
+        "properties": {
+          "decision_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Decision Id"
+          },
+          "rank_position": {
+            "type": "integer",
+            "title": "Rank Position"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "top_ranked",
+                "material_change",
+                "selected_for_role",
+                "weak_fit",
+                "required_not_met",
+                "below_daily_cap",
+                "citation_unresolved",
+                "already_shown",
+                "job_closed",
+                "liveness_unverified",
+                "not_scored",
+                "not_retrieved",
+                "hard_constraint",
+                "injection_suspected"
+              ]
+            },
+            "type": "array",
+            "title": "Reason Codes"
+          },
+          "change_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Note"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "x-untrusted-text": true
+          },
+          "unverified": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "location_not_stated",
+                "arrangement_not_stated",
+                "arrangement_ambiguous",
+                "salary_not_stated",
+                "salary_currency_differs",
+                "employment_type_not_stated",
+                "seniority_not_stated"
+              ]
+            },
+            "type": "array",
+            "title": "Unverified"
+          },
+          "job": {
+            "$ref": "#/components/schemas/MatchJob"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceItem"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "feedback": {
+            "$ref": "#/components/schemas/MatchFeedback"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "x-untrusted-text": true
+          },
+          "constraint_checks": {
+            "items": {
+              "$ref": "#/components/schemas/ConstraintCheck"
+            },
+            "type": "array",
+            "title": "Constraint Checks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision_id",
+          "rank_position",
+          "reason_codes",
+          "change_note",
+          "summary",
+          "unverified",
+          "job",
+          "evidence",
+          "feedback",
+          "description",
+          "constraint_checks"
+        ],
+        "title": "MatchDetail"
+      },
+      "MatchFeedback": {
+        "properties": {
+          "is_saved": {
+            "type": "boolean",
+            "title": "Is Saved"
+          },
+          "is_dismissed": {
+            "type": "boolean",
+            "title": "Is Dismissed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_saved",
+          "is_dismissed"
+        ],
+        "title": "MatchFeedback"
+      },
+      "MatchJob": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "pay": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PayRange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "title": "Status"
+          },
+          "last_verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Verified At"
+          },
+          "location_raw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Raw"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "work_arrangements": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "onsite",
+                "hybrid",
+                "remote"
+              ]
+            },
+            "type": "array",
+            "title": "Work Arrangements"
+          },
+          "is_remote": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Remote"
+          },
+          "employment_type": {
+            "type": "string",
+            "enum": [
+              "full_time",
+              "part_time",
+              "contract",
+              "internship",
+              "temporary",
+              "unknown"
+            ],
+            "title": "Employment Type"
+          },
+          "apply_url": {
+            "type": "string",
+            "title": "Apply Url"
+          },
+          "source": {
+            "$ref": "#/components/schemas/JobBoard"
+          },
+          "posted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Posted At"
+          },
+          "content_version": {
+            "type": "integer",
+            "title": "Content Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "company_name",
+          "pay",
+          "status",
+          "last_verified_at",
+          "location_raw",
+          "country",
+          "city",
+          "work_arrangements",
+          "is_remote",
+          "employment_type",
+          "apply_url",
+          "source",
+          "posted_at",
+          "content_version"
+        ],
+        "title": "MatchJob",
+        "description": "The job as a match shows it: the same fields as GET /v1/jobs/{id}, without its text."
+      },
+      "MatchView": {
+        "properties": {
+          "decision_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Decision Id"
+          },
+          "rank_position": {
+            "type": "integer",
+            "title": "Rank Position"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "top_ranked",
+                "material_change",
+                "selected_for_role",
+                "weak_fit",
+                "required_not_met",
+                "below_daily_cap",
+                "citation_unresolved",
+                "already_shown",
+                "job_closed",
+                "liveness_unverified",
+                "not_scored",
+                "not_retrieved",
+                "hard_constraint",
+                "injection_suspected"
+              ]
+            },
+            "type": "array",
+            "title": "Reason Codes"
+          },
+          "change_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Note"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "x-untrusted-text": true
+          },
+          "unverified": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "location_not_stated",
+                "arrangement_not_stated",
+                "arrangement_ambiguous",
+                "salary_not_stated",
+                "salary_currency_differs",
+                "employment_type_not_stated",
+                "seniority_not_stated"
+              ]
+            },
+            "type": "array",
+            "title": "Unverified"
+          },
+          "job": {
+            "$ref": "#/components/schemas/MatchJob"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceItem"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "feedback": {
+            "$ref": "#/components/schemas/MatchFeedback"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision_id",
+          "rank_position",
+          "reason_codes",
+          "change_note",
+          "summary",
+          "unverified",
+          "job",
+          "evidence",
+          "feedback"
+        ],
+        "title": "MatchView"
+      },
       "Me": {
         "properties": {
           "id": {
@@ -3782,6 +5988,16 @@
             },
             "type": "array",
             "title": "Consents"
+          },
+          "brief": {
+            "$ref": "#/components/schemas/BriefSettings"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Capabilities"
           }
         },
         "type": "object",
@@ -3790,28 +6006,55 @@
           "email",
           "timezone",
           "created_at",
-          "consents"
+          "consents",
+          "brief",
+          "capabilities"
         ],
         "title": "Me"
       },
       "MePatch": {
         "properties": {
           "consents": {
-            "items": {
-              "$ref": "#/components/schemas/ConsentChange"
-            },
-            "type": "array",
-            "maxItems": 4,
-            "minItems": 1,
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ConsentChange"
+                },
+                "type": "array",
+                "maxItems": 4,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Consents"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "brief": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BriefSettingsChange"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
-        "required": [
-          "consents"
-        ],
         "title": "MePatch",
-        "description": "PATCH /v1/me. Consents only for now: the account settings of API.md 2.3 arrive with the brief settings."
+        "description": "PATCH /v1/me: consents, the time zone and the brief schedule, any of them, at least one."
       },
       "NewConstraint": {
         "properties": {
@@ -4078,6 +6321,43 @@
           "currency"
         ],
         "title": "Pay"
+      },
+      "PayRange": {
+        "properties": {
+          "min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "min",
+          "max",
+          "currency"
+        ],
+        "title": "PayRange"
       },
       "PreferenceChange": {
         "properties": {
@@ -4413,6 +6693,43 @@
           "event_id"
         ],
         "title": "ProposalDeclined"
+      },
+      "RecordCitation": {
+        "properties": {
+          "fact_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Fact Id"
+          },
+          "quote": {
+            "type": "string",
+            "title": "Quote",
+            "x-untrusted-text": true
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_current": {
+            "type": "boolean",
+            "title": "Is Current"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fact_id",
+          "quote",
+          "source",
+          "is_current"
+        ],
+        "title": "RecordCitation",
+        "description": "A fact of the Career Record a verdict rests on. A fact the person has corrected or retired since still shows what\nit said when the verdict was made, with is_current false. source is null for a fact the person wrote herself."
       },
       "RecordConstraint": {
         "properties": {
@@ -5010,6 +7327,24 @@
         ],
         "title": "RecordPreference"
       },
+      "RecordSource": {
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Document Id"
+          },
+          "span": {
+            "$ref": "#/components/schemas/CharSpan"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document_id",
+          "span"
+        ],
+        "title": "RecordSource"
+      },
       "RecordView": {
         "properties": {
           "record_version": {
@@ -5159,6 +7494,38 @@
         ],
         "title": "Requirement"
       },
+      "RequirementRef": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "x-untrusted-text": true
+          },
+          "importance": {
+            "type": "string",
+            "enum": [
+              "required",
+              "preferred"
+            ],
+            "title": "Importance"
+          },
+          "job_citation": {
+            "$ref": "#/components/schemas/JobCitation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "importance",
+          "job_citation"
+        ],
+        "title": "RequirementRef"
+      },
       "ReviewResult": {
         "properties": {
           "fact_id": {
@@ -5192,6 +7559,49 @@
           "status"
         ],
         "title": "ReviewResult"
+      },
+      "RunSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "record_version": {
+            "type": "integer",
+            "title": "Record Version"
+          },
+          "shown": {
+            "type": "integer",
+            "title": "Shown"
+          },
+          "withheld": {
+            "type": "integer",
+            "title": "Withheld"
+          },
+          "filtered": {
+            "type": "integer",
+            "title": "Filtered"
+          },
+          "checker": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "disagreed"
+            ],
+            "title": "Checker"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "record_version",
+          "shown",
+          "withheld",
+          "filtered",
+          "checker"
+        ],
+        "title": "RunSummary"
       },
       "SalaryFloor": {
         "properties": {
@@ -5321,6 +7731,57 @@
           "outside_copies_statement"
         ],
         "title": "Subprocessors"
+      },
+      "TodayMatches": {
+        "properties": {
+          "local_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Local Date"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/MatchView"
+            },
+            "type": "array",
+            "title": "Matches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "local_date",
+          "timezone",
+          "run",
+          "matches"
+        ],
+        "title": "TodayMatches"
+      },
+      "Unsubscribed": {
+        "properties": {
+          "is_brief_email_on": {
+            "type": "boolean",
+            "title": "Is Brief Email On"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_brief_email_on"
+        ],
+        "title": "Unsubscribed"
       },
       "ValidationError": {
         "properties": {
