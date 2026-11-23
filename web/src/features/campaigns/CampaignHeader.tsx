@@ -27,7 +27,7 @@ function titleCells(campaign: CampaignDetail, record: PacketRecord | null): Titl
   const closed = campaign.stage === "closed";
   const waiting = campaign.pending_approvals.length > 0;
   const cells: TitleCell[] = [
-    { label: "Stage", value: <Pill tone={closed ? "unk" : campaign.stage === "needs_you" ? "warn" : "ok"}>{CAMPAIGN_STAGE_LABELS[campaign.stage]}</Pill> },
+    { label: "Stage", value: <Pill tone={campaign.stage === "needs_you" ? "redline" : "stage"}>{CAMPAIGN_STAGE_LABELS[campaign.stage]}</Pill> },
   ];
   // Who has the next step: an agent, or no cell at all. When the person has it, the approval cell below says so.
   if (!closed && !waiting && campaign.next_step !== null) cells.push({ label: "Next step", value: <CrewPlate role={campaign.next_step.agent_role} /> });

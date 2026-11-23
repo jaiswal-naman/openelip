@@ -95,7 +95,7 @@ def move(
     _record(
         conn,
         campaign_id,
-        f"Stage moved from {row.stage} to {to}.",
+        f"Stage moved from {row.stage.replace('_', ' ')} to {to.replace('_', ' ')}.",  # needs_you reads "needs you"
         closed_reason or cause,
         {"cause": cause, "from": row.stage, "to": to},
     )

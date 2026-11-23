@@ -24,7 +24,7 @@ def test_move_as_the_worker_sets_the_stage_records_a_state_change_and_wakes_the_
         assert stages.move(conn, world.campaign, "needs_you", cause="again") is False  # already there
     assert scalar(engine, "SELECT stage::text FROM campaigns") == "needs_you"
     assert scalar(engine, "SELECT lock_version FROM campaigns") == 1
-    assert state_changes(engine) == [("Stage moved from researching to needs_you.", "a1.awaiting_approval")]
+    assert state_changes(engine) == [("Stage moved from researching to needs you.", "a1.awaiting_approval")]
     keys = [r[0] for r in rows(engine, "SELECT unique_key FROM queue_jobs WHERE kind = 'campaign.resume'")]
     assert keys == [f"campaign.resume:{world.campaign}:a1.awaiting_approval"]
 

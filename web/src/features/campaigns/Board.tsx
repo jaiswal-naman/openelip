@@ -39,6 +39,10 @@ export function Board() {
   if (board.isError) return <ErrorState what="Could not load your campaigns." error={board.error} onRetry={() => void board.refetch()} />;
 
   const columns = board.data.columns;
+  // Only stages with something in them get a section; the empty ones are named in one line under them.
+  const shown = columns.map((column) => ({ column, cards: column.campaigns.filter((card) => filter === "all" || card.pending_approvals > 0) }));
+  const filled = shown.filter(({ cards }) => cards.length > 0);
+  const empty = shown.filter(({ cards }) => cards.length === 0).map(({ column }) => column);
   const total = columns.reduce((sum, column) => sum + column.campaigns.length, 0);
   const applicationFor = (title: string, company: string) => {
     const found = (applications.data ?? []).filter((a) => a.job_title === title && a.company_name === company);
@@ -67,30 +71,30 @@ export function Board() {
         <EmptyState>No campaigns yet. Open a match and press Start campaign, and the agents research the company and prepare your application for your approval.</EmptyState>
       ) : (
         <div className={styles.board}>
-          {columns.map((column) => {
-            const cards = column.campaigns.filter((card) => filter === "all" || card.pending_approvals > 0);
+          {filled.map(({ column, cards }) => {
             return (
               <section key={column.stage} aria-labelledby={`col-${column.stage}`} className={styles.group}>
                 <div className={styles.groupHead}>
                   <h3 id={`col-${column.stage}`}>
-                    <Pill tone={column.stage === "closed" ? "unk" : column.stage === "needs_you" ? "warn" : "ok"}>{CAMPAIGN_STAGE_LABELS[column.stage]}</Pill>
+                    <Pill tone={column.stage === "needs_you" ? "redline" : "stage"}>{CAMPAIGN_STAGE_LABELS[column.stage]}</Pill>
                   </h3>
                   <span className={styles.count}>{column.total ?? cards.length}</span>
                 </div>
-                {cards.length === 0 ? (
-                  <p className={`t-small ${styles.empty}`}>Nothing here.</p>
-                ) : (
-                  <ul className={styles.rows}>
-                    {cards.map((card) => (
-                      <li key={card.id}>
-                        <CampaignCard card={card} stage={column.stage} applicationId={applicationFor(card.title, card.company_name)} />
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <ul className={styles.rows}>
+                  {cards.map((card) => (
+                    <li key={card.id}>
+                      <CampaignCard card={card} stage={column.stage} applicationId={applicationFor(card.title, card.company_name)} />
+                    </li>
+                  ))}
+                </ul>
               </section>
             );
           })}
+          {empty.length > 0 && (
+            <p className={`t-small ${styles.empty}`}>
+              {filter === "all" ? "Nothing in" : "Nothing waiting for you in"} {empty.map((column) => CAMPAIGN_STAGE_LABELS[column.stage]).join(", ")}.
+            </p>
+          )}
         </div>
       )}
     </section>

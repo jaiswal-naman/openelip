@@ -55,8 +55,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* a numeric column's head keeps the lettering of the other heads; only its figures are mono */
 .table thead th.num {
   text-align: end;
+  font-family: var(--font-sans);
+  font-size: var(--fs-label);
+  font-variant-numeric: normal;
 }
 
 @media (max-width: 39.99rem) {

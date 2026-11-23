@@ -37,3 +37,12 @@
 .unk {
   color: var(--unk);
 }
+
+.redline {
+  color: var(--redline);
+}
+
+.stage {
+  padding-left: var(--sp-8);
+  color: var(--text);
+}
