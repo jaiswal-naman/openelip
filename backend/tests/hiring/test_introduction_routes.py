@@ -1,7 +1,8 @@
 """HIR-04: GET /v1/introductions and GET /v1/introductions/{id}, and the decline route (plan 06-04).
 
 Rows are the invented ones of tests/hiring/factories.py, committed, then read through the API as the real `app_api`
-role, so row-level security and the grants apply. The helpers at the top are shared by the other test files of this plan.
+role, so row-level security and the grants apply. The helpers at the top are shared by the other test files of this
+plan.
 """
 
 from dataclasses import dataclass
