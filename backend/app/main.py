@@ -3,10 +3,15 @@
 Run:  uvicorn app.main:app --port 8000
 """
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from starlette.routing import Route
 
 from app.agentnet import privacy as agentnet_privacy  # noqa: F401  (importing it registers the agent-token table)
 from app.agentnet import routes as agentnet_routes
+from app.agentnet import server as agentnet_server
 from app.apply import privacy as apply_privacy  # noqa: F401  (importing it registers the apply tables and exporter)
 from app.apply import routes as apply_routes
 from app.brief import privacy as brief_privacy  # noqa: F401  (importing it registers the brief tables and exporter)
@@ -47,7 +52,20 @@ from app.twin import routes as twin_routes
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Open career agent", version="0.1.0")
+    # The MCP server (plan 09-04): the SDK's app behind the gate, with its own session manager, which the app's lifespan
+    # must enter. A manager runs once, so each app makes its own.
+    mcp_app = agentnet_server.create()
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        async with mcp_app.run():
+            yield
+
+    app = FastAPI(title="Open career agent", version="0.1.0", lifespan=lifespan)
+    app.state.mcp = mcp_app
+    # A route, not a mount, so that exactly POST /mcp reaches the gate (a mount answers /mcp with a redirect to /mcp/);
+    # the gate itself refuses every other method with 405.
+    app.router.routes.append(Route("/mcp", endpoint=mcp_app.asgi))
     errors.register(app)
     stored_key.use_login("api")  # this process holds only the API's database login; the worker's default is its own
     telemetry.instrument(app)
