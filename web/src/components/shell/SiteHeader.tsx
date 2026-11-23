@@ -26,7 +26,7 @@ export function SiteHeader() {
           <div className={styles.tools}>
             <ChatOpener />
             <ThemeToggle />
-            <AccountMenu />
+            <AccountMenu hiringDeskAlways={process.env.APP_MODE === "local"} />
           </div>
         </div>
       </header>

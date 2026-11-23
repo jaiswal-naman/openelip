@@ -14,7 +14,7 @@ from sqlalchemy import text
 
 from .. import config, db, log, telemetry
 from ..config import Role
-from . import adapters, fake, registry
+from . import adapters, fake, registry, stored_key
 from .adapters import Reply
 from .failures import AIDisabled, ProviderUnavailable, SchemaInvalid
 
@@ -168,7 +168,7 @@ def _complete(
 def _complete_for(
     task: str, schema: type[BaseModel], messages: list[dict[str, Any]], *, principal: UUID | None, prompt_version: str
 ) -> BaseModel:
-    settings = config.get()
+    settings = stored_key.apply(config.get())  # the provider named in the span and the log is the one in use
     with telemetry.span("llm.complete", task=task, provider=settings.llm_provider):
         try:
             route = registry.route(task, settings)

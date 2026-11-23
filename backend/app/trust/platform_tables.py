@@ -55,6 +55,7 @@ register(
         "login_codes": "by_email",  # no foreign key: erase_user deletes by the account's address
         "llm_calls": "set_null",  # the cost ledger outlives the person, with no reference to them
         "model_registry": "no_personal_data",
+        "local_model_key": "no_personal_data",  # the installation's provider key, sealed; not tied to any account
     },
 )
 register(

@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 from cryptography.fernet import Fernet
 
 Role = Literal["migrate", "api", "worker", "match"]
+AppMode = Literal["local", "server"]
 
 # Public, development-only. A Fernet key is 32 bytes, url-safe base64 encoded.
 DEV_DATA_KEY = base64.urlsafe_b64encode(b"openelip-development-only-key-00").decode()
@@ -69,6 +70,11 @@ class Settings:
     research_pages_dir: (
         str | None
     )  # a directory of recorded pages the Researcher reads instead of the web (not in production)
+    # local: one person on their own computer is signed in without an email code (POST /v1/auth/local). server: the
+    # sign-in this product has always had. Unset means server, so a public deployment never gets the local path by
+    # chance.
+    app_mode: AppMode = "server"
+    llm_provider_is_set: bool = False  # LLM_PROVIDER was given; a model key saved in the app never overrides it
 
     @property
     def campaign_budget_microusd(self) -> int:
@@ -109,6 +115,16 @@ def _split(value: str | None) -> tuple[str, ...]:
 
 def is_local(base_url: str) -> bool:
     return (urlsplit(base_url).hostname or "") in LOCAL_HOSTS
+
+
+def _app_mode(value: str | None) -> AppMode:
+    """local or server. Unset or empty is server; any other spelling stops the process instead of being guessed."""
+    word = (value or "").strip().lower() or "server"
+    if word == "local":
+        return "local"
+    if word == "server":
+        return "server"
+    raise ConfigError("APP_MODE must be local or server")  # the value itself is never echoed
 
 
 def _flag(name: str, value: str | None) -> bool:
@@ -152,12 +168,21 @@ def load(environ: Mapping[str, str]) -> Settings:
         campaign_budget_usd=_budget("APP_CAMPAIGN_BUDGET_USD", get("APP_CAMPAIGN_BUDGET_USD"), "0.75"),  # assumption
         monthly_budget_usd=_budget("APP_MONTHLY_BUDGET_USD", get("APP_MONTHLY_BUDGET_USD"), "5"),  # assumption
         research_pages_dir=get("RESEARCH_PAGES_DIR"),
+        app_mode=_app_mode(get("APP_MODE")),
+        llm_provider_is_set=get("LLM_PROVIDER") is not None,
     )
+    _refuse_local_mode_off_localhost(settings)
     _refuse_recorded_pages_in_production(settings)
     _check_keys_are_usable(settings)
     _refuse_development_secrets_off_localhost(settings)
     _refuse_tracing(environ)
     return settings
+
+
+def _refuse_local_mode_off_localhost(settings: Settings) -> None:
+    """Local mode signs whoever reaches the API in as the owner, so it is only for an address nobody else can reach."""
+    if settings.app_mode == "local" and not is_local(settings.app_base_url):
+        raise ConfigError("APP_MODE=local is refused when APP_BASE_URL is not a localhost address; use APP_MODE=server")
 
 
 def _refuse_recorded_pages_in_production(settings: Settings) -> None:

@@ -82,6 +82,9 @@ try {
         if ($dirty) { Write-Host "note: uncommitted changes are not in the clone:`n$dirty" -ForegroundColor Yellow }
         $envText = (Get-Content (Join-Path $clone '.env.example') -Raw) +
             "`nCOMPOSE_PROJECT_NAME=$Project`nAPP_HTTP_PORT=$HttpPort`nAPP_MAIL_PORT=$MailPort`nAPP_DB_PORT=$DbPort`n"
+        # .env.example is local mode with no model provider. The browser specs sign in with an emailed code and read the fake
+        # provider's recorded answers, so for them the copy runs in server mode with the fake provider (the later line wins).
+        if ($WithBrowserTests) { $envText += "APP_MODE=server`nLLM_PROVIDER=fake`n" }
         [IO.File]::WriteAllText((Join-Path $clone '.env'), $envText)
     }
 

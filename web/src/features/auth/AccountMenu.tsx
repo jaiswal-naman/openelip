@@ -10,8 +10,12 @@ import styles from "./account.module.css";
 import { useMe } from "./queries";
 import { useSignOut } from "./useSignOut";
 
-/** The header's account slot: a way to sign in, or the signed-in person's email with a menu to sign out. */
-export function AccountMenu() {
+/**
+ * The header's account slot: a way to sign in, or the signed-in person's email with a menu to sign out. The Hiring desk is
+ * listed for members of an organization; `hiringDeskAlways` lists it for everyone, which is local mode: the one owner is a
+ * candidate and an employer at once, and creates their organization from the desk.
+ */
+export function AccountMenu({ hiringDeskAlways = false }: { hiringDeskAlways?: boolean }) {
   const me = useMe();
   const signOut = useSignOut();
   const pathname = usePathname();
@@ -53,7 +57,7 @@ export function AccountMenu() {
               <MenuItem id="settings" href="/app/settings?section=privacy" textValue="Settings" className={menu.item}>
                 <span>Settings</span>
               </MenuItem>
-              {(me.data.organizations ?? []).length > 0 && (
+              {(hiringDeskAlways || (me.data.organizations ?? []).length > 0) && (
                 <MenuItem id="hiring" href="/hire/roles" textValue="Hiring desk" className={menu.item}>
                   <span>Hiring desk</span>
                 </MenuItem>

@@ -30,7 +30,8 @@ from app.ingest import privacy as ingest_privacy  # noqa: F401  (importing it re
 from app.ingest import routes as ingest_routes
 from app.match import privacy as match_privacy  # noqa: F401  (importing it registers the match tables and exporter)
 from app.match import routes as match_routes
-from app.platform import api, auth, control_routes, errors, stream, telemetry
+from app.platform import api, auth, control_routes, errors, local, stream, telemetry
+from app.platform.llm import stored_key
 from app.profile import privacy as profile_privacy  # noqa: F401  (importing it registers the profile tables and exporter)
 from app.profile import routes as profile_routes
 from app.tailor import privacy as tailor_privacy  # noqa: F401  (importing it registers the tailor tables and exporter)
@@ -42,6 +43,7 @@ from app.trust import routes as trust_routes
 def create_app() -> FastAPI:
     app = FastAPI(title="Open career agent", version="0.1.0")
     errors.register(app)
+    stored_key.use_login("api")  # this process holds only the API's database login; the worker's default is its own
     telemetry.instrument(app)
     api.install(app)  # added last, so it is outermost: the request id exists for everything inside it
     # app.platform may not import app.trust or app.hiring, so the account endpoints get the consent rules and the
@@ -55,6 +57,7 @@ def create_app() -> FastAPI:
         api.router,
         ingest_routes.router,
         auth.router,
+        local.router,
         control_routes.router,
         stream.router,
         trust_routes.router,

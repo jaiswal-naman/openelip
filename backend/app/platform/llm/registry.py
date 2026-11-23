@@ -1,6 +1,7 @@
 """config/models.toml (which model answers which task and what it costs) and its copy in model_registry (PLT-05).
 
-The file is read on every call, so an edit needs no restart and no code change. LLM_PROVIDER picks the provider.
+The file is read on every call, so an edit needs no restart and no code change. LLM_PROVIDER picks the provider; in
+local mode a key saved in the app fills in what the environment leaves out (stored_key.apply).
 """
 
 import tomllib
@@ -16,6 +17,7 @@ from sqlalchemy import Connection, text
 
 from .. import db
 from ..config import Role, Settings
+from . import stored_key
 from .failures import AIDisabled
 
 # The login that writes a call's registry and ledger rows. gateway.complete() sets it for one call: the worker by
@@ -126,6 +128,7 @@ def _key(route: Route, settings: Settings) -> str | None:
 
 def route(task: str, settings: Settings) -> Route:
     """The route that serves a task under the running configuration. AIDisabled when there is none to call."""
+    settings = stored_key.apply(settings)
     name = settings.llm_provider
     if name == "openai_compatible":  # ARCHITECTURE 10.2: the server LLM_BASE_URL names, or OpenAI itself without one
         name = "local" if settings.llm_base_url else "openai"

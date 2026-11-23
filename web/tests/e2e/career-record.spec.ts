@@ -21,7 +21,8 @@ import { BASE_URL, freshAddress, MAILPIT_URL, signInThroughApi } from "./helpers
  * which no fresh stack has, so it runs only with DEMO_STACK=1. It copies the recorded answers (fixtures/recorded) into the
  * running worker with `docker compose cp`; the fake provider reads them when a task is called, so no restart is needed.
  *
- *   docker compose up -d --wait          (the stack of .env.example: LLM_PROVIDER=fake, Mailpit on, database `app` or a copy)
+ *   APP_MODE=server LLM_PROVIDER=fake docker compose up -d --wait   (.env.example plus those two: it is local mode with no provider;
+ *                                         Mailpit on, database `app` or a copy)
  *   cd web && DEMO_STACK=1 pnpm exec playwright test tests/e2e/career-record.spec.ts
  *
  * It creates accounts and deletes one, so point it at a throwaway stack, as the Playwright config says.

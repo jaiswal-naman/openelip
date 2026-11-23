@@ -48,6 +48,9 @@ const CONFLICT_STATE_MESSAGES: Record<string, string> = {
   sent: "This was already sent, so it can no longer be undone.",
   executed: "This was already sent, so it can no longer be undone.",
   cancelled: "This was already undone.",
+  several_accounts:
+    "This database holds more than one account, so it was used in server mode. Start local mode on a new database, or set APP_MODE=server in .env.",
+  set_in_environment: "The model is set in your .env file (LLM_PROVIDER or an API key). Remove it there to save a key here.",
 };
 
 /** "45 seconds", "14 minutes", "2 hours": rounded up, because telling someone to try too early wastes their time. */

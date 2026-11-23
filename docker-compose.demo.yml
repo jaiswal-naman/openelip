@@ -15,6 +15,7 @@
 # What it changes, and why:
 #   * Its own project name (-p openelip-demo) and its own image tags, so it never touches your other stack, its volumes or its
 #     images; it shares nothing with it.
+#   * APP_MODE=server on the API, the worker and the web app, whatever .env says: the demo specs sign in with an emailed code.
 #   * Its own host ports (the proxy, which is the one address for the web app and the API, the mail catcher and the database),
 #     so both stacks can run at once. Override them with DEMO_HTTP_PORT, DEMO_MAIL_PORT and DEMO_DB_PORT.
 #   * A database called app_demo_test in every DATABASE_URL_*. The name ends in _test on purpose: the demo seed
@@ -50,6 +51,7 @@ services:
   api:
     image: openelip-demo-backend:dev
     environment:
+      APP_MODE: server
       APP_BASE_URL: http://localhost:${DEMO_HTTP_PORT:-8090}
       LLM_PROVIDER: fake
       LLM_FAKE_DIR: /srv/backend/app/demo_data/hiring/recorded
@@ -58,6 +60,7 @@ services:
   worker:
     image: openelip-demo-backend:dev
     environment:
+      APP_MODE: server
       APP_BASE_URL: http://localhost:${DEMO_HTTP_PORT:-8090}
       LLM_PROVIDER: fake
       LLM_FAKE_DIR: /srv/backend/app/demo_data/hiring/recorded
@@ -69,6 +72,8 @@ services:
 
   web:
     image: openelip-demo-web:dev
+    environment:
+      APP_MODE: server
 
   proxy:
     ports: !override

@@ -20,6 +20,9 @@ export default async function SignInPage({ searchParams }: { searchParams: Searc
     .catch(() => null);
   if (me) redirect(next);
 
+  // Local mode has no sign-in (the setting the API reads): /local-session opens the owner's session and continues.
+  if (process.env.APP_MODE === "local") redirect(`/local-session?next=${encodeURIComponent(next)}`);
+
   return (
     <div className="container page">
       <section className={styles.card} aria-labelledby="sign-in-title">
