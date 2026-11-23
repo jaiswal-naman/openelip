@@ -245,14 +245,17 @@ def test_a_posting_with_an_email_address_or_a_phone_number_is_recognised():
 
 
 @pytest.mark.parametrize(
-    "written", ["accommodations[at]coinbase.com", "jobs (at) example.org", "Jobs [AT] Example.org", "a.b+c[at]sub.example.co.uk"]
+    "written",
+    ["accommodations[at]coinbase.com", "jobs (at) example.org", "Jobs [AT] Example.org", "a.b+c[at]sub.example.co.uk"],
 )
 def test_an_address_written_with_at_in_brackets_is_recognised_like_one_with_an_at_sign(written):
     assert export_snapshot.has_contact_data(f"To ask for an accommodation, write to {written} before you apply.")
 
 
 def test_words_around_at_that_are_not_an_address_are_left_alone():
-    assert not export_snapshot.has_contact_data("Engineer (at least 5 years) based at [Berlin]", "Looking for a lead (at) Stripe")
+    assert not export_snapshot.has_contact_data(
+        "Engineer (at least 5 years) based at [Berlin]", "Looking for a lead (at) Stripe"
+    )
 
 
 # ---- the frozen snapshot -------------------------------------------------------------------------------------------
@@ -289,7 +292,8 @@ def test_no_posting_in_the_snapshot_holds_an_email_address_or_a_phone_number():
 
 
 def test_the_obfuscated_addresses_taken_out_of_the_snapshot_are_replaced_in_place_and_counted_in_its_metadata():
-    redacted = META["redacted"]  # the export filter then caught "@" only; the postings were kept and the strings replaced
+    # the export filter then caught "@" only, so the postings were kept and the strings replaced
+    redacted = META["redacted"]
 
     held = sum(p[field].count(redacted["replacement"]) for p in SNAPSHOT for field in ("title", "description"))
 
