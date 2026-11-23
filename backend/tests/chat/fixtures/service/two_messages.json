@@ -1,0 +1,6 @@
+[
+  {"tool_calls": [{"tool": "list_matches", "outcome": "shown"}], "reply": null},
+  {"tool_calls": [], "reply": "You have one shown match [[d1]]."},
+  {"tool_calls": [{"tool": "get_decision", "decision": "d1"}], "reply": null},
+  {"tool_calls": [], "reply": "Here is the evidence behind [[d1]]."}
+]

@@ -12,11 +12,12 @@ pytest keeps conftest.py off the import path, so the test files import these fun
 
 import json
 import os
+import threading
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import Engine, text
@@ -55,6 +56,12 @@ def use_provider(monkeypatch: pytest.MonkeyPatch, recording: Path | None = None,
     chosen = config.load({**os.environ, **blank, "APP_ENV": "test", "LLM_PROVIDER": "fake", **env})
     monkeypatch.setattr(config, "get", lambda: chosen)
     monkeypatch.setattr(fake, "_source", recording)  # undone with the test
+    monkeypatch.setattr(fake, "_given", {})
+
+
+def record(monkeypatch: pytest.MonkeyPatch, name: str | None) -> None:
+    """Answer from the recording of this name in this folder (None: no recording at all), starting its list over."""
+    monkeypatch.setattr(fake, "_source", RECORDINGS / name if name else None)
     monkeypatch.setattr(fake, "_given", {})
 
 
@@ -174,14 +181,59 @@ def start(
     return make_world(engine)
 
 
+class Gate:
+    """A tool that waits. `entered` is set once the generation thread is inside it, and the reply stays running until
+    the test sets `release`."""
+
+    def __init__(self) -> None:
+        self.entered = threading.Event()
+        self.release = threading.Event()
+
+
+_gates: list[Gate] = []
+
+
+def hold(monkeypatch: pytest.MonkeyPatch, tool: str = "get_applications") -> Gate:
+    """Make the tool of this name wait for the test before it answers, so a reply can be looked at while it runs."""
+    from app.chat import tools
+
+    gate, real = Gate(), getattr(tools, tool)
+
+    def held(user_id: UUID, args: Any, aliases: Any) -> Any:
+        gate.entered.set()
+        gate.release.wait(WAIT_SECONDS)
+        return real(user_id, args, aliases)
+
+    monkeypatch.setattr(tools, tool, held)
+    _gates.append(gate)
+    return gate
+
+
 def finish(engine: Engine, *, empty: bool = False) -> None:
-    """Wait for every reply that is still running, then (when the test has no API client to do it) empty the tables."""
+    """Let go of every gate still held and wait for every reply still running (a thread must not outlive the test whose
+    monkeypatches it runs under), then, when the test has no API client to do it, empty the tables."""
     from app.chat import hub
 
+    while _gates:
+        _gates.pop().release.set()
     for reply in hub.running():
         reply.finished.wait(WAIT_SECONDS)
     if empty:
         harness.empty_tables(engine)
+
+
+def stored(engine: Engine, session_id: UUID | str) -> list[Any]:
+    """The session's chat rows in the order a transcript shows them."""
+    with engine.connect() as conn:
+        return list(
+            conn.execute(
+                text(
+                    """SELECT id, role::text AS role, content, tool_name, refs, finish_reason, created_at
+                         FROM chat_messages WHERE session_id = :s ORDER BY created_at, id"""
+                ),
+                {"s": session_id},
+            )
+        )
 
 
 def sign_in(client: Any, user: UUID) -> None:
@@ -227,3 +279,53 @@ def frames(raw: str) -> list[dict[str, Any]]:
 def count(engine: Engine, source: str, **params: Any) -> int:
     with engine.connect() as conn:
         return conn.execute(text(f"SELECT count(*) FROM {source}"), params).scalar_one()
+
+
+# ---- the API, as a person uses it ----------------------------------------------------------------------------------
+
+
+def build(
+    api_client: Any,
+    engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    recording: str | None = "plain_reply.json",
+    **env: str,
+) -> SimpleNamespace:
+    """The world with the API client signed in as Ada, answering from the recording of this name in this folder."""
+    world = start(engine, monkeypatch, RECORDINGS / recording if recording else None, **env)
+    reset_hub(monkeypatch)
+    world.client, world.engine = api_client, engine
+    sign_in(api_client, world.ada)
+    return world
+
+
+def ok(response: Any, status: int = 200) -> dict[str, Any]:
+    assert response.status_code == status, response.text
+    body: dict[str, Any] = response.json()
+    assert body["success"] is True and body["error"] is None
+    return body
+
+
+def refused(response: Any, status: int, code: str) -> dict[str, Any]:
+    assert response.status_code == status, response.text
+    body = response.json()
+    assert (body["success"], body["data"], body["error"]["code"]) == (False, None, code)
+    error: dict[str, Any] = body["error"]
+    return error
+
+
+def post(w: Any, path: str, body: dict[str, Any], *, key: str | None = None) -> Any:
+    return w.client.post(path, json=body, headers={"Idempotency-Key": key or uuid4().hex})
+
+
+def open_session(w: Any, kind: str = "open") -> str:
+    session: str = ok(post(w, "/v1/chat/sessions", {"kind": kind}), 201)["data"]["id"]
+    return session
+
+
+def say(w: Any, session: str, words: str = "What is shown today?", *, key: str | None = None, **extra: Any) -> Any:
+    return post(w, f"/v1/chat/sessions/{session}/messages", {"text": words, **extra}, key=key)
+
+
+def transcript(w: Any, session: str) -> Any:
+    return w.client.get(f"/v1/chat/sessions/{session}/messages")
