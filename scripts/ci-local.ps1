@@ -123,7 +123,11 @@ Gate 'eval gate (each suite: replay, then gate)' {
         $env:LLM_PROVIDER = 'fake'
         In-Backend {
             Step uv @('run', '--frozen', 'alembic', 'upgrade', 'head')
-            foreach ($suite in 'harness_smoke', 'resume_extraction', 'requirement_extraction') {
+            # The suite list is read from ci.yml's eval-gate matrix, so the two never drift apart.
+            $matrix = Select-String -Path (Join-Path $repo '.github/workflows/ci.yml') -Pattern '^\s*suite:\s*\[([^\]]+)\]'
+            if (-not $matrix) { throw 'no eval-gate suite list found in .github/workflows/ci.yml' }
+            $suites = $matrix[0].Matches[0].Groups[1].Value -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+            foreach ($suite in $suites) {
                 if ($suite -eq 'requirement_extraction') {
                     $output = & uv run --frozen python ../evals/requirement_extraction/score.py --record
                 } else {
