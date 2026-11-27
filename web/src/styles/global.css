@@ -8,7 +8,7 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  /* A focused element must never sit behind the sticky top bar (WCAG 2.4.11); at 64rem the register moves to the side */
+  /* A focused element must never sit behind the sticky top bar (WCAG 2.4.11); at 64rem the sidebar moves to the side */
   scroll-padding-top: calc(var(--header-h) + var(--sp-16));
 }
 
@@ -35,7 +35,7 @@ body {
   scrollbar-width: thin;
 }
 
-/* Numbers in a drawing line up: every figure in the app is tabular */
+/* Figures line up: every number in the app is tabular */
 table,
 time,
 .t-data {
@@ -101,32 +101,29 @@ hr {
   outline-offset: 2px;
 }
 
-/* Type roles. Titles and labels are the drawing's lettering (condensed Archivo); the person reads Archivo at normal width;
-   mono is only for data the machine produced (times, amounts, ids). */
+/* Type roles. Geist throughout: headings at weight 600 with tight tracking, labels ("eyebrows") small, spaced capitals in
+   muted grey, Geist Mono only for small numerals and data the machine produced (times, amounts, ids, "01"). */
 .t-display {
   font-size: var(--fs-display);
-  font-stretch: var(--stretch-lettering);
-  line-height: 1;
-  letter-spacing: -0.02em;
-  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  font-weight: 600;
   text-wrap: balance;
 }
 
 .t-page {
   font-size: var(--fs-page);
-  font-stretch: var(--stretch-lettering);
-  line-height: 1.1;
-  letter-spacing: -0.015em;
-  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  font-weight: 600;
   text-wrap: balance;
 }
 
 .t-section {
   font-size: var(--fs-section);
-  font-stretch: var(--stretch-lettering);
   line-height: 1.25;
-  letter-spacing: -0.005em;
-  font-weight: 650;
+  letter-spacing: -0.01em;
+  font-weight: 600;
 }
 
 .t-card {
@@ -140,21 +137,47 @@ hr {
   line-height: 1.45;
 }
 
+/* The lede under a page title */
+.t-lede {
+  color: var(--muted);
+  font-size: var(--fs-lede);
+  line-height: 1.5;
+}
+
+/* A label: small uppercase, spaced out, muted. :where keeps its colour at zero specificity, so a status label that sets its own wins. */
 .t-label {
   font-family: var(--font-sans);
   font-size: var(--fs-label);
-  font-stretch: var(--stretch-lettering);
   line-height: 1.2;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  font-weight: 650;
+  font-weight: 500;
+}
+
+:where(.t-label) {
+  color: var(--muted);
+}
+
+/* A section eyebrow: a label with a 16px hairline dash before it */
+.t-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+}
+
+.t-eyebrow::before {
+  content: "";
+  flex: none;
+  width: 1rem;
+  height: 1px;
+  background: currentColor;
 }
 
 .t-data {
   font-family: var(--font-mono);
   font-size: var(--fs-data);
   line-height: 1.4;
-  font-weight: 500;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
 
@@ -175,7 +198,7 @@ hr {
   border: 0;
 }
 
-/* The app: the register on the left, the sheet on the right; on a narrow screen the register is a bar above the sheet */
+/* The app: the sidebar on the left, the page on the right; on a narrow screen the sidebar is a bar above the page */
 .shell {
   position: relative;
   min-height: 100dvh;
@@ -212,7 +235,7 @@ main:focus {
   outline: none;
 }
 
-/* The sheet's drawing area: full width on a phone, capped on a wide screen, set against the register on the left */
+/* The page's content column: full width on a phone, capped on a wide screen, set against the sidebar on the left */
 .container {
   width: min(100% - 2 * var(--sp-16), var(--content-max));
   margin-inline: auto;
@@ -231,7 +254,7 @@ main:focus {
   }
 }
 
-/* A sheet: a column of regions, more room between regions than inside them */
+/* A page: a column of regions, more room between regions than inside them */
 .page {
   display: flex;
   flex-direction: column;

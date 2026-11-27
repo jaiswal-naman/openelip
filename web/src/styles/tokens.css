@@ -1,57 +1,59 @@
 /*
- * Design tokens: the Drawing Sheet. Every piece of agent work is a sheet whose title block reads drawn by an agent, checked
- * by the verifier, approved by you. Light is whiteprint (drafting film, India ink, diazo blue); dark is blueprint
- * (Prussian-blue sheet, chalk lines). Redline marks only what needs the person.
+ * Design tokens: the Workspace. A quiet, near-monochrome product surface: a light grey page with white panels and
+ * hairlines, near-black type and a near-black primary action, Geist for reading and Geist Mono for small figures and ids.
+ * Status colours stay semantic but quiet; the red marks only what needs the person.
  *
- * Contrast (WCAG relative luminance, checked for both themes): text and muted at least 6.6:1 on every surface, status
- * colours at least 4.5:1, control borders at least 3:1. `--faint` is for disabled controls only.
+ * Contrast (WCAG relative luminance, checked for both themes): text and muted at least 6.6:1 on the page, a panel and the
+ * grey fill (muted is 6.8:1 on the grey fill in light, 6.8:1 in dark); status colours at least 4.5:1 on all three and on
+ * their own soft tint; control borders at least 3:1. `--faint` is for disabled controls only.
  * Sizes are in rem so text can be resized to 200% without loss; the pixel value is for a 16px root.
  */
 
 :root {
   color-scheme: light;
 
-  /* Colour: whiteprint */
-  --bg: #f3f5f2; /* the sheet */
-  --surface: #fcfdfb; /* fields, raised rows, popovers */
-  --surface-2: #e6ebe7; /* the register (sidebar), table heads, hover */
-  --line: #c3cdc7; /* hairline rules: decorative only */
-  --line-strong: #6b7882; /* control borders, 4.1:1 */
-  --ink-rule: #16202b; /* the heavy rule of a title block and a sheet's frame */
-  --text: #16202b; /* India ink, 15:1 */
-  --muted: #4a5866; /* 6.6:1 */
-  --faint: #7d8a95; /* disabled controls only */
-  --accent: #1f5fa6; /* diazo blue: the primary fill, white on it is 6.5:1 */
-  --accent-strong: #1f5fa6; /* small accent text and the focus ring, 5.9:1 */
-  --accent-soft: rgb(31 95 166 / 0.1);
+  /* Colour: light */
+  --bg: #fafafa; /* the page */
+  --surface: #ffffff; /* panels, fields, popovers, the sidebar */
+  --surface-2: #f4f4f5; /* hover, table heads, quiet fills */
+  --line: #e5e5e5; /* hairlines: decorative only */
+  --line-strong: #8a8a8a; /* control borders, 3.3:1 on the page and 3.5:1 on a panel */
+  --text: #0a0a0a; /* 19:1 */
+  --muted: #555555; /* 7.1:1 on the page, 6.8:1 on the grey fill */
+  --faint: #a3a3a3; /* disabled controls only */
+  --accent: #0a0a0a; /* the primary fill, a black pill; white on it is 19.8:1 */
+  --accent-strong: #0a0a0a; /* small accent text and the focus ring */
+  --accent-hover: #262626; /* the primary pill under the pointer */
+  --accent-soft: rgb(10 10 10 / 0.05);
   --on-accent: #ffffff;
-  --redline: #b03026; /* what needs the person: 5.8:1 on the sheet, 5.1:1 on its own tint (--redline-soft) */
-  --redline-soft: rgb(192 54 42 / 0.08);
-  --ok: #1d6b44;
-  --ok-soft: rgb(29 107 68 / 0.09);
-  --warn: #835200;
-  --bad: #b3261e;
-  --info: #1a528f; /* links and citations, 7.2:1 */
-  --unk: #56626e; /* no evidence, not stated, unknown */
+  --redline: #b42318; /* what needs the person: 6.3:1 on the page, 5.5:1 on its own tint (--redline-soft) */
+  --redline-soft: rgb(180 35 24 / 0.07);
+  --ok: #136f37; /* 6.0:1 on the page, 5.3:1 on its own tint */
+  --ok-soft: rgb(19 111 55 / 0.09);
+  --warn: #8f5a06; /* 5.5:1 on the page */
+  --bad: #b42318;
+  --info: #0a0a0a; /* links and citations: ink, underlined where they sit in text */
+  --unk: #555555; /* no evidence, not stated, unknown */
   --focus: var(--accent-strong);
 
-  /* Elevation: the sheet is flat; only what floats over it casts a shadow */
-  --shadow-1: 0 6px 16px -8px rgb(22 32 43 / 0.28);
-  --shadow-2: 0 18px 40px -16px rgb(22 32 43 / 0.42);
+  /* Elevation: a panel has a hairline and at most a soft shadow; what floats over the page casts a stronger one */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.08);
+  --shadow-1: 0 8px 24px -8px rgb(0 0 0 / 0.16), 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-2: 0 24px 56px -16px rgb(0 0 0 / 0.28);
 
-  /* Type: Archivo for the person and the lettering (its width axis gives the condensed title-block hand), mono for data */
-  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --stretch-lettering: 78%; /* condensed: titles and title-block labels */
-  --fs-display: clamp(2rem, 4.5vw, 3.25rem);
-  --fs-page: clamp(1.625rem, 2.4vw, 2.125rem);
-  --fs-section: 1.125rem;
+  /* Type: Geist for reading and headings, Geist Mono for small numerals and data (ids, times, amounts) */
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --fs-display: clamp(2.5rem, 5vw, 3.75rem);
+  --fs-page: clamp(1.75rem, 3vw, 2.5rem);
+  --fs-section: 1.1875rem;
   --fs-card: 1rem;
   --fs-body: 0.9375rem;
+  --fs-lede: 1.0625rem;
   --fs-small: 0.8125rem;
   --fs-label: 0.6875rem;
-  --fs-data: 0.78125rem;
-  --fs-pill: 0.6875rem;
+  --fs-data: 0.75rem;
+  --fs-pill: 0.625rem;
 
   /* Space: a 4px base */
   --sp-2: 0.125rem;
@@ -65,80 +67,82 @@
   --sp-44: 2.75rem;
   --sp-64: 4rem;
 
-  /* Radius: a drafted line has crisp corners */
-  --r-sm: 2px;
-  --r-md: 2px;
-  --r-lg: 3px;
-  --r-xl: 4px;
+  /* Radius: soft corners; panels 12px, rows and fields 8px, buttons and chips are pills */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
   --r-pill: 999px;
 
-  /* Motion: 150 to 200ms state changes, one stamp moment, nothing loops; opacity and transform only */
+  /* Motion: 150 to 200ms state changes, nothing loops; opacity and transform only */
   --dur-fast: 150ms;
   --dur-mid: 200ms;
   --dur-slow: 280ms;
   --ease-in: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Layout */
-  --header-h: 3.5rem; /* the register's top bar on a narrow screen */
-  --register-w: 15rem;
+  --header-h: 3.5rem; /* the sidebar's top bar on a narrow screen */
+  --register-w: 15rem; /* the sidebar */
   --content-max: 76rem;
   --measure: 42rem;
 }
 
-/* Dark is blueprint, following the system unless the person chose light ... */
+/* Dark follows the system unless the person chose light ... */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0f2b47;
-    --surface: #14365a;
-    --surface-2: #0a2036;
-    --line: #2b4c6e;
-    --line-strong: #7f9dbb;
-    --ink-rule: #d5e3f1;
-    --text: #eaf1f8;
-    --muted: #afc3d7;
-    --faint: #7591ac;
-    --accent: #a6d4ff;
-    --accent-strong: #a6d4ff;
-    --accent-soft: rgb(166 212 255 / 0.14);
-    --on-accent: #0f2b47;
-    --redline: #ff907f;
-    --redline-soft: rgb(255 144 127 / 0.12);
-    --ok: #7adba8;
-    --ok-soft: rgb(122 219 168 / 0.12);
-    --warn: #f3c467;
-    --bad: #ff907f;
-    --info: #a6d4ff;
-    --unk: #afc3d7;
-    --shadow-1: 0 6px 16px -8px rgb(2 10 20 / 0.6);
-    --shadow-2: 0 18px 40px -16px rgb(2 10 20 / 0.75);
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface-2: #1c1c1c;
+    --line: #262626;
+    --line-strong: #737373; /* 3.8:1 on a panel, 4.2:1 on the page */
+    --text: #fafafa;
+    --muted: #a3a3a3; /* 7.3:1 on a panel, 6.8:1 on the grey fill */
+    --faint: #6b6b6b;
+    --accent: #fafafa;
+    --accent-strong: #fafafa;
+    --accent-hover: #e5e5e5;
+    --accent-soft: rgb(250 250 250 / 0.08);
+    --on-accent: #0a0a0a;
+    --redline: #ff8a80;
+    --redline-soft: rgb(255 138 128 / 0.1);
+    --ok: #4ade80;
+    --ok-soft: rgb(74 222 128 / 0.1);
+    --warn: #fbbf24;
+    --bad: #ff8a80;
+    --info: #fafafa;
+    --unk: #a3a3a3;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.5);
+    --shadow-1: 0 8px 24px -8px rgb(0 0 0 / 0.7), 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-2: 0 24px 56px -16px rgb(0 0 0 / 0.85);
   }
 }
 
-/* ... and blueprint when the person chose it. The same values again: a media query cannot share a selector with an attribute. */
+/* ... and dark when the person chose it. The same values again: a media query cannot share a selector with an attribute. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0f2b47;
-  --surface: #14365a;
-  --surface-2: #0a2036;
-  --line: #2b4c6e;
-  --line-strong: #7f9dbb;
-  --ink-rule: #d5e3f1;
-  --text: #eaf1f8;
-  --muted: #afc3d7;
-  --faint: #7591ac;
-  --accent: #a6d4ff;
-  --accent-strong: #a6d4ff;
-  --accent-soft: rgb(166 212 255 / 0.14);
-  --on-accent: #0f2b47;
-  --redline: #ff907f;
-  --redline-soft: rgb(255 144 127 / 0.12);
-  --ok: #7adba8;
-  --ok-soft: rgb(122 219 168 / 0.12);
-  --warn: #f3c467;
-  --bad: #ff907f;
-  --info: #a6d4ff;
-  --unk: #afc3d7;
-  --shadow-1: 0 6px 16px -8px rgb(2 10 20 / 0.6);
-  --shadow-2: 0 18px 40px -16px rgb(2 10 20 / 0.75);
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-2: #1c1c1c;
+  --line: #262626;
+  --line-strong: #737373;
+  --text: #fafafa;
+  --muted: #a3a3a3;
+  --faint: #6b6b6b;
+  --accent: #fafafa;
+  --accent-strong: #fafafa;
+  --accent-hover: #e5e5e5;
+  --accent-soft: rgb(250 250 250 / 0.08);
+  --on-accent: #0a0a0a;
+  --redline: #ff8a80;
+  --redline-soft: rgb(255 138 128 / 0.1);
+  --ok: #4ade80;
+  --ok-soft: rgb(74 222 128 / 0.1);
+  --warn: #fbbf24;
+  --bad: #ff8a80;
+  --info: #fafafa;
+  --unk: #a3a3a3;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.5);
+  --shadow-1: 0 8px 24px -8px rgb(0 0 0 / 0.7), 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2: 0 24px 56px -16px rgb(0 0 0 / 0.85);
 }
