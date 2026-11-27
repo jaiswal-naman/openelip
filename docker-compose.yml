@@ -5,12 +5,13 @@
 
 # One backend image runs the migration step, the API and the worker. The build is repeated on each service so that a first
 # `docker compose up` on a clean machine builds it before any of them needs it. The image name carries the project name, so a
-# second copy of the project (the fresh-clone check) never overwrites the first copy's image.
+# second copy of the project (the fresh-clone check) never overwrites the first copy's image. An installed copy (install.sh,
+# install.ps1) names the published images in its .env instead and pulls them, so it never builds and needs no source.
 x-backend: &backend
   build:
     context: .
     dockerfile: backend/Dockerfile
-  image: ${COMPOSE_PROJECT_NAME:-openelip}-backend:dev
+  image: ${OPENELIP_BACKEND_IMAGE:-${COMPOSE_PROJECT_NAME:-openelip}-backend:dev}
 
 # Settings the API and the worker share. They must agree on the three keys, because the API seals sign-in codes and the
 # worker opens them. An empty value means "use the application's default" (backend/app/platform/config.py); for APP_MODE
@@ -115,7 +116,7 @@ services:
   web:
     build:
       context: web
-    image: ${COMPOSE_PROJECT_NAME:-openelip}-web:dev
+    image: ${OPENELIP_WEB_IMAGE:-${COMPOSE_PROJECT_NAME:-openelip}-web:dev}
     environment:
       API_INTERNAL_URL: http://api:8000
       # The same setting the API reads: in local mode (APP_MODE=local) the web app never shows the sign-in page.
