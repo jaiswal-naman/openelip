@@ -22,7 +22,9 @@ test("opening the app signs the owner in with no sign-in page, asks for the mode
   await expect(page).toHaveURL(/\/setup\?next=%2F$/);
   await expect(page.getByRole("heading", { name: "Set up your model" })).toBeVisible();
   expect(pathsVisited).not.toContain("/sign-in");
-  await expect(page.getByRole("button", { name: "Account: owner@example.test" })).toBeVisible();
+  // Signed in as the one owner, who is a candidate and an employer at once: the hiring desk is in the register from the start
+  const roles = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Roles" });
+  await expect(roles).toBeVisible();
   await expect(page.getByLabel("API key")).toHaveAttribute("type", "password");
 
   // The stack has no key yet, and says so (never the key itself).
@@ -40,10 +42,8 @@ test("opening the app signs the owner in with no sign-in page, asks for the mode
   expect(JSON.parse(saved).data.model).toEqual({ provider: "anthropic", key_set: true, key_last4: "test", source: "app" });
   expect(saved).not.toContain(KEY);
 
-  // The one owner is a candidate and an employer at once: the hiring desk is in their menu from the start, and they create
-  // their organization there.
-  await page.getByRole("button", { name: "Account: owner@example.test" }).click();
-  await page.getByRole("menuitem", { name: "Hiring desk" }).click();
+  // The owner opens the hiring desk from the register and creates their organization there.
+  await roles.click();
   await expect(page).toHaveURL(/\/hire\/roles$/);
   await page.waitForLoadState("networkidle"); // the page is hydrated: a name typed before that is wiped when React takes over
   await page.getByLabel("Organization name").fill("Halden Studio");
