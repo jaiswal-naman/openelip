@@ -1,5 +1,5 @@
 /*
- * The AI processing consent sheet (FRONTEND_UI 4.6), inline in onboarding and in settings, never a modal. A clear ruled block:
+ * The AI processing consent sheet (FRONTEND_UI 4.6), inline in onboarding and in settings, never a modal. A clear hairline block:
  * where text would be sent, what each place receives and what for, then Agree or Not now. Tokens only.
  */
 
@@ -14,11 +14,11 @@
   max-width: var(--measure);
 }
 
-/* One ruled row for each provider: the heavy rule on top, a hairline under each, three captioned cells across */
+/* One hairline row for each provider: a hairline on top and under each, three captioned cells across */
 .providers {
   display: flex;
   flex-direction: column;
-  border-block-start: 2px solid var(--ink-rule);
+  border-block-start: 1px solid var(--line);
 }
 
 .provider {
@@ -50,10 +50,10 @@
   max-width: var(--measure);
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-sm);
-  background: var(--surface);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
   color: var(--bad);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .actions {

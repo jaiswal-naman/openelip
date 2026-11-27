@@ -1,4 +1,4 @@
-/* The costs ledger: the total sits in the title block, each table is a ruled ledger with mono figures (ledger.module.css). */
+/* The costs ledger: the total sits in the page header, each table is a hairline ledger with mono figures (ledger.module.css). */
 
 .sub {
   display: block;
@@ -6,7 +6,6 @@
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: var(--fs-data);
-  font-stretch: normal;
   font-weight: 500;
 }
 

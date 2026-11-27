@@ -120,7 +120,7 @@ function Entry({ id }: { id: number }) {
   );
 }
 
-/** The title block's cells, counted from the rows the recorder holds. */
+/** The page header's cells, counted from the rows the recorder holds. */
 function cellsOf(list: RecorderRow[]): TitleCell[] {
   const blocked = list.filter((row) => row.status === "blocked").length;
   const outside = list.filter((row) => row.kind === "outside_action").length;
@@ -135,7 +135,7 @@ function cellsOf(list: RecorderRow[]): TitleCell[] {
 
 /**
  * The flight recorder (GRD-03, FRONTEND_UI 3.19): the campaign's steps in order, one selected in `?step=`, with first, previous,
- * next and last. A blocked row carries a Blocked stamp and the reason in words. On a phone the list is the first screen.
+ * next and last. A blocked row carries a Blocked chip and the reason in words. On a phone the list is the first screen.
  * ponytail: no duration bars. A row carries one moment (`created_at`); an action's `executed_at` includes the hours it waited
  * for the person, so there is no real start and end per step to draw to scale.
  */

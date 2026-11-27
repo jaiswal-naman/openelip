@@ -15,7 +15,7 @@ import styles from "./hiring.module.css";
 const day = (iso: string | null) => (iso === null ? "" : new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }));
 
 /**
- * One person who said yes, as a ruled row: what they agreed to share, the verdict on each requirement, the clock, and at the
+ * One person who said yes, as a hairline row: what they agreed to share, the verdict on each requirement, the clock, and at the
  * right edge the answer and the signal in one size. No email shows before a yes.
  */
 export function ShortlistCard({

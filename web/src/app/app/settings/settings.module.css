@@ -1,6 +1,6 @@
 /*
- * One long ruled sheet: the title block, then numbered sections down the page. Each section draws its own rule and heading;
- * the number sits in the margin on the same rule, so the sections read as items of a drawing's index. Tokens only.
+ * One long page: the page header, then numbered sections down the page. Each section draws its own hairline and heading;
+ * the number sits in the margin on the same line, in Geist Mono ("01"), so the sections read as an index. Tokens only.
  */
 
 .sheet {
@@ -16,7 +16,7 @@
   align-items: start;
 }
 
-/* The number: a lettered figure on the section's own rule, set level with the section heading */
+/* The number: a mono figure on the section's own hairline, set level with the section heading */
 .num {
   position: absolute;
   inset-inline-end: 0;
@@ -24,10 +24,10 @@
   z-index: 1;
   padding-inline: var(--sp-8);
   color: var(--muted);
-  font-size: var(--fs-section);
-  font-stretch: var(--stretch-lettering);
-  font-weight: 650;
-  line-height: 1.25;
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+  font-weight: 400;
+  line-height: 1.9;
   font-variant-numeric: tabular-nums;
 }
 
@@ -40,6 +40,6 @@
   .num {
     position: static;
     padding: var(--sp-16) var(--sp-8) 0 0;
-    border-block-start: 1px solid var(--line-strong);
+    border-block-start: 1px solid var(--line);
   }
 }

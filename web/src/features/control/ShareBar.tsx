@@ -8,7 +8,7 @@ export function ShareBar({ fraction }: { fraction: number }) {
   return (
     <svg width="100%" height="8" aria-hidden="true" focusable="false">
       <rect width="100%" height="8" fill="var(--surface-2)" />
-      <rect width={width} height="8" fill="var(--ink-rule)" />
+      <rect width={width} height="8" fill="var(--accent)" />
     </svg>
   );
 }

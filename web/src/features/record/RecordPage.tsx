@@ -110,7 +110,7 @@ export function RecordPage() {
   );
 }
 
-/** The title block's cells, counted from what the page already loaded. Nothing here is guessed. */
+/** The page header's cells, counted from what the page already loaded. Nothing here is guessed. */
 function titleCells(view: RecordView, waiting: number): TitleCell[] {
   const resumesRead = view.documents.filter((document) => document.status === "succeeded").length;
   return [

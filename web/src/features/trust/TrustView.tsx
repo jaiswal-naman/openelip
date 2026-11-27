@@ -13,7 +13,7 @@ const KIND_LABELS: Record<string, string> = { model_provider: "Model provider", 
 
 const kindLabel = (kind: string) => KIND_LABELS[kind] ?? kind; // a kind this page does not know is shown as it came
 
-/** The title block: what this page is, and how many of each kind receive data, counted from the list the API sent. */
+/** The page header: what this page is, and how many of each kind receive data, counted from the list the API sent. */
 function Head({ items }: { items?: Subprocessor[] }) {
   const cells: TitleCell[] = [];
   if (items !== undefined) {

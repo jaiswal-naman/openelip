@@ -64,8 +64,8 @@ export function OnboardingFlow() {
     if (me.data === null) router.replace(SIGN_IN);
   }, [me.data, router]);
 
-  // The heading takes focus when the step changes, so a screen reader starts at the top of the new step. The title block
-  // draws the heading, so it is found from the sheet's own element.
+  // The heading takes focus when the step changes, so a screen reader starts at the top of the new step. The page header
+  // draws the heading, so it is found from the flow's own element.
   const sheet = useRef<HTMLDivElement>(null);
   const shown = useRef(step);
   useEffect(() => {
@@ -88,6 +88,7 @@ export function OnboardingFlow() {
   return (
     <div className={styles.flow} ref={sheet}>
       <TitleBlock
+        display
         title={TITLES[step]}
         lines={<p>Setting up your career record.</p>}
         cells={[{ label: "Progress", value: `Step ${index + 1} of ${STEPS.length}` }, ...(after ? [{ label: "Next", value: TITLES[after] }] : [])]}

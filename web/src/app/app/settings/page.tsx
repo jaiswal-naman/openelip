@@ -17,7 +17,7 @@ import { SettingsHeader } from "./SettingsHeader";
 export const metadata: Metadata = { title: "Settings" };
 
 // FRONTEND_UI 3.10 orders the sections; later phases add theirs to this list. `section` is the old address of a part, kept
-// working: the sheet is one page now, and the address scrolls to the part it names.
+// working: the settings are one page now, and the address scrolls to the part it names.
 const SECTIONS = [
   { id: "ai", section: "privacy" },
   { id: "brief", section: "brief" },
@@ -29,7 +29,7 @@ const SECTIONS = [
 
 type Props = { searchParams: Promise<{ section?: string | string[] }> };
 
-/** One numbered part of the sheet. The number is read by nobody: the heading inside says what the part is. */
+/** One numbered part of the page. The number is read by nobody: the heading inside says what the part is. */
 function Item({ id, children }: { id: string; children: ReactNode }) {
   const number = String(SECTIONS.findIndex((item) => item.id === id) + 1).padStart(2, "0");
   return (
@@ -43,9 +43,9 @@ function Item({ id, children }: { id: string; children: ReactNode }) {
 }
 
 /**
- * The settings sheet: every section on one page, numbered. No session goes to sign in and comes back; `?section=` still
+ * The settings page: every section on one page, numbered. No session goes to sign in and comes back; `?section=` still
  * names a part (privacy is the default for the sign-in return) and the page scrolls to it, except to the first, which is
- * already under the title block.
+ * already under the page header.
  */
 export default async function SettingsPage({ searchParams }: Props) {
   const asked = (await searchParams).section;

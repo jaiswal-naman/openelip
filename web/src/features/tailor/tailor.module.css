@@ -1,5 +1,5 @@
 /*
- * The tailoring review as a sheet: the title block, each proposed edit as a ruled row with the original (A) and the tailored
+ * The tailoring review as a page: the page header, each proposed edit as a hairline row with the original (A) and the tailored
  * text (B) side by side at one scale, then the export and the packet (FRONTEND_UI 3.5 and 4.3). Tokens only.
  */
 
@@ -15,13 +15,13 @@
   gap: var(--sp-24);
 }
 
-/* A region of the sheet: a rule above, no box */
+/* A region of the page: a hairline above, no box */
 .panel {
   display: flex;
   flex-direction: column;
   gap: var(--sp-12);
   padding-block-start: var(--sp-16);
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 .row {
@@ -34,10 +34,10 @@
 .problem {
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-sm);
-  background: var(--surface);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
   color: var(--bad);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .why {
@@ -46,21 +46,21 @@
 
 .why summary {
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 500;
 }
 
-/* ---- the edits: a ruled ledger, one row each ---- */
+/* ---- the edits: a hairline ledger, one row each ---- */
 
 .edits {
   display: flex;
   flex-direction: column;
-  border-block-start: 2px solid var(--ink-rule);
+  border-block-start: 1px solid var(--line);
 }
 
 .answers {
   display: flex;
   flex-direction: column;
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 .note + .answers {
@@ -93,7 +93,7 @@
 }
 
 .itemNo {
-  /* the edit's own number, in the balloon the verifier's log would cite it by */
+  /* the edit's own number, in the numeral the verifier's log would cite it by */
   color: var(--info);
 }
 
@@ -122,7 +122,7 @@
   gap: var(--sp-8);
 }
 
-/* The column's letter, in a square like the lettering of a drawing's zones */
+/* The column's letter, in a 24px rounded-square badge like an agent's mark */
 .letter {
   display: inline-flex;
   flex: none;
@@ -130,11 +130,12 @@
   justify-content: center;
   width: 1.5rem;
   height: 1.5rem;
-  border: 1px solid var(--ink-rule);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-family: var(--font-mono);
   font-size: var(--fs-label);
-  font-stretch: var(--stretch-lettering);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -142,8 +143,8 @@
   min-width: 0;
   flex: 1;
   padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   background: var(--surface);
   font-size: var(--fs-body);
   line-height: 1.6;
@@ -172,10 +173,11 @@
   display: inline-block;
   margin-inline-end: var(--sp-4);
   padding: 0 var(--sp-8);
-  border: 1px solid var(--info);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
   font-size: var(--fs-small);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .decision {
@@ -192,7 +194,7 @@
   min-height: 2.5rem;
   padding: var(--sp-4) var(--sp-12);
   border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--surface);
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-in);
@@ -207,7 +209,7 @@
 .radio[data-selected] {
   border-color: var(--accent-strong);
   background: var(--accent-soft);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .radio[data-focus-visible] {
@@ -234,5 +236,5 @@
 }
 
 .mine {
-  font-weight: 600;
+  font-weight: 500;
 }

@@ -1,4 +1,4 @@
-/* The setup sheet: one ruled column under the title block, labels showing, one control height, the skip beside Save. Tokens only. */
+/* The setup page: one hairline column under the page header, labels showing, one control height, the skip beside Save. Tokens only. */
 
 .sheet {
   display: flex;
@@ -6,7 +6,7 @@
   gap: var(--sp-16);
   max-width: 36rem;
   padding-block-start: var(--sp-16);
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 .form {
@@ -16,7 +16,7 @@
 }
 
 .inUse {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .buttons {
@@ -29,7 +29,7 @@
   max-width: var(--measure);
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  font-weight: 600;
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
+  font-weight: 500;
 }

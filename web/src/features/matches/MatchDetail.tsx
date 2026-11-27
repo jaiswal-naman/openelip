@@ -40,7 +40,7 @@ function requirementFromAddress(raw: string | null, evidence: EvidenceItem[]): n
 
 const metOf = (items: EvidenceItem[]) => items.filter((item) => item.verdict === "met").length;
 
-/** The title block's cells, counted from what this page already holds. A count of nothing is left out, not shown as 0 of 0. */
+/** The page header's cells, counted from what this page already holds. A count of nothing is left out, not shown as 0 of 0. */
 function counts(match: MatchData): TitleCell[] {
   const required = match.evidence.filter((item) => item.requirement.importance === "required");
   const preferred = match.evidence.filter((item) => item.requirement.importance === "preferred");

@@ -1,6 +1,6 @@
 /*
- * The flight recorder as a drawing register: the steps down the left as ruled rows with their crew marks, the selected step
- * outlined in ink, and the selected step's facts on the right as a ruled list, its Guardian checks as a small ruled table.
+ * The flight recorder: the steps down the left as hairline rows with their crew marks, the selected step
+ * outlined in ink, and the selected step's facts on the right as a hairline list, its Guardian checks as a small hairline table.
  */
 
 .recorder {
@@ -34,7 +34,7 @@
 .entries {
   display: flex;
   flex-direction: column;
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 .entries > li {
@@ -53,14 +53,14 @@
 
 @media (hover: hover) {
   .entryLink:hover {
-    background: var(--surface);
+    background: var(--surface-2);
   }
 }
 
 /* The selected step: outlined in ink, so it reads at a glance and not by colour alone */
 .entryLink[aria-current="true"] {
   background: var(--surface);
-  outline: 2px solid var(--ink-rule);
+  outline: 2px solid var(--accent-strong);
   outline-offset: -2px;
 }
 
@@ -98,7 +98,7 @@
   display: flex;
   flex-direction: column;
   margin: 0;
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 .defs > div {
@@ -117,9 +117,8 @@
 .defs dt {
   color: var(--muted);
   font-size: var(--fs-label);
-  font-stretch: var(--stretch-lettering);
-  font-weight: 650;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -138,7 +137,7 @@
   margin: 0;
   padding: var(--sp-12) var(--sp-16);
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--surface);
   white-space: pre-wrap;
 }

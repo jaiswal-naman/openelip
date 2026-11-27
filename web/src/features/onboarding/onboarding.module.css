@@ -1,6 +1,6 @@
 /*
- * Onboarding as a numbered step sheet (FRONTEND_UI 3.2): the title block says which step of how many, the step's content is
- * ruled, and Back and Continue stay in one row at the foot, in reach on a phone. Tokens only.
+ * Onboarding as numbered steps (FRONTEND_UI 3.2): the page header says which step of how many, the step's content is
+ * hairline, and Back and Continue stay in one row at the foot, in reach on a phone. Tokens only.
  */
 
 .flow {
@@ -37,12 +37,12 @@
 .note {
   max-width: var(--measure);
   padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   background: var(--surface);
 }
 
-/* Where the file goes: a ruled area with a dashed line, because a dashed line says "drop here" */
+/* Where the file goes: a hairline area with a dashed line, because a dashed line says "drop here" */
 .drop {
   display: flex;
   flex-direction: column;
@@ -51,7 +51,7 @@
   width: min(100%, var(--measure));
   padding: var(--sp-24);
   border: 1px dashed var(--line-strong);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-lg);
   background: var(--surface);
 }
 
@@ -61,7 +61,7 @@
   gap: var(--sp-8);
   width: min(100%, var(--measure));
   padding-block-start: var(--sp-12);
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 /* The first matches: the cards of Today, one under another. */
@@ -76,10 +76,10 @@
   max-width: var(--measure);
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-sm);
-  background: var(--surface);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
   color: var(--bad);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* Back and Continue, one row, one size. On a phone the bar sticks to the bottom of the screen. */
@@ -91,7 +91,7 @@
   gap: var(--sp-12);
   max-width: 56rem;
   padding-block: var(--sp-12);
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 @media (max-width: 39.99rem) {
@@ -112,5 +112,5 @@
 /* A part of a step with its own heading (the brief, the first matches): a rule above it */
 .part {
   padding-block-start: var(--sp-12);
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }

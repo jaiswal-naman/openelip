@@ -1,6 +1,6 @@
 /*
- * Soft preferences: a ruled form, the saved ones as ruled rows, and the offer to make a dealbreaker a hard constraint, which
- * is a ruled box on the sheet. Tokens only.
+ * Soft preferences: a hairline form, the saved ones as hairline rows, and the offer to make a dealbreaker a hard constraint, which
+ * is a hairline box on the page. Tokens only.
  */
 
 .wrap {
@@ -30,7 +30,7 @@
 .legend {
   padding: 0;
   font-size: var(--fs-small);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .options {
@@ -57,10 +57,10 @@
 .alert {
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-sm);
-  background: var(--surface);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
   color: var(--bad);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .offer {
@@ -68,15 +68,15 @@
   flex-direction: column;
   gap: var(--sp-12);
   padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
   background: var(--surface);
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  border-block-start: 2px solid var(--ink-rule);
+  border-block-start: 1px solid var(--line);
 }
 
 .item {
@@ -98,7 +98,7 @@
 }
 
 .statement {
-  font-weight: 600;
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 

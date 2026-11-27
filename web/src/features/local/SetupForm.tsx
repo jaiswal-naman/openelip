@@ -20,7 +20,7 @@ const PROVIDER_NAMES: Record<string, string> = { anthropic: "Anthropic", openai:
 
 const NOT_A_KEY = "That does not look like an API key. Paste it exactly as your provider shows it, with no spaces.";
 
-/** The sheet's title block. Its cells say what the stack reports about the model, and are left out until it has answered. */
+/** The page header. Its cells say what the stack reports about the model, and are left out until it has answered. */
 function Head({ model }: { model?: { provider: string; key_set: boolean; key_last4: string | null } }) {
   const cells: TitleCell[] = [];
   if (model !== undefined) {

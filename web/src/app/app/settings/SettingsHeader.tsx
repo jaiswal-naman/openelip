@@ -10,7 +10,7 @@ import { useApi } from "@/lib/api/context";
 import { AUTONOMY_LEVEL_LABELS, BRIEF_FREQUENCY_LABELS } from "@/lib/labels";
 
 /**
- * The settings sheet's title block, and the jump to the part an address asked for (?section=). Every cell is read from what
+ * The settings page header, and the jump to the part an address asked for (?section=). Every cell is read from what
  * the sections below already load; a cell whose answer has not arrived yet is left out.
  */
 export function SettingsHeader({ jumpTo }: { jumpTo: string | null }) {
@@ -19,7 +19,7 @@ export function SettingsHeader({ jumpTo }: { jumpTo: string | null }) {
   const ai = useAiConsent();
   const autonomy = useQuery(autonomyQuery(api));
 
-  // A link such as "Review and agree" names a part of the sheet; the sheet is one page, so this scrolls to it.
+  // A link such as "Review and agree" names a part of the page; the settings are one page, so this scrolls to it.
   useEffect(() => {
     if (jumpTo !== null) document.getElementById(jumpTo)?.scrollIntoView();
   }, [jumpTo]);

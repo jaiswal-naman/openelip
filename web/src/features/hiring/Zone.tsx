@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import styles from "./hiring.module.css";
 
-/** One numbered zone of a form sheet: its number and title at the left, its controls at the right. */
+/** One numbered zone of a form: its number and title at the left, its controls at the right. */
 export function Zone({ id, number, title, children }: { id: string; number: number; title: ReactNode; children: ReactNode }) {
   return (
     <section aria-labelledby={id} className={styles.zone}>

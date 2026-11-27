@@ -17,7 +17,7 @@ import styles from "./tailor.module.css";
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
-/** The title block's cells, counted from the edits the page holds: what needs a decision stays in redline, never a guess. */
+/** The title block's cells, counted from the edits the page holds: what needs a decision stays in red, never a guess. */
 function editCounts(view: TailoredView): TitleCell[] {
   const undecided = view.edits.filter((edit) => edit.decision === "pending").length;
   const approved = view.edits.filter((edit) => edit.decision === "approved").length;
@@ -30,7 +30,7 @@ function editCounts(view: TailoredView): TitleCell[] {
 }
 
 /**
- * The tailoring sheet for one job: the title block (when the page names the job) over the body. The body and the block read
+ * The tailoring page for one job: the page header (when the page names the job) over the body. The body and the block read
  * the same query, so one request serves both.
  */
 export function TailorView({ jobId, header }: { jobId: number; header?: { title: string; company: string } }) {

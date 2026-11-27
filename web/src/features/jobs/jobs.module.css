@@ -1,9 +1,9 @@
 /*
- * The /jobs sheet: a ruled search toolbar, a count line that heads the ledger, and results as ruled rows with the source and
- * the date last seen open at the right edge (FRONTEND_UI 3.23). Tokens only.
+ * The /jobs page: a search panel, a count line that heads the list, and results as hairline rows with the source and the
+ * date last seen open at the right edge (FRONTEND_UI 3.23). Tokens only.
  */
 
-/* The toolbar answers to its own width, not the screen's: beside the register it is narrower than the viewport says */
+/* The toolbar answers to its own width, not the screen's: beside the sidebar it is narrower than the viewport says */
 .toolbar {
   container-type: inline-size;
 }
@@ -13,8 +13,11 @@
   grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-12) var(--sp-16);
   align-items: end;
-  padding-block: var(--sp-16);
-  border-block: 1px solid var(--line-strong);
+  padding: var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 
 @container (min-width: 34rem) {
@@ -77,11 +80,11 @@
   gap: var(--sp-4);
 }
 
-/* Three connected choices at the height of the fields; the chosen one is filled with ink, so the accent stays for the one primary button */
+/* Three connected choices at the height of the fields; the chosen one is filled with ink */
 .segmented {
   display: inline-flex;
   border: 1px solid var(--line-strong);
-  border-radius: var(--r-md);
+  border-radius: var(--r-pill);
   background: var(--surface);
   overflow: hidden;
 }
@@ -92,10 +95,10 @@
   min-height: calc(2.5rem - 2px); /* inside the 1px frame, so the control is as tall as a field */
   padding: 0 var(--sp-12);
   font-size: var(--fs-small);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
-  border-inline-start: 1px solid var(--line-strong);
+  border-inline-start: 1px solid var(--line);
   transition: background-color var(--dur-fast) var(--ease-in);
 }
 
@@ -131,15 +134,15 @@
   gap: var(--sp-8);
 }
 
-/* The count line is the ledger's head: a heavy rule above, a strong one below, figures in the data face */
+/* The count line is the list's head: a hairline above and below, figures in the data face */
 .count {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   gap: var(--sp-4) var(--sp-16);
   padding-block: var(--sp-8);
-  border-block-start: 2px solid var(--ink-rule);
-  border-block-end: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
+  border-block-end: 1px solid var(--line);
   color: var(--muted);
 }
 
@@ -165,7 +168,7 @@
 
 @media (hover: hover) {
   .row:hover {
-    background: var(--surface);
+    background: var(--surface-2);
   }
 }
 
@@ -177,7 +180,7 @@
 }
 
 .title {
-  font-size: 1.0625rem;
+  font-size: var(--fs-lede);
   overflow-wrap: anywhere;
 }
 
@@ -192,7 +195,7 @@
 
 .company {
   color: var(--muted);
-  font-weight: 550;
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 

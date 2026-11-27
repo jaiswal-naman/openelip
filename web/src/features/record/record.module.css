@@ -1,6 +1,6 @@
 /*
- * The Career Record as a drawing sheet (FRONTEND_UI 3.2 and 3.8): sections under a ruled head, confirmed facts as a ledger,
- * facts waiting for the person marked in redline, the change log as a revision table. Rows are ruled, never boxed. Tokens only.
+ * The Career Record as a page (FRONTEND_UI 3.2 and 3.8): sections under a hairline head, confirmed facts as a ledger,
+ * facts waiting for the person marked in red, the change log as a revision table. Rows are hairline, never boxed. Tokens only.
  */
 
 .review {
@@ -31,13 +31,12 @@
     grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 13rem;
     gap: var(--sp-16);
     padding: var(--sp-8);
-    border-block-start: 2px solid var(--ink-rule);
-    border-block-end: 1px solid var(--line-strong);
+    border-block-start: 1px solid var(--line);
+    border-block-end: 1px solid var(--line);
     color: var(--muted);
     font-size: var(--fs-label);
-    font-stretch: var(--stretch-lettering);
-    font-weight: 650;
-    letter-spacing: 0.08em;
+    font-weight: 500;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
   }
 
@@ -46,12 +45,12 @@
   }
 }
 
-/* ---- the facts read from a resume, one ruled row each ---- */
+/* ---- the facts read from a resume, one hairline row each ---- */
 
 .facts {
   display: flex;
   flex-direction: column;
-  border-block-start: 2px solid var(--ink-rule);
+  border-block-start: 1px solid var(--line);
 }
 
 .fact {
@@ -72,7 +71,7 @@
 
 @media (hover: hover) {
   .fact:hover {
-    background: var(--surface);
+    background: var(--surface-2);
   }
 }
 
@@ -96,7 +95,7 @@
   color: var(--muted);
 }
 
-/* Waiting on the person: the revision delta and the word, in redline (the only redline on the row) */
+/* Waiting on the person: the revision delta and the word, in red (the only red on the row) */
 .needs {
   display: inline-flex;
   align-items: center;
@@ -106,14 +105,15 @@
 
 .needs::before {
   content: "";
-  width: 0.6875rem;
-  height: 0.625rem;
+  flex: none;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: var(--r-pill);
   background: currentColor;
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
 
 .statement {
-  font-weight: 600;
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 
@@ -121,7 +121,7 @@
 .source {
   margin: 0;
   padding-inline-start: var(--sp-12);
-  border-inline-start: 1px solid var(--line-strong);
+  border-inline-start: 1px solid var(--line);
   color: var(--muted);
   font-size: var(--fs-small);
   min-width: 0;
@@ -166,13 +166,13 @@
   max-width: var(--measure);
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-sm);
-  background: var(--surface);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
   color: var(--bad);
-  font-weight: 600;
+  font-weight: 500;
 }
 
-/* ---- the editors: a ruled form, a visible label, one control height ---- */
+/* ---- the editors: a hairline form, a visible label, one control height ---- */
 
 .editor {
   display: flex;
@@ -189,7 +189,7 @@
 
 .hidden summary {
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .hidden ul {
@@ -206,7 +206,7 @@
   }
 }
 
-/* ---- the record page: sections under a ruled head that folds ---- */
+/* ---- the record page: sections under a hairline head that folds ---- */
 
 .page {
   display: flex;
@@ -224,7 +224,7 @@
   align-items: center;
   gap: var(--sp-12);
   padding-block: var(--sp-12) var(--sp-4);
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
   cursor: pointer;
   list-style: none;
 }
@@ -265,14 +265,14 @@
   padding-block: var(--sp-12) var(--sp-8);
 }
 
-/* Proposed by the agent: they wait for the person's yes, so the sheet marks them in redline */
+/* Proposed by the agent: they wait for the person's yes, so the page marks them in red */
 .proposals {
   display: flex;
   flex-direction: column;
   gap: var(--sp-8);
   padding: var(--sp-12) var(--sp-16) var(--sp-16);
-  border: 1px solid var(--redline);
-  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--redline) 55%, transparent);
+  border-radius: var(--r-lg);
   background: var(--redline-soft);
 }
 
@@ -280,11 +280,11 @@
   color: var(--redline);
 }
 
-/* A plain ruled list: documents and proposals */
+/* A plain hairline list: documents and proposals */
 .rows {
   display: flex;
   flex-direction: column;
-  border-block-start: 2px solid var(--ink-rule);
+  border-block-start: 1px solid var(--line);
 }
 
 .proposals .rows {
@@ -311,7 +311,7 @@
   gap: var(--sp-12);
   max-width: var(--measure);
   padding-block-start: var(--sp-12);
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 .addRow {
@@ -365,16 +365,16 @@
   background: var(--surface);
 }
 
-/* The revision delta: each row of the log is a change made to the record */
+/* A small dot before each row of the log: each is a change made to the record */
 @media (min-width: 40rem) {
   .change::before {
     content: "";
     display: inline-block;
-    width: 0.6875rem;
-    height: 0.625rem;
+    width: 0.375rem;
+    height: 0.375rem;
     margin-inline-end: var(--sp-8);
+    border-radius: var(--r-pill);
     background: var(--muted);
-    clip-path: polygon(50% 0, 100% 100%, 0 100%);
   }
 }
 

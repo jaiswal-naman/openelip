@@ -15,7 +15,7 @@ const LINKS = [
   { href: "/hire/team", label: "Team", under: ["/hire/team"] },
 ] as const;
 
-/** The hiring desk's frame: the sections as tabs, the organization's plate (with the demo stamp) and the org-wide pause badge. */
+/** The hiring desk's frame: the sections as tabs, the organization's plate (with the demo chip) and the org-wide pause badge. */
 export function HiringShell({ children }: { children: ReactNode }) {
   const { membership } = useMembership();
   const pathname = usePathname();

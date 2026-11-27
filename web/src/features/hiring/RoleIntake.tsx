@@ -106,7 +106,7 @@ const STATE_LINE: Record<RoleView["status"], string> = {
   closed: "Closed. Nobody new is asked, and people who accepted keep their answer due.",
 };
 
-/** The title block's cells, from the role itself: its status, how many requirements are confirmed, and when it opened or closed. */
+/** The page header's cells, from the role itself: its status, how many requirements are confirmed, and when it opened or closed. */
 function titleCells(role: RoleView): TitleCell[] {
   const confirmed = role.requirements.filter((item) => item.is_confirmed).length;
   const total = role.requirements.length;

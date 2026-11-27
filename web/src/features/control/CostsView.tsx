@@ -77,7 +77,7 @@ export function CostsView() {
   );
 }
 
-/** The total as the title block's cell: the label the page has always carried, the money, and how many calls it sums. */
+/** The total as a page header cell: the label the page has always carried, the money, and how many calls it sums. */
 function totalCell(costs: Costs, locale: string | undefined): TitleCell {
   return {
     label: "Total, all recorded calls",

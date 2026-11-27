@@ -44,6 +44,7 @@ export default async function Home() {
   return (
     <div className="container page">
       <TitleBlock
+        display
         title="A career agent that shows its evidence."
         lines={
           <p className={styles.lede}>

@@ -1,7 +1,7 @@
 /*
- * The privacy and data sections of the Settings sheet, and the delete-account dialog (FRONTEND_UI 3.10). Each section is a rule
- * above its heading and its content; deleting the account is a separate block in the error colour, never in redline, which is
- * reserved for what needs the person's decision. Tokens only.
+ * The privacy and data sections of the Settings page, and the delete-account dialog (FRONTEND_UI 3.10). Each section is a hairline
+ * above its heading and its content; deleting the account is a separate block in the error colour, which is not the soft red
+ * that marks what needs the person's decision. Tokens only.
  */
 
 .section {
@@ -10,7 +10,7 @@
   gap: var(--sp-12);
   max-width: 48rem;
   padding-block-start: var(--sp-16);
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 .lead {
@@ -28,10 +28,10 @@
   max-width: var(--measure);
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-sm);
-  background: var(--surface);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
   color: var(--bad);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .buttons {
@@ -46,7 +46,7 @@
   align-items: flex-start;
   padding: var(--sp-16);
   border: 1px solid var(--bad);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-lg);
 }
 
 .danger h2 {
@@ -80,9 +80,8 @@ button.dangerFill {
   width: min(100%, 34rem);
   max-height: 100%;
   overflow-y: auto;
-  border: 1px solid var(--line-strong);
-  border-block-start: 2px solid var(--bad);
-  border-radius: var(--r-md);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-xl);
   background: var(--surface);
   box-shadow: var(--shadow-2);
 }

@@ -1,5 +1,5 @@
 /*
- * The Autonomy section of Settings: one ruled row for each kind of outside action, with the level chosen on a segmented control
+ * The Autonomy section of Settings: one hairline row for each kind of outside action, with the level chosen on a segmented control
  * that is as tall as a field. A row with one allowed level is plain text with its reason. Tokens only.
  */
 
@@ -9,7 +9,7 @@
   gap: var(--sp-16);
   max-width: 48rem;
   padding-block-start: var(--sp-16);
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 .lead {
@@ -19,7 +19,7 @@
 .rows {
   display: flex;
   flex-direction: column;
-  border-block-start: 2px solid var(--ink-rule);
+  border-block-start: 1px solid var(--line);
 }
 
 .row {
@@ -42,7 +42,7 @@
   flex-wrap: wrap;
   width: fit-content;
   border: 1px solid var(--line-strong);
-  border-radius: var(--r-md);
+  border-radius: var(--r-pill);
   background: var(--surface);
   overflow: hidden;
 }
@@ -52,8 +52,8 @@
   align-items: center;
   min-height: calc(2.5rem - 2px); /* inside the 1px frame, so the control is as tall as a field */
   padding: 0 var(--sp-16);
-  border-inline-start: 1px solid var(--line-strong);
-  font-weight: 600;
+  border-inline-start: 1px solid var(--line);
+  font-weight: 500;
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-in);
 }
@@ -87,10 +87,10 @@
   max-width: var(--measure);
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-sm);
-  background: var(--surface);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
   color: var(--bad);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* The undo window and the default budget, under the rows */

@@ -9,14 +9,14 @@
 .list {
   display: flex;
   flex-direction: column;
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 .list > li {
   border-block-end: 1px solid var(--line);
 }
 
-/* One application, one ruled row: the job, then its history, then the status stamp and the menu at the right edge */
+/* One application, one hairline row: the job, then its history, then the status chip and the menu at the right edge */
 .item {
   display: grid;
   gap: var(--sp-8) var(--sp-24);
@@ -33,7 +33,7 @@
 
 @media (hover: hover) {
   .item:hover {
-    background: var(--surface);
+    background: var(--surface-2);
   }
 }
 
@@ -45,7 +45,7 @@
   overflow-wrap: anywhere;
 }
 
-/* The revision history: a status and its time on each line, the times in the sheet's tabular figures */
+/* The revision history: a status and its time on each line, the times in the page's tabular figures */
 .history {
   display: flex;
   flex-direction: column;
@@ -80,8 +80,7 @@
 
 .modal {
   width: min(100%, 28rem);
-  border: 1px solid var(--line-strong);
-  border-block-start: 2px solid var(--ink-rule);
+  border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--surface);
   box-shadow: var(--shadow-2);
@@ -114,9 +113,9 @@
 .problem {
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  font-weight: 600;
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
+  font-weight: 500;
 }
 
 .buttons {

@@ -1,6 +1,6 @@
 /*
- * One match as a drawing sheet: the title block, a ruled strip of the posting's facts, the requirement ledger, the two texts
- * side by side at one scale, and the hard-constraint ledger (FRONTEND_UI 3.4 and 4.2). The dismiss dialog's classes live here too.
+ * One match as a page: the header, a hairline strip of the posting's facts, the requirement ledger, the two texts side by
+ * side at one scale, and the hard-constraint ledger (FRONTEND_UI 3.4 and 4.2). The dismiss dialog's classes live here too.
  * Tokens only.
  */
 
@@ -16,8 +16,8 @@
 
 .company {
   color: var(--text);
-  font-size: 1.0625rem;
-  font-weight: 600;
+  font-size: var(--fs-lede);
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 
@@ -31,24 +31,24 @@
   color: var(--text);
 }
 
-/* The posting's other facts in ruled cells, the way a drawing lists its specifications */
+/* The posting's other facts in hairline cells */
 .facts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  border-block-start: 1px solid var(--line-strong);
-  border-inline-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
+  border-inline-start: 1px solid var(--line);
   color: var(--muted);
   font-size: var(--fs-small);
 }
 
 .facts li {
   padding: var(--sp-8) var(--sp-12);
-  border-block-end: 1px solid var(--line-strong);
-  border-inline-end: 1px solid var(--line-strong);
+  border-block-end: 1px solid var(--line);
+  border-inline-end: 1px solid var(--line);
   overflow-wrap: anywhere;
 }
 
-/* A notice on the sheet: ruled, with its label lettered in the notice's colour. The word is the signal, not the colour. */
+/* A notice on the page: bordered, with its label in the notice's colour. The word is the signal, not the colour. */
 .banner {
   display: flex;
   flex-wrap: wrap;
@@ -57,7 +57,7 @@
   max-width: var(--measure);
   padding: var(--sp-12) var(--sp-16);
   border: 1px solid var(--warn);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--surface);
 }
 
@@ -76,22 +76,22 @@
 .notice {
   max-width: var(--measure);
   padding: var(--sp-8) var(--sp-12);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   background: var(--surface);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .problem {
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-sm);
-  background: var(--surface);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
   color: var(--bad);
-  font-weight: 600;
+  font-weight: 500;
 }
 
-/* ---- a region of the sheet: a rule above, no box ---- */
+/* ---- a region of the page: a hairline above, no box ---- */
 
 .section {
   display: flex;
@@ -99,10 +99,10 @@
   gap: var(--sp-12);
   min-width: 0;
   padding-block-start: var(--sp-16);
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
-/* What was held back sits a little below the tab rule it hangs from */
+/* What was held back sits a little below the tab line it hangs from */
 .held {
   padding-block-start: var(--sp-8);
 }
@@ -135,7 +135,7 @@
   outline: 2px solid var(--focus);
 }
 
-/* The selected row: a tint and a hairline box, a filled balloon, and aria-selected for a screen reader; not colour alone */
+/* The selected row: a tint and a hairline box, its numeral in ink, and aria-selected for a screen reader; not colour alone */
 .table tbody tr.row[data-selected="true"] {
   background: var(--accent-soft);
 }
@@ -161,8 +161,7 @@
 }
 
 .table tbody tr.row[data-selected="true"] .itemNo {
-  background: var(--info);
-  color: var(--bg);
+  color: var(--text);
 }
 
 /* Stacked on a phone the row is one block, so its frame is drawn round the row, not round each cell */
@@ -197,11 +196,11 @@
   min-width: 0;
 }
 
-/* Required in ink, solid; preferred in grey, dashed: the word is the signal and the rule says it again */
+/* Required in ink, solid; preferred in grey, dashed: the word is the signal and the outline says it again */
 .importance {
   padding: 0.125rem var(--sp-8);
   border: 1px solid currentColor;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-pill);
 }
 
 .required {
@@ -225,7 +224,7 @@
 
 .noEvidence {
   color: var(--unk);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* ---- the two texts: A and B at one scale, tops on one line ---- */
@@ -272,7 +271,7 @@
   gap: var(--sp-8);
 }
 
-/* The column's letter, in a square like the lettering of a drawing's zones */
+/* The column's letter, in a 24px rounded-square badge like an agent's mark */
 .letter {
   display: inline-flex;
   flex: none;
@@ -280,11 +279,12 @@
   justify-content: center;
   width: 1.5rem;
   height: 1.5rem;
-  border: 1px solid var(--ink-rule);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-family: var(--font-mono);
   font-size: var(--fs-label);
-  font-stretch: var(--stretch-lettering);
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1;
 }
 
@@ -314,8 +314,8 @@
   max-height: 24rem;
   overflow: auto;
   padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   background: var(--surface);
   font-size: var(--fs-body);
   line-height: 1.6;
@@ -338,9 +338,9 @@
   width: min(100%, 34rem);
   max-height: 100%;
   overflow-y: auto;
-  border: 1px solid var(--ink-rule);
-  border-radius: var(--r-sm);
-  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
   box-shadow: var(--shadow-2);
 }
 
@@ -349,7 +349,6 @@
   flex-direction: column;
   gap: var(--sp-12);
   padding: var(--sp-24);
-  border-block-start: 2px solid var(--ink-rule);
   outline: none;
 }
 
@@ -359,7 +358,7 @@
   gap: var(--sp-8);
 }
 
-/* Each reason is a ruled row with a marker that fills when chosen; the focus ring is drawn on the row. */
+/* Each reason is a bordered row with a marker that fills when chosen; the focus ring is drawn on the row. */
 .reason {
   display: flex;
   align-items: center;
@@ -367,7 +366,7 @@
   min-height: 2.5rem;
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--surface);
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-in);

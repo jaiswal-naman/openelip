@@ -19,7 +19,7 @@ const TONE: Record<ApplicationStatus, "ok" | "warn" | "bad" | "unk"> = {
   no_response: "unk",
 };
 
-/** Every application as a ruled row: the job, the history behind it, and its status stamp with the menu to record the next one (APP-01). Tailoring and packets are on the match page. */
+/** Every application as a hairline row: the job, the history behind it, and its status chip with the menu to record the next one (APP-01). Tailoring and packets are on the match page. */
 export function ApplicationsSection() {
   const api = useApi();
   const applications = useQuery(applicationsQuery(api));

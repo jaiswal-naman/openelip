@@ -1,6 +1,6 @@
 /*
- * Hard constraints as ruled rows (FRONTEND_UI 3.2 step 4 and 3.8): the heavy rule on top, a hairline under each, the name, the
- * value and the buttons across the row. The editor opens inside its row as a ruled form. Tokens only.
+ * Hard constraints as hairline rows (FRONTEND_UI 3.2 step 4 and 3.8): a hairline on top and under each, the name, the
+ * value and the buttons across the row. The editor opens inside its row as a hairline form. Tokens only.
  */
 
 .wrap {
@@ -12,7 +12,7 @@
 .cards {
   display: flex;
   flex-direction: column;
-  border-block-start: 2px solid var(--ink-rule);
+  border-block-start: 1px solid var(--line);
 }
 
 .card {
@@ -46,7 +46,7 @@
   flex: 1 1 16rem;
 }
 
-/* From 48rem the name and the value sit side by side, so the values line up down the sheet */
+/* From 48rem the name and the value sit side by side, so the values line up down the page */
 @media (min-width: 48rem) {
   .head {
     flex-wrap: nowrap;
@@ -76,14 +76,14 @@
   gap: var(--sp-8);
 }
 
-/* ---- the editor: a ruled form, labels showing, one control height ---- */
+/* ---- the editor: a hairline form, labels showing, one control height ---- */
 
 .form {
   display: flex;
   flex-direction: column;
   gap: var(--sp-16);
   padding-block-start: var(--sp-12);
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 .form > * {
@@ -102,13 +102,13 @@
   }
 }
 
-/* What the value means, read back in a plain sentence before it is saved: a ruled box on the sheet */
+/* What the value means, read back in a plain sentence before it is saved: a hairline box on the page */
 .restated {
   padding: var(--sp-8) var(--sp-12);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   background: var(--surface-2);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .effect {
@@ -122,10 +122,10 @@
   gap: var(--sp-8);
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-sm);
-  background: var(--surface);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
   color: var(--bad);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* Form pieces */
@@ -200,7 +200,7 @@
   align-items: center;
   gap: var(--sp-4);
   padding-inline-start: var(--sp-12);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
   background: var(--surface);
 }

@@ -1,4 +1,4 @@
-/* The trust sheet: a ledger of who receives data, in plain words, and the one statement of what deletion cannot reach. Tokens only. */
+/* The trust page: a ledger of who receives data, in plain words, and the one statement of what deletion cannot reach. Tokens only. */
 
 .region {
   display: flex;
@@ -7,7 +7,7 @@
 }
 
 .name {
-  font-weight: 650;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
@@ -23,16 +23,16 @@
   color: var(--muted);
 }
 
-/* What deletion cannot reach: a ruled note under the ledger, not a box */
+/* What deletion cannot reach: a hairline note under the ledger, not a box */
 .statement {
   max-width: var(--measure);
   padding-block-start: var(--sp-12);
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 .skeleton {
   height: 8rem;
-  border-block-start: 2px solid var(--ink-rule);
+  border-block-start: 1px solid var(--line);
   background: var(--surface-2);
 }
 

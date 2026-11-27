@@ -1,8 +1,8 @@
-/* The home page (server mode): the title block states what this is, then one ruled ledger of what works today. Tokens only. */
+/* The home page (server mode): the page header states what this is, then one hairline ledger of what works today. Tokens only. */
 
 .lede {
-  color: var(--text);
-  font-size: 1.0625rem;
+  color: var(--muted);
+  font-size: var(--fs-lede);
   line-height: 1.55;
 }
 
