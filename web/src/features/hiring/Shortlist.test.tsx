@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fail, ok, renderWithApi } from "@/test/render";
 import { Answers } from "./Answers";
 import { Shortlist } from "./Shortlist";
@@ -11,6 +11,14 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(""),
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }),
 }));
+
+// The fixtures' answers fall due on 27 Nov 2026, so the clocks are read as they stood when the fixtures were written; only
+// Date is faked, so the waits in findBy keep their real timers.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-24T09:00:00Z"));
+});
+afterEach(() => vi.useRealTimers());
 
 const quota = { sent: [], received: [], quota: { used: 1, limit: 3, resets_at: "2026-11-30T00:00:00Z" } };
 const base = (extra: Record<string, Response | (() => Response | Promise<Response>)> = {}) => ({
