@@ -1,0 +1,60 @@
+/*
+ * A numbered callout: a plain Geist Mono numeral ("01") that points at a source or an item, with the quote it calls out beside
+ * it. The numeral keeps the width of its digits wherever it sits (never stretched by a flex column).
+ */
+
+.callout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--sp-4) var(--sp-12);
+  align-items: start;
+}
+
+.numeral {
+  display: inline-block;
+  flex: none;
+  align-self: start;
+  justify-self: start;
+  min-width: 1.5rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+  font-weight: 500;
+  line-height: 1.6;
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--dur-fast) var(--ease-in);
+}
+
+/* A numeral that opens a page is a link: ink and underlined, so it reads as one */
+a.numeral {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+@media (hover: hover) {
+  a.numeral:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+
+.quote {
+  margin: 0;
+  color: var(--text);
+  font-style: italic;
+}
+
+.quote::before {
+  content: "“";
+}
+
+.quote::after {
+  content: "”";
+}
+
+.where {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}

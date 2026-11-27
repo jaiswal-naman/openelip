@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import styles from "./header.module.css";
 
-/** A register entry that says which sheet is open, to the eye (an ink cell) and to screen readers (aria-current). */
+/** A sidebar entry that says which page is open, to the eye (a grey fill) and to screen readers (aria-current). */
 export function NavLink({ href, icon, children }: { href: string; icon?: ReactNode; children: ReactNode }) {
   const pathname = usePathname();
   const isCurrent = pathname === href || pathname.startsWith(`${href}/`);

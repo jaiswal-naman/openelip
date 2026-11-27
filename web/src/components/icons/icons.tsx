@@ -110,19 +110,24 @@ export const HalfCircleIcon = (props: IconProps) => (
   </Icon>
 );
 
-/** The brand mark: an open ring with the accent in its gap. Not from Lucide. */
-/** The mark: a drawing sheet with its title block in the corner, the cell you sign filled in. */
+/** The brand mark: a rounded square with an open ring inside it, the ring's gap at the top right. Not from Lucide. */
 export function BrandMark({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-      <rect x="2.75" y="2.75" width="18.5" height="18.5" stroke="currentColor" strokeWidth="1.75" />
-      <path d="M11.25 21.25V14.75H21.25" stroke="currentColor" strokeWidth="1.75" />
-      <rect x="13" y="16.5" width="6.5" height="3" fill="var(--accent)" />
+      <rect x="2.75" y="2.75" width="18.5" height="18.5" rx="6" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M15.5 9.25A4.5 4.5 0 1 0 16.5 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
     </svg>
   );
 }
 
-// The register's icons, from Lucide like the rest.
+/** An arrow pointing up: the round send button of the chat composer. */
+export const ArrowUpIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m5 12 7-7 7 7M12 19V5" />
+  </Icon>
+);
+
+// The sidebar's icons, from Lucide like the rest.
 export const CalendarIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M8 2v4" />

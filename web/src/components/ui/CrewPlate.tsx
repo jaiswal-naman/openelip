@@ -1,7 +1,7 @@
 import { AGENT_ROLE_LABELS } from "@/lib/labels";
 import styles from "./crewPlate.module.css";
 
-// Each crew member's fixed mark, the same on every sheet: timeline, recorder, crew tab, board.
+// Each crew member's fixed mark, the same on every page: timeline, recorder, crew tab, board.
 const MARKS: Record<string, string> = {
   scout: "SC",
   researcher: "RS",

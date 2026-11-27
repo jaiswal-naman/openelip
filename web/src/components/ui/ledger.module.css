@@ -1,6 +1,6 @@
 /*
- * Ledger tables, ruled like a drawing's bill of materials: a strong rule under the lettered head, hairlines between rows,
- * no box and no zebra stripes. Figures are mono and tabular.
+ * Ledger tables: hairline rows only, no vertical rules and no zebra stripes; the head cells are small uppercase labels and a
+ * row picks up the grey fill under the pointer. Figures are Geist Mono and tabular.
  * Under 40rem each row stacks and every cell names itself with its data-label, so nothing scrolls sideways (WCAG 1.4.10).
  */
 
@@ -28,24 +28,23 @@
 
 @media (hover: hover) {
   .table tbody tr:hover {
-    background: var(--surface);
+    background: var(--surface-2);
   }
 }
 
 .table thead th {
   padding-block: var(--sp-8);
-  border-block-start: 2px solid var(--ink-rule);
-  border-block-end: 1px solid var(--line-strong);
+  border-block-start: 0;
+  border-block-end: 1px solid var(--line);
   color: var(--muted);
   font-size: var(--fs-label);
-  font-stretch: var(--stretch-lettering);
-  font-weight: 650;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .table tbody th {
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .table .num {
@@ -100,9 +99,8 @@
     display: block;
     color: var(--muted);
     font-size: var(--fs-label);
-    font-stretch: var(--stretch-lettering);
-    font-weight: 650;
-    letter-spacing: 0.08em;
+    font-weight: 500;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
   }
 

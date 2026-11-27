@@ -1,7 +1,7 @@
 "use client";
 
 import { Label, Radio, RadioGroup } from "react-aria-components";
-import balloon from "@/components/ui/balloon.module.css";
+import numeral from "@/components/ui/numeral.module.css";
 import { describeFailure } from "@/lib/api/problems";
 import { wordDiff } from "@/lib/wordDiff";
 import type { EditDecision, EditView } from "./queries";
@@ -58,8 +58,8 @@ export function EditCard({
   return (
     <li className={styles.edit} data-op={edit.op}>
       <div className={styles.editHead}>
-        <span className={`${balloon.balloon} ${styles.itemNo}`} aria-hidden="true">
-          {edit.ordinal}
+        <span className={`${numeral.numeral} ${styles.itemNo}`} aria-hidden="true">
+          {String(edit.ordinal).padStart(2, "0")}
         </span>
         <p className="t-label">{SECTION_LABELS[edit.section] ?? edit.section}</p>
       </div>

@@ -36,7 +36,7 @@ export function HighlightedText({
   span: CodePointSpan | null;
   /** What a screen reader hears when the mark appears or moves, for example "Job sentence highlighted." */
   announcement: string;
-  /** The number of the requirement this mark answers to, drawn as a balloon before it. Not read out: the announcement says it. */
+  /** The number of the requirement this mark answers to, drawn as a plain numeral before it. Not read out: the announcement says it. */
   callout?: number;
 }) {
   const points = useMemo(() => Array.from(text), [text]);

@@ -1,7 +1,7 @@
 "use client";
 
 import { Cell, Column, Row, type Selection, Table, TableBody, TableHeader } from "react-aria-components";
-import balloon from "@/components/ui/balloon.module.css";
+import numeral from "@/components/ui/numeral.module.css";
 import ledger from "@/components/ui/ledger.module.css";
 import { IMPORTANCE_LABELS } from "@/lib/labels";
 import type { EvidenceItem } from "./queries";
@@ -16,11 +16,11 @@ function selectedId(keys: Selection): number | null {
 }
 
 /**
- * Every requirement of the job with its verdict and the record evidence for it (MAT-03), as a ruled ledger: requirement,
- * verdict stamp, evidence. It is a React Aria Table with single row selection: arrow keys move between rows, Enter or Space
+ * Every requirement of the job with its verdict and the record evidence for it (MAT-03), as a hairline ledger: requirement,
+ * verdict chip, evidence. It is a React Aria Table with single row selection: arrow keys move between rows, Enter or Space
  * selects, pressing the selected row again (or Escape) clears it. Selecting is only a message to the parent, which marks the
  * cited words in the two texts (MAT-04); this table decides nothing about the evidence itself. The row's number is the
- * balloon the marked passage carries in the texts below.
+ * numeral the marked passage carries in the texts below.
  */
 export function EvidenceTable({
   evidence,
@@ -49,9 +49,9 @@ export function EvidenceTable({
         {evidence.map((item, index) => (
           <Row key={item.requirement.id} id={String(item.requirement.id)} textValue={item.requirement.text} className={styles.row}>
             <Cell>
-              <span className={balloon.callout}>
-                <span className={`${balloon.balloon} ${styles.itemNo}`} aria-hidden="true">
-                  {index + 1}
+              <span className={numeral.callout}>
+                <span className={`${numeral.numeral} ${styles.itemNo}`} aria-hidden="true">
+                  {String(index + 1).padStart(2, "0")}
                 </span>
                 <span className={styles.requirementText}>
                   <span className={`t-label ${styles.importance} ${styles[item.requirement.importance]}`}>{IMPORTANCE_LABELS[item.requirement.importance]}</span>

@@ -60,7 +60,7 @@ function ModelCell() {
 export function RegisterNav({ local }: { local: boolean }) {
   const me = useMe();
   const pathname = usePathname();
-  // The page the folded register was opened on: following a link from it changes the page, which closes it
+  // The page the folded sidebar was opened on: following a link from it changes the page, which closes it
   const [openOn, setOpenOn] = useState<string | null>(null);
   const open = openOn === pathname;
   const button = useRef<HTMLButtonElement>(null);

@@ -1,13 +1,13 @@
 "use client";
 
-import balloon from "@/components/ui/balloon.module.css";
+import numeral from "@/components/ui/numeral.module.css";
 import { IMPORTANCE_LABELS } from "@/lib/labels";
 import styles from "./detail.module.css";
 import type { Requirement } from "./types";
 
 const GROUPS = ["required", "preferred"] as const;
 
-/** The number each requirement carries on the sheet, in the order the list shows them: required first, then preferred. */
+/** The number each requirement carries on the page, in the order the list shows them: required first, then preferred. */
 export function requirementNumbers(requirements: Requirement[]): Map<number, number> {
   const shown = GROUPS.flatMap((importance) => requirements.filter((requirement) => requirement.importance === importance));
   return new Map(shown.map((requirement, index) => [requirement.ordinal, index + 1]));
@@ -79,8 +79,8 @@ function RequirementItem({
   // The importance is a word in a badge, so it is not shown by colour alone; the requirement's own words follow, as text.
   const words = (
     <>
-      <span className={`${balloon.balloon} ${styles.itemNo}`} aria-hidden="true">
-        {number}
+      <span className={`${numeral.numeral} ${styles.itemNo}`} aria-hidden="true">
+        {String(number).padStart(2, "0")}
       </span>
       <span className={styles.itemText}>
         <span className={`t-label ${styles.badge} ${styles[requirement.importance]}`}>{IMPORTANCE_LABELS[requirement.importance]}</span>
