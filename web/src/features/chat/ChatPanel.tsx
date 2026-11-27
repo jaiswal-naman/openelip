@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button as AriaButton, Dialog, DialogTrigger, Heading, Modal, ModalOverlay } from "react-aria-components";
 import { Button } from "@/components/ui/Button";
 import { buttonClass } from "@/components/ui/buttonStyles";
+import { ArrowUpIcon } from "@/components/icons/icons";
 import { TextField } from "@/components/ui/TextField";
 import { isFailure } from "@/lib/api/errors";
 import { describeFailure } from "@/lib/api/problems";
@@ -71,8 +72,8 @@ function ReplyView({ reply }: { reply: Reply }) {
 }
 
 /**
- * "Ask the agent" (CHT-01 to CHT-04): a dialog with the conversation, the composer and Stop. Escape closes it and focus
- * returns to the button. From a page about a job it says "context: {company}" and sends that job with the message. The
+ * "Ask the agent" (CHT-01 to CHT-04): a dialog with the conversation, the composer (a pill field with a round send button)
+ * and Stop. Escape closes it and focus returns to the button. From a page about a job it says "context: {company}" and sends that job with the message. The
  * reply is announced once, when it ends; the words arriving are not in a live region.
  */
 export function ChatPanel() {
@@ -137,11 +138,18 @@ export function ChatPanel() {
                   }}
                 >
                   <TextField label="Your message" value={draft} onChange={setDraft} maxLength={MAX_TEXT} />
-                  <div className={styles.buttons}>
-                    <Button type="submit" variant="primary" isPending={chat.sending} isDisabled={chat.running || draft.trim() === ""}>
-                      Send
-                    </Button>
-                    {chat.running && <Button onPress={() => void chat.stop()}>Stop</Button>}
+                  <div className={styles.composerButtons}>
+                    <span className={styles.send}>
+                      <Button type="submit" variant="primary" isPending={chat.sending} isDisabled={chat.running || draft.trim() === ""}>
+                        <ArrowUpIcon />
+                        <span className="sr-only">Send</span>
+                      </Button>
+                    </span>
+                    {chat.running && (
+                      <Button size="sm" onPress={() => void chat.stop()}>
+                        Stop
+                      </Button>
+                    )}
                   </div>
                 </form>
               </>
