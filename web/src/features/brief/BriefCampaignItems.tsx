@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { LinkButton } from "@/components/ui/LinkButton";
 import { clockTime, useServerNow } from "@/features/campaigns/time";
 import { useUndo } from "@/features/campaigns/queries";
 import { messageFor } from "@/lib/labels";
@@ -63,7 +64,10 @@ export function BriefCampaignItems({ items, undoable }: { items: CampaignItem[];
           <ul className={styles.rows}>
             {approvals.map((item) => (
               <li key={item.approval_id ?? item.text} className={styles.row}>
-                <span className={styles.words}>{item.text}</span> <Link href={item.link}>Review</Link>
+                <span className={styles.words}>{item.text}</span>
+                <LinkButton href={item.link} variant="primary" size="sm">
+                  Review
+                </LinkButton>
               </li>
             ))}
           </ul>

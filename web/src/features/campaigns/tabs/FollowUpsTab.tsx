@@ -6,7 +6,7 @@ import { describeFailure } from "@/lib/api/problems";
 import { reasonText } from "@/lib/labels";
 import { useViewer } from "@/lib/viewer";
 import { ApprovalPanel } from "../ApprovalPanel";
-import { ApprovedStamp } from "../ApprovedStamp";
+import { ApprovedChip } from "../ApprovedChip";
 import { type CampaignDetail, type FollowUp, usePatchCampaign, useUndo } from "../queries";
 import { clockTime } from "../time";
 import { UndoCountdown } from "../UndoCountdown";
@@ -82,15 +82,15 @@ function DraftView({ followUp }: { followUp: FollowUp }) {
 }
 
 /**
- * Follow-ups (CMP-04): the address the candidate typed, then each draft as a ruled row with Approve, Edit and Skip, the undo
- * window with its countdown, and how each one ended. An approved follow-up carries the ink stamp; it lands once, in the row
+ * Follow-ups (CMP-04): the address the candidate typed, then each draft as a row with Approve, Edit and Skip, the undo
+ * window with its countdown, and how each one ended. An approved follow-up carries the black Approved chip; it lands once, in the row
  * the person has just approved.
  */
 export function FollowUpsTab({ campaign, offsetMs, onApproved }: { campaign: CampaignDetail; offsetMs: number; onApproved: () => void }) {
   const viewer = useViewer();
   const undo = useUndo();
   const [toast, setToast] = useState<number | null>(null); // the action id whose "sends at" toast shows
-  const [justApproved, setJustApproved] = useState<number | null>(null); // the action id whose stamp lands now
+  const [justApproved, setJustApproved] = useState<number | null>(null); // the action id whose chip lands now
   useEffect(() => {
     if (toast === null) return;
     const timer = window.setTimeout(() => setToast(null), TOAST_MS);
@@ -109,7 +109,7 @@ export function FollowUpsTab({ campaign, offsetMs, onApproved }: { campaign: Cam
         <ul className={styles.rows} aria-label="Follow-ups">
           {campaign.follow_ups.map((item) => {
             const sent = item.status === "scheduled" || item.status === "executed";
-            // Approved in this view and the server has not caught up yet: the stamp is already down, the buttons are gone.
+            // Approved in this view and the server has not caught up yet: the chip is already there, the buttons are gone.
             const settling = justApproved === item.action_id && item.status === "awaiting_approval";
             const waiting = item.status === "awaiting_approval" && item.approval_id !== null && !settling;
             return (
@@ -117,7 +117,7 @@ export function FollowUpsTab({ campaign, offsetMs, onApproved }: { campaign: Cam
                 <div className={styles.itemHead}>
                   <h2 className="t-card">Follow-up {item.step_key?.split(":")[1]?.split(".")[0] ?? ""}</h2>
                   {waiting && <span className={styles.needsYou}>Waiting for you</span>}
-                  {(sent || settling) && <ApprovedStamp landing={justApproved === item.action_id} />}
+                  {(sent || settling) && <ApprovedChip landing={justApproved === item.action_id} />}
                 </div>
                 {waiting && item.approval_id !== null ? (
                   <>

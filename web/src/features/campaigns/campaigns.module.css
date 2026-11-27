@@ -1,7 +1,7 @@
 /*
- * The campaign board and the campaign sheet (CMP-01 to CMP-07). The board is a ledger of ruled rows grouped under their
- * stage stamp; the campaign is a sheet with a title block, tabs with an ink underline, and every list a ruled table.
- * Tokens only.
+ * The campaign board and the campaign page (CMP-01 to CMP-07). The board is a list of bordered rows grouped under their
+ * stage chip; the campaign is a page with a header, tabs with an ink underline, and every list a hairline list. The crew tab
+ * is a parallel-execution panel: one bordered column per agent step, a footer strip for what waits for the person. Tokens only.
  */
 
 .page {
@@ -23,7 +23,7 @@
   gap: var(--sp-12);
 }
 
-/* The regions of a tab (a packet, its approval, its kit) keep a sheet's gap between them */
+/* The regions of a tab (a packet, its approval, its kit) keep a page's gap between them */
 .sections {
   display: flex;
   flex-direction: column;
@@ -36,13 +36,13 @@
   gap: var(--sp-12);
 }
 
-/* A setting's dial: a ruled box on the sheet */
+/* A setting's dial: a bordered row */
 .dial {
   display: flex;
   flex-direction: column;
   gap: var(--sp-8);
   padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: var(--surface);
 }
@@ -52,12 +52,12 @@
   font-size: var(--fs-small);
 }
 
-/* ---- the title block's own pieces ---- */
+/* ---- the page header's own pieces ---- */
 
 .company {
   color: var(--text);
-  font-size: 1.0625rem;
-  font-weight: 550;
+  font-size: var(--fs-lede);
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 
@@ -66,8 +66,7 @@
   margin-block-start: var(--sp-2);
   color: var(--muted);
   font-size: var(--fs-small);
-  font-stretch: normal;
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1.35;
 }
 
@@ -103,7 +102,7 @@
   gap: var(--sp-12) var(--sp-24);
 }
 
-/* ---- notices on the sheet: ruled boxes, the label in the notice's colour ---- */
+/* ---- notices on the page: bordered boxes, the border in the notice's colour ---- */
 
 .banner {
   display: flex;
@@ -112,7 +111,7 @@
   max-width: var(--measure);
   padding: var(--sp-12) var(--sp-16);
   border: 1px solid var(--warn);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-lg);
   background: var(--surface);
 }
 
@@ -123,15 +122,16 @@
 .problem {
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  font-weight: 600;
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
+  color: var(--bad);
+  font-weight: 500;
 }
 
 .notice {
   padding: var(--sp-8) var(--sp-12);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
   background: var(--surface);
 }
 
@@ -141,7 +141,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-4);
-  border-bottom: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line);
 }
 
 .tab {
@@ -150,16 +150,15 @@
   padding: var(--sp-8) var(--sp-16);
   border-bottom: 2px solid transparent;
   color: var(--muted);
-  font-size: 1rem;
-  font-stretch: var(--stretch-lettering);
-  font-weight: 650;
+  font-size: var(--fs-body);
+  font-weight: 500;
   cursor: pointer;
   outline: none;
   transition: color var(--dur-fast) var(--ease-in);
 }
 
 .tab[data-selected] {
-  border-bottom-color: var(--ink-rule);
+  border-bottom-color: var(--accent);
   color: var(--text);
 }
 
@@ -182,7 +181,7 @@
   outline: none;
 }
 
-/* The tab rule is the top rule of a list that opens the panel, so the two never sit side by side */
+/* The tab line is the top line of a list that opens the panel, so the two never sit side by side */
 .panel > .rows:first-child,
 .panel > .stack:first-child > .rows:first-child,
 .panel > .sections:first-child > .rows:first-child {
@@ -195,12 +194,12 @@
   outline-offset: 2px;
 }
 
-/* ---- ruled rows: the heavy rule on top, a hairline under each ---- */
+/* ---- hairline rows: a hairline on top and under each ---- */
 
 .rows {
   display: flex;
   flex-direction: column;
-  border-block-start: 1px solid var(--line-strong);
+  border-block-start: 1px solid var(--line);
 }
 
 .rows > li {
@@ -222,28 +221,27 @@
   gap: var(--sp-8) var(--sp-16);
 }
 
-/* paper: a drafted text sits on a lighter surface with a hairline, not in a card */
+/* A drafted text sits on a white surface with a hairline */
 .draft {
   margin: 0;
   padding: var(--sp-12) var(--sp-16);
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--surface);
   white-space: pre-wrap;
 }
 
-/* What only the person can do: the one place a row speaks in redline */
+/* What only the person can do: the one place a row speaks in red */
 .needsYou {
   align-self: flex-start;
   padding: var(--sp-4) var(--sp-8);
-  border: 1px solid var(--redline);
-  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--redline) 55%, transparent);
+  border-radius: var(--r-pill);
   background: var(--redline-soft);
   color: var(--redline);
   font-size: var(--fs-pill);
-  font-stretch: var(--stretch-lettering);
-  font-weight: 700;
-  letter-spacing: 0.07em;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   line-height: 1;
   text-transform: uppercase;
 }
@@ -251,15 +249,15 @@
 .todo {
   align-self: flex-start;
   padding: var(--sp-8) var(--sp-12);
-  border: 1px solid var(--redline);
-  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--redline) 55%, transparent);
+  border-radius: var(--r-md);
   background: var(--redline-soft);
   color: var(--redline);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .ended {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .ended[data-tone="bad"] {
@@ -270,7 +268,7 @@
   color: var(--muted);
 }
 
-/* ---- the board: a ledger of ruled rows under each stage stamp ---- */
+/* ---- the board: bordered rows under each stage chip ---- */
 
 .board {
   display: flex;
@@ -299,15 +297,27 @@
 
 .empty {
   padding: var(--sp-12) var(--sp-8);
-  border-block-start: 1px solid var(--line-strong);
-  border-block-end: 1px solid var(--line);
+  border-block-start: 1px solid var(--line);
   color: var(--muted);
+}
+
+/* A campaign on the board: a bordered 8px row, like a task in a list */
+.group .rows {
+  gap: var(--sp-8);
+  border-block-start: 0;
+}
+
+.group .rows > li {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
 }
 
 .card {
   display: grid;
   gap: var(--sp-8) var(--sp-24);
-  padding: var(--sp-16) var(--sp-8);
+  padding: var(--sp-16);
+  border-radius: var(--r-md);
   transition: background-color var(--dur-fast) var(--ease-in);
 }
 
@@ -320,7 +330,7 @@
 
 @media (hover: hover) {
   .card:hover {
-    background: var(--surface);
+    background: var(--surface-2);
   }
 }
 
@@ -401,19 +411,48 @@
   white-space: nowrap;
 }
 
-/* ---- the crew tab ---- */
+/* ---- the crew tab: a parallel-execution panel ---- */
 
-.crewRow {
-  display: grid;
-  gap: var(--sp-8) var(--sp-24);
-  padding: var(--sp-16) var(--sp-8);
+/* The panel: one bordered frame round the columns and the footer strip */
+.crewPanel {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 
-@media (min-width: 48rem) {
-  .crewRow {
-    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr) auto;
-    align-items: start;
-  }
+/* One column per agent step. Each card draws a hairline on its left and top edge; the grid is pulled 1px out of its clip, so the
+   outer edges are cut off and only the hairlines between cards remain (no grey block where a last row is short). */
+.crewClip {
+  overflow: hidden;
+  border-radius: var(--r-lg);
+}
+
+.crewPanel[data-footer] .crewClip {
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+
+.crewGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  margin: -1px 0 0 -1px;
+}
+
+.crewCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  min-width: 0;
+  padding: var(--sp-16);
+  border-block-start: 1px solid var(--line);
+  border-inline-start: 1px solid var(--line);
+}
+
+.crewHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-8);
 }
 
 .crewText {
@@ -422,6 +461,58 @@
   align-items: flex-start;
   gap: var(--sp-4);
   min-width: 0;
+}
+
+/* What the step produced: one row per output, a check mark and its name */
+.outputs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.output {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-8);
+  padding: var(--sp-4) var(--sp-8);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.output svg {
+  flex: none;
+  margin-block-start: 0.2em;
+  color: var(--ok);
+}
+
+/* The footer strip: what waits for the person on the left, the one black action on the right */
+.crewFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8) var(--sp-16);
+  padding: var(--sp-12) var(--sp-16);
+  border-block-start: 1px solid var(--line);
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  background: var(--surface-2);
+}
+
+.crewWaiting {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  color: var(--redline);
+  font-weight: 500;
+}
+
+.crewWaiting::before {
+  content: "";
+  flex: none;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: var(--r-pill);
+  background: currentColor;
 }
 
 /* ---- the dossier and the prep ---- */
@@ -466,14 +557,14 @@
   gap: var(--sp-12);
   max-width: var(--measure);
   padding: var(--sp-16);
-  border: 1px solid var(--line-strong);
-  border-block-start: 2px solid var(--ink-rule);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
   background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 
 .approval[data-state="waiting"] {
-  border-color: var(--redline);
+  border-color: color-mix(in srgb, var(--redline) 55%, transparent);
   background: var(--redline-soft);
 }
 
@@ -488,11 +579,11 @@
 .youAnswer {
   align-self: flex-start;
   padding: var(--sp-4) var(--sp-8);
-  border: 1px solid var(--redline);
-  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--redline) 55%, transparent);
+  border-radius: var(--r-md);
   background: var(--redline-soft);
   color: var(--redline);
-  font-weight: 650;
+  font-weight: 500;
 }
 
 /* ---- follow-ups ---- */
@@ -513,21 +604,21 @@
   overflow-wrap: anywhere;
 }
 
-/* The undo window, readable at a glance: the time left in the sheet's mono figures, beside the button it belongs to */
+/* The undo window, readable at a glance: the time left in Geist Mono figures, beside the button it belongs to */
 .countdown {
   font-family: var(--font-mono);
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
 .addressBox {
   max-width: var(--measure);
   padding: var(--sp-16);
-  border: 1px solid var(--line-strong);
-  border-block-start: 2px solid var(--ink-rule);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
   background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 
 .undoLine {
@@ -552,9 +643,8 @@
 
 .modal {
   width: min(100%, 30rem);
-  border: 1px solid var(--line-strong);
-  border-block-start: 2px solid var(--ink-rule);
-  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
   background: var(--surface);
   box-shadow: var(--shadow-2);
 }

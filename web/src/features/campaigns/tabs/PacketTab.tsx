@@ -14,7 +14,7 @@ import { describeFailure } from "@/lib/api/problems";
 import { PACKET_QUESTION_LABELS } from "@/lib/labels";
 import { ApprovalPanel } from "../ApprovalPanel";
 import { packetRecord } from "../approvals";
-import { ApprovedStamp } from "../ApprovedStamp";
+import { ApprovedChip } from "../ApprovedChip";
 import { type CampaignDetail, packetQuery } from "../queries";
 import styles from "../campaigns.module.css";
 
@@ -42,8 +42,8 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 }
 
 /**
- * The campaign's application packet (CMP-03): the note and the answers on the sheet, "You answer this" where only the
- * candidate can, and below them, apart, the approval block with one Approve packet. After approval the ink stamp lands once,
+ * The campaign's application packet (CMP-03): the note and the answers on the page, "You answer this" where only the
+ * candidate can, and below them, apart, the approval block with one Approve packet. After approval the Approved chip lands once,
  * then it says "Checking..." until the server has scheduled or blocked the release, then shows the submit kit. The system
  * never submits anything.
  */
@@ -60,7 +60,7 @@ export function PacketTab({ campaign, applicationId, onApproved }: { campaign: C
   const released = summary.action_status === "scheduled" || summary.action_status === "executed";
   const blocked = summary.action_status === "blocked";
   const checking = !waiting && !released && !blocked && (approved || summary.status === "approved" || summary.action_status === "awaiting_approval");
-  // Signed: the stamp is drawn. It lands (animates) only for the approval made in this view, not for one already on the sheet.
+  // Signed: the chip is shown. It lands (animates) only for the approval made in this view, not for one already on the page.
   const signed = approved || summary.status === "approved" || released || checking;
   const posting = safeHttpUrl(campaign.job.apply_url);
   const approvedAt = packetRecord(rows.data)?.approvedAt;
@@ -110,7 +110,7 @@ export function PacketTab({ campaign, applicationId, onApproved }: { campaign: C
             <h2 id="approval-heading" className="t-section">
               Your approval
             </h2>
-            {signed && <ApprovedStamp landing={approved} />}
+            {signed && <ApprovedChip landing={approved} />}
           </div>
           {signed && approvedAt != null && (
             <p className="t-small muted">

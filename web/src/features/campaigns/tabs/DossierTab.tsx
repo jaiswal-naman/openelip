@@ -17,7 +17,7 @@ const TOPIC_LABELS: Record<string, string> = {
 };
 
 /**
- * The one-page company dossier (CMP-02): each claim is a ruled row, and every source under it is a numbered balloon callout
+ * The one-page company dossier (CMP-02): each claim is a hairline row, and every source under it is a numbered callout
  * with its exact quote and when it was fetched. Text only.
  */
 export function DossierTab({ dossier }: { dossier: CampaignDetail["dossier"] }) {

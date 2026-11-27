@@ -8,7 +8,7 @@ import type { BoardCard } from "./queries";
 import styles from "./campaigns.module.css";
 
 /**
- * One campaign on the board, as a ruled row: the job and its flags, who has the next step and what it is, and when anything
+ * One campaign on the board, as a bordered row: the job and its flags, who has the next step and what it is, and when anything
  * last happened. The Record status menu sits at the right edge.
  */
 export function CampaignCard({ card, stage, applicationId }: { card: BoardCard; stage: string; applicationId: string | null }) {

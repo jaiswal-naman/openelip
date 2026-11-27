@@ -20,7 +20,7 @@ import styles from "./campaigns.module.css";
 const usd = (value: string) => Number(value).toFixed(2);
 
 /**
- * The cells of the title block: what the sheet says about who drew it, who checked it and who approved it. Each cell comes
+ * The cells of the page header: what the page says about who drew it, who checked it and who approved it. Each cell comes
  * from the campaign or from the flight recorder's rows, and a cell with nothing true to say is left out.
  */
 function titleCells(campaign: CampaignDetail, record: PacketRecord | null): TitleCell[] {
@@ -78,12 +78,12 @@ function titleCells(campaign: CampaignDetail, record: PacketRecord | null): Titl
   return cells;
 }
 
-/** The campaign's title block: who and what, the stage, who drew, checked and approved, the cost against the budget, and the controls (CMP-07, GRD-07). */
+/** The campaign's page header: who and what, the stage, who drew, checked and approved, the cost against the budget, and the controls (CMP-07, GRD-07). */
 export function CampaignHeader({ campaign, applicationId }: { campaign: CampaignDetail; applicationId: string | null }) {
   const api = useApi();
   const control = useCampaignControl(campaign.id);
   const patch = usePatchCampaign(campaign.id);
-  // The same rows the Timeline tab lists, so the title block never asks for anything the page does not already load.
+  // The same rows the Timeline tab lists, so the header never asks for anything the page does not already load.
   const rows = useQuery(recorderQuery(api, campaign.id));
   const [budget, setBudget] = useState((Number(campaign.budget_usd) + 0.5).toFixed(2));
   const closed = campaign.stage === "closed";

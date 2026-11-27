@@ -7,8 +7,8 @@ import { useApi } from "@/lib/api/context";
 import { boardQuery } from "./queries";
 
 /**
- * The title block of the Applications page. Its cells are counted from the board and the application list the page loads
- * below it (the same queries, so nothing is asked twice); until they arrive the block shows its heading alone.
+ * The header of the Applications page. Its cells are counted from the board and the application list the page loads
+ * below it (the same queries, so nothing is asked twice); until they arrive the header shows its heading alone.
  */
 export function CampaignsTitle() {
   const api = useApi();

@@ -30,7 +30,7 @@ const SIGN_IN = `/sign-in?next=${encodeURIComponent("/app/today")}`;
 const EVIDENCE_TASK = "match.evidence.score"; // the model task that makes the requirement tables
 
 /**
- * Today (FRONTEND_UI 3.3): the morning brief as decisions waiting and what was done, today's matches, and everything held
+ * Today (FRONTEND_UI 3.3): the morning brief as a review queue of decisions waiting, and what was done, today's matches, and everything held
  * back. The tab is `?view=` and the decision an email link opens is `?decision=`, so a reload, a shared link and the back
  * button all land where the person was. With decisions waiting the page opens on them; with none it opens on the matches.
  * Zero is a valid day, and the page says why it is empty instead of showing nothing.
@@ -84,6 +84,7 @@ export function TodayView() {
   return (
     <div className={styles.today}>
       <TitleBlock
+        eyebrow="Today"
         title={date === null ? "Today" : `Today, ${dayLabel(date, viewer.locale)}`}
         lines={
           <>
@@ -144,20 +145,23 @@ export function TodayView() {
               {decisions.length === 0 ? (
                 openAsks.length === 0 && agentItems.length === 0 && <EmptyState>Nothing needs you today.</EmptyState>
               ) : (
-                <ul className={styles.list}>
-                  {decisions.map((decision) => {
-                    const id = decisionIdOf(decision);
-                    return (
-                      <li key={id ?? decision.kind}>
-                        <DecisionCard
-                          decision={decision}
-                          feedback={matches.find((match) => match.decision_id === id)?.feedback}
-                          isOpen={id !== null && id === openId && UUID.test(id)}
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
+                <>
+                  <p className={`t-label t-eyebrow ${styles.queueLabel}`}>Review queue</p>
+                  <ul className={styles.list}>
+                    {decisions.map((decision) => {
+                      const id = decisionIdOf(decision);
+                      return (
+                        <li key={id ?? decision.kind}>
+                          <DecisionCard
+                            decision={decision}
+                            feedback={matches.find((match) => match.decision_id === id)?.feedback}
+                            isOpen={id !== null && id === openId && UUID.test(id)}
+                          />
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
               )}
               <BriefIntroductions items={briefAsks} />
               <BriefCampaignItems items={agentItems} undoable={brief.data.undoable} />

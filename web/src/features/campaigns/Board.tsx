@@ -13,7 +13,7 @@ import styles from "./campaigns.module.css";
 
 
 /**
- * The board (FRONTEND_UI 3.6): a ledger of ruled rows grouped under six stage stamps, a seventh group for closed ones when
+ * The board (FRONTEND_UI 3.6): a list of bordered rows grouped under six stage chips, a seventh group for closed ones when
  * asked. "Show closed" and the filter are URL state. Every group shows on every width; a row is a campaign, and a row with an
  * application also carries the Phase 5 "Record status..." menu.
  */

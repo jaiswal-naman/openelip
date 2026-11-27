@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/ui/States";
 import { applicationsQuery } from "@/features/applications/queries";
 import { ApiFailure } from "@/lib/api/errors";
 import { useApi } from "@/lib/api/context";
+import { ACTION_STATUS_LABELS, ACTION_TYPE_LABELS } from "@/lib/labels";
 import { CampaignHeader } from "./CampaignHeader";
 import { APPROVAL_POLL_LIMIT_MS, APPROVAL_POLL_MS, CREW_REFRESH_MS, campaignQuery } from "./queries";
 import { CrewTab } from "./tabs/CrewTab";
@@ -70,6 +71,18 @@ export function CampaignView({ id }: { id: string }) {
     router.replace(`${path}?${next.toString()}`, { scroll: false });
   }
 
+  // What waits for the person, for the crew panel's footer: the first approval, and the tab where it is answered
+  const waitingApproval = data.pending_approvals[0];
+  const waitingTab = waitingApproval === undefined ? undefined : tabs.find((tab) => tab.id === (waitingApproval.kind === "submit_application" ? "packet" : waitingApproval.kind === "send_follow_up" ? "follow-ups" : ""));
+  const waiting =
+    waitingApproval === undefined || waitingTab === undefined
+      ? null
+      : {
+          text: `${ACTION_STATUS_LABELS.awaiting_approval}: ${ACTION_TYPE_LABELS[waitingApproval.kind] ?? waitingApproval.kind}`,
+          action: `Open ${waitingTab.label}`,
+          onOpen: () => select(waitingTab.id),
+        };
+
   return (
     <div className={styles.page}>
       <CampaignHeader campaign={data} applicationId={applicationId} />
@@ -91,7 +104,7 @@ export function CampaignView({ id }: { id: string }) {
           <DossierTab dossier={data.dossier} />
         </TabPanel>
         <TabPanel id="crew" className={styles.panel}>
-          <CrewTab steps={data.steps} />
+          <CrewTab steps={data.steps} waiting={waiting} />
         </TabPanel>
         <TabPanel id="prep" className={styles.panel}>
           <PrepTab prep={data.prep} />
