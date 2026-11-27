@@ -5,6 +5,7 @@ import { Pill } from "@/components/ui/Pill";
 import { TitleBlock } from "@/components/ui/TitleBlock";
 import { recordQuery } from "@/features/record/api";
 import { hasReadResume } from "@/features/record/hasReadResume";
+import { ApiFailure } from "@/lib/api/errors";
 import { serverApi } from "@/lib/api/server";
 import { PRODUCT_NAME } from "@/lib/product";
 import { makeQueryClient } from "@/lib/query";
@@ -24,13 +25,17 @@ const WORKING_TODAY = [
 /**
  * Where a person in local mode starts. First launch goes API key (the /setup step, which /local-session sends a stack
  * with no key to), then the resume, then Today: a person whose record has no resume read yet goes on to onboarding, and
- * everyone else to Today. If the API cannot say, Today: not knowing is no reason to send anyone through the setup again.
+ * everyone else to Today. A session cookie the API no longer knows (a reinstall with a new database) first opens the
+ * owner's session and comes back here to decide. If the API cannot say, Today: not knowing is no reason to send anyone
+ * through the setup again.
  */
 async function localStart(): Promise<string> {
-  const record = await makeQueryClient()
-    .fetchQuery(recordQuery(await serverApi()))
-    .catch(() => null);
-  return record !== null && !hasReadResume(record) ? "/onboarding" : "/app/today";
+  try {
+    const record = await makeQueryClient().fetchQuery(recordQuery(await serverApi()));
+    return hasReadResume(record) ? "/app/today" : "/onboarding";
+  } catch (error) {
+    return error instanceof ApiFailure && error.status === 401 ? `/local-session?next=${encodeURIComponent("/")}` : "/app/today";
+  }
 }
 
 export default async function Home() {
