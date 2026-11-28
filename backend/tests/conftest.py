@@ -53,6 +53,8 @@ TEST_URL = make_url(os.environ.get("TEST_DATABASE_URL", DEFAULT_TEST_URL))
 assert_test_database(TEST_URL)
 # Forced, not defaulted: a developer's shell may point these at the real database.
 os.environ["APP_ENV"] = "test"
+# The default test world embeds locally, whatever keys a developer's shell holds; a test of OpenAI's model says so.
+os.environ["EMBEDDING_PROVIDER"] = "local"
 os.environ["DATABASE_URL_MIGRATE"] = TEST_URL.render_as_string(hide_password=False)
 os.environ["DATABASE_URL_API"] = _as_login(TEST_URL, "app_api", "APP_DB_API_PASSWORD", "app_api_local_only")
 os.environ["DATABASE_URL_WORKER"] = _as_login(TEST_URL, "app_worker", "APP_DB_WORKER_PASSWORD", "app_worker_local_only")

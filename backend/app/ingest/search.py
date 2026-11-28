@@ -29,7 +29,7 @@ from uuid import UUID
 from sqlalchemy import Connection, Row, TextClause, text
 
 from app.platform import log
-from app.platform.llm.embed import MODEL_ID, EmbeddingUnavailable, embed_query
+from app.platform.llm.embed import EmbeddingUnavailable, active_model, embed_query
 
 from .embedding import vector_literal
 
@@ -150,17 +150,21 @@ def _eligible(
     return " AND ".join(where), values
 
 
-def _query_vector(conn: Connection, where: str, values: dict[str, Any], query: str) -> list[float] | None:
-    """The query's vector, or None when meaning cannot be searched: no eligible job has a vector of this model yet (the
-    model is not even loaded then), or the model is not available here."""
+def _query_vector(
+    conn: Connection, where: str, values: dict[str, Any], query: str, model: str, person: UUID | None
+) -> list[float] | None:
+    """The query's vector, or None when meaning cannot be searched: no eligible job has a vector of the active model yet
+    (the model is not even loaded, and OpenAI not even called, then; while a new model is filling in, the keyword half
+    answers alone), or the model is not available here. `person` is whose search it is: an OpenAI vector is recorded in
+    the cost ledger against them, and with nobody signed in there is no one to record it against, so it is not made."""
     embedded = conn.execute(
         text(f"SELECT EXISTS (SELECT 1 FROM jobs j WHERE {where} AND j.embedding_model = :model)"),
-        {**values, "model": MODEL_ID},
+        {**values, "model": model},
     ).scalar_one()
     if not embedded:
         return None
     try:
-        return embed_query(query)
+        return embed_query(query, model=model, principal=person, ledger="api")
     except EmbeddingUnavailable:
         return None
 
@@ -239,6 +243,7 @@ def search(
     cursor: str | None,
     mode: str,
     constrained_for: UUID | None = None,
+    viewer: UUID | None = None,
 ) -> SearchPage:
     """One page of open, canonical, listed jobs. The page's `mode` says what ran: hybrid becomes keyword when no
     eligible job has a vector yet or the model is unavailable. With no query text, jobs are listed newest first and the
@@ -247,7 +252,10 @@ def search(
     `constrained_for` leaves out every job that breaks that person's hard constraints. It is always the signed-in
     person, never a value a caller or a model supplies. The connection must be an app_api transaction for the same
     person (db.transaction(user_id)): row-level security shows `constraints` only to its own person, so a transaction
-    for anyone else would see none and let every job through. That is refused with ValueError, never allowed quietly."""
+    for anyone else would see none and let every job through. That is refused with ValueError, never allowed quietly.
+
+    `viewer` is the signed-in person when there is one, whatever the constraints: with the OpenAI embedding model the
+    query's vector is a paid request, recorded against them, and a search with nobody signed in is keyword-only."""
     if mode not in MODES:
         raise ValueError(f"mode must be one of {MODES}")
     if constrained_for is not None:
@@ -259,7 +267,9 @@ def search(
     country = country.upper() if country else None
     city = _clean(city) or None
     where, values = _eligible(country, city, remote, constrained_for)
-    vector = _query_vector(conn, where, values, query) if query and mode == "hybrid" else None
+    model = active_model()
+    person = constrained_for or viewer
+    vector = _query_vector(conn, where, values, query, model, person) if query and mode == "hybrid" else None
     if not query:
         used = mode  # nothing to rank: the list is the same in both modes
     else:
@@ -275,7 +285,7 @@ def search(
     else:
         values["query"] = query
         if vector is not None:
-            values["vector"], values["model"] = vector_literal(vector), MODEL_ID
+            values["vector"], values["model"] = vector_literal(vector), model
         statement = _ranked(where, dense=vector is not None, after=after is not None)
     rows = conn.execute(statement, values).all()
 

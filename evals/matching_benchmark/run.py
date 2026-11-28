@@ -74,10 +74,10 @@ class EmbeddingClock:
         self.seconds = 0.0
         self._embed = retrieval.embed_passages
 
-        def wrapped(texts: list[str]) -> list[list[float]]:
+        def wrapped(texts: list[str], **options: Any) -> list[list[float]]:
             start = time.process_time()
             try:
-                return self._embed(texts)
+                return self._embed(texts, **options)
             finally:
                 self.seconds += time.process_time() - start
 
@@ -353,7 +353,7 @@ def main() -> int:
     from app.match.evidence import PROMPT_VERSION
     from app.match.ranking import RANKER_VERSION
     from app.platform import db
-    from app.platform.llm.embed import MODEL_ID
+    from app.platform.llm.embed import active_model
 
     meta = json.loads(META.read_text(encoding="utf-8"))
     now = datetime.fromisoformat(meta["exported_at"])
@@ -397,7 +397,7 @@ def main() -> int:
                 "mode": "benchmark",
                 "methods_run": methods_run,
                 "ranker_version": RANKER_VERSION,
-                "embedding_model": MODEL_ID,
+                "embedding_model": active_model(),
                 "evidence_prompt_version": PROMPT_VERSION,
                 "snapshot_exported_at": meta["exported_at"],
                 "labels": MARKER,

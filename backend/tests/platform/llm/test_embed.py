@@ -140,7 +140,7 @@ def test_a_model_that_cannot_load_is_unavailable_and_is_not_tried_again(no_cache
             embed.embed_passages(["anything"])
 
     # A load can take half a minute to give up when the model is missing and the network is down, so it is tried once.
-    assert attempts == [embed.MODEL_ID]
+    assert attempts == [embed.LOCAL_MODEL_ID]
 
 
 def test_a_model_with_the_wrong_number_of_dimensions_is_refused_at_load(no_cached_model, monkeypatch):

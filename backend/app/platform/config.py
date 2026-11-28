@@ -19,6 +19,7 @@ from cryptography.fernet import Fernet
 
 Role = Literal["migrate", "api", "worker", "match"]
 AppMode = Literal["local", "server"]
+EmbeddingProvider = Literal["auto", "local", "openai"]
 
 # Public, development-only. A Fernet key is 32 bytes, url-safe base64 encoded.
 DEV_DATA_KEY = base64.urlsafe_b64encode(b"openelip-development-only-key-00").decode()
@@ -75,6 +76,10 @@ class Settings:
     # chance.
     app_mode: AppMode = "server"
     llm_provider_is_set: bool = False  # LLM_PROVIDER was given; a model key saved in the app never overrides it
+    # Which model makes the job and profile vectors (AI_SYSTEM 3.1). auto: OpenAI's when the platform runs on an OpenAI
+    # key, the local model otherwise. local: always the local model. openai: always OpenAI's, and no vectors (keyword
+    # search only) while there is no OpenAI key, never a quiet change to the local model.
+    embedding_provider: EmbeddingProvider = "auto"
 
     @property
     def campaign_budget_microusd(self) -> int:
@@ -127,6 +132,18 @@ def _app_mode(value: str | None) -> AppMode:
     raise ConfigError("APP_MODE must be local or server")  # the value itself is never echoed
 
 
+def _embedding_provider(value: str | None) -> EmbeddingProvider:
+    """auto, local or openai. Unset or empty is auto; any other spelling stops the process instead of being guessed."""
+    word = (value or "").strip().lower() or "auto"
+    if word == "auto":
+        return "auto"
+    if word == "local":
+        return "local"
+    if word == "openai":
+        return "openai"
+    raise ConfigError("EMBEDDING_PROVIDER must be auto, local or openai")  # the value itself is never echoed
+
+
 def _flag(name: str, value: str | None) -> bool:
     """A true/false setting. Unset or empty is false; any other spelling stops the process instead of being guessed."""
     word = (value or "").strip().lower()
@@ -170,6 +187,7 @@ def load(environ: Mapping[str, str]) -> Settings:
         research_pages_dir=get("RESEARCH_PAGES_DIR"),
         app_mode=_app_mode(get("APP_MODE")),
         llm_provider_is_set=get("LLM_PROVIDER") is not None,
+        embedding_provider=_embedding_provider(get("EMBEDDING_PROVIDER")),
     )
     _refuse_local_mode_off_localhost(settings)
     _refuse_recorded_pages_in_production(settings)

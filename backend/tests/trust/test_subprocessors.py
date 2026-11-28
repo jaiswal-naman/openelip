@@ -89,3 +89,34 @@ def test_the_email_host_is_named_without_its_credentials(serve):
 
 def test_every_data_class_has_its_plain_words():
     assert set(RECEIVES) == set(registry.DATA_CLASSES)
+
+
+def test_openai_is_listed_as_receiving_search_queries_and_profile_passages_through_the_embed_task(serve):
+    """The query typed into the job search and, for a person who agreed, their profile passage are sent to OpenAI by the
+    embed task, so it must be among the tasks OpenAI is disclosed for, and its words say what is sent."""
+    item = serve(LLM_PROVIDER="openai", OPENAI_API_KEY="sk-secret-123").json()["data"]["items"][0]
+
+    assert item["name"] == "OpenAI" and "embed" in item["tasks"]
+    assert "search queries" in item["purpose"] and "profile passage" in item["purpose"]
+    assert RECEIVES["identified"] in item["receives"] and "30 days" in item["receives"]
+
+
+def test_an_anthropic_installation_discloses_no_embed_task_because_nothing_is_sent_for_embedding(serve):
+    item = serve(LLM_PROVIDER="anthropic", ANTHROPIC_API_KEY="sk-secret-123").json()["data"]["items"][0]
+
+    assert "embed" not in item["tasks"]
+
+
+def test_the_embed_task_does_not_change_the_ai_processing_wording_people_already_agreed_to(monkeypatch):
+    """The version is hashed from the provider, the data classes it receives and its retention note, not from the task
+    list, and OpenAI's classes already include identified (the resume tasks), so adding embed asks nobody to agree
+    again."""
+    from app.trust import consent
+
+    settings = config.load({"APP_ENV": "test", "LLM_PROVIDER": "openai", "OPENAI_API_KEY": "k"})
+    monkeypatch.setattr(config, "get", lambda: settings)
+    with_embed = consent.ai_processing_text_version()
+    every_route = registry.table
+    monkeypatch.setattr(registry, "table", lambda: [r for r in every_route() if r.task != "embed"])
+
+    assert consent.ai_processing_text_version() == with_embed

@@ -18,8 +18,9 @@ import pytest
 from sqlalchemy import text
 
 from app.ingest import embedding, search
-from app.platform import log
-from app.platform.llm.embed import MODEL_ID, EmbeddingUnavailable
+from app.platform import config, log
+from app.platform.llm.embed import LOCAL_MODEL_ID, OPENAI_MODEL_ID, EmbeddingUnavailable
+from tests.ingest.test_search_constrained import candidate
 
 CORPUS = json.loads((Path(__file__).parent / "fixtures" / "semantic_corpus.json").read_text(encoding="utf-8"))
 NOW = datetime(2030, 1, 1, 10, 30, tzinfo=timezone.utc)
@@ -39,7 +40,7 @@ def literal(vector):
     return embedding.vector_literal(vector)
 
 
-def embedded(vector, model=MODEL_ID):
+def embedded(vector, model=LOCAL_MODEL_ID):
     """Columns for a job that already has a vector, labelled with the model that made it."""
     return {"embedding": literal(vector), "embedding_model": model}
 
@@ -49,7 +50,7 @@ def query_vector(monkeypatch):
     """Every query embeds to QUERY_VECTOR; the calls are recorded."""
     calls = []
 
-    def embed_query(query):
+    def embed_query(query, **options):
         calls.append(query)
         return QUERY_VECTOR
 
@@ -318,7 +319,7 @@ def test_vectors_made_by_another_model_are_never_compared_with_the_query(conn, q
 
 
 def test_when_the_model_is_unavailable_a_hybrid_request_falls_back_to_keywords(conn, monkeypatch):
-    def unavailable(query):
+    def unavailable(query, **options):
         raise EmbeddingUnavailable("the model")
 
     monkeypatch.setattr(search, "embed_query", unavailable)
@@ -588,3 +589,80 @@ def test_a_search_leaves_no_trace_of_the_query_in_the_log(conn, query_vector, ca
         ("jobs.search", "keyword"),
     ]
     assert all(set(line) >= {"result_count", "duration_ms"} for line in lines)
+
+
+# --- the OpenAI model is active (AI_SYSTEM 3.1) -----------------------------------------------------------------
+
+
+def wide(tilt=0.0):
+    """The same, in OpenAI's width."""
+    return [1.0, tilt] + [0.0] * 1534
+
+
+@pytest.fixture
+def openai_query(monkeypatch):
+    """The platform runs on an OpenAI key. Every query embeds to wide(); what the embedder was asked is recorded."""
+    settings = config.load({"APP_ENV": "test", "LLM_PROVIDER": "openai", "OPENAI_API_KEY": "k"})
+    monkeypatch.setattr(config, "get", lambda: settings)
+    calls = []
+
+    def embed_query(query, **options):
+        calls.append((query, options))
+        return wide()
+
+    monkeypatch.setattr(search, "embed_query", embed_query)
+    return calls
+
+
+def test_with_the_openai_model_only_rows_of_that_model_are_ranked_by_vector_and_the_old_ones_are_never_compared(
+    conn, openai_query
+):
+    """A switch of model is gradual: the sweep re-embeds a few hundred rows at a time. Rows still of the old model
+    have the other width, and a distance between widths is an error, so they must be left out before it is taken."""
+    source = add_source(conn)
+    new = add_job(conn, source, 1, title="Gamma", **embedded(wide(0.5), model=OPENAI_MODEL_ID))
+    add_job(conn, source, 2, title="Delta", **embedded(vec(0.0)))  # nearer in its own space, 384 wide, not comparable
+
+    page = run(conn, q="unmatched words", mode="hybrid")
+
+    assert (page.mode, ids(page)) == ("hybrid", [new])
+    assert openai_query == [("unmatched words", {"model": OPENAI_MODEL_ID, "principal": None, "ledger": "api"})]
+
+
+def test_with_the_openai_model_and_no_row_of_it_yet_the_answer_is_keyword_mode_and_nothing_is_sent_to_openai(
+    conn, openai_query
+):
+    source = add_source(conn)
+    found = add_job(conn, source, 1, title="Alpha", **embedded(vec()))  # all of them still the local model's
+
+    page = run(conn, q="alpha", mode="hybrid")
+
+    assert (page.mode, ids(page)) == ("keyword", [found])  # the keyword half still works while the rows are re-embedded
+    assert openai_query == []  # the query is not even embedded: nothing to compare it with, so nothing to pay for
+
+
+def test_the_query_vector_is_charged_to_the_person_who_is_signed_in(conn, openai_query):
+    source = add_source(conn)
+    add_job(conn, source, 1, title="Gamma", **embedded(wide(), model=OPENAI_MODEL_ID))
+    person = candidate(conn)  # the transaction acts as them, as the API does for a signed-in request
+
+    run(conn, q="unmatched words", mode="hybrid", viewer=person)
+    run(conn, q="unmatched words", mode="hybrid", constrained_for=person)  # a constrained search: the same person
+
+    assert [options["principal"] for _, options in openai_query] == [person, person]
+
+
+def test_the_model_asked_for_is_the_one_whose_rows_are_counted(conn, openai_query, monkeypatch):
+    """If the embedder is on another model than the search read (a key saved in between), it refuses rather than
+    answering in the wrong space; the search then answers by keywords."""
+    source = add_source(conn)
+    found = add_job(conn, source, 1, title="Alpha", **embedded(wide(), model=OPENAI_MODEL_ID))
+
+    def refuses(query, **options):
+        raise EmbeddingUnavailable("the embedding model changed")
+
+    monkeypatch.setattr(search, "embed_query", refuses)
+
+    page = run(conn, q="alpha", mode="hybrid")
+
+    assert (page.mode, ids(page)) == ("keyword", [found])

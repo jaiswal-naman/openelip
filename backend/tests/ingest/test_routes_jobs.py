@@ -5,6 +5,7 @@ the envelope, the fields every job carries (IDX-05), paging by cursor, the error
 generated from. The old keys of /v1/jobs and the seven keys of /v1/stats must all still be there.
 """
 
+import os
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -12,7 +13,10 @@ from sqlalchemy import text
 
 from app.ingest import embedding, search
 from app.main import create_app
-from app.platform.llm.embed import MODEL_ID
+from app.platform import config
+from app.platform.llm.embed import LOCAL_MODEL_ID, OPENAI_MODEL_ID
+from tests.ingest.test_search_constrained import sign_in
+from tests.match.factories import make_user
 
 NOW = datetime(2030, 1, 1, 10, 30, tzinfo=timezone.utc)
 OLD_JOB_KEYS = {
@@ -34,7 +38,7 @@ def vec(tilt):
 
 @pytest.fixture
 def query_vector(monkeypatch):
-    monkeypatch.setattr(search, "embed_query", lambda query: QUERY_VECTOR)
+    monkeypatch.setattr(search, "embed_query", lambda query, **options: QUERY_VECTOR)
 
 
 def add_source(c, ats="lever", token="acme"):
@@ -66,7 +70,7 @@ def add_job(c, source, n, **over):
 def embed_by_hand(c, job_id, vector):
     c.execute(
         text("UPDATE jobs SET embedding = CAST(:v AS vector), embedding_model = :model WHERE id = :id"),
-        {"v": embedding.vector_literal(vector), "model": MODEL_ID, "id": job_id},
+        {"v": embedding.vector_literal(vector), "model": LOCAL_MODEL_ID, "id": job_id},
     )
 
 
@@ -285,3 +289,35 @@ def test_the_schema_names_the_modes_and_the_job_shape_exactly(api_client):
     assert parameters["mode"]["schema"]["enum"] == ["hybrid", "keyword"]
     assert set(document["components"]["schemas"]["Job"]["properties"]) == JOB_KEYS
     assert "/v1/jobs/{job_id}" in document["paths"]
+
+
+def test_with_the_openai_model_the_query_vector_is_charged_to_the_signed_in_person_and_to_nobody_otherwise(
+    api_client, engine, five, monkeypatch
+):
+    """The route finds the person from the session cookie, whether or not constraints were asked for, and hands it to
+    the search; the search hands it to the embedder, whose ledger row is theirs. Nobody signed in: no one to charge."""
+    settings = config.load(
+        {**os.environ, "EMBEDDING_PROVIDER": "auto", "LLM_PROVIDER": "openai", "OPENAI_API_KEY": "k"}
+    )
+    monkeypatch.setattr(config, "get", lambda: settings)
+    asked = []
+
+    def embed_query(query, **options):
+        asked.append(options["principal"])
+        return [1.0] + [0.0] * 1535
+
+    monkeypatch.setattr(search, "embed_query", embed_query)
+    with engine.begin() as c:
+        c.execute(
+            text("UPDATE jobs SET embedding = CAST(:v AS vector), embedding_model = :m"),
+            {"v": embedding.vector_literal([1.0] + [0.0] * 1535), "m": OPENAI_MODEL_ID},
+        )
+        person = make_user(c)
+
+    assert api_client.get("/v1/jobs", params={"q": "alpha"}).status_code == 200
+    sign_in(api_client, engine, person)
+    assert api_client.get("/v1/jobs", params={"q": "alpha"}).status_code == 200
+    assert api_client.get("/v1/jobs", params={"q": "alpha", "apply_constraints": "true"}).status_code == 200
+    assert api_client.get("/v1/jobs", params={"q": "alpha", "mode": "keyword"}).status_code == 200
+
+    assert asked == [None, person, person]  # keyword mode embeds nothing

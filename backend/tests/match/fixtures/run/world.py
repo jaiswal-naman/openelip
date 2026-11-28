@@ -57,7 +57,7 @@ def use_provider(monkeypatch: pytest.MonkeyPatch, recording: str | None = None, 
 def no_embedder(monkeypatch: pytest.MonkeyPatch) -> None:
     """The local embedding model is not available, so retrieval is by keywords (and nothing is downloaded or loaded)."""
 
-    def unavailable(texts: list[str]) -> list[list[float]]:
+    def unavailable(texts: list[str], **options: Any) -> list[list[float]]:
         raise EmbeddingUnavailable("test")
 
     monkeypatch.setattr(retrieval, "embed_passages", unavailable)

@@ -30,6 +30,7 @@ x-backend-env: &backend-env
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   LLM_BASE_URL: ${LLM_BASE_URL:-}
+  EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-}
 
 services:
   db:
