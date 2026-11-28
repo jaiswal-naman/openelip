@@ -1,4 +1,8 @@
-/* Today: the tabs, the decision and match cards, and the list of what was held back (FRONTEND_UI 3.3 and 4.1). Tokens only. */
+/*
+ * Today as an agent workspace: the page header, the tabs, decisions as a review queue of bordered 8px rows with their
+ * black action at the right edge, matches as rows of the same kind, what was done as a hairline list, and what was held
+ * back grouped under its reason.
+ */
 
 .today {
   display: flex;
@@ -6,26 +10,21 @@
   gap: var(--sp-24);
 }
 
-.head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-}
-
 .lead {
-  max-width: var(--measure);
+  color: var(--text);
+  font-size: var(--fs-lede);
+  font-weight: 500;
 }
 
-/* A notice with a bar down its edge and a border: the words carry the meaning, the bar is extra. */
+/* A notice on the page: bordered, with its label in the notice's colour */
 .banner {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--sp-4) var(--sp-8);
+  gap: var(--sp-4) var(--sp-12);
   max-width: var(--measure);
   padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line-strong);
-  border-inline-start: 4px solid var(--warn);
+  border: 1px solid var(--warn);
   border-radius: var(--r-md);
   background: var(--surface);
 }
@@ -40,21 +39,24 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-4);
-  border-bottom: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line);
 }
 
 .tab {
   min-height: 2.5rem;
+  margin-block-end: -1px;
   padding: var(--sp-8) var(--sp-16);
-  border-bottom: 3px solid transparent;
+  border-bottom: 2px solid transparent;
   color: var(--muted);
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: 500;
   cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-in);
 }
 
-/* The current tab is the one with the bar and the stronger text, and aria-selected says it to a screen reader. */
+/* The current tab carries the ink underline and the ink text; aria-selected says it to a screen reader */
 .tab[data-selected] {
-  border-bottom-color: var(--accent-strong);
+  border-bottom-color: var(--accent);
   color: var(--text);
 }
 
@@ -72,8 +74,7 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-16);
-  padding-block-start: var(--sp-16);
+  gap: var(--sp-24);
 }
 
 .panel[data-focus-visible] {
@@ -81,29 +82,52 @@
   outline-offset: 2px;
 }
 
+/* ---- rows: decisions and matches ---- */
+
+/* The review queue's label above the decisions */
+.queueLabel {
+  margin-block-end: calc(-1 * var(--sp-8));
+}
+
+/* Each item is a bordered 8px row, like a task in a list */
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-12);
+  gap: var(--sp-8);
 }
 
-/* ---- the cards ---- */
-
-.card {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: var(--sp-12) var(--sp-24);
-  padding: var(--sp-16) var(--sp-20);
+.list > li {
   border: 1px solid var(--line);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-md);
   background: var(--surface);
 }
 
-/* The decision an email link opened: a stronger border and a bar, and aria-current for a screen reader. */
+.card {
+  display: grid;
+  gap: var(--sp-12) var(--sp-32);
+  padding: var(--sp-12) var(--sp-16);
+  border-radius: var(--r-md);
+  transition: background-color var(--dur-fast) var(--ease-in);
+}
+
+@media (min-width: 48rem) {
+  .card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+}
+
+@media (hover: hover) {
+  .card:hover {
+    background: var(--surface-2);
+  }
+}
+
+/* The decision an email link opened, and aria-current for a screen reader */
 .card[data-open] {
-  border-color: var(--accent-strong);
-  box-shadow: inset 4px 0 0 var(--accent-strong);
+  background: var(--accent-soft);
+  outline: 1px solid var(--accent-strong);
+  outline-offset: -1px;
 }
 
 .cardMain {
@@ -111,28 +135,61 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--sp-8);
-  flex: 1 1 22rem;
   min-width: 0;
+  max-width: 48rem;
 }
 
 .cardSide {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: var(--sp-4);
   min-width: 0;
   color: var(--muted);
 }
 
+@media (min-width: 48rem) {
+  .cardSide {
+    align-items: flex-end;
+    text-align: end;
+  }
+}
+
 .cardTitle {
+  font-size: var(--fs-card);
   overflow-wrap: anywhere;
+}
+
+.cardTitle a {
+  color: var(--text);
+  text-decoration-color: var(--line-strong);
+}
+
+.cardTitle a:hover {
+  text-decoration-color: currentColor;
 }
 
 .company {
+  color: var(--muted);
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 
+/* A decision's kind: a small red dot before its label, because a decision is something waiting for the person */
 .kind {
-  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  color: var(--redline);
+}
+
+.kind::before {
+  content: "";
+  flex: none;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: var(--r-pill);
+  background: currentColor;
 }
 
 .meta {
@@ -170,33 +227,45 @@
 }
 
 .receipt {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .problem {
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
   border-radius: var(--r-md);
-  background: var(--surface);
-  font-weight: 600;
+  background: var(--redline-soft);
+  color: var(--bad);
+  font-weight: 500;
 }
 
-/* ---- what was done ---- */
+/* ---- what was done: a hairline list ---- */
 
 .done {
   display: flex;
   flex-direction: column;
   gap: var(--sp-8);
-  padding: var(--sp-16) var(--sp-20);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
 }
 
 .doneList {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  border-block-start: 1px solid var(--line);
+}
+
+.doneList > li {
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr);
+  gap: var(--sp-16);
+  padding: var(--sp-8);
+  border-block-end: 1px solid var(--line);
+}
+
+@media (max-width: 30rem) {
+  .doneList > li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-2);
+  }
 }
 
 /* ---- why not ---- */
@@ -204,7 +273,7 @@
 .groups {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-24);
+  gap: var(--sp-32);
 }
 
 .group {
@@ -216,13 +285,14 @@
 .rows {
   display: flex;
   flex-direction: column;
+  border-block-end: 1px solid var(--line);
 }
 
 .row {
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
-  padding: var(--sp-12) 0;
+  padding: var(--sp-12) var(--sp-8);
   border-top: 1px solid var(--line);
   overflow-wrap: anywhere;
 }

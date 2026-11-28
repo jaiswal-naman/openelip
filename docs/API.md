@@ -39,6 +39,8 @@ Three terms are used exactly as the design review defined them:
 2. `POST /v1/auth/sessions` with the email and the code. On success the server sets the session cookie and returns the account, not a token. The first successful sign-in creates the account.
 3. `DELETE /v1/auth/sessions/current` signs out: the session is revoked at once and the cookie is cleared.
 
+**Local mode** (`APP_MODE=local`, set in `.env.example`) is for one person on their own computer. There is no code: `POST /v1/auth/local` opens a session for the owner, the one account that is not synthetic, and returns the same envelope and sets the same cookie as `POST /v1/auth/sessions`. The first call makes the account (address `owner@example.test`, which is reserved, so the relay never sends it mail, and which is not marked synthetic, so nothing excludes the owner from a feature: the one owner is a candidate and an employer at once, and creates organizations and uses the hiring desk like any account); later calls reuse it. A database that already holds two or more real accounts came from server mode and is refused with `409 conflict` (`details.state` is `several_accounts`); a database with exactly one real account signs that person in. The server refuses to start with `APP_MODE=local` unless `APP_BASE_URL` is a localhost address. Local mode has no emailed code: `POST /v1/auth/codes` and `POST /v1/auth/sessions` answer `404` there, so a web page cannot make a second account through them (a second real account would lock local mode out). Without `APP_MODE`, or with `APP_MODE=server`, nothing here exists and `POST /v1/auth/local` and every route in 2.23 answers `404`. Every local-mode route also answers `403 forbidden` unless the request's `Host` header is exactly `localhost`, `127.0.0.1` or `[::1]`, with or without a port. That check is what stops DNS rebinding: a page on another domain can make that domain resolve to `127.0.0.1`, but the browser still sends the page's own domain as `Host`. The proxy passes the `Host` header on unchanged.
+
 Code rules (**assumptions**, tunable by configuration): six digits, valid for 10 minutes, at most 5 wrong attempts per code, and a new code invalidates the previous one. The same code request is used to confirm account deletion (2.20).
 
 **The session cookie, as a contract.**
@@ -119,7 +121,7 @@ Cursor pagination only. Lists accept `limit` (1 to 100, default 20) and `cursor`
 
 ### 1.6 Idempotency keys
 
-Every `POST`, `PUT`, `PATCH` and `DELETE` under `/v1` requires an `Idempotency-Key` header (PLT-03), except `POST /v1/auth/codes`, `POST /v1/auth/sessions`, `POST /v1/briefs/unsubscribe` and the webhook receiver. None of those four uses the session cookie; their own code, signed token or event id plays the key's role.
+Every `POST`, `PUT`, `PATCH` and `DELETE` under `/v1` requires an `Idempotency-Key` header (PLT-03), except `POST /v1/auth/codes`, `POST /v1/auth/sessions`, `POST /v1/auth/local`, `POST /v1/briefs/unsubscribe` and the webhook receiver. None of those five uses the session cookie; their own code, signed token or event id plays the key's role (for `POST /v1/auth/local`, the `Host` check of 1.2 and the required JSON body).
 
 | Rule | Detail |
 |---|---|
@@ -327,6 +329,7 @@ Columns: **Caller** uses the codes in 1.2. **Req** lists the requirement ids ser
 |---|---|---|---|---|---|
 | POST | `/v1/auth/codes` | Email a one-time code. Always `202` with the same body | P | PLT-02 | 1 |
 | POST | `/v1/auth/sessions` | Exchange email and code for the session cookie; creates the account on first sign-in | P | PLT-02 | 1 |
+| POST | `/v1/auth/local` | Local mode only: open a session for the owner with no code. The body `{"timezone": ...}` is required, its field is optional and is used only when this call makes the account. `404` in server mode, `403` for a `Host` that is not this computer, `409` when the database holds two or more real accounts (1.2) | P (local mode) | PLT-02 | L |
 | DELETE | `/v1/auth/sessions/current` | Sign out: revoke this session and clear the cookie | U | PLT-02 | 1 |
 
 ### 2.3 `/v1/me`: account, consents, Career Record, candidate agent tokens
@@ -430,7 +433,7 @@ An approved edit reaches a file only while every one of its `supporting_fact_ids
 | GET | `/v1/applications/packets/{packet_id}` | One packet: status, answers with the facts they cite, the note | C | APP-02 | 5 |
 | GET | `/v1/applications/packets/{packet_id}/file?format=pdf` | The packet rendered as a PDF | C | APP-02 | 5 |
 
-Applications keep the five APP-01 statuses; `talking` is a campaign stage only. A status recorded on a linked application moves its campaign: `applied` to `applied`, `interview` to `interview`, `offer` to `offer`, and `rejected` or `no_response` to `closed` with that reason. Recording `applied` also marks the campaign's `submit_application` action `executed`. The application packet (APP-02) is produced by a campaign and read with `GET /v1/campaigns/{campaign_id}`. Until campaigns exist (Phase 5), a packet is prepared on request for one job with the four `/v1/applications/packets` routes above; each person has one current packet per job, and asking again supersedes it. Before a packet is stored, the facts its sentences cite are read again: a sentence that cites a fact no longer usable is dropped and counted in `removed_sentences`. Drafted answers and the note never state pay expectations, work authorisation or a start date or notice period (the candidate alone answers those): a sentence on those topics is dropped and counted too, by a small keyword list that is a floor and not a classifier. A person has one application per job (`409 conflict`, `details.state` `application_exists`; `same_status` for a status equal to the current one), and a new status may not predate the current one or lie more than five minutes in the future (`422 validation_failed`).
+Applications keep the five APP-01 statuses; `talking` is a campaign stage only. Recording a status publishes `application.status_changed`; a few seconds later the worker links the application to the person's open campaign for that job when it has none, and wakes that campaign once for the event (a status for a job with no campaign changes nothing else). A status recorded on a linked application moves its campaign: `applied` to `applied`, `interview` to `interview`, `offer` to `offer`, and `rejected` or `no_response` to `closed` with that reason. Recording `applied` also marks the campaign's `submit_application` action `executed`. The application packet (APP-02) is produced by a campaign and read with `GET /v1/campaigns/{campaign_id}`. Until campaigns exist (Phase 5), a packet is prepared on request for one job with the four `/v1/applications/packets` routes above; each person has one current packet per job, and asking again supersedes it. Before a packet is stored, the facts its sentences cite are read again: a sentence that cites a fact no longer usable is dropped and counted in `removed_sentences`. Drafted answers and the note never state pay expectations, work authorisation or a start date or notice period (the candidate alone answers those): a sentence on those topics is dropped and counted too, by a small keyword list that is a floor and not a classifier. A person has one application per job (`409 conflict`, `details.state` `application_exists`; `same_status` for a status equal to the current one), and a new status may not predate the current one or lie more than five minutes in the future (`422 validation_failed`).
 
 ### 2.11 `/v1/campaigns`
 
@@ -439,12 +442,12 @@ Applications keep the five APP-01 statuses; `talking` is a campaign stage only. 
 | POST | `/v1/campaigns` | Approve a match: start a campaign for a job at `researching`, with an optional model budget. Refuses a closed job (`410`) or one that breaks a hard constraint (`422`) | C | CMP-01 | 7 |
 | GET | `/v1/campaigns` | The campaign board: one column per stage, each card with pause state and reason, the next step and pending approvals. The `closed` column holds the 50 most recent (**assumption**) and a total | C | CMP-01, GRD-06 | 7 |
 | GET | `/v1/campaigns/{campaign_id}` | One campaign: stage history, steps, the cited company dossier, the application packet, interview preparation, pending approvals, cost against budget | C | CMP-01, CMP-02, CMP-03, CMP-05, APP-02, GRD-05 | 7 |
-| PATCH | `/v1/campaigns/{campaign_id}` | Change the campaign's model budget or `follow_up_after_days` | C | GRD-05, CMP-04 | 7 |
+| PATCH | `/v1/campaigns/{campaign_id}` | Change the campaign's model budget (`budget_usd`), `follow_up_after_days` (1 to 60) or `follow_up_email` (the only address a follow-up may go to; `null` clears it). A closed campaign is `409 conflict` (`details.state` `closed`) | C | GRD-05, CMP-04 | 7 |
 | POST | `/v1/campaigns/{campaign_id}/pause` | Pause: no step starts and no outside action executes until resumed; a follow-up in its undo window is held | C | CMP-07 | 7 |
 | POST | `/v1/campaigns/{campaign_id}/resume` | Resume a paused campaign, including one the Guardian paused (`409 budget_exhausted` if the budget is still spent) | C | CMP-07, GRD-07 | 7 |
-| POST | `/v1/campaigns/{campaign_id}/cancel` | Cancel: stage `closed`, reason `cancelled`. Pending approvals become `expired` with a note, their actions and any scheduled follow-up become `cancelled`. A linked introduction is unchanged: it is already accepted and the employer still owes an answer | C | CMP-07 | 7 |
+| POST | `/v1/campaigns/{campaign_id}/cancel` | Cancel (body `{note?, reason?}`; `reason` `offer_accepted` or `offer_declined` only at the `offer` stage, else `cancelled`): stage `closed`. Pending approvals become `expired` with a note, their actions and any scheduled follow-up become `cancelled`. A linked introduction is unchanged: it is already accepted and the employer still owes an answer | C | CMP-07 | 7 |
 
-Accepting an introduction starts a campaign at `applied` (2.17); its steps are `research` and `interview_prep` only. An employer's `yes` moves it to `talking`; a `no` closes it as `rejected`. The Guardian pauses a campaign that reaches its budget or shows signs of a scam posting, and records the reason as `pause_reason` (GRD-07). The default budget is the instance setting returned by `GET /v1/autonomy` (0.75 US dollars by default).
+Accepting an introduction starts a campaign at `applied` (2.17); its steps are `research` and `interview_prep` only. An employer's `yes` moves it to `talking`; a `no` closes it as `rejected`. The Guardian pauses a campaign that reaches its budget or shows signs of a scam posting, and records the reason as `pause_reason` (GRD-07). The default budget is the instance setting returned by `GET /v1/autonomy` (0.75 US dollars by default). `budget_usd` is text with at most 6 decimals, more than 0 and at most 100 (**assumption**), else `422 validation_failed`. Every write takes an `Idempotency-Key`; another person's campaign is `404`. Pause, resume and cancel are recorded by the Guardian as state changes in the flight recorder. A follow-up already drafted to an old address is not rewritten: the Guardian blocks it at release because its `to` is no longer the typed address.
 
 ### 2.12 `/v1/approvals`
 
@@ -452,17 +455,17 @@ Accepting an introduction starts a campaign at `applied` (2.17); its steps are `
 |---|---|---|---|---|---|
 | GET | `/v1/approvals` | Approvals, default `?status=pending`; filter by `campaign_id`, `kind` | C | BRF-02, GRD-01, CMP-03, CMP-04, TWN-02 | 7 |
 | GET | `/v1/approvals/{approval_id}` | One approval: the exact payload its action would send, its `payload_hash`, which fields may be edited, whether a `reply` is needed, the policy decision and Guardian checks already run, `expires_at` | C | GRD-01, GRD-02 | 7 |
-| POST | `/v1/approvals/{approval_id}/approve` | Say yes: body `payload_hash`, optional `edits`, and `reply` (required when the approval asks the candidate to answer a Twin question; optional `save_to_record` then proposes a record change). The action passes the policy engine and the Guardian again before it runs | C | CMP-03, CMP-04, GRD-02, GRD-04, TWN-02 | 7 |
+| POST | `/v1/approvals/{approval_id}/approve` | Say yes: body `payload_hash`, optional `edits`, and `reply` (required when the approval asks the candidate to answer a Twin question; optional `save_to_record` then proposes a record change). The action passes the policy engine and the Guardian again before it runs. The answer comes back at once with `release: "pending"`: the worker reruns both keys and schedules or blocks the action seconds later, and the page polls `GET /v1/campaigns/{id}` until it is `scheduled` or `blocked`. A `reply` is refused (`422 validation_failed`) until the Twin arrives in Phase 9 | C | CMP-03, CMP-04, GRD-02, GRD-04, TWN-02 | 7 |
 | POST | `/v1/approvals/{approval_id}/reject` | Say no, with an optional `note`. Nothing leaves the system | C | CMP-04 | 7 |
 
-An approval's kind is its action's type: `submit_application` (shown as "Application packet"), `send_follow_up` or `twin_answer`. Approvals are decided only in the app; brief emails link to the approval page. **Edits:** recorder content is immutable, so approving with `edits` rejects this approval with note `edited`, creates a new action with the edited payload, runs both keys on it, and records the candidate's yes on its approval in the same request. If a check fails on the edited payload, the new action is `blocked` and nothing is sent.
+An approval's kind is its action's type: `submit_application` (shown as "Application packet"), `send_follow_up` or `twin_answer`. Approvals are decided only in the app; brief emails link to the approval page. **Edits:** recorder content is immutable, so approving with `edits` rejects this approval with note `edited`, creates a new action with the edited payload, runs both keys on it, and records the candidate's yes on its approval in the same request. If a check fails on the edited payload, the new action is `blocked` and nothing is sent. The API process only records the yes and queues the release (its login cannot write an action or a check); `to`, `reply_to` and `channel` are never editable (`422 validation_failed`, `details.fields[0].field` names the field). A paused campaign is `409 conflict` (`details.state` `paused`), an expired approval `409 conflict` (`expired`). The list paginates with `limit` (default 50, at most 200) and `cursor` from `meta.next_cursor`.
 
 ### 2.13 `/v1/autonomy`
 
 | Method | Path | Purpose | Caller | Req | Phase |
 |---|---|---|---|---|---|
-| GET | `/v1/autonomy` | The level per outside action type with the levels allowed for it, the undo window, the fixed profile-sharing explanation, the instance's default campaign budget (read-only), `version` | C | GRD-01, GRD-04 | 7 |
-| PUT | `/v1/autonomy` | Replace the levels and the undo window. Any level outside the allowed set returns `422 autonomy_not_allowed` | C | GRD-01, GRD-04, CMP-04 | 7 |
+| GET | `/v1/autonomy` | The level per outside action type with the levels allowed for it, the undo window, the fixed profile-sharing explanation, the instance's default campaign budget (read-only), `version` (a short hash string of the levels and the window, sent as the `ETag`) | C | GRD-01, GRD-04 | 7 |
+| PUT | `/v1/autonomy` | Replace the levels and the undo window. Any level outside the allowed set returns `422 autonomy_not_allowed` and saves nothing; a stale `If-Match` is `412 version_conflict` | C | GRD-01, GRD-04, CMP-04 | 7 |
 
 | Action type | Allowed levels | Default |
 |---|---|---|
@@ -523,11 +526,11 @@ Phase 6: a role has no `version` and no `ETag`; drafts are last write wins and `
 |---|---|---|---|---|---|
 | GET | `/v1/introductions` | Candidate: introductions addressed to them. Employer: `?role_id=` or `?org_id=` with `?status=` | C, E | HIR-04, HIR-06 | 6 |
 | GET | `/v1/introductions/{introduction_id}` | Candidate: the ask with `share_preview` (exactly what the employer receives, fixed when the ask was made) and its hash. Employer: what was shared, the answer state and due time | C, E | HIR-04, HIR-05 | 6 |
-| POST | `/v1/introductions/{introduction_id}/accept` | Accept with the preview hash the candidate saw. One transaction: `introduction` consent, status `accepted`, `answer_due_at`, shortlist entry equal to `share_preview`, and the organization's notification email (Phase 6: no campaign is started, see the note below). No agent action and no undo | C | HIR-04, HIR-05, CMP-01 | 6 |
+| POST | `/v1/introductions/{introduction_id}/accept` | Accept with the preview hash the candidate saw. One transaction: `introduction` consent, status `accepted`, `answer_due_at`, shortlist entry equal to `share_preview`, and the organization's notification email, and the `introduction.accepted` event that starts a campaign at `applied` seconds later (Phase 7, see the note below). No agent action and no undo | C | HIR-04, HIR-05, CMP-01 | 6 |
 | POST | `/v1/introductions/{introduction_id}/decline` | Decline privately, no reason is taken or stored; the employer is never told who declined | C | HIR-04 | 6 |
 | POST | `/v1/introductions/{introduction_id}/answer` | The employer answers: `answer` (`yes` or `no`) and `reason` (required, non-empty text; the UI fills it from presets). A `yes` releases the candidate's account email, as `share_preview` states | E | HIR-06 | 6 |
 
-Phase 6: accept starts no campaign (CMP-01 is Phase 7), so the response has no `campaign` field and no `introduction.accepted` event is published; the terms sentence about the Twin waits for Phase 9. Decline takes no body. The employer's list and shortlist never include the caller's own rows, and `?status=` other than `accepted` is empty for an employer. A withdrawn ask is `409 conflict` (`details.state` `closed`), a lapsed one `409 conflict` (`expired`), one already accepted or declined `409 already_resolved` (`details.resolution`). The due time is the same local time five business days later in the organization's time zone (not the end of that day).
+Phase 7: accepting publishes `introduction.accepted` in the accept transaction, and the worker creates the campaign (stage `applied`, steps `research` and `interview_prep` only) a few seconds later; if the person already has an open campaign for the role's job it takes the introduction instead. The accept response is unchanged and has no `campaign` field. The employer's answer publishes `introduction.answered` and wakes that campaign (a `yes` moves it to `talking`, a `no` closes it as `rejected`). The terms sentence about the Twin waits for Phase 9. Decline takes no body. The employer's list and shortlist never include the caller's own rows, and `?status=` other than `accepted` is empty for an employer. A withdrawn ask is `409 conflict` (`details.state` `closed`), a lapsed one `409 conflict` (`expired`), one already accepted or declined `409 already_resolved` (`details.resolution`). The due time is the same local time five business days later in the organization's time zone (not the end of that day).
 
 An ask with no reply after seven days becomes `expired`, which counts as no (HIR-04). The answer is due five business days after acceptance, Monday to Friday in the organization's time zone, with no holidays. While any answer is overdue, new asks pause for every role of the organization.
 
@@ -546,14 +549,15 @@ Each person sees only their own work. There are no instance-wide views in v1 (ow
 
 | Method | Path | Purpose | Caller | Req | Phase |
 |---|---|---|---|---|---|
-| GET | `/v1/control/runs` | The caller's agent runs with status; filter `campaign_id`, `status`, `agent_role` | C | GRD-06 | 7 |
+| GET | `/v1/control/runs` | The caller's agent runs and their matching (Scout) runs merged newest first, each with `source` (`campaign` or `matching`), `campaign` (`{id, title, company_name}` or null), `agent_role` (`scout` for matching runs), `status` (`running`, `succeeded`, `failed`, `cancelled`), `blocked` (the run's blocked actions), `cost_usd` (the sum of the run's model calls; `null` for a matching run, whose cost is not attributed, so it is unknown and never zero), `trigger` (a matching run's trigger, else null), `started_at`, `finished_at`, `duration_ms` (null while running). Filters `campaign_id`, `status`, `agent_role` (`scout` or any role but `guardian`; an unknown value is `422 validation_failed`), `limit` (default 50, max 100) and `cursor`; the response is `{runs, server_time, next_cursor}` with an opaque cursor (a malformed one is `422 validation_failed`). A campaign's Guardian control run, which only holds state changes and never finishes, is never listed. 3.16a shows the shape | C | GRD-06 | 8 |
 | GET | `/v1/control/recorder` | Flight-recorder timeline: every entry of a campaign or run in order (`?campaign_id=` or `?run_id=`) with agent role, kind, status, cost and evidence counts | C | GRD-03, GRD-02 | 7 |
 | GET | `/v1/control/recorder/{entry_id}` | One entry in full for replay: input references, cited evidence, model, tokens, cost, policy decision, Guardian checks with reasons, payload | C | GRD-03 | 7 |
-| GET | `/v1/control/stream` | The per-person live event stream (section 4.3) | U | GRD-06, HIR-06, TWN-04 | 7 |
-| POST | `/v1/control/actions/{action_id}/undo` | Undo a follow-up email still in its undo window (it becomes `cancelled`) | C | GRD-04 | 7 |
-| GET | `/v1/control/costs` | The caller's model cost grouped by `month` or `task`, read from the cost ledger; each row also lists the models its calls used (`provider/model_name`) and their average latency in milliseconds (`group_by=campaign` is added in Phase 7) | C | GRD-05, PLT-04 | 1 |
-| GET | `/v1/control/evals` | The scoreboard: the latest recorded run per suite and scenario; every number carries its `eval_run_id` | U | EVL-04, EVL-05 | E |
-| GET | `/v1/control/evals/runs/{eval_run_id}` | One eval run: suite, git commit, model and prompt versions, per-item results, the repeats of a wind-tunnel scenario | U | EVL-01, EVL-02, EVL-03, EVL-04 | E |
+| GET | `/v1/control/stream` | The per-person live event stream (section 4.3) | U | GRD-06, HIR-06, TWN-04 | 8 |
+| POST | `/v1/control/actions/{action_id}/undo` | Undo a follow-up email still in its undo window (it becomes `cancelled`; once the relay has claimed the message it is `409 conflict` with `details.state` `sending`, `sent` or `executed`) | C | GRD-04 | 7 |
+| GET | `/v1/control/costs` | The caller's model cost grouped by `month` or `task`, optionally only one UTC month (`?month=2026-11`, `YYYY-MM` with month 01 to 12, else `422 validation_failed`), read from the cost ledger; each row also lists the models its calls used (`provider/model_name`) and their average latency in milliseconds | C | GRD-05, PLT-04 | 1 |
+| GET | `/v1/control/costs/campaigns` | The caller's model cost per campaign against its budget, for one UTC month (`?month=2026-11`) or the campaign's whole life, plus what was spent outside campaigns (3.17) | C | GRD-05 | 8 |
+| GET | `/v1/control/evals` | The scoreboard: the latest recorded run per suite, and per wind-tunnel scenario; every value carries its `run_id`, date, commit, model and `mode` (`replay` runs are wiring checks, not a quality measure); where nothing was recorded the value is `null`. Reads stored runs only, never computes a rate, returns no eval item rows (3.17a) | U | EVL-04, EVL-05 | 8 |
+| GET | `/v1/control/evals/runs/{eval_run_id}` | One eval run: suite, status, mode, git commit, the allow-listed `config` (`mode`, `provider`, `model`, `routes`, `prompt_version`, `prompt_versions`, `scenario_versions`, `attempts`, `labels`, `recorded`), stored `metrics`, and for a wind-tunnel run every attempt with its results (`attempts`, else null). A `harness_smoke` run or an unknown id is `404 not_found` | U | EVL-01, EVL-02, EVL-03, EVL-04 | 8 |
 
 Eval runs are started by CI and the command line, not by the API.
 
@@ -568,6 +572,16 @@ Eval runs are started by CI and the command line, not by the API.
 | GET | `/v1/privacy/audit-log` | Every automated decision and every agent or outside-agent action about the caller, including refused agent-token calls; filter `?agent_token_id=`, `?campaign_id=` | C | TRU-03, NET-03, GRD-02 | 2 |
 | GET | `/v1/privacy/subprocessors` | Model providers and sub-processors configured on this installation, with what each receives (read by the public `/trust` page) | P | TRU-04, TRU-05 | 1 |
 
+`GET /v1/privacy/audit-log` reads, on the caller's own API connection, the automated decisions and events about the caller, newest first, from sources each module registers at start-up (so `trust` imports nothing above it). Query: `agent_token_id` and `campaign_id` (UUIDs), `cursor` (an opaque string from the last page) and `limit` (1 to 100, default 50). The answer is `data: {entries, next_cursor}`; `meta` repeats `next_cursor` and `limit`. A cursor that is not ours is `400 invalid_request`. An entry is `{id, occurred_at, source, kind, actor_type, summary, outcome, reason_codes, agent_token_id, campaign_id, organization, link}`:
+
+| `source` | Entries | `kind` | `link` |
+|---|---|---|---|
+| `account` | `audit_log` rows whose subject is the caller: consents, sign-ins, introductions, and the calls of outside agents with their tokens, refused ones with the reason code | the row's `event_type` (for example `agentnet.agent_call_refused`) | none |
+| `matching` | one per finished candidate match run, with how many matches it showed, withheld and filtered out; a failed run shows its status and error code | `match.run_completed`, `match.run_failed` | `{kind: "decisions", href: "/v1/decisions?from=D&to=D"}` for the run's day |
+| `guardian` | outside actions that were executed, blocked, rejected, expired, cancelled or failed; a blocked one lists every failed check's reason code. Steps that only record a model or tool call are not entries | `guardian.action_blocked`, `guardian.action_executed`, `guardian.action_rejected`, `guardian.action_expired`, `guardian.action_cancelled`, `guardian.action_failed` | `{kind: "recorder", href: "/control/recorder?entry={id}"}` |
+
+`agent_token_id` keeps only `account` entries of that token; `campaign_id` keeps only `guardian` entries of that campaign (a source that cannot honour a filter returns nothing). `summary` is built by code from codes and counts and never holds a question, reply, message or draft text. `organization` is `{id, name}` with `name` null where the caller may not read the organization. Another person's entries never appear: every source reads under the caller's row-level security and by the caller's id. A source that fails makes the whole request `500`; there is no partial page.
+
 ### 2.21 `/v1/webhooks`
 
 | Method | Path | Purpose | Caller | Req | Phase |
@@ -578,7 +592,19 @@ Eval runs are started by CI and the command line, not by the API.
 
 Each of these was considered and left out because no v1 requirement needs it: deleting a single document or chat session (account deletion covers it), sharing resume files with employers (the frozen preview is shared instead), employer search over candidates, a consent endpoint group (consents are given through `PATCH /v1/me` or by the action that needs them), instance-wide operator views and any operator endpoint (G8; the instance operator uses the command line), an API trigger for eval runs, an OAuth flow at `/mcp` (v2), and operator endpoints for board import (IDX-09 is the existing discovery command).
 
-**Count:** 111 endpoints under `/v1` (two of them, `GET /v1/jobs` and `GET /v1/stats`, already exist and stay compatible), plus `GET /healthz` and `POST /mcp` with 6 tools.
+**Count:** 111 endpoints under `/v1` (two of them, `GET /v1/jobs` and `GET /v1/stats`, already exist and stay compatible), plus `GET /healthz` and `POST /mcp` with 6 tools. The four local-mode endpoints of 2.2 and 2.23 exist only with `APP_MODE=local` and are not in the count.
+
+### 2.23 `/v1/local` and `/v1/settings`: local mode
+
+Local mode only (1.2): `404` in server mode, `403` unless the `Host` header names this computer. Phase **L** is local mode, built after phase 8. The model key is the one setting the owner changes from the app; everything else in `.env` stays there.
+
+| Method | Path | Purpose | Caller | Req | Phase |
+|---|---|---|---|---|---|
+| GET | `/v1/local/status` | What the web needs before it shows anything: `{mode: "local", has_owner, model: {provider, key_set, key_last4, source}}`. `provider` is the one in use (`anthropic`, `openai`, `openai_compatible` for a model server you run, or `fake` for recorded answers); `key_set` is true when it has a key (or needs none); `key_last4` is the last four characters; `source` is `environment` or `app`. Never the key | P (local mode) | PLT-05 | L |
+| PUT | `/v1/settings/model-key` | Save the model key: `{provider: "anthropic" or "openai", api_key}`. The key is 8 to 512 visible ASCII characters (surrounding spaces are dropped), is stored sealed with the data keys (`APP_DATA_KEYS`) and is never returned or logged; the answer is the `model` object above. `409 conflict` (`details.state` is `set_in_environment`) when `LLM_PROVIDER` or an API key in the environment already settles the model, because the environment wins and a saved key would go unused. The owner only (`403` for any other account) | U (the owner) | PLT-05 | L |
+| DELETE | `/v1/settings/model-key` | Remove the saved key. `204`, also when there is none. The owner only | U (the owner) | PLT-05 | L |
+
+Both the API and the worker read the saved key, each at most once every ten seconds, so a key saved in the app reaches the worker within that time.
 
 ---
 
@@ -1019,6 +1045,8 @@ Rows are newest first (local date, then the time the decision was recorded). `ou
 }
 ```
 
+From Phase 7 the brief also carries `approval` items (one per pending approval, soonest `expires_at` first) and `activity` items (one per action executed, blocked or failed since the previous brief), at most 5 of each (**assumption**). Each has `{kind, campaign_id, text, link: "/app/campaigns/{campaign_id}", approval_id | agent_action_id}`, and the brief view adds an `undoable` list of scheduled follow-ups, `{action_id, campaign_id, company_name, undo_until}`, for Today's receipt line. The email links to the same pages and decides nothing.
+
 Every decision item points at an ordinary endpoint; the brief adds no new way to act. Approvals and introductions are decided after opening them in the app (an email link opens the same page), because the decision must follow a look at the exact payload or preview. `delivery` values are brief statuses; `email` is `null` when the person has not given the `brief_email` consent. One brief is stored per person, date and channel, so a retry of the sender cannot produce a second one (BRF-01). A brief stores which matches it lists; whether each may still be listed is asked again whenever the brief is read and when its email is written: a job that has closed since, or that the candidate's hard constraints now exclude, is left out, so an email sent at 06:40 never carries what the candidate excluded at 06:00. Two figures are deliberately records of the past and are not re-checked: each `done_since_last_brief` line gives a run's counts as that run made them (so the brief reads the same however late it is opened, and can say "5 shown" above fewer items), and `item_count` in the brief list is the number of items the brief was composed with.
 
 ### 3.6 Approving, editing and rejecting an approval
@@ -1073,38 +1101,22 @@ Header: `Idempotency-Key: 2c4e6a80-b1d3-4f5a-8c7e-9d0b1a2c3e40`
 }
 ```
 
-Response `200`:
+Response `200`. The API records the yes and queues the release; the worker runs both keys again and schedules or blocks the action seconds later, so the answer says `release: "pending"` and the action is still `awaiting_approval` (for an edit, the original action is already `rejected`, and the replacement does not exist yet):
 
 ```json
 {
   "success": true,
   "data": {
     "approval": {"id": "a9b8c7d6-5e4f-4a3b-9c2d-1e0f9a8b7c60", "status": "rejected", "note": "edited", "decided_at": "2026-11-22T05:48:31Z"},
-    "replacement": {
-      "approval": {"id": "a9b8c7d6-5e4f-4a3b-9c2d-1e0f9a8b7c61", "status": "approved", "decided_at": "2026-11-22T05:48:31Z"},
-      "action": {
-        "id": 21002,
-        "type": "send_follow_up",
-        "status": "scheduled",
-        "undo_until": "2026-11-22T05:58:31Z",
-        "undo": {"method": "POST", "path": "/v1/control/actions/21002/undo"},
-        "checks": [
-          {"check": "citations", "passed": true, "reason_code": null},
-          {"check": "consent", "passed": true, "reason_code": null},
-          {"check": "scope", "passed": true, "reason_code": null},
-          {"check": "budget", "passed": true, "reason_code": null},
-          {"check": "injection", "passed": true, "reason_code": null},
-          {"check": "rate_limit", "passed": true, "reason_code": null}
-        ]
-      }
-    }
+    "action": {"id": 20977, "type": "send_follow_up", "status": "rejected"},
+    "release": "pending"
   },
   "error": null,
   "meta": {"request_id": "req_01JG2C9X3G8H"}
 }
 ```
 
-Without `edits`, the same call returns the approval as `approved` and its own action as `scheduled`, with no `replacement`. Both keys run again when the undo window ends, just before sending. If a check fails then, the action becomes `blocked` with its `outcome_code`, nothing is sent, and the block appears in the recorder and on the live stream (GRD-02). A `payload_hash` that does not match the stored payload returns `409 preview_changed`. Deciding twice returns `409 already_resolved`; a retry with the same idempotency key returns the first response.
+Without `edits` the approval comes back `approved` and its own action `awaiting_approval` with `release: "pending"`. The page then polls `GET /v1/campaigns/{campaign_id}` until the action (or, for an edit, its replacement, which carries `inputs.replaces` = the original id) is `scheduled`, with `undo_until` = the release time plus the person's undo window and `undo` = `POST /v1/control/actions/{id}/undo`, or `blocked` with its `outcome_code`. Both keys run again when the undo window ends, just before sending. If a check fails then, the action becomes `blocked`, nothing is sent, and the block appears in the recorder and, from Phase 8, on the live stream (GRD-02). A `payload_hash` that does not match the stored payload returns `409 preview_changed` (`details.payload_hash` is the current one). Deciding twice returns `409 already_resolved`; a retry with the same idempotency key returns the first response.
 
 **Reject.** `POST /v1/approvals/a9b8c7d6-5e4f-4a3b-9c2d-1e0f9a8b7c60/reject`
 Header: `Idempotency-Key: 4e6a8c02-d3f5-4b7c-8e9a-1f2d3c4e5a60`
@@ -1155,6 +1167,7 @@ Header: `Idempotency-Key: 6a8c0e24-f5b7-4d9e-8abc-3b4f5e6a7c80`
     "budget_usd": "1.50",
     "spent_usd": "0.000000",
     "follow_up_after_days": 7,
+    "follow_up_email": null,
     "next_step": {"step_key": "research", "agent_role": "researcher", "text": "Building a cited company dossier."},
     "created_at": "2026-11-22T05:52:10Z"
   },
@@ -1163,7 +1176,9 @@ Header: `Idempotency-Key: 6a8c0e24-f5b7-4d9e-8abc-3b4f5e6a7c80`
 }
 ```
 
-A second start for the same job while one is open returns `409 conflict` with `details.campaign_id` of the existing campaign. A job that breaks a hard constraint returns `422 violates_constraint`; a closed job returns `410 job_closed`.
+A second start for the same job while one is open returns `409 conflict` with `details.campaign_id` of the existing campaign. A job that breaks a hard constraint returns `422 violates_constraint` (`details.kinds`); a closed job returns `410 job_closed`; without the `ai_processing` consent the platform's `403 consent_required`; an unknown job `404`; a `budget_usd` of 0, negative, over 100 or with more than 6 decimals `422 validation_failed`. The campaign starts a moment later in the worker. An application the person recorded for the job before the start is linked to the new campaign.
+
+**Change.** `PATCH /v1/campaigns/3a7b9c1d-2e4f-4a6b-8c0d-e1f2a3b4c561` with any of `{"budget_usd": "2.00", "follow_up_after_days": 10, "follow_up_email": "talent@lumengrid.example"}` returns the campaign as the start does (`200`). An empty body or an address that is not an email address (at most 254 characters) is `422 validation_failed`; a closed campaign is `409 conflict` with `details.state` `closed`. Without a follow-up address the Chaser leaves a to-do instead of a draft.
 
 **Pause.** `POST /v1/campaigns/3a7b9c1d-2e4f-4a6b-8c0d-e1f2a3b4c561/pause` with body `{}`:
 
@@ -1183,7 +1198,7 @@ A second start for the same job while one is open returns `409 conflict` with `d
 }
 ```
 
-A step already calling a model finishes its call and stops at its next boundary; its cost is still recorded.
+A step already calling a model finishes its call and stops at its next boundary; its cost is still recorded. Pausing a paused campaign returns its current state (without `held`). **Resume.** `POST /v1/campaigns/{id}/resume` with `{}` returns `{id, stage, paused_at: null, pause_reason: null}`; a campaign paused for `budget_exhausted` whose spend is still at its budget returns `409 budget_exhausted` (`details.budget_usd`) until `PATCH` raises the budget; a `scam_suspected` pause resumes as the candidate's own override. Pause, resume and cancel of a closed campaign are `409 conflict` (`details.state` `closed`).
 
 **Cancel.** `POST /v1/campaigns/3a7b9c1d-2e4f-4a6b-8c0d-e1f2a3b4c561/cancel`
 
@@ -1210,7 +1225,7 @@ Response `200`:
 }
 ```
 
-For a campaign started by an accepted introduction, `introduction_id` is returned unchanged: the employer still owes its answer.
+For a campaign started by an accepted introduction, `introduction_id` is returned unchanged: the employer still owes its answer. The body is optional: `note` (at most 500 characters) is stored on the expired approvals; `reason` is `cancelled` (default), or `offer_accepted` or `offer_declined` at the `offer` stage only (`422 validation_failed` elsewhere). Cancelling a closed campaign is `409 conflict`.
 
 ### 3.8 The campaign board
 
@@ -1281,13 +1296,13 @@ The Lumen Grid card stays in `applied` and shows a "needs you" badge because `pe
 
 ### 3.9 Reading and changing autonomy settings
 
-`GET /v1/autonomy` returns `ETag: "3"`:
+`GET /v1/autonomy` returns `ETag: "9f3c1a7e2b4d6a80"`:
 
 ```json
 {
   "success": true,
   "data": {
-    "version": 3,
+    "version": "9f3c1a7e2b4d6a80",
     "actions": {
       "submit_application": {"level": "ask_first", "allowed_levels": ["ask_first"]},
       "send_follow_up": {"level": "ask_first", "allowed_levels": ["ask_first", "never"]},
@@ -1305,7 +1320,7 @@ The Lumen Grid card stays in `applied` and shows a "needs you" badge because `pe
 `undo_window_minutes` (1 to 60, default 10, GRD-04) applies to follow-up emails only. `twin_answer` at `tell_me_after` releases answers only on topics set to `answer`; at `never` the Twin releases nothing itself and every question waits for the candidate. `campaign_budget_default_usd` is the instance setting and is read-only here; a campaign's own budget is changed with `PATCH /v1/campaigns/{campaign_id}`.
 
 **Change, including the refusal.** `PUT /v1/autonomy`
-Headers: `Idempotency-Key: 9c0e2a46-17b9-4f1a-8cde-5d6f7a8b9c00`, `If-Match: "3"`
+Headers: `Idempotency-Key: 9c0e2a46-17b9-4f1a-8cde-5d6f7a8b9c00`, `If-Match: "9f3c1a7e2b4d6a80"`
 
 ```json
 {
@@ -1766,9 +1781,32 @@ On an introduction still `asked`, `is_visible_to_employer` is `false` until the 
 
 Each entry is one `agent_actions` row; `id` is its identity key and `seq` its order within the run. Guardian checks are not separate entries: they belong to an `outside_action` entry. `GET /v1/control/recorder/{entry_id}` returns the entry for replay: the references it read (fact ids, job id and content version, dossier sources), the cited evidence, model and prompt version, token counts, cost, the policy decision, every Guardian check with its `passed` flag and reason, and for outside actions the exact payload. Replay means stepping through what was recorded; it never calls a model again.
 
+### 3.16a The runs list
+
+`GET /v1/control/runs?limit=3` (example content: invented names and figures)
+
+```json
+{
+  "success": true,
+  "data": {
+    "runs": [
+      {"id": "9a3b5c7d-8e0f-4a2b-8c6d-e7f8a9b0c1d0", "source": "campaign", "campaign": {"id": "3a7b9c1d-2e4f-4a6b-8c0d-e1f2a3b4c560", "title": "Data engineer", "company_name": "Lumen Demo"}, "agent_role": "chaser", "status": "running", "blocked": 0, "cost_usd": "0.004900", "trigger": null, "started_at": "2026-11-22T05:40:00Z", "finished_at": null, "duration_ms": null},
+      {"id": "5c1e7a90-2b34-4d56-8e78-9fab0c1d2e3f", "source": "matching", "campaign": null, "agent_role": "scout", "status": "succeeded", "blocked": 0, "cost_usd": null, "trigger": "nightly", "started_at": "2026-11-22T01:00:00Z", "finished_at": "2026-11-22T01:02:10Z", "duration_ms": 130000},
+      {"id": "9a3b5c7d-8e0f-4a2b-8c6d-e7f8a9b0c1b2", "source": "campaign", "campaign": {"id": "3a7b9c1d-2e4f-4a6b-8c0d-e1f2a3b4c560", "title": "Data engineer", "company_name": "Lumen Demo"}, "agent_role": "operator", "status": "failed", "blocked": 2, "cost_usd": "0.000000", "trigger": null, "started_at": "2026-11-21T09:04:00Z", "finished_at": "2026-11-21T09:04:09Z", "duration_ms": 9000}
+    ],
+    "server_time": "2026-11-22T05:41:00Z",
+    "next_cursor": "WyIyMDI2LTExLTIxVDA5OjA0OjAwKzAwOjAwIiwgIjlhM2I1YzdkLThlMGYtNGEyYi04YzZkLWU3ZjhhOWIwYzFiMiIsICJjYW1wYWlnbiJd"
+  },
+  "error": null,
+  "meta": {"request_id": "req_01JG2CY90A1B"}
+}
+```
+
+Rows are ordered by start time, newest first, with the run id breaking ties, so following `next_cursor` never repeats or skips a run. `cost_usd` is a six-place decimal string, the sum of the run's own ledger rows; a matching run's is `null`. The cursor is opaque and only positions the caller's own list.
+
 ### 3.17 Cost per campaign
 
-`GET /v1/control/costs?group_by=campaign&month=2026-11`
+`GET /v1/control/costs/campaigns?month=2026-11` (example content: invented figures)
 
 ```json
 {
@@ -1781,19 +1819,23 @@ Each entry is one `agent_actions` row; `id` is its identity key and `seq` its or
     "groups": [
       {
         "campaign_id": "3a7b9c1d-2e4f-4a6b-8c0d-e1f2a3b4c560",
-        "title": "Site Reliability Engineer at Lumen Grid",
+        "title": "Data engineer",
+        "company_name": "Lumen Demo",
+        "stage": "applied",
         "spent_usd": "0.054500",
-        "budget_usd": "0.75",
-        "model_calls": 9,
-        "by_agent_role": {"researcher": "0.031200", "writer": "0.018400", "chaser": "0.004900"}
+        "lifetime_spent_usd": "0.071000",
+        "budget_usd": "0.750000",
+        "model_calls": 9
       },
       {
         "campaign_id": null,
-        "title": "Not tied to a campaign (matching, brief, chat, tailoring)",
+        "title": "Not tied to a campaign",
+        "company_name": null,
+        "stage": null,
         "spent_usd": "0.357800",
+        "lifetime_spent_usd": "0.402500",
         "budget_usd": null,
-        "model_calls": 52,
-        "by_agent_role": {"analyst": "0.214000", "scout": "0.000000"}
+        "model_calls": 52
       }
     ],
     "label": "Measured: sums of recorded model calls."
@@ -1803,7 +1845,37 @@ Each entry is one `agent_actions` row; `id` is its identity key and `seq` its or
 }
 ```
 
-Every figure is a sum over the cost ledger of recorded model calls (PLT-04). Twin answers are charged to the asking organization, so they do not appear in the candidate's costs. `group_by=month` returns one group per month for the last 12 months.
+`month` is optional (`YYYY-MM`, a UTC month, month 01 to 12, else `422 validation_failed`); without it `month` is `null` and `spent_usd` is the campaign's whole life. The groups are every open campaign of the caller and every campaign with spend in the period, ordered by spend; a campaign with no calls shows `"0.000000"`, never null. The last group is always the spend tied to no campaign (matching, brief, chat, tailoring). `total_usd` and `model_calls` are the sums of the groups shown. `budget_usd` is the campaign's budget; a budget bar compares it with `lifetime_spent_usd`. Every figure is a sum over the cost ledger of recorded model calls (PLT-04). There is no per-agent-role split (the task view of `GET /v1/control/costs` covers it). Twin answers are charged to the asking organization, so they do not appear in the candidate's costs. `GET /v1/control/costs?group_by=month` returns one group per month.
+
+### 3.17a The scoreboard
+
+`GET /v1/control/evals` (example content: every name, id and value is invented for this page, and the wind-tunnel row describes a replay run, which is a wiring check, not a measure of quality)
+
+```json
+{
+  "success": true,
+  "data": {
+    "suites": [
+      {"suite": "resume_extraction", "result": null},
+      {"suite": "guardian", "result": {"run_id": "0e1d2c3b-4a59-4687-8695-a4b3c2d1e0f9", "status": "passed", "mode": "replay", "n": 12, "passed": 12, "score": 1.0, "git_sha": "abc1234", "finished_at": "2026-11-20T12:00:00Z", "model": null, "labels": null}}
+    ],
+    "wind_tunnel": {
+      "last_live_run": null,
+      "personas": [
+        {"persona": "silent", "scenarios": [
+          {"key": "example-silent", "title": "An invented silent employer", "version": 1, "result": {"run_id": "7f6e5d4c-3b2a-4190-8f7e-6d5c4b3a2910", "version": 1, "attempts": 5, "attempts_passed": 4, "passed": false, "attempt_statuses": ["passed", "passed", "failed", "passed", "passed"], "medians": {"human_minutes_per_interview": null, "agent_steps": 14}, "mode": "replay", "git_sha": "abc1234", "finished_at": "2026-11-20T12:00:00Z"}}
+        ]},
+        {"persona": "scam", "scenarios": []}
+      ],
+      "human_minutes_per_interview": null
+    }
+  },
+  "error": null,
+  "meta": {"request_id": "req_01JG2CZ9AB3C"}
+}
+```
+
+A suite with no finished run has `"result": null`: nothing is shown, and nothing is shown as zero. `suites` has one entry per evaluation suite except the wind tunnel and the harness check; the result is the latest run that finished `passed` or `failed`. A scenario passes only at five of five attempts. `mode` says whether the run replayed recorded answers (`replay`, a wiring check) or called a model (`live`). `GET /v1/control/evals/runs/{eval_run_id}` returns `{run_id, suite, status, mode, git_sha, started_at, finished_at, config, metrics, attempts}`; each value on the scoreboard links to its run by `run_id`. Any signed-in account may read both routes; they hold no personal data. Eval item rows are not returned.
 
 ### 3.18 Export and deletion
 
@@ -1948,6 +2020,7 @@ data: {"message_id":"1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c02","finish_reason":"comp
 | `tool.result` | `call_id`, `tool`, `refs` | The tool returned. Only ids are sent, never tool output text |
 | `citation` | `kind` (`decision`, `job`, `fact`, `constraint`, `campaign`), the matching ids, and `alias` (Phase 5: the marker, such as `d1`, that the reply text carries as `[[d1]]`, so the client can place the chip) | A ledger entry the answer rests on (CHT-01) |
 | `proposal` | `event_id`, `entity`, `operation`, `before`, `after`, `statement` | A record change was proposed. The client shows confirm and decline, which call `/v1/me/events/{event_id}/confirm` or `/decline` (CHT-03) |
+| `campaign_proposal` | `job_id`, `title`, `company_name`, `campaign_id` (the open campaign for that job, or `null`) | The agent suggested starting a campaign for a job. Nothing changed: the client shows a card whose button calls `POST /v1/campaigns` (its refusals, such as a closed job or a constraint, are shown on the card) |
 | `message.snapshot` | `text` (everything so far), `citations`, `proposals` | Sent first on a reconnect, so the client can replace its partial copy. While the reply runs, its event `id` is the last event it covers; a snapshot built from the stored reply has no `id` |
 | `message.end` | `message_id`, `finish_reason` (`complete`, `length`, `stopped`, `interrupted`), `usage`, `cost_usd` | The reply is complete and stored. Always the last frame. `usage` and `cost_usd` are `null` only for a reply that was closed after the process running it died, so its cost is unknown |
 | `error` | `code`, `message`, `is_retryable` | The reply failed and ends with `finish_reason: "interrupted"`; its stored `text` is `''`, as for every reply that does not end `complete`. Always followed by `message.end` with that reason |
@@ -1998,7 +2071,9 @@ data: {"approval_id":"a9b8c7d6-5e4f-4a3b-9c2d-1e0f9a8b7c63","campaign_id":"3a7b9
 | `twin.message` | `session_id`, `message_id`, `author`, `answer_kind` | A new Twin question or answer (TWN-04) |
 | `error` | `code`, `message`, `is_retryable` | The stream failed |
 
-**Ids and reconnection.** Events that come from a flight-recorder row (`recorder.step` and `campaign.stage`) carry `id:` set to that row's `agent_actions.id`, so the client can drop an entry it already holds. Other events carry no id. The server keeps no replay buffer and ignores `Last-Event-ID` on this stream: every connect and reconnect starts with `snapshot`, and a screen that shows a list (the recorder, approvals, introductions) refetches it. Identity values can commit out of order, so replaying "everything after this id" would not be reliable anyway.
+**Ids and reconnection.** `recorder.step` carries `id:` set to the `agent_actions.id` of its row, so the client can drop an entry it already holds. `campaign.stage` and every other event carry no id (Phase 8: a stage change has no row id of its own to send). A `campaign.stage` for a campaign created after the snapshot has `from: null`. The server keeps no replay buffer and ignores `Last-Event-ID` on this stream: every connect and reconnect starts with `snapshot`, and a screen that shows a list (the recorder, approvals, introductions) refetches it. Identity values can commit out of order, so replaying "everything after this id" would not be reliable anyway.
+
+**How fresh it is (Phase 8).** The server reads the caller's own rows every two seconds (an assumption, `POLL_SECONDS`), so an event arrives within about two seconds of the change, never instantly. It sends `: ping` when nothing was sent for 15 seconds. A failure ends the stream with an `error` event of fixed text (`internal_error`, retryable), and a session that ends mid-stream ends it with `error` code `unauthenticated` (not retryable). Money values are decimal strings with six places. `introduction.status` follows the caller's own introduction lists: a candidate sees their own, an employer member sees the accepted introductions of their organizations (their list), so a candidate's private decline is never sent to the employer. `twin.message` arrives with Phase 9.
 
 **Polled, not streamed.** Brief ready, match run finished, document extraction progress, export ready and eval run finished are read by polling the resource while a screen waits (1.9).
 
@@ -2394,18 +2469,18 @@ Resend's exact signed-content format and event names were not confirmed on its o
 | HIR-06 | `POST /v1/introductions/{id}/answer`, `GET /v1/orgs/{id}/answer-clock`, `introduction.status` events |
 | HIR-07 | `POST /v1/me/constraints` with `kind: excluded_company` |
 | HIR-08 | `POST /v1/signals`, `GET /v1/signals`; `signals` on the shortlist |
-| CMP-01 | `POST /v1/campaigns`, `GET /v1/campaigns`, `GET /v1/campaigns/{id}`; accepting an introduction; stage moves from applications and employer answers |
+| CMP-01 | `POST /v1/campaigns`, `GET /v1/campaigns`, `GET /v1/campaigns/{id}`; accepting an introduction (`introduction.accepted`); stage moves from applications (`application.status_changed`) and employer answers (`introduction.answered`) |
 | CMP-02 | `dossier` in `GET /v1/campaigns/{id}` |
 | CMP-03 | `packet` in `GET /v1/campaigns/{id}`; `submit_application` approval |
-| CMP-04 | `send_follow_up` approvals; `follow_up_after_days` on `PATCH /v1/campaigns/{id}` |
+| CMP-04 | `send_follow_up` approvals; `follow_up_after_days` and `follow_up_email` on `PATCH /v1/campaigns/{id}` |
 | CMP-05 | `interview_prep` in `GET /v1/campaigns/{id}` |
 | CMP-06 | No endpoint (durability); `GET /v1/campaigns/{id}` shows that state survives |
 | CMP-07 | `POST /v1/campaigns/{id}/pause`, `/resume`, `/cancel` |
 | GRD-01 | `GET` and `PUT /v1/autonomy` (`422 autonomy_not_allowed`) |
-| GRD-02 | `checks` on approvals and actions; `action.status` events; recorder; audit log |
+| GRD-02 | `checks` on approvals and actions; `release: "pending"` on approve; `action.status` events; recorder; audit log |
 | GRD-03 | `GET /v1/control/recorder`, `GET /v1/control/recorder/{entry_id}` |
 | GRD-04 | `undo_until` on follow-ups; `POST /v1/control/actions/{id}/undo`; `undo_window_minutes` |
-| GRD-05 | `GET /v1/control/costs`; `spent_usd` and `budget_usd` on campaigns; `cost.updated` |
+| GRD-05 | `GET /v1/control/costs` (`month=`), `GET /v1/control/costs/campaigns`; `spent_usd` and `budget_usd` on campaigns; `cost.updated` |
 | GRD-06 | `GET /v1/control/runs`, `GET /v1/control/stream` (`step.status`, `campaign.stage`) |
 | GRD-07 | `pause_reason` `budget_exhausted` or `scam_suspected` on campaigns and `campaign.stage` events; `PATCH /v1/campaigns/{id}` to raise the budget; `/resume` (`409 budget_exhausted`); `/cancel` |
 | TWN-01 | `POST /v1/twin/questions`; tool `ask_twin` |

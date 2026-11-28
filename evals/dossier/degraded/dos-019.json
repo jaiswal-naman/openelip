@@ -1,0 +1,24 @@
+[
+ {
+  "claims": [],
+  "links": [
+   "https://selvane-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://selvane-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://selvane-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://selvane-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

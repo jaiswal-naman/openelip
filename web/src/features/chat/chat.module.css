@@ -1,4 +1,8 @@
-/* The chat panel: a side sheet on a desktop screen, the whole screen on a phone (FRONTEND_UI 3.11). Tokens only. */
+/*
+ * The chat panel: a side panel on a desktop screen, the whole screen on a phone (FRONTEND_UI 3.11). A header strip with the
+ * title and Close; the person's messages as black bubbles on the right, the agent's replies as white bordered cards on the
+ * left with their citations as chips; the composer is a pill field with a round send button inside it. Tokens only.
+ */
 
 .overlay {
   position: fixed;
@@ -6,14 +10,14 @@
   z-index: 60;
   display: flex;
   justify-content: flex-end;
-  background: rgb(0 0 0 / 0.45);
+  background: rgb(0 0 0 / 0.4);
 }
 
 .modal {
   display: flex;
   width: 100%;
   height: 100%;
-  background: var(--surface);
+  background: var(--bg);
 }
 
 @media (min-width: 40rem) {
@@ -28,17 +32,19 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--sp-12);
   min-height: 0;
-  padding: var(--sp-16);
   outline: none;
 }
 
+/* The header strip: the title on the left, Close on the right, a hairline under it */
 .head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-8);
+  padding: var(--sp-12) var(--sp-16);
+  border-block-end: 1px solid var(--line);
+  background: var(--surface);
 }
 
 .context {
@@ -46,9 +52,9 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-8);
-  padding: var(--sp-4) var(--sp-12);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-md);
+  padding: var(--sp-4) var(--sp-16);
+  border-block-end: 1px solid var(--line);
+  background: var(--surface-2);
   font-size: var(--fs-small);
 }
 
@@ -58,23 +64,49 @@
   flex-direction: column;
   gap: var(--sp-12);
   min-height: 0;
+  padding: var(--sp-16);
   overflow-y: auto;
 }
 
-.user {
-  align-self: flex-end;
-  max-width: 85%;
-  padding: var(--sp-8) var(--sp-12);
-  border-radius: var(--r-md);
-  background: var(--surface-2);
-  overflow-wrap: anywhere;
+.log > p:only-child {
+  color: var(--muted);
 }
 
+/* The person's turn: a black bubble on the right, white text, 16px corners */
+.user {
+  align-self: flex-end;
+  max-width: 75%;
+  padding: var(--sp-8) var(--sp-16);
+  border-radius: var(--r-xl);
+  background: var(--accent);
+  color: var(--on-accent);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* The agent's turn: a white bordered card on the left, the speaker as a small label over it */
 .assistant {
   display: flex;
   flex-direction: column;
   gap: var(--sp-8);
+  align-self: flex-start;
+  max-width: 92%;
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
   overflow-wrap: anywhere;
+}
+
+.assistant::before {
+  content: "Agent";
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .text {
@@ -83,37 +115,84 @@
 
 .status {
   color: var(--muted);
-  font-style: italic;
 }
 
+/* A citation the API vouched for: a small chip, a document icon and its name. Inline-block so it is never mistaken for a link in running text. */
 .chip {
   display: inline-block;
   padding: 0 var(--sp-8);
-  border: 1px solid var(--info);
+  border: 1px solid var(--line);
   border-radius: var(--r-pill);
-  color: var(--info);
+  background: var(--surface-2);
+  color: var(--text);
   font-size: var(--fs-small);
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 1.5;
+  text-decoration: none;
+  transition: border-color var(--dur-fast) var(--ease-in);
 }
 
+.chip svg {
+  width: 0.8125rem;
+  height: 0.8125rem;
+  margin-inline-end: var(--sp-4);
+  vertical-align: -0.1em;
+}
+
+@media (hover: hover) {
+  a.chip:hover {
+    border-color: var(--line-strong);
+  }
+}
+
+/* A suggestion waiting for the person: the same card as the rest of the app, with a red dot for what needs them */
 .proposal {
   display: flex;
   flex-direction: column;
   gap: var(--sp-8);
-  padding: var(--sp-12);
-  border: 1px solid var(--line-strong);
-  border-inline-start: 4px solid var(--accent-strong);
-  border-radius: var(--r-md);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
   background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+/* A button inside a proposal keeps its own width instead of stretching across the card */
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.proposalTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+}
+
+.proposalTitle::before {
+  content: "";
+  flex: none;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: var(--r-pill);
+  background: var(--redline);
 }
 
 .values {
   display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: var(--sp-4) var(--sp-12);
+  grid-template-columns: max-content minmax(0, 1fr);
+  border-block-start: 1px solid var(--line);
+}
+
+.values dt,
+.values dd {
+  padding: var(--sp-4) 0;
+  border-block-end: 1px solid var(--line);
 }
 
 .values dt {
+  padding-inline-end: var(--sp-12);
   color: var(--muted);
 }
 
@@ -125,18 +204,75 @@
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
   border-radius: var(--r-md);
-  background: var(--surface);
-  font-weight: 600;
+  background: var(--redline-soft);
+  color: var(--bad);
+  font-weight: 500;
 }
 
+/* The refusal sits between the conversation and the composer, inset on both sides */
+.dialog > .problem {
+  margin: var(--sp-8) var(--sp-16) 0;
+}
+
+/* The composer: a pill field, its label a small eyebrow above it, and the send button round and inside the field's right edge */
 .composer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-8);
+  position: relative;
+  padding: var(--sp-12) var(--sp-16) var(--sp-16);
+  border-block-start: 1px solid var(--line);
+  background: var(--surface);
 }
 
+.composer label {
+  color: var(--muted);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.composer input {
+  min-height: 2.75rem;
+  padding-inline: var(--sp-20) 3.5rem;
+  border-radius: var(--r-pill);
+}
+
+/* While a reply is being written Stop sits beside Send, so the field leaves room for both */
+.composer:has(.composerButtons > :nth-child(2)) input {
+  padding-inline-end: 7rem;
+}
+
+/* The buttons of a proposal sit in a row under it */
 .buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-8) var(--sp-12);
+  gap: var(--sp-8);
+}
+
+/* The composer's Send, and Stop while a reply is being written: inside the field's right edge, Send last */
+.composerButtons {
+  position: absolute;
+  inset-inline-end: calc(var(--sp-16) + 0.375rem);
+  inset-block-end: calc(var(--sp-16) + 0.375rem);
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: var(--sp-8);
+}
+
+.composerButtons button {
+  min-height: 2rem;
+}
+
+/* Send: a round 32px black button holding an arrow; its words are for screen readers */
+.send button {
+  width: 2rem;
+  padding: 0;
+}
+
+.send button[aria-disabled="true"] svg {
+  opacity: 0;
+}
+
+.send button > span[aria-hidden="true"] {
+  inset-inline-end: 0.5625rem;
 }

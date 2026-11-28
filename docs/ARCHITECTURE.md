@@ -403,7 +403,7 @@ sequenceDiagram
   Q->>T: resume, follow_up node: Chaser proposes send_follow_up
   G->>PG: policy ask, approvals row pending, thread parks
   U->>A: approve the follow-up
-  A->>PG: action scheduled with undo_until, outbox row with not_before, enqueue campaign.resume
+  A->>PG: approval recorded, enqueue guardian.release (the worker sets undo_until, inserts the outbox row and enqueues campaign.resume)
   R->>PG: after the window, recheck both keys, then send or cancel
   U->>A: record interview
   Q->>T: resume, route sets stage interview, interview_prep node
@@ -694,7 +694,7 @@ stateDiagram-v2
 
 ### 5.6 The undo window
 
-- Only approved follow-up emails have an undo window (GRD-04). Approval sets the action `scheduled` with `undo_until = now() + users.undo_window_minutes` (default 10) and inserts the outbox row with `not_before = undo_until`.
+- Only approved follow-up emails have an undo window (GRD-04). Approval is recorded by the API, which enqueues `guardian.release`; the worker runs both keys again, then sets the action `scheduled` with `undo_until = now() + users.undo_window_minutes` (default 10) and inserts the outbox row with `not_before = undo_until`. The API login cannot insert actions or checks (INDEX decision 4).
 - Undo sets the action `cancelled` and the outbox row `cancelled` where it is still `pending`. The relay claims only rows past `not_before`, so undo either succeeds or reports already sent.
 - Twin answers, accepting an introduction and messages to the candidate have none. The safeguard on acceptance is the preview hash.
 

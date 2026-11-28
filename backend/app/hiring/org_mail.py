@@ -13,7 +13,7 @@ from uuid import UUID
 from sqlalchemy import Connection, text
 
 from app.platform import config, relay
-from app.platform.relay import Outgoing, Refusal, is_undeliverable
+from app.platform.relay import Outgoing, Refusal
 
 
 def render(product_name: str, organization: str, link: str) -> tuple[str, str]:
@@ -45,8 +45,6 @@ def resolve(conn: Connection, payload: dict[str, Any]) -> Outgoing | Refusal:
     ).one_or_none()
     if invitation is None:
         return Refusal("cancelled", "stale")  # accepted, revoked or gone since it was queued
-    if is_undeliverable(conn, invitation.invited_email):
-        return Refusal("cancelled", "undeliverable")
     settings = config.get()
     subject, body = render(settings.product_name, invitation.name, f"{settings.app_base_url.rstrip('/')}/hire/roles")
     return Outgoing(invitation.invited_email, subject, body)

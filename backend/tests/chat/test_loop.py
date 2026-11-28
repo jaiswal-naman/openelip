@@ -605,7 +605,7 @@ def test_the_prompt_says_what_the_code_does():
     assert TODAY_LINE.format(date="YYYY-MM-DD") in PROMPT
     assert CONTEXT_JOB_LINE.format(alias="jN") in PROMPT
     tools = {typing.get_args(model.model_fields["tool"].annotation)[0] for model in typing.get_args(ToolCall)}
-    assert len(tools) == 7 and {name for name in tools if name not in PROMPT} == set()
+    assert len(tools) == 11 and {name for name in tools if name not in PROMPT} == set()
     assert f"at most {MAX_TOOL_CALLS_PER_STEP} tool calls" in PROMPT
     assert f"at most {MAX_MODEL_TURNS} steps and {MAX_TOOL_CALLS} tool calls" in PROMPT
     assert f"at most {MAX_SEARCH_RESULTS}" in PROMPT

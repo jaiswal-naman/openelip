@@ -19,7 +19,7 @@ const TONE: Record<ApplicationStatus, "ok" | "warn" | "bad" | "unk"> = {
   no_response: "unk",
 };
 
-/** Every application with its status and the history behind it (APP-01). Tailoring and packets are on the match page. */
+/** Every application as a hairline row: the job, the history behind it, and its status chip with the menu to record the next one (APP-01). Tailoring and packets are on the match page. */
 export function ApplicationsSection() {
   const api = useApi();
   const applications = useQuery(applicationsQuery(api));
@@ -41,12 +41,9 @@ export function ApplicationsSection() {
         <ul className={styles.list}>
           {applications.data.map((application) => (
             <li key={application.id} className={styles.item}>
-              <div className={styles.top}>
-                <div>
-                  <h3 className="t-card">{application.job_title}</h3>
-                  <p className="muted">{application.company_name.trim() === "" ? "Company not stated" : application.company_name}</p>
-                </div>
-                <Pill tone={TONE[application.status]}>{APPLICATION_STATUS_LABELS[application.status]}</Pill>
+              <div className={styles.main}>
+                <h3 className="t-card">{application.job_title}</h3>
+                <p className="muted">{application.company_name.trim() === "" ? "Company not stated" : application.company_name}</p>
               </div>
               <ol className={styles.history} aria-label={`History of ${application.job_title}`}>
                 {application.events.map((event, index) => (
@@ -55,7 +52,10 @@ export function ApplicationsSection() {
                   </li>
                 ))}
               </ol>
-              <RecordStatusMenu applicationId={application.id} title={application.job_title} />
+              <div className={styles.side}>
+                <Pill tone={TONE[application.status]}>{APPLICATION_STATUS_LABELS[application.status]}</Pill>
+                <RecordStatusMenu applicationId={application.id} title={application.job_title} />
+              </div>
             </li>
           ))}
         </ul>

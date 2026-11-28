@@ -81,6 +81,8 @@ async def from_row(stored: StoredReply) -> AsyncIterator[str]:
     refs = stored.refs
     yield PREAMBLE
     state = {"text": stored.content, "citations": refs.get("citations", []), "proposals": refs.get("proposals", [])}
+    if refs.get("campaign_proposals"):
+        state["campaign_proposals"] = refs["campaign_proposals"]
     yield frame(None, "message.snapshot", state)
     end = {
         "message_id": str(stored.id),

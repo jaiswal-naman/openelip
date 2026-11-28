@@ -14,7 +14,7 @@ from uuid import UUID
 from sqlalchemy import Connection, text
 
 from app.platform import config
-from app.platform.relay import Outgoing, Refusal, is_undeliverable
+from app.platform.relay import Outgoing, Refusal
 
 from . import unsubscribe, views
 from .compose import email_is_on
@@ -33,6 +33,10 @@ class Links:
 
     def introduction(self, introduction_id: UUID) -> str:
         return f"{self.base}/app/today?decision={introduction_id}"
+
+    def campaign(self, link: str) -> str:
+        """A campaign page of the app (`link` is the app path campaigns.api gives); signing in is needed to open it."""
+        return f"{self.base}{link}"
 
     @property
     def today(self) -> str:
@@ -104,6 +108,16 @@ def render(product_name: str, view: dict[str, Any], links: Links) -> tuple[str, 
         ]
     if proposals:
         out += ["Waiting for you", f"{_line(proposals['title'])}: {links.record}", ""]
+    approvals = [d for d in view["decisions"] if d["kind"] == "approval"]
+    activity = [d for d in view["decisions"] if d["kind"] == "activity"]
+    if approvals:  # one line and one link each; the decision is made in the app, never from the email
+        out += [f"Waiting for your approval ({len(approvals)})", "Open each one in the app to read it and decide.", ""]
+        for item in approvals:
+            out += [f"- {_line(item['text'])}", f"  {links.campaign(item['link'])}", ""]
+    if activity:
+        out += [f"What your agents did ({len(activity)})", ""]
+        for item in activity:
+            out += [f"- {_line(item['text'])}", f"  {links.campaign(item['link'])}", ""]
     if view["done_since_last_brief"]:
         out += [
             "Done since your last brief",
@@ -136,8 +150,6 @@ def resolve(conn: Connection, payload: dict[str, Any]) -> Outgoing | Refusal:
         return Refusal("cancelled", "stale")  # the brief or the account is gone
     if not email_is_on(conn, person.user_id):
         return Refusal("cancelled", "consent_withdrawn")  # taken back after the brief was composed
-    if is_undeliverable(conn, person.email):
-        return Refusal("cancelled", "undeliverable")
     view = views.brief_view(conn, brief_id, person.user_id)
     if view is None:
         return Refusal("cancelled", "stale")

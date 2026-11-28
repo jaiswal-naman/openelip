@@ -1,0 +1,35 @@
+/* The setup page: one hairline column under the page header, labels showing, one control height, the skip beside Save. Tokens only. */
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  max-width: 36rem;
+  padding-block-start: var(--sp-16);
+  border-block-start: 1px solid var(--line);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+}
+
+.inUse {
+  font-weight: 500;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8) var(--sp-12);
+}
+
+.problem {
+  max-width: var(--measure);
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
+  font-weight: 500;
+}

@@ -3,6 +3,8 @@
 # It runs on pull requests, pushes to main and every night: phase branches are tested here, in the cloud, before they
 # merge, instead of on a developer machine. No secret is used: every key in .env.example is a published development value.
 # Every action is pinned to a commit SHA (the version is in the comment) and the token is read-only.
+# .env.example is local mode with no model provider (the README's own two commands), so the sign-in journey and the demos run
+# in server mode explicitly (APP_MODE and LLM_PROVIDER below), and the `local` job runs the stack exactly as .env.example has it.
 name: e2e
 
 on:
@@ -31,6 +33,9 @@ jobs:
       COMPOSE_PROJECT_NAME: openelip_e2e
       # A throwaway stack: seed the invented jobs even after its worker has imported real boards, or the job specs skip.
       E2E_SEED_JOBS: always
+      # These specs sign in with an emailed code and read the fake provider's answers: the shell wins over .env in Compose.
+      APP_MODE: server
+      LLM_PROVIDER: fake
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -62,12 +67,50 @@ jobs:
         if: failure()
         run: docker compose logs --no-color --tail=200
 
+  # Local mode (APP_MODE=local, the .env.example default): the stack as the README starts it. Opening the app opens the owner's
+  # session with no sign-in page and no code, and the setup page asks for the model API key. No mail is read, so no mail
+  # catcher is needed; the spec skips itself unless LOCAL_STACK=1.
+  local:
+    name: local mode, no sign-in page and the setup page, on the Compose stack
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: openelip_local_e2e
+      LOCAL_STACK: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Start the stack
+        run: |
+          cp .env.example .env
+          docker compose up -d --build --wait
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Install the browser tests
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+      - name: Run the local mode browser test
+        working-directory: web
+        run: pnpm exec playwright test tests/e2e/local-mode.spec.ts --project=chromium
+      - name: Container logs after a failure
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+
   # The matches and morning-brief demo (plan 04-06) needs what the stack above does not have: a database whose name ends in
   # _test, the fake model provider, and no real job boards, because the demo seed refuses anything else. That is the override
   # docker-compose.demo.yml, which also uses its own ports (8090 for the app, 8026 for Mailpit) and its own project name. The
   # spec skips itself unless DEMO_STACK=1, so the job above runs the same spec as a skip and this job runs only that spec.
   demo:
-    name: matches and brief, chat and tailoring, and hiring desk demos on the demo Compose stack
+    name: matches and brief, chat and tailoring, hiring desk and campaign demos on the demo Compose stack
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -117,6 +160,14 @@ jobs:
       - name: Run the hiring desk demo browser test
         working-directory: web
         run: pnpm exec playwright test tests/e2e/hiring-desk.spec.ts --project=chromium
+      # The campaign demo (plan 07-07) on a fresh stack as well: its Writer and verifier answers are handed out in order.
+      - name: Replace the demo stack with a fresh one for campaigns
+        run: |
+          docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml down -v
+          docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml up -d --build --wait
+      - name: Run the campaign demo browser test
+        working-directory: web
+        run: pnpm exec playwright test tests/e2e/campaigns.spec.ts --project=chromium
       - name: Container logs after a failure
         if: failure()
         run: docker compose -p openelip-demo -f docker-compose.yml -f docker-compose.demo.yml logs --no-color --tail=200

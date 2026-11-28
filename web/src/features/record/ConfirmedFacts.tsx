@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { Form } from "react-aria-components";
 import { Button } from "@/components/ui/Button";
+import ledger from "@/components/ui/ledger.module.css";
 import { EmptyState } from "@/components/ui/States";
 import { TextField } from "@/components/ui/TextField";
+import { LocalTime } from "@/components/ui/Viewer";
 import { addFact, type FactKind, type FactDecision, type RecordFact, reviewFacts, useRecordWrite } from "./api";
 import { SelectField } from "./formFields";
 import { factKindLabel, sourceLabel, writeProblemText } from "./labels";
@@ -38,37 +40,59 @@ export function ConfirmedFacts({ facts }: { facts: RecordFact[] }) {
         return (
           <div key={group.title} className={styles.group}>
             <h3 className="t-section">{group.title}</h3>
-            <ul className={styles.facts}>
-              {inGroup.map((fact) => (
-                <li key={fact.id} className={styles.confirmed}>
-                  {editing === fact.id ? (
-                    <StatementEditor
-                      label="Your wording"
-                      initial={fact.statement}
-                      pending={write.isPending}
-                      onCancel={() => setEditing(null)}
-                      onSave={(statement) => decide({ fact_id: fact.id, action: "correct", statement })}
-                    />
+            <table className={`${ledger.table} ${styles.factsTable}`}>
+              <caption className="sr-only">{group.title}: the facts you confirmed</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Fact</th>
+                  <th scope="col">Where it came from</th>
+                  <th scope="col">Added</th>
+                  <th scope="col">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {inGroup.map((fact) =>
+                  editing === fact.id ? (
+                    <tr key={fact.id} className={styles.editRow}>
+                      <td colSpan={4}>
+                        <StatementEditor
+                          label="Your wording"
+                          initial={fact.statement}
+                          pending={write.isPending}
+                          onCancel={() => setEditing(null)}
+                          onSave={(statement) => decide({ fact_id: fact.id, action: "correct", statement })}
+                        />
+                      </td>
+                    </tr>
                   ) : (
-                    <>
-                      <div className={styles.what}>
-                        <p className="t-label muted">{factKindLabel(fact.kind)}</p>
-                        <p className={styles.statement}>{fact.statement}</p>
-                        <p className="t-small muted">{sourceLabel(fact.source)}</p>
-                      </div>
-                      <div className={styles.actions}>
-                        <Button size="sm" isDisabled={write.isPending} aria-label={`Edit: ${fact.statement}`} onPress={() => setEditing(fact.id)}>
-                          Edit
-                        </Button>
-                        <Button size="sm" isDisabled={write.isPending} aria-label={`Remove: ${fact.statement}`} onPress={() => decide({ fact_id: fact.id, action: "reject" })}>
-                          Remove
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
+                    <tr key={fact.id}>
+                      <th scope="row">
+                        <span className={styles.statementCell}>
+                          <span className="t-label muted">{factKindLabel(fact.kind)}</span>
+                          <span className={styles.statement}>{fact.statement}</span>
+                        </span>
+                      </th>
+                      <td data-label="Where it came from">{sourceLabel(fact.source)}</td>
+                      <td data-label="Added" className={styles.when}>
+                        <LocalTime iso={fact.created_at} />
+                      </td>
+                      <td className={styles.rowActions}>
+                        <div className={styles.actions}>
+                          <Button size="sm" isDisabled={write.isPending} aria-label={`Edit: ${fact.statement}`} onPress={() => setEditing(fact.id)}>
+                            Edit
+                          </Button>
+                          <Button size="sm" isDisabled={write.isPending} aria-label={`Remove: ${fact.statement}`} onPress={() => decide({ fact_id: fact.id, action: "reject" })}>
+                            Remove
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ),
+                )}
+              </tbody>
+            </table>
           </div>
         );
       })}

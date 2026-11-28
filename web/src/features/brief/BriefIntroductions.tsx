@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { LinkButton } from "@/components/ui/LinkButton";
 import type { BriefData } from "@/features/matches/queries";
 import styles from "@/features/introductions/introductions.module.css";
 
@@ -23,8 +23,10 @@ export function BriefIntroductions({ items }: { items: Item[] }) {
           <li key={item.introduction_id} className={styles.row}>
             <span className={styles.words}>
               {item.organization_name} asks about {item.role_title}. Answer by {day(item.expires_at)}.
-            </span>{" "}
-            <Link href={`/app/today?decision=${item.introduction_id}`}>Review and accept</Link>
+            </span>
+            <LinkButton href={`/app/today?decision=${item.introduction_id}`} variant="primary" size="sm">
+              Review and accept
+            </LinkButton>
           </li>
         ))}
       </ul>

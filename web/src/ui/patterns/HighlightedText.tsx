@@ -29,12 +29,15 @@ export function HighlightedText({
   text,
   span,
   announcement,
+  callout,
 }: {
   text: string;
   /** Where to mark, in code points, or `null` to mark nothing. */
   span: CodePointSpan | null;
   /** What a screen reader hears when the mark appears or moves, for example "Job sentence highlighted." */
   announcement: string;
+  /** The number of the requirement this mark answers to, drawn as a plain numeral before it. Not read out: the announcement says it. */
+  callout?: number;
 }) {
   const points = useMemo(() => Array.from(text), [text]);
   const marked = span !== null && isInside(span, points.length) ? span : null;
@@ -57,6 +60,11 @@ export function HighlightedText({
           <>
             {points.slice(0, marked.start).join("")}
             <span className="sr-only">Cited: </span>
+            {callout !== undefined && (
+              <span className={styles.callout} aria-hidden="true">
+                {callout}
+              </span>
+            )}
             <mark ref={markRef} className={styles.mark}>
               {points.slice(marked.start, marked.end).join("")}
             </mark>

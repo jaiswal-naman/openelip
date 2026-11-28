@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button as AriaButton, Dialog, DialogTrigger, Heading, Label, Modal, ModalOverlay, Radio, RadioGroup } from "react-aria-components";
 import { Button } from "@/components/ui/Button";
-import { buttonClass } from "@/components/ui/buttonStyles";
+import { type ButtonSize, buttonClass } from "@/components/ui/buttonStyles";
 import { TextField } from "@/components/ui/TextField";
 import { describeFailure } from "@/lib/api/problems";
 import { DISMISS_REASON_LABELS } from "@/lib/labels";
@@ -21,9 +21,12 @@ const MAX_COMMENT = 500; // the API's limit on the comment
 export function DismissDialog({
   onDismiss,
   isPending,
+  size = "md",
 }: {
   onDismiss: (reason: DismissReason, comment: string) => Promise<unknown>;
   isPending: boolean;
+  /** Match the buttons beside it: "sm" in a row of small buttons. */
+  size?: ButtonSize;
 }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<DismissReason | null>(null);
@@ -45,7 +48,7 @@ export function DismissDialog({
 
   return (
     <DialogTrigger isOpen={open} onOpenChange={setOpen}>
-      <AriaButton className={buttonClass("secondary")}>Dismiss...</AriaButton>
+      <AriaButton className={buttonClass("secondary", size)}>Dismiss...</AriaButton>
       <ModalOverlay className={styles.overlay} isDismissable>
         <Modal className={styles.modal}>
           <Dialog className={styles.dialog}>

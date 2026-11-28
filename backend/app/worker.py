@@ -10,11 +10,19 @@ import threading
 from datetime import datetime, timezone
 from types import FrameType
 
+from app.agentnet import privacy as agentnet_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.apply import jobs as apply_jobs  # noqa: F401  (importing it registers the apply handlers)
 from app.apply import privacy as apply_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.brief import jobs as brief_jobs  # noqa: F401  (importing it registers the brief handlers)
 from app.brief import privacy as brief_privacy  # noqa: F401  (the export job reads the registry in this process)
+from app.campaigns import jobs as campaign_jobs  # noqa: F401  (importing it registers the campaign handlers)
+from app.campaigns import privacy as campaign_privacy  # noqa: F401  (the export job reads the registry in this process)
+from app.campaigns import subscribers as campaign_subscribers  # noqa: F401  (fills the event registry of this process)
 from app.chat import privacy as chat_privacy  # noqa: F401  (the export job reads the registry in this process)
+from app.evals import privacy as evals_privacy  # noqa: F401  (the export job reads the registry in this process)
+from app.guardian import jobs as guardian_jobs  # noqa: F401  (importing it registers the Guardian handlers)
+from app.guardian import privacy as guardian_privacy  # noqa: F401  (the export job reads the registry in this process)
+from app.guardian import runtime as guardian_runtime
 from app.hiring import jobs as hiring_jobs  # noqa: F401  (importing it registers the hiring handlers and mail templates)
 from app.hiring import privacy as hiring_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.ingest import jobs  # noqa: F401  (importing it registers the ingest handlers)
@@ -27,6 +35,8 @@ from app.profile import privacy as profile_privacy  # noqa: F401  (the export jo
 from app.tailor import jobs as tailor_jobs  # noqa: F401  (importing it registers the tailor handlers)
 from app.tailor import privacy as tailor_privacy  # noqa: F401  (the export job reads the registry in this process)
 from app.trust import jobs as trust_jobs  # noqa: F401  (importing it registers the export and erase jobs and the sweep)
+from app.twin import jobs as twin_jobs  # noqa: F401  (importing it registers the Twin handlers)
+from app.twin import privacy as twin_privacy  # noqa: F401  (the export job reads the registry in this process)
 
 POLL_SECONDS = 1
 
@@ -42,6 +52,7 @@ def main() -> None:
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
     queues = config.get().worker_queues  # empty means every queue
     profile_jobs.register()
+    guardian_runtime.assert_checkpoints_current()  # refuse to start behind the LangGraph checkpoint schema
     log.event("worker.started")
     try:
         while not stop.is_set():

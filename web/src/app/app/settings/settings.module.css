@@ -1,0 +1,45 @@
+/*
+ * One long page: the page header, then numbered sections down the page. Each section draws its own hairline and heading;
+ * the number sits in the margin on the same line, in Geist Mono ("01"), so the sections read as an index. Tokens only.
+ */
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-32);
+}
+
+.item {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+/* The number: a mono figure on the section's own hairline, set level with the section heading */
+.num {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-start: var(--sp-16);
+  z-index: 1;
+  padding-inline: var(--sp-8);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+  font-weight: 400;
+  line-height: 1.9;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 40rem) {
+  .item {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+  }
+
+  /* In the margin the number carries the rule on, so the rule runs unbroken from the margin across the section */
+  .num {
+    position: static;
+    padding: var(--sp-16) var(--sp-8) 0 0;
+    border-block-start: 1px solid var(--line);
+  }
+}

@@ -11,7 +11,8 @@ export function safeNextPath(raw: string | string[] | null | undefined): string 
   const candidate = Array.isArray(raw) ? raw[0] : raw;
   if (typeof candidate !== "string" || !candidate.startsWith("/") || candidate.startsWith("//")) return FALLBACK;
   if (CONTROL_OR_BACKSLASH.test(candidate)) return FALLBACK;
-  if (candidate === "/sign-in" || candidate.startsWith("/sign-in?") || candidate.startsWith("/sign-in/")) return FALLBACK; // no loop
+  // no loop: the page that signs in, and the page that opens a local session, never send anyone back to themselves
+  if (/^\/(sign-in|local-session)([/?#]|$)/.test(candidate)) return FALLBACK;
   try {
     // Read the way a browser would: if it resolves to another origin, it was not a path.
     return new URL(candidate, "http://site.invalid").origin === "http://site.invalid" ? candidate : FALLBACK;

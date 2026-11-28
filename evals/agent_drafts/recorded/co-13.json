@@ -1,0 +1,70 @@
+[
+ {
+  "questions": [
+   {
+    "text": "Tell us about a data pipeline you built.",
+    "requirement": "r1",
+    "facts": [
+     "f2"
+    ],
+    "gap": false,
+    "framing": "Tell the story of the nightly Python and PostgreSQL pipelines you built."
+   },
+   {
+    "text": "How do you keep stakeholders informed?",
+    "requirement": "r4",
+    "facts": [
+     "f3"
+    ],
+    "gap": true,
+    "framing": "Describe the team you led on the reporting platform, and say honestly where you had less contact with stakeholders."
+   },
+   {
+    "text": "Have you led Kubernetes migrations?",
+    "requirement": "r3",
+    "facts": [
+     "f2"
+    ],
+    "gap": true,
+    "framing": "Say you led Kubernetes migrations on the reporting platform."
+   },
+   {
+    "text": "Tell us about your last role.",
+    "requirement": "r1",
+    "facts": [
+     "f9"
+    ],
+    "gap": false,
+    "framing": "Tell the story of your last role."
+   }
+  ],
+  "ask_them": [
+   {
+    "text": "How is the Series B shaping the team?",
+    "dossier_claims": [
+     "d2"
+    ]
+   },
+   {
+    "text": "What is the culture like?",
+    "dossier_claims": []
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   },
+   {
+    "edit": "e2",
+    "entailed": true
+   },
+   {
+    "edit": "e3",
+    "entailed": false
+   }
+  ]
+ }
+]

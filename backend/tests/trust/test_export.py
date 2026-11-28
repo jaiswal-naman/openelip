@@ -20,7 +20,22 @@ from app.profile import documents
 from app.trust import api, export, jobs, privacy
 from app.trust.routes import API_STATUS
 
-FORMAT_MODULES = {"apply", "brief", "chat", "evals", "hiring", "match", "platform", "profile", "tailor", "trust"}
+FORMAT_MODULES = {
+    "apply",
+    "agentnet",
+    "brief",
+    "campaigns",
+    "chat",
+    "evals",
+    "guardian",
+    "hiring",
+    "match",
+    "platform",
+    "profile",
+    "tailor",
+    "twin",
+    "trust",
+}
 
 
 class Seeded:
@@ -461,6 +476,14 @@ NOT_EXPORTED = {
     # that points at users; what they hold is the employer's own record, which DATA_MODEL 7.3 leaves out of an export.
     "organizations": "an employer's own record: erasure only clears created_by, and 7.3 excludes employer-side data",
     "roles": "an employer's posting, not the person's data: erasure only clears created_by (7.3 excludes it)",
+    # Plan 07-01: the checkpoints of a campaign's graph hold ids, the next node and the resume cause, never personal
+    # text (DATA_MODEL 3.15), and have no user column; they leave with the campaign by trigger. What the campaign did
+    # is exported from campaigns and guardian.
+    # Plan 08-01: an attempt of the wind tunnel points at a synthetic account only; it holds ids, a seed and a status.
+    "sim_runs": "an attempt of a synthetic account in the wind tunnel; erasure only clears candidate_user_id",
+    "langgraph.checkpoints": "graph state of ids only, keyed by campaign; erased with the campaign by trigger",
+    "langgraph.checkpoint_blobs": "graph state of ids only, keyed by campaign; erased with the campaign by trigger",
+    "langgraph.checkpoint_writes": "graph state of ids only, keyed by campaign; erased with the campaign by trigger",
 }
 
 

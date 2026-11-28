@@ -1,0 +1,90 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Bolvane Energy builds solar monitoring systems for independent shops."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include independent shops and food co-operatives."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 207 employees across 4 offices."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 9999 employees across 4 offices."
+   }
+  ],
+  "links": [
+   "https://bolvane-energy.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://bolvane-energy.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2021 we raised a Series B of 8 million dollars."
+   },
+   {
+    "topic": "values",
+    "quote": "We value ownership, rigour and craft."
+   },
+   {
+    "topic": "news",
+    "quote": "In March 2026 we opened an office in Gdansk."
+   }
+  ],
+  "links": [
+   "https://bolvane-energy.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://bolvane-energy.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "hiring_process",
+    "quote": "Our hiring process has 2 interviews and a take-home exercise."
+   },
+   {
+    "topic": "engineering",
+    "quote": "Our engineers work in Java and Kotlin and ship every week."
+   }
+  ],
+  "links": [
+   "https://bolvane-energy.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://bolvane-energy.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Java for our solar monitoring systems."
+   }
+  ],
+  "links": [
+   "https://bolvane-energy.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://bolvane-energy.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

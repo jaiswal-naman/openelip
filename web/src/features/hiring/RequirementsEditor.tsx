@@ -7,6 +7,7 @@ import { NativeSelect } from "@/ui/patterns/NativeSelect";
 import { describeFailure } from "@/lib/api/problems";
 import { IMPORTANCE_LABELS } from "@/lib/labels";
 import { type RequirementIn, type RequirementView, usePutRequirements } from "./api";
+import { Zone } from "./Zone";
 import styles from "./hiring.module.css";
 
 type Importance = RequirementView["importance"];
@@ -51,7 +52,7 @@ export function RequirementsEditor({ roleId, items, onShowSource }: { roleId: st
   }
 
   const form = (
-    <div className={styles.card}>
+    <div className={styles.editor}>
       <TextField label="Requirement" value={text} onChange={setText} maxLength={MAX_TEXT} />
       <NativeSelect
         label="Importance"
@@ -60,63 +61,60 @@ export function RequirementsEditor({ roleId, items, onShowSource }: { roleId: st
         options={(["required", "preferred"] as const).map((value) => ({ value, label: IMPORTANCE_LABELS[value] }))}
       />
       <div className={styles.row}>
-        <Button variant="primary" size="sm" isPending={put.isPending} isDisabled={text.trim() === ""} onPress={save}>
+        <Button variant="primary" isPending={put.isPending} isDisabled={text.trim() === ""} onPress={save}>
           Save requirement
         </Button>
-        <Button size="sm" onPress={() => setEditing(null)}>
-          Cancel
-        </Button>
+        <Button onPress={() => setEditing(null)}>Cancel</Button>
       </div>
     </div>
   );
 
   return (
-    <section aria-labelledby="requirements-heading" className={styles.shell}>
-      <h2 id="requirements-heading" className="t-label">
-        Requirements
-      </h2>
+    <Zone id="requirements-heading" number={2} title="Requirements">
       {items.length === 0 && editing !== "new" && <p className={styles.muted}>No requirements yet.</p>}
-      <ul className={styles.list}>
-        {items.map((item, index) => (
-          <li key={item.id}>
-            {editing === item.id ? (
-              form
-            ) : (
-              <div className={styles.card}>
-                <p className={styles.words}>{item.text}</p>
-                <p className={styles.muted}>
-                  {IMPORTANCE_LABELS[item.importance]}, {item.is_confirmed ? "confirmed" : "not confirmed yet"}
-                </p>
-                <div className={styles.row}>
-                  {!item.is_confirmed && (
-                    <Button size="sm" aria-label={`Confirm: ${item.text}`} isDisabled={put.isPending} onPress={() => send(all.map((row, i) => (i === index ? { ...row, is_confirmed: true } : row)))}>
-                      Confirm
+      {items.length > 0 && (
+        <ul className={styles.items}>
+          {items.map((item, index) => (
+            <li key={item.id}>
+              {editing === item.id ? (
+                form
+              ) : (
+                <div className={styles.item}>
+                  <div className={styles.itemText}>
+                    <p className={styles.words}>{item.text}</p>
+                    <p className={`t-small ${styles.itemState}`} data-confirmed={item.is_confirmed}>
+                      {IMPORTANCE_LABELS[item.importance]}, {item.is_confirmed ? "confirmed" : "not confirmed yet"}
+                    </p>
+                  </div>
+                  <div className={styles.itemActions}>
+                    {!item.is_confirmed && (
+                      <Button size="sm" aria-label={`Confirm: ${item.text}`} isDisabled={put.isPending} onPress={() => send(all.map((row, i) => (i === index ? { ...row, is_confirmed: true } : row)))}>
+                        Confirm
+                      </Button>
+                    )}
+                    <Button size="sm" aria-label={`Edit: ${item.text}`} onPress={() => begin(item.id, item)}>
+                      Edit
                     </Button>
-                  )}
-                  <Button size="sm" aria-label={`Edit: ${item.text}`} onPress={() => begin(item.id, item)}>
-                    Edit
-                  </Button>
-                  <Button size="sm" aria-label={`Remove: ${item.text}`} isDisabled={put.isPending} onPress={() => send(all.filter((_, i) => i !== index))}>
-                    Remove
-                  </Button>
-                  {item.span && (
-                    <Button size="sm" aria-label={`Show source of: ${item.text}`} onPress={() => onShowSource(item.id)}>
-                      Show source
+                    <Button size="sm" aria-label={`Remove: ${item.text}`} isDisabled={put.isPending} onPress={() => send(all.filter((_, i) => i !== index))}>
+                      Remove
                     </Button>
-                  )}
+                    {item.span && (
+                      <Button size="sm" aria-label={`Show source of: ${item.text}`} onPress={() => onShowSource(item.id)}>
+                        Show source
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
       {editing === "new" ? (
         form
       ) : (
         <div className={styles.row}>
-          <Button size="sm" onPress={() => begin("new")}>
-            Add requirement
-          </Button>
+          <Button onPress={() => begin("new")}>Add requirement</Button>
         </div>
       )}
       {put.isError && (
@@ -124,6 +122,6 @@ export function RequirementsEditor({ roleId, items, onShowSource }: { roleId: st
           {describeFailure(put.error)} The list was not saved.
         </p>
       )}
-    </section>
+    </Zone>
   );
 }

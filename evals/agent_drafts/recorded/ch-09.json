@@ -1,0 +1,63 @@
+[
+ {
+  "sentences": [
+   {
+    "text": "I admire your new office.",
+    "facts": [
+     "f9"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I applied for the Operations Analyst role on 17 November 2026.",
+    "facts": [],
+    "dossier_claims": [],
+    "events": [
+     "e1",
+     "e2"
+    ]
+   },
+   {
+    "text": "I ran stock control for every warehouse in the country.",
+    "facts": [
+     "f3"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I cut picking errors with a new shelf labelling scheme.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "More of my work is at https://portfolio.example/me.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": [],
+    "events": []
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   },
+   {
+    "edit": "e2",
+    "entailed": false
+   },
+   {
+    "edit": "e3",
+    "entailed": true
+   }
+  ]
+ }
+]

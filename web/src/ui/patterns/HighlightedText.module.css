@@ -19,8 +19,23 @@
   box-decoration-break: clone;
 }
 
+/* The numeral of the requirement the mark answers to: a plain Geist Mono figure before the passage */
+.callout {
+  display: inline-block;
+  margin-inline-end: var(--sp-4);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 @media (forced-colors: active) {
   .mark {
     outline-color: Highlight;
+  }
+
+  .callout {
+    color: CanvasText;
   }
 }

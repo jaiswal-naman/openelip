@@ -5,6 +5,8 @@ import { Cell, Column, Form, Row, Table, TableBody, TableHeader } from "react-ar
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { TextField } from "@/components/ui/TextField";
+import { TitleBlock } from "@/components/ui/TitleBlock";
+import ledger from "@/components/ui/ledger.module.css";
 import { NativeSelect } from "@/ui/patterns/NativeSelect";
 import { describeFailure } from "@/lib/api/problems";
 import { MEMBER_STATUS_LABELS, ORG_ROLE_LABELS } from "@/lib/labels";
@@ -35,9 +37,22 @@ function TeamOf({ orgId }: { orgId: string }) {
 
   return (
     <div className={styles.page}>
-      <h1 className="t-page">Team, {org.data.name}</h1>
+      <TitleBlock
+        title="Team"
+        lines={
+          <>
+            <p className={styles.company}>{org.data.name}</p>
+            <p className="t-small">{canManage ? "Who can act for this organization." : "Owners and admins invite people and change roles."}</p>
+          </>
+        }
+        cells={[
+          { label: "Members", value: members.filter((member) => member.status === "active").length },
+          { label: "Invited", value: members.filter((member) => member.status === "invited").length, tone: "muted" },
+          { label: "Your role", value: ORG_ROLE_LABELS[mine], tone: "muted" },
+        ]}
+      />
       {owners === 0 && mine === "admin" && (
-        <div className={styles.card}>
+        <div className={styles.paper}>
           <p>This organization has no owner.</p>
           <div className={styles.row}>
             <Button variant="primary" isPending={claim.isPending} onPress={() => claim.mutate()}>
@@ -51,44 +66,44 @@ function TeamOf({ orgId }: { orgId: string }) {
           {describeFailure(failure)}
         </p>
       )}
-      <div className={styles.tableWrap}>
-        <Table aria-label="Members" className={styles.table}>
-          <TableHeader>
-            {["Name", "Email", "Role", "Status", "Actions"].map((name, index) => (
-              <Column key={name} isRowHeader={index === 0} className={`t-label ${styles.column}`}>
-                {name}
-              </Column>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {members.map((member) => (
-              <Row key={member.member_id} id={member.member_id} textValue={member.display_name ?? member.email ?? "Member"}>
-                <Cell className={styles.cell}>{member.display_name ?? "-"}</Cell>
-                <Cell className={styles.cell}>{member.email ?? "-"}</Cell>
-                <Cell className={styles.cell}>
-                  {canManage && member.role !== "owner" ? (
-                    <NativeSelect
-                      label={`Role of ${member.email ?? member.display_name ?? "member"}`}
-                      value={member.role}
-                      options={(["member", "admin"] as const).map((role) => ({ value: role, label: ORG_ROLE_LABELS[role] }))}
-                      onChange={(role) => change.mutate({ memberId: member.member_id, role: role as OrgRole })}
-                    />
-                  ) : (
-                    ORG_ROLE_LABELS[member.role]
-                  )}
-                </Cell>
-                <Cell className={styles.cell}>{MEMBER_STATUS_LABELS[member.status]}</Cell>
-                <Cell className={styles.cell}>
-                  {canManage && !(member.role === "owner" && owners <= 1) && (
-                    <RemoveButton member={member} onRemove={() => remove.mutateAsync(member.member_id)} />
-                  )}
-                </Cell>
-              </Row>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-      {canManage ? <InviteForm orgId={orgId} /> : <p className={`t-small ${styles.muted}`}>Owners and admins invite people and change roles.</p>}
+      <Table aria-label="Members" className={ledger.table}>
+        <TableHeader>
+          <Column isRowHeader>Name</Column>
+          <Column>Email</Column>
+          <Column>Role</Column>
+          <Column>Status</Column>
+          <Column>Actions</Column>
+        </TableHeader>
+        <TableBody>
+          {members.map((member) => (
+            <Row key={member.member_id} id={member.member_id} textValue={member.display_name ?? member.email ?? "Member"}>
+              <Cell className={styles.words}>{member.display_name ?? "-"}</Cell>
+              <Cell className={styles.words} data-label="Email">
+                {member.email ?? "-"}
+              </Cell>
+              <Cell className={styles.cellField} data-label="Role">
+                {canManage && member.role !== "owner" ? (
+                  <NativeSelect
+                    label={`Role of ${member.email ?? member.display_name ?? "member"}`}
+                    value={member.role}
+                    options={(["member", "admin"] as const).map((role) => ({ value: role, label: ORG_ROLE_LABELS[role] }))}
+                    onChange={(role) => change.mutate({ memberId: member.member_id, role: role as OrgRole })}
+                  />
+                ) : (
+                  ORG_ROLE_LABELS[member.role]
+                )}
+              </Cell>
+              <Cell data-label="Status">{MEMBER_STATUS_LABELS[member.status]}</Cell>
+              <Cell data-label={canManage && !(member.role === "owner" && owners <= 1) ? "Actions" : undefined}>
+                {canManage && !(member.role === "owner" && owners <= 1) && (
+                  <RemoveButton member={member} onRemove={() => remove.mutateAsync(member.member_id)} />
+                )}
+              </Cell>
+            </Row>
+          ))}
+        </TableBody>
+      </Table>
+      {canManage && <InviteForm orgId={orgId} />}
     </div>
   );
 }
@@ -113,35 +128,35 @@ function InviteForm({ orgId }: { orgId: string }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"member" | "admin">("member");
   return (
-    <section aria-labelledby="invite" className={styles.card}>
+    <section aria-labelledby="invite" className={styles.paper}>
       <h2 id="invite" className="t-section">
         Invite by email
       </h2>
       <Form
-        className={styles.form}
+        className={styles.stack}
         onSubmit={(event) => {
           event.preventDefault();
           invite.mutate({ email: email.trim(), role }, { onSuccess: () => setEmail("") });
         }}
       >
-        <TextField label="Email address" type="email" value={email} onChange={setEmail} isRequired />
-        <NativeSelect
-          label="Role"
-          value={role}
-          options={(["member", "admin"] as const).map((value) => ({ value, label: ORG_ROLE_LABELS[value] }))}
-          onChange={(value) => setRole(value as "member" | "admin")}
-        />
+        <div className={styles.inviteRow}>
+          <TextField label="Email address" type="email" value={email} onChange={setEmail} isRequired />
+          <NativeSelect
+            label="Role"
+            value={role}
+            options={(["member", "admin"] as const).map((value) => ({ value, label: ORG_ROLE_LABELS[value] }))}
+            onChange={(value) => setRole(value as "member" | "admin")}
+          />
+          <Button type="submit" variant="primary" isPending={invite.isPending}>
+            Send invitation
+          </Button>
+        </div>
         {invite.isError && (
           <p role="alert" className={styles.problem}>
             {describeFailure(invite.error)}
           </p>
         )}
         {invite.isSuccess && <p role="status">Invitation sent.</p>}
-        <div className={styles.row}>
-          <Button type="submit" variant="primary" isPending={invite.isPending}>
-            Send invitation
-          </Button>
-        </div>
       </Form>
     </section>
   );

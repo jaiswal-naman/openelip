@@ -19,30 +19,34 @@ import styles from "./privacy.module.css";
 
 const SIGN_IN = `/sign-in?next=${encodeURIComponent("/app/settings?section=privacy")}`;
 
-/** The Privacy section of Settings (FRONTEND_UI 3.10): AI processing, export of everything held, and deleting the account. */
+/** The privacy parts of Settings (FRONTEND_UI 3.10): AI processing, export of everything held, and deleting the account. */
 export function PrivacySection() {
+  return (
+    <>
+      <AiProcessing />
+      <ExportCard />
+      <AccountDeletion />
+    </>
+  );
+}
+
+/** Deleting the account, which needs the address the code is sent to. A session that ended while the page was open goes to sign in and back. */
+export function AccountDeletion() {
   const router = useRouter();
   const me = useMe();
 
-  // A session that ended while the page was open: back to sign in, and then back here.
   useEffect(() => {
     if (me.data === null) router.replace(SIGN_IN);
   }, [me.data, router]);
 
-  return (
-    <div className={styles.sections}>
-      <AiProcessing />
-      <ExportCard />
-      {me.data && <DeleteAccount email={me.data.email} />}
-    </div>
-  );
+  return me.data ? <DeleteAccount email={me.data.email} /> : null;
 }
 
 /**
  * Whether AI features may read this person's text, and by which providers (TRU-05). Withdrawing turns AI features off
  * and keeps everything already saved. When the list of providers changes the agreement no longer covers it, and this says so.
  */
-function AiProcessing() {
+export function AiProcessing() {
   const api = useApi();
   const queryClient = useQueryClient();
   const ai = useAiConsent();
@@ -53,7 +57,7 @@ function AiProcessing() {
   const { gate, consent } = ai;
 
   return (
-    <section className={styles.card} aria-labelledby="ai-title">
+    <section className={styles.section} aria-labelledby="ai-title">
       <h2 id="ai-title" className="t-section">
         AI processing
       </h2>

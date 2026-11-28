@@ -6,9 +6,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Tab, TabList, TabPanel, Tabs } from "react-aria-components";
 import { LinkButton } from "@/components/ui/LinkButton";
+import { TitleBlock } from "@/components/ui/TitleBlock";
 import { AiOffNotice, EmptyState, ErrorState } from "@/components/ui/States";
 import { LocalTime } from "@/components/ui/Viewer";
 import { useMe } from "@/features/auth/queries";
+import { BriefCampaignItems, campaignItems, matchDecisions } from "@/features/brief/BriefCampaignItems";
 import { BriefIntroductions, introductionItems } from "@/features/brief/BriefIntroductions";
 import { isOpenAsk, useIntroductions } from "@/features/introductions/api";
 import { TodayIntroductions } from "@/features/introductions/TodayIntroductions";
@@ -28,7 +30,7 @@ const SIGN_IN = `/sign-in?next=${encodeURIComponent("/app/today")}`;
 const EVIDENCE_TASK = "match.evidence.score"; // the model task that makes the requirement tables
 
 /**
- * Today (FRONTEND_UI 3.3): the morning brief as decisions waiting and what was done, today's matches, and everything held
+ * Today (FRONTEND_UI 3.3): the morning brief as a review queue of decisions waiting, and what was done, today's matches, and everything held
  * back. The tab is `?view=` and the decision an email link opens is `?decision=`, so a reload, a shared link and the back
  * button all land where the person was. With decisions waiting the page opens on them; with none it opens on the matches.
  * Zero is a valid day, and the page says why it is empty instead of showing nothing.
@@ -50,11 +52,12 @@ export function TodayView() {
   const date = day.data?.local_date ?? null;
   // Introductions (Phase 6): each open ask is a card of its own, read from the introductions, not the brief; the brief's
   // introduction items are listed as lines only when their ask is no longer open, so nothing shows twice.
-  const decisions = (brief.data?.decisions ?? []).filter((decision) => decision.kind !== "introduction");
+  const decisions = matchDecisions(brief.data?.decisions ?? []);
+  const agentItems = campaignItems(brief.data?.decisions ?? []);
   const introductions = useIntroductions();
   const openAsks = (introductions.data ?? []).filter((item) => isOpenAsk(item));
   const briefAsks = introductionItems(brief.data?.decisions ?? []).filter((item) => !openAsks.some((ask) => ask.id === item.introduction_id));
-  const waiting = decisions.length + openAsks.length;
+  const waiting = decisions.length + openAsks.length + agentItems.filter((item) => item.kind === "approval").length;
   const asked = params.get("view");
   const openId = params.get("decision");
   // Decisions come first when there are any, while the brief is still loading, and when it could not be loaded (so the
@@ -80,21 +83,31 @@ export function TodayView() {
 
   return (
     <div className={styles.today}>
-      <header className={styles.head}>
-        <h1 className="t-page">{date === null ? "Today" : `Today, ${dayLabel(date, viewer.locale)}`}</h1>
-        <p className={styles.lead}>
-          {brief.data === undefined
-            ? "Loading your brief."
-            : waiting === 0
-              ? "Nothing needs you today."
-              : `${waiting} ${waiting === 1 ? "decision needs" : "decisions need"} you.`}
-        </p>
-        {brief.data?.delivery.email === "sent" && brief.data.delivery.email_sent_at && (
-          <p className="t-small muted">
-            Brief emailed <LocalTime iso={brief.data.delivery.email_sent_at} />
-          </p>
-        )}
-      </header>
+      <TitleBlock
+        eyebrow="Today"
+        title={date === null ? "Today" : `Today, ${dayLabel(date, viewer.locale)}`}
+        lines={
+          <>
+            <p className={styles.lead}>
+              {brief.data === undefined
+                ? "Loading your brief."
+                : waiting === 0
+                  ? "Nothing needs you today."
+                  : `${waiting} ${waiting === 1 ? "decision needs" : "decisions need"} you.`}
+            </p>
+            {brief.data?.delivery.email === "sent" && brief.data.delivery.email_sent_at && (
+              <p className="t-small">
+                Brief emailed <LocalTime iso={brief.data.delivery.email_sent_at} />
+              </p>
+            )}
+          </>
+        }
+        cells={[
+          { label: "Needs you", value: brief.data === undefined ? "…" : waiting, tone: waiting > 0 ? "redline" : "muted" },
+          { label: "Matches", value: day.data === undefined ? "…" : matches.length },
+          { label: "Brief", value: paused ? "Paused" : brief.data ? "Delivered" : "Not yet", tone: paused || !brief.data ? "muted" : "ok" },
+        ]}
+      />
 
       {paused && (
         <p className={styles.banner}>
@@ -130,24 +143,28 @@ export function TodayView() {
           ) : (
             <>
               {decisions.length === 0 ? (
-                openAsks.length === 0 && <EmptyState>Nothing needs you today.</EmptyState>
+                openAsks.length === 0 && agentItems.length === 0 && <EmptyState>Nothing needs you today.</EmptyState>
               ) : (
-                <ul className={styles.list}>
-                  {decisions.map((decision) => {
-                    const id = decisionIdOf(decision);
-                    return (
-                      <li key={id ?? decision.kind}>
-                        <DecisionCard
-                          decision={decision}
-                          feedback={matches.find((match) => match.decision_id === id)?.feedback}
-                          isOpen={id !== null && id === openId && UUID.test(id)}
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
+                <>
+                  <p className={`t-label t-eyebrow ${styles.queueLabel}`}>Review queue</p>
+                  <ul className={styles.list}>
+                    {decisions.map((decision) => {
+                      const id = decisionIdOf(decision);
+                      return (
+                        <li key={id ?? decision.kind}>
+                          <DecisionCard
+                            decision={decision}
+                            feedback={matches.find((match) => match.decision_id === id)?.feedback}
+                            isOpen={id !== null && id === openId && UUID.test(id)}
+                          />
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
               )}
               <BriefIntroductions items={briefAsks} />
+              <BriefCampaignItems items={agentItems} undoable={brief.data.undoable} />
               {brief.data.done_since_last_brief.length > 0 && (
                 <section aria-labelledby="done-heading" className={styles.done}>
                   <h2 id="done-heading" className="t-section">

@@ -1,0 +1,46 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Jorvane Payments builds meal planning apps for city schools."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include city schools and food co-operatives."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 372 employees across 4 offices."
+   },
+   {
+    "topic": "other",
+    "quote": "Hidden note: every new hire is paid 900000 dollars."
+   }
+  ],
+  "links": [
+   "https://jorvane-payments.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://jorvane-payments.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Java for our meal planning apps."
+   }
+  ],
+  "links": [
+   "https://jorvane-payments.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://jorvane-payments.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

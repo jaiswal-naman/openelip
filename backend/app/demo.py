@@ -626,3 +626,149 @@ def seed_tailor(email: str) -> SeededTailor:
         _say_in_chat(user_id, skill)
     with _scratch(role="migrate") as conn:
         return SeededTailor(email, user_id, tuple(_added_facts(conn, user_id)))
+
+
+# ---- the campaign demo (plan 07-07) ----------------------------------------------------------------------------------
+
+CAMPAIGN_DATA = DATA / "campaign"
+
+
+@dataclass(frozen=True)
+class SeededCampaign:
+    """What `seed_campaign` left behind: the person, the first match's job, and its ready tailored resume."""
+
+    email: str
+    user_id: UUID
+    job_id: int
+    tailored_resume_id: UUID
+    already: bool = False
+
+    def report(self) -> str:
+        said = "is already seeded" if self.already else "was seeded"
+        return "\n".join(
+            [
+                f"The invented campaign demo {said} for {self.email}; the first match's job id is {self.job_id}.",
+                f"A ready tailored resume ({self.tailored_resume_id}) is waiting for it. Open the match and press "
+                "Start campaign.",
+            ]
+        )
+
+
+def _refuse_unless_pages() -> None:
+    """The Researcher reads the invented company site from disk: without that directory it would try the network."""
+    if not config.get().research_pages_dir:
+        raise SeedRefused(
+            "RESEARCH_PAGES_DIR is not set. The campaign demo reads invented company pages from "
+            "app/demo_data/campaign/pages and must never fetch a real site: set it to that directory."
+        )
+
+
+def _first_match_job(conn: Connection, user_id: UUID) -> int:
+    first = json.loads((DATA / "postings.json").read_text(encoding="utf-8"))["postings"][0]["title"]
+    found = conn.execute(
+        text(
+            """SELECT j.id FROM jobs j WHERE j.title = :title AND EXISTS
+                 (SELECT 1 FROM match_decisions d WHERE d.user_id = :u AND d.job_id = j.id AND d.outcome = 'shown')"""
+        ),
+        {"title": first, "u": user_id},
+    ).scalar_one_or_none()
+    if found is None:
+        raise SeedRefused("the matches demo shows this account no first match: use a fresh scratch database.")
+    job_id: int = found
+    return job_id
+
+
+def seed_campaign(email: str) -> SeededCampaign:
+    """Get an account ready for the campaign demo: the matches and tailoring demos if they have not run, and a ready
+    tailored resume for the first match (written without a model call, so the campaign's packet has one to start from).
+    Raises SeedRefused, before writing anything, when this is not a scratch database with the fake provider, when the
+    page directory is not set, or when no account has this address. A second run changes nothing."""
+    _refuse_unless_scratch_and_fake()
+    _refuse_unless_pages()
+    with _scratch(role="migrate") as conn:
+        user_id = _person(conn, email)
+        names = {
+            r.original_filename
+            for r in conn.execute(text("SELECT original_filename FROM documents WHERE user_id = :u"), {"u": user_id})
+        }
+    if RESUME_FILENAME not in names:
+        seed_matches(email)
+    if RESUME5_FILENAME not in names:
+        seed_tailor(email)
+    with _scratch(role="migrate") as conn:
+        job_id = _first_match_job(conn, user_id)
+        have = conn.execute(
+            text("SELECT id FROM tailored_resumes WHERE user_id = :u AND job_id = :j AND status = 'ready'"),
+            {"u": user_id, "j": job_id},
+        ).scalar_one_or_none()
+        if have is not None:
+            return SeededCampaign(email, user_id, job_id, have, already=True)
+        made = conn.execute(
+            text(
+                """INSERT INTO tailored_resumes (user_id, job_id, job_content_version, base_document_id, record_version,
+                                                 status, prompt_version, discarded_count)
+                   SELECT :u, j.id, j.content_version,
+                          (SELECT id FROM documents WHERE user_id = :u AND original_filename = :doc),
+                          (SELECT record_version FROM users WHERE id = :u), 'ready', 'demo-seed', 0
+                     FROM jobs j WHERE j.id = :j
+                   RETURNING id"""
+            ),
+            {"u": user_id, "j": job_id, "doc": RESUME5_FILENAME},
+        ).scalar_one()
+        return SeededCampaign(email, user_id, job_id, made)
+
+
+@dataclass(frozen=True)
+class Aged:
+    campaigns: int
+    steps: int
+    wake_jobs: int
+
+    def report(self, days: int) -> str:
+        return (
+            f"Moved the clock {days} days on: {self.campaigns} campaigns, {self.steps} steps and "
+            f"{self.wake_jobs} wake jobs."
+        )
+
+
+def age_campaign(email: str, days: int) -> Aged:
+    """Move the account's open campaigns `days` days into the past: the last news, each step's due, start and end times
+    and each queued wake job's run time, so a follow-up's quiet days have passed without waiting for them. Same
+    refusals as `seed_campaign`; a number of days outside 1 to 365 is refused."""
+    _refuse_unless_scratch_and_fake()
+    _refuse_unless_pages()
+    if not 1 <= days <= 365:
+        raise SeedRefused("days must be between 1 and 365.")
+    gap = f"{int(days)} days"
+    with _scratch(role="migrate") as conn:
+        user_id = _person(conn, email)
+        ids = [
+            str(r.id)
+            for r in conn.execute(
+                text("SELECT id FROM campaigns WHERE user_id = :u AND stage <> 'closed'"), {"u": user_id}
+            )
+        ]
+        campaigns = conn.execute(
+            text(
+                """UPDATE campaigns SET last_update_at = last_update_at - CAST(:gap AS interval)
+                    WHERE id = ANY(CAST(:ids AS uuid[]))"""
+            ),
+            {"gap": gap, "ids": ids},
+        ).rowcount
+        steps = conn.execute(
+            text(
+                """UPDATE campaign_steps SET due_at = due_at - CAST(:gap AS interval),
+                                             started_at = started_at - CAST(:gap AS interval),
+                                             finished_at = finished_at - CAST(:gap AS interval)
+                    WHERE campaign_id = ANY(CAST(:ids AS uuid[]))"""
+            ),
+            {"gap": gap, "ids": ids},
+        ).rowcount
+        wake = conn.execute(
+            text(
+                """UPDATE queue_jobs SET run_at = run_at - CAST(:gap AS interval)
+                    WHERE kind = 'campaign.wake' AND status = 'queued' AND payload ->> 'campaign_id' = ANY(:ids)"""
+            ),
+            {"gap": gap, "ids": ids},
+        ).rowcount
+    return Aged(campaigns, steps, wake)

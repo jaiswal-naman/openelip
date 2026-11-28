@@ -1,0 +1,46 @@
+[
+ {
+  "claims": [],
+  "links": [
+   "https://ulvane-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ulvane-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://ulvane-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ulvane-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://ulvane-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ulvane-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://ulvane-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ulvane-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

@@ -1,0 +1,46 @@
+[
+ {
+  "claims": [],
+  "links": [
+   "https://ostrel-logistics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ostrel-logistics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://ostrel-logistics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ostrel-logistics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://ostrel-logistics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ostrel-logistics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [],
+  "links": [
+   "https://ostrel-logistics.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ostrel-logistics.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

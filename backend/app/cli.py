@@ -180,6 +180,32 @@ def _demo_seed_hiring(args: argparse.Namespace) -> int:
     return 0
 
 
+def _demo_seed_campaign(args: argparse.Namespace) -> int:
+    """Invented data for the campaign demo, on a scratch database with the fake provider and the page directory."""
+    from app import demo
+
+    try:
+        seeded = demo.seed_campaign(args.email)
+    except demo.SeedRefused as refusal:
+        print(f"refused: {refusal}", file=sys.stderr)
+        return 2
+    print(seeded.report())
+    return 0
+
+
+def _demo_age_campaign(args: argparse.Namespace) -> int:
+    """Move an account's open campaigns days into the past (same refusals as seed-campaign)."""
+    from app import demo
+
+    try:
+        aged = demo.age_campaign(args.email, args.days)
+    except demo.SeedRefused as refusal:
+        print(f"refused: {refusal}", file=sys.stderr)
+        return 2
+    print(aged.report(args.days))
+    return 0
+
+
 def _demo_seed_tailor(args: argparse.Namespace) -> int:
     """Invented facts for the chat, tailoring and packet demo, on an account `demo seed-matches` already seeded."""
     from app import demo
@@ -193,7 +219,33 @@ def _demo_seed_tailor(args: argparse.Namespace) -> int:
     return 0
 
 
+def _graphs_check(args: argparse.Namespace) -> int:
+    """List campaign threads parked before a node the current graph no longer has: exit 1 when there are any."""
+    from app.campaigns import graph
+    from app.guardian import runtime
+
+    stuck = graph.missing_nodes_by_thread(runtime.saver(), graph.compiled())
+    for thread, node in stuck.items():
+        print(f"{thread} parked before {node}")
+    print(f"{len(stuck)} thread(s) parked before a node that no longer exists")
+    return 1 if stuck else 0
+
+
+def _graphs_reseat(args: argparse.Namespace) -> int:
+    """Delete the checkpoints of the threads parked before `--node` and start them again from their tables."""
+    from app.campaigns import graph
+    from app.guardian import runtime
+
+    stuck = graph.missing_nodes_by_thread(runtime.saver(), graph.compiled())
+    chosen = [thread for thread, node in stuck.items() if node == args.node]
+    asked = graph.reseat(runtime.saver(), chosen)
+    print(f"{len(chosen)} thread(s) reset, {asked} campaign(s) asked to start again")
+    return 0
+
+
 COMMANDS: dict[tuple[str, str], Callable[[argparse.Namespace], int | None]] = {
+    ("graphs", "check"): _graphs_check,
+    ("graphs", "reseat"): _graphs_reseat,
     ("queue", "list"): _queue_list,
     ("queue", "retry"): _queue_retry,
     ("ingest", "run"): _ingest_run,
@@ -205,6 +257,8 @@ COMMANDS: dict[tuple[str, str], Callable[[argparse.Namespace], int | None]] = {
     ("demo", "seed-matches"): _demo_seed_matches,
     ("demo", "seed-tailor"): _demo_seed_tailor,
     ("demo", "seed-hiring"): _demo_seed_hiring,
+    ("demo", "seed-campaign"): _demo_seed_campaign,
+    ("demo", "age-campaign"): _demo_age_campaign,
 }
 
 
@@ -241,6 +295,14 @@ def build_parser() -> argparse.ArgumentParser:
     outcome.add_argument("--sent", dest="sent", action="store_true", help="the message was delivered")
     outcome.add_argument("--failed", dest="sent", action="store_false", help="the message was not delivered")
 
+    graphs = groups.add_parser("graphs", help="campaign graph threads in flight").add_subparsers(
+        dest="command", required=True
+    )
+    graphs.add_parser("check", help="list threads parked before a node the graph no longer has (exit 1 if any)")
+    graphs.add_parser("reseat", help="reset those threads so route places each campaign from its tables").add_argument(
+        "--node", required=True, help="the removed node the threads are parked before"
+    )
+
     models = groups.add_parser("models", help="the model registry").add_subparsers(dest="command", required=True)
     models.add_parser("sync", help="load config/models.toml into model_registry")
 
@@ -260,6 +322,12 @@ def build_parser() -> argparse.ArgumentParser:
     seed_hiring.add_argument(
         "--candidate-email", required=True, help="a second account that has signed in: it is asked"
     )
+    demo.add_parser(
+        "seed-campaign", help="get an account ready for the campaign demo (needs RESEARCH_PAGES_DIR on the demo pages)"
+    ).add_argument("--email", required=True, help="the address of an account that has signed in")
+    age = demo.add_parser("age-campaign", help="move an account's open campaigns days into the past")
+    age.add_argument("--email", required=True, help="the address of an account that has signed in")
+    age.add_argument("--days", type=int, required=True, help="how many days to move the clock on (1 to 365)")
     return parser
 
 

@@ -9,35 +9,62 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-12);
-  list-style: none;
-  padding: 0;
+  border-block-start: 1px solid var(--line);
 }
 
+.list > li {
+  border-block-end: 1px solid var(--line);
+}
+
+/* One application, one hairline row: the job, then its history, then the status chip and the menu at the right edge */
 .item {
+  display: grid;
+  gap: var(--sp-8) var(--sp-24);
+  padding: var(--sp-16) var(--sp-8);
+  transition: background-color var(--dur-fast) var(--ease-in);
+}
+
+@media (min-width: 48rem) {
+  .item {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 3fr) auto;
+    align-items: start;
+  }
+}
+
+@media (hover: hover) {
+  .item:hover {
+    background: var(--surface-2);
+  }
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The revision history: a status and its time on each line, the times in the page's tabular figures */
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.side {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--sp-8);
-  padding: var(--sp-16);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--surface);
 }
 
-.top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--sp-8);
-  width: 100%;
-}
-
-.history {
-  padding-inline-start: var(--sp-20);
-  color: var(--muted);
-  font-size: var(--fs-small);
+@media (min-width: 48rem) {
+  .side {
+    align-items: flex-end;
+  }
 }
 
 .overlay {
@@ -54,7 +81,7 @@
 .modal {
   width: min(100%, 28rem);
   border: 1px solid var(--line);
-  border-radius: var(--r-xl);
+  border-radius: var(--r-lg);
   background: var(--surface);
   box-shadow: var(--shadow-2);
 }
@@ -87,8 +114,8 @@
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
   border-radius: var(--r-md);
-  background: var(--surface);
-  font-weight: 600;
+  background: var(--redline-soft);
+  font-weight: 500;
 }
 
 .buttons {

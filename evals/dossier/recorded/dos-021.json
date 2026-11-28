@@ -1,0 +1,82 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "customers",
+    "quote": "Our customers include regional trucking companies and small clinics."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 225 employees across 2 offices."
+   }
+  ],
+  "links": [
+   "https://ulvane-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ulvane-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "funding",
+    "quote": "In 2022 we raised a Series B of 35 million dollars."
+   },
+   {
+    "topic": "values",
+    "quote": "We value rigour, ownership and patience."
+   },
+   {
+    "topic": "news",
+    "quote": "In January 2026 we opened an office in Porto."
+   }
+  ],
+  "links": [
+   "https://ulvane-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ulvane-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "hiring_process",
+    "quote": "Our hiring process has 3 interviews and a take-home exercise."
+   },
+   {
+    "topic": "engineering",
+    "quote": "Our engineers work in Python and SQL and ship every two weeks."
+   }
+  ],
+  "links": [
+   "https://ulvane-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ulvane-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Python for our route planning software."
+   }
+  ],
+  "links": [
+   "https://ulvane-freight.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://ulvane-freight.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

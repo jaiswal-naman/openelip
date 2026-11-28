@@ -3,10 +3,12 @@
 .panel {
   display: flex;
   gap: var(--sp-12);
+  max-width: 48rem;
   padding: var(--sp-16) var(--sp-20);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 
 .icon {

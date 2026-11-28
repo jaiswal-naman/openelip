@@ -4,13 +4,14 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ExternalLinkIcon } from "@/components/icons/icons";
 import { buttonClass } from "@/components/ui/buttonStyles";
+import { type TitleCell, TitleBlock } from "@/components/ui/TitleBlock";
 import { LocalTime } from "@/components/ui/Viewer";
 import { EMPLOYMENT_TYPE_LABELS, NOT_STATED } from "@/lib/labels";
 import { useViewer } from "@/lib/viewer";
 import { citationResolves, HighlightedText } from "@/ui/patterns/HighlightedText";
 import styles from "./detail.module.css";
 import { arrangementsText, locationText, payText, safeHttpUrl, sourceLabel, unplacedWords } from "./jobs";
-import { RequirementList } from "./RequirementList";
+import { RequirementList, requirementNumbers } from "./RequirementList";
 import type { JobDetail as JobDetailData } from "./types";
 
 const ORDINAL = /^\d{1,5}$/; // an ordinal is a smallint: anything else in ?req= is not one
@@ -41,6 +42,7 @@ export function JobDetail({ job }: { job: JobDetailData }) {
   const closed = job.status === "closed";
   const applyUrl = safeHttpUrl(job.apply_url);
   const words = unplacedWords(job);
+  const numbers = requirementNumbers(job.requirements);
 
   function select(ordinal: number | null) {
     setSelected(ordinal);
@@ -52,40 +54,27 @@ export function JobDetail({ job }: { job: JobDetailData }) {
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
+  const shown = extracted && job.requirements.length > 0;
+  const cells: TitleCell[] = [];
+  if (shown) {
+    const required = job.requirements.filter((requirement) => requirement.importance === "required").length;
+    cells.push({ label: "Required", value: required });
+    cells.push({ label: "Preferred", value: job.requirements.length - required });
+  }
+
   return (
     <article className={styles.detail}>
-      <header className={styles.head}>
-        <h1 className={`t-page ${styles.title}`}>{job.title}</h1>
-        <p className={styles.company}>{job.company_name.trim() === "" ? "Company not stated" : job.company_name}</p>
-
-        {closed && (
-          <p className={styles.closed}>
-            <span className={`t-label ${styles.closedLabel}`}>Closed</span>
-            <span>
-              {job.closed_at === null ? (
-                "This job has closed. It is kept here for reference."
-              ) : (
-                <>
-                  This job closed on <LocalTime iso={job.closed_at} />. It is kept here for reference.
-                </>
-              )}
-            </span>
-          </p>
-        )}
-
-        <ul className={styles.facts}>
-          <li>{locationText(job)}</li>
-          {words !== null && <li>Posting says: {words}</li>}
-          <li>{arrangementsText(job.work_arrangements)}</li>
-          <li>Employment type: {EMPLOYMENT_TYPE_LABELS[job.employment_type] ?? job.employment_type}</li>
-          <li>Pay: {payText(job.pay, viewer.locale)}</li>
-          <li>Source: {sourceLabel(job.source.ats)}</li>
-          <li>
-            Verified open <LocalTime iso={job.last_verified_at} />
-          </li>
-        </ul>
-
-        {!closed &&
+      <TitleBlock
+        title={<span className={styles.title}>{job.title}</span>}
+        lines={
+          <>
+            <p className={styles.company}>{job.company_name.trim() === "" ? "Company not stated" : job.company_name}</p>
+            <p className={styles.place}>{locationText(job)}</p>
+          </>
+        }
+        cells={cells}
+        actions={
+          !closed &&
           (applyUrl === null ? (
             <p className="t-small">No link in the posting</p>
           ) : (
@@ -93,16 +82,43 @@ export function JobDetail({ job }: { job: JobDetailData }) {
               href={applyUrl}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className={buttonClass("secondary", "md")}
+              className={buttonClass("primary", "md")}
               aria-label={`View posting for ${job.title} (opens in a new tab)`}
             >
               View posting
               <ExternalLinkIcon />
             </a>
-          ))}
-      </header>
+          ))
+        }
+      />
 
-      <div className={`${styles.body} ${extracted && job.requirements.length > 0 ? styles.split : ""}`}>
+      {closed && (
+        <p className={styles.closed}>
+          <span className={`t-label ${styles.closedLabel}`}>Closed</span>
+          <span>
+            {job.closed_at === null ? (
+              "This job has closed. It is kept here for reference."
+            ) : (
+              <>
+                This job closed on <LocalTime iso={job.closed_at} />. It is kept here for reference.
+              </>
+            )}
+          </span>
+        </p>
+      )}
+
+      <ul className={styles.facts}>
+        {words !== null && <li>Posting says: {words}</li>}
+        <li>{arrangementsText(job.work_arrangements)}</li>
+        <li>Employment type: {EMPLOYMENT_TYPE_LABELS[job.employment_type] ?? job.employment_type}</li>
+        <li>Pay: {payText(job.pay, viewer.locale)}</li>
+        <li>Source: {sourceLabel(job.source.ats)}</li>
+        <li>
+          Verified open <LocalTime iso={job.last_verified_at} />
+        </li>
+      </ul>
+
+      <div className={`${styles.body} ${shown ? styles.split : ""}`}>
         <section aria-labelledby="requirements-heading" className={`${styles.panel} ${styles.requirements}`}>
           <h2 id="requirements-heading" className="t-section">
             Requirements
@@ -123,7 +139,14 @@ export function JobDetail({ job }: { job: JobDetailData }) {
           {job.description.trim() === "" ? (
             <p>{NOT_STATED}</p>
           ) : (
-            <HighlightedText text={job.description} span={active?.span ?? null} announcement="Job sentence highlighted." />
+            <div className={styles.posting}>
+              <HighlightedText
+                text={job.description}
+                span={active?.span ?? null}
+                callout={active === undefined ? undefined : numbers.get(active.ordinal)}
+                announcement="Job sentence highlighted."
+              />
+            </div>
           )}
         </section>
       </div>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import ledger from "@/components/ui/ledger.module.css";
 import { EmptyState, ErrorState } from "@/components/ui/States";
+import { TitleBlock, type TitleCell } from "@/components/ui/TitleBlock";
 import { Count } from "@/components/ui/Viewer";
 import { useMe } from "@/features/auth/queries";
 import { useApi } from "@/lib/api/context";
@@ -25,6 +26,7 @@ const SIGN_IN = `/sign-in?next=${encodeURIComponent("/control/costs")}`;
 export function CostsView() {
   const api = useApi();
   const router = useRouter();
+  const { locale } = useViewer();
   const me = useMe();
   const byMonth = useQuery(costsQuery(api, "month"));
   const byTask = useQuery(costsQuery(api, "task"));
@@ -43,13 +45,11 @@ export function CostsView() {
 
   return (
     <>
-      <div className={styles.head}>
-        <div className={styles.title}>
-          <h1 className="t-page">My model cost</h1>
-          <p className="muted">Measured operational data from the cost ledger.</p>
-        </div>
-        {byMonth.data && <Total costs={byMonth.data} />}
-      </div>
+      <TitleBlock
+        title="My model cost"
+        lines={<p>Measured operational data from the cost ledger.</p>}
+        cells={byMonth.data ? [totalCell(byMonth.data, locale)] : []}
+      />
 
       {sessionEnded ? (
         <p role="status">Your session has ended. Taking you to sign in.</p>
@@ -77,17 +77,19 @@ export function CostsView() {
   );
 }
 
-function Total({ costs }: { costs: Costs }) {
-  const { locale } = useViewer();
-  return (
-    <p className={styles.total}>
-      <span className="t-label muted">Total, all recorded calls</span>
-      <span className={styles.totalFigure}>{formatMoney(costs.total_usd, locale)}</span>
-      <span className="t-data muted">
-        <Count value={costs.model_calls} /> model {costs.model_calls === 1 ? "call" : "calls"}
-      </span>
-    </p>
-  );
+/** The total as a page header cell: the label the page has always carried, the money, and how many calls it sums. */
+function totalCell(costs: Costs, locale: string | undefined): TitleCell {
+  return {
+    label: "Total, all recorded calls",
+    value: (
+      <>
+        {formatMoney(costs.total_usd, locale)}
+        <span className={styles.sub}>
+          <Count value={costs.model_calls} /> model {costs.model_calls === 1 ? "call" : "calls"}
+        </span>
+      </>
+    ),
+  };
 }
 
 function CostTable({ title, keyLabel, costs }: { title: string; keyLabel: string; costs: Costs }) {
@@ -105,16 +107,16 @@ function CostTable({ title, keyLabel, costs }: { title: string; keyLabel: string
           <tr>
             <th scope="col">{keyLabel}</th>
             <th scope="col">Models</th>
-            <th scope="col" className={ledger.num}>
+            <th scope="col" className={styles.numHead}>
               Calls
             </th>
-            <th scope="col" className={ledger.num}>
+            <th scope="col" className={styles.numHead}>
               Average latency
             </th>
-            <th scope="col" className={ledger.num}>
+            <th scope="col" className={styles.numHead}>
               Tokens in / out
             </th>
-            <th scope="col" className={ledger.num}>
+            <th scope="col" className={styles.numHead}>
               Cost
             </th>
             <th scope="col">Share of total</th>

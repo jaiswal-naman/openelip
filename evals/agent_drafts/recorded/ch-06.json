@@ -1,0 +1,60 @@
+[
+ {
+  "sentences": [
+   {
+    "text": "I ran stock control for every warehouse in the country.",
+    "facts": [
+     "f3"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I cut picking errors with a new shelf labelling scheme.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "More of my work is at https://portfolio.example/me.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I like that Corvane Logistics builds warehouse robots for food co-operatives.",
+    "facts": [],
+    "dossier_claims": [
+     "d1"
+    ],
+    "events": []
+   },
+   {
+    "text": "I am available to start immediately.",
+    "facts": [],
+    "dossier_claims": [],
+    "events": []
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": false
+   },
+   {
+    "edit": "e2",
+    "entailed": true
+   },
+   {
+    "edit": "e3",
+    "entailed": true
+   }
+  ]
+ }
+]

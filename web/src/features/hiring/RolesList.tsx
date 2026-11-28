@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { Cell, Column, Row, Table, TableBody, TableHeader } from "react-aria-components";
+import { LinkButton } from "@/components/ui/LinkButton";
 import { Pill } from "@/components/ui/Pill";
 import { EmptyState, ErrorState } from "@/components/ui/States";
-import { LinkButton } from "@/components/ui/LinkButton";
+import { TitleBlock, type TitleCell } from "@/components/ui/TitleBlock";
+import ledger from "@/components/ui/ledger.module.css";
 import { ROLE_STATUS_LABELS } from "@/lib/labels";
 import { type RoleListItem, useMembership, useRoles } from "./api";
 import { CreateOrganization } from "./CreateOrganization";
@@ -16,6 +17,27 @@ const owed = (role: RoleListItem) =>
   role.answers_owed === 0 ? "-" : role.answers_overdue > 0 ? `${role.answers_owed} (${role.answers_overdue} overdue)` : String(role.answers_owed);
 const target = (role: RoleListItem) => (role.status === "draft" ? `/hire/roles/${role.id}` : `/hire/shortlist/${role.id}`);
 
+/** The cells come from the list itself: a count of roles, of people who said yes, and of answers owed. Nothing is guessed. */
+function titleCells(roles: RoleListItem[]): TitleCell[] {
+  const owedTotal = roles.reduce((sum, role) => sum + role.answers_owed, 0);
+  const overdue = roles.reduce((sum, role) => sum + role.answers_overdue, 0);
+  return [
+    { label: "Open roles", value: roles.filter((role) => role.status === "open").length },
+    { label: "Drafts", value: roles.filter((role) => role.status === "draft").length, tone: "muted" },
+    { label: "Said yes", value: roles.reduce((sum, role) => sum + role.said_yes, 0) },
+    {
+      label: "Answers owed",
+      tone: owedTotal > 0 ? "redline" : "muted",
+      value: (
+        <>
+          {owedTotal}
+          {overdue > 0 && <span className={styles.sub}>{overdue} overdue</span>}
+        </>
+      ),
+    },
+  ];
+}
+
 /** /hire/roles: the organization's roles and what is owed, or, with no organization, invitations and the create form. */
 export function RolesList() {
   const { membership, invitations, isLoading } = useMembership();
@@ -23,7 +45,7 @@ export function RolesList() {
   if (membership === null) {
     return (
       <div className={styles.page}>
-        <h1 className="t-page">Roles</h1>
+        <TitleBlock title="Roles" lines={<p>Create your organization, or join one you were invited to, to post roles.</p>} />
         <Invitations invitations={invitations} />
         <CreateOrganization />
       </div>
@@ -36,12 +58,21 @@ function Roles({ orgId, orgName }: { orgId: string; orgName: string }) {
   const roles = useRoles(orgId);
   return (
     <div className={styles.page}>
-      <div className={styles.head}>
-        <h1 className="t-page">Roles, {orgName}</h1>
-        <LinkButton href="/hire/roles/new" variant="primary">
-          New role
-        </LinkButton>
-      </div>
+      <TitleBlock
+        title="Roles"
+        lines={
+          <>
+            <p className={styles.company}>{orgName}</p>
+            <p className="t-small">The roles you posted, who said yes to each, and the answers you owe.</p>
+          </>
+        }
+        cells={roles.data === undefined ? [] : titleCells(roles.data)}
+        actions={
+          <LinkButton href="/hire/roles/new" variant="primary">
+            New role
+          </LinkButton>
+        }
+      />
       {roles.isError ? (
         <ErrorState what="Could not load your roles." error={roles.error} onRetry={() => void roles.refetch()} />
       ) : roles.data === undefined ? (
@@ -49,43 +80,34 @@ function Roles({ orgId, orgName }: { orgId: string; orgName: string }) {
       ) : roles.data.length === 0 ? (
         <EmptyState>No roles yet. Describe one to see who would be asked.</EmptyState>
       ) : (
-        <>
-          <div className={`${styles.tableWrap} ${styles.swap}`}>
-            <Table aria-label="Roles" className={styles.table}>
-              <TableHeader>
-                {["Role", "Status", "Said yes", "Answers owed", "Updated"].map((name, index) => (
-                  <Column key={name} isRowHeader={index === 0} className={`t-label ${styles.column}`}>
-                    {name}
-                  </Column>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {roles.data.map((role) => (
-                  <Row key={role.id} id={role.id} textValue={role.title} href={target(role)}>
-                    <Cell className={styles.cell}>{role.title}</Cell>
-                    <Cell className={styles.cell}>{ROLE_STATUS_LABELS[role.status]}</Cell>
-                    <Cell className={styles.cell}>{role.said_yes === 0 ? "-" : role.said_yes}</Cell>
-                    <Cell className={styles.cell}>{owed(role)}</Cell>
-                    <Cell className={styles.cell}>{day(role.updated_at)}</Cell>
-                  </Row>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <ul className={styles.cards} aria-label="Roles">
+        <Table aria-label="Roles" className={`${ledger.table} ${styles.tight}`}>
+          <TableHeader>
+            <Column isRowHeader>Role</Column>
+            <Column>Status</Column>
+            <Column className={ledger.num}>Said yes</Column>
+            <Column className={ledger.num}>Answers owed</Column>
+            <Column>Updated</Column>
+          </TableHeader>
+          <TableBody>
             {roles.data.map((role) => (
-              <li key={role.id} className={styles.card}>
-                <Link href={target(role)} className={styles.words}>
-                  {role.title}
-                </Link>
-                <span className={styles.row}>
-                  <Pill tone={role.status === "open" ? "ok" : "unk"}>{ROLE_STATUS_LABELS[role.status]}</Pill>
-                  <span>Answers owed: {owed(role)}</span>
-                </span>
-              </li>
+              <Row key={role.id} id={role.id} textValue={role.title} href={target(role)} className={styles.rowLink}>
+                <Cell className={styles.words}>{role.title}</Cell>
+                <Cell data-label="Status">
+                  <Pill tone={role.status === "open" ? "ok" : "stage"}>{ROLE_STATUS_LABELS[role.status]}</Pill>
+                </Cell>
+                <Cell className={ledger.num} data-label="Said yes">
+                  {role.said_yes === 0 ? "-" : role.said_yes}
+                </Cell>
+                <Cell className={`${ledger.num} ${styles.owed}`} data-label="Answers owed" data-overdue={role.answers_overdue > 0 || undefined}>
+                  {owed(role)}
+                </Cell>
+                <Cell data-label="Updated">
+                  <span className="t-data">{day(role.updated_at)}</span>
+                </Cell>
+              </Row>
             ))}
-          </ul>
-        </>
+          </TableBody>
+        </Table>
       )}
     </div>
   );

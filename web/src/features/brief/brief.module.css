@@ -1,14 +1,15 @@
-/* The Brief section of settings and the unsubscribe page (FRONTEND_UI 3.10 and 3.25). Tokens only. */
+/*
+ * The Brief section of settings and the unsubscribe page, as hairline regions of a page: a rule above, fields with their labels
+ * showing, one control height (FRONTEND_UI 3.10 and 3.25). Tokens only.
+ */
 
-.card {
+.section {
   display: flex;
   flex-direction: column;
   gap: var(--sp-16);
   max-width: 48rem;
-  padding: var(--sp-16) var(--sp-20);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+  padding-block-start: var(--sp-16);
+  border-block-start: 1px solid var(--line);
 }
 
 .lead {
@@ -21,40 +22,46 @@
   gap: var(--sp-4);
 }
 
-/* Three choices drawn as one control. The chosen one has a fill and a bar under it as well as aria-checked. */
+/* Three choices drawn as one control; the chosen one is filled with ink and says so to a screen reader with aria-checked */
 .segmented {
   display: inline-flex;
   flex-wrap: wrap;
   width: fit-content;
   border: 1px solid var(--line-strong);
-  border-radius: var(--r-md);
+  border-radius: var(--r-pill);
+  background: var(--surface);
   overflow: hidden;
 }
 
 .segment {
   display: inline-flex;
   align-items: center;
-  min-height: 2.5rem;
+  min-height: calc(2.5rem - 2px); /* inside the 1px frame, so the control is as tall as a field */
   padding: 0 var(--sp-16);
-  border-inline-start: 1px solid var(--line-strong);
-  border-bottom: 3px solid transparent;
-  background: var(--surface);
-  font-weight: 600;
+  border-inline-start: 1px solid var(--line);
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-in);
 }
 
 .segment:first-child {
   border-inline-start: 0;
 }
 
+@media (hover: hover) {
+  .segment[data-hovered]:not([data-selected]) {
+    background: var(--surface-2);
+  }
+}
+
 .segment[data-selected] {
-  border-bottom-color: var(--accent-strong);
-  background: var(--accent-soft);
+  background: var(--text);
+  color: var(--bg);
 }
 
 .segment[data-focus-visible] {
   outline: 2px solid var(--focus);
-  outline-offset: -2px;
+  outline-offset: -4px;
 }
 
 .switchRow {
@@ -69,10 +76,11 @@
   gap: var(--sp-12);
   width: fit-content;
   min-height: 2.5rem;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
+/* A toggle: a pill slot and a round slider, filled when on */
 .track {
   display: inline-flex;
   align-items: center;
@@ -80,7 +88,7 @@
   width: 2.5rem;
   height: 1.5rem;
   padding: 2px;
-  border: 2px solid var(--line-strong);
+  border: 1px solid var(--line-strong);
   border-radius: var(--r-pill);
   background: var(--surface);
   transition: background-color var(--dur-fast) var(--ease-in);
@@ -121,18 +129,19 @@
 
 .saved {
   min-height: 1.5em;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .problem {
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
   border-radius: var(--r-md);
-  background: var(--surface);
-  font-weight: 600;
+  background: var(--redline-soft);
+  color: var(--bad);
+  font-weight: 500;
 }
 
-/* ---- the unsubscribe page ---- */
+/* ---- the unsubscribe page: a page with the page header's hairline across the top ---- */
 
 .unsubscribe {
   display: flex;
@@ -140,8 +149,6 @@
   align-items: flex-start;
   gap: var(--sp-16);
   width: min(100%, 36rem);
-  padding: var(--sp-24);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+  padding-block-start: var(--sp-20);
+  border-block-start: 1px solid var(--line);
 }

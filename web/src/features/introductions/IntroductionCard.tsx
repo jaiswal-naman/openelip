@@ -23,18 +23,22 @@ export function IntroductionCard({ item, isOpen, onReview }: { item: Introductio
   const role = item.role_title ?? "a role";
   return (
     <article className={styles.card} aria-labelledby={headingId} aria-current={isOpen ? "true" : undefined} data-open={isOpen || undefined}>
-      <p className={`t-label ${styles.kind}`}>{WORDS.kind}</p>
-      <div className={styles.head}>
-        <h2 id={headingId} className={`t-card ${styles.words}`}>
-          {organization} asks about {role}
-        </h2>
-        {detail.data?.organization.is_synthetic && <Pill tone="unk">{WORDS.demo}</Pill>}
+      <div className={styles.cardMain}>
+        <p className={`t-label ${styles.kind}`}>{WORDS.kind}</p>
+        <div className={styles.head}>
+          <h2 id={headingId} className={`t-card ${styles.cardTitle}`}>
+            {organization} asks about {role}
+          </h2>
+          {detail.data?.organization.is_synthetic && <Pill tone="unk">{WORDS.demo}</Pill>}
+        </div>
+        {pay !== null && <p>{pay}</p>}
+        <p className="t-small muted">Answer by {day(item.expires_at)}. No reply counts as no.</p>
       </div>
-      {pay !== null && <p>{pay}</p>}
-      <p className="t-small muted">Answer by {day(item.expires_at)}. No reply counts as no.</p>
-      <Button variant="primary" size="sm" onPress={onReview}>
-        {WORDS.review}
-      </Button>
+      <div className={styles.cardSide}>
+        <Button variant="primary" size="sm" onPress={onReview}>
+          {WORDS.review}
+        </Button>
+      </div>
     </article>
   );
 }

@@ -39,5 +39,7 @@ describe("safeNextPath (threat T-01-21: no open redirect after sign-in)", () => 
   it("does not send someone back to the sign-in page they are on", () => {
     expect(safeNextPath("/sign-in")).toBe("/jobs");
     expect(safeNextPath("/sign-in?next=/trust")).toBe("/jobs");
+    expect(safeNextPath("/local-session?next=/trust")).toBe("/jobs");
+    expect(safeNextPath("/sign-in-help")).toBe("/sign-in-help");
   });
 });

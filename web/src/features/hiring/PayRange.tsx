@@ -9,6 +9,7 @@ import { NativeSelect } from "@/ui/patterns/NativeSelect";
 import { describeFailure } from "@/lib/api/problems";
 import { WORK_ARRANGEMENT_LABELS } from "@/lib/labels";
 import { type RoleView, usePatchRole } from "./api";
+import { Zone } from "./Zone";
 import styles from "./hiring.module.css";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "INR", "CAD", "AUD", "CHF", "SGD", "JPY"];
@@ -63,17 +64,14 @@ export function PayRange({ role }: { role: RoleView }) {
   }
 
   return (
-    <section aria-labelledby="pay-heading" className={styles.card}>
-      <h2 id="pay-heading" className="t-label">
-        Pay range (required to publish)
-      </h2>
-      <div className={styles.row}>
+    <Zone id="pay-heading" number={3} title="Pay range (required to publish)">
+      <div className={styles.fields}>
         <NativeSelect label="Currency" value={currency} onChange={setCurrency} options={currencies.map((code) => ({ value: code, label: code }))} />
         <Money label="Minimum a year" value={min} onChange={setMin} />
         <Money label="Maximum a year" value={max} onChange={setMax} />
       </div>
-      <h2 className="t-label">Location</h2>
-      <div className={styles.row}>
+      <h3 className={`t-label ${styles.subhead}`}>Location</h3>
+      <div className={styles.fields}>
         <TextField label="Country (two letters)" value={country} onChange={setCountry} maxLength={2} />
         <TextField label="City" value={city} onChange={setCity} maxLength={120} />
       </div>
@@ -106,7 +104,7 @@ export function PayRange({ role }: { role: RoleView }) {
           Save pay and location
         </Button>
       </div>
-    </section>
+    </Zone>
   );
 }
 
@@ -114,12 +112,9 @@ export function PayRange({ role }: { role: RoleView }) {
 export function PayRangeReadOnly({ role }: { role: RoleView }) {
   const pay = role.pay_range;
   return (
-    <section aria-labelledby="pay-heading" className={styles.card}>
-      <h2 id="pay-heading" className="t-label">
-        Pay range
-      </h2>
+    <Zone id="pay-heading" number={3} title="Pay range">
       <p>{pay ? `${pay.currency} ${pay.min.toLocaleString("en-US")} to ${pay.max.toLocaleString("en-US")} a year` : "Not set"}</p>
       <p className={styles.muted}>{[role.city, role.country].filter(Boolean).join(", ") || "No location set"}</p>
-    </section>
+    </Zone>
   );
 }

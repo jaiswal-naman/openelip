@@ -102,7 +102,12 @@ function FactGroup({ title, note, children }: { title: string; note?: string; ch
   return (
     <div className={styles.group}>
       <h3 className="t-section">{title}</h3>
-      {note && <p className="muted">{note}</p>}
+      {note && <p className={`muted ${styles.note}`}>{note}</p>}
+      <div className={styles.ledgerHead} aria-hidden="true">
+        <span>Fact</span>
+        <span>Where it came from</span>
+        <span />
+      </div>
       <ul className={styles.facts}>{children}</ul>
     </div>
   );
@@ -125,9 +130,12 @@ function FactRow({ fact, document, busy, fixing, onFix, onCancel, onDecide }: Ro
   const decision = (action: FactDecision["action"], statement?: string): FactDecision => ({ fact_id: fact.id, action, statement });
 
   return (
-    <li className={styles.fact} data-editing={fixing || undefined}>
+    <li className={styles.fact} data-editing={fixing || undefined} data-waiting={waiting || undefined}>
       <div className={styles.what}>
-        <p className="t-label muted">{factKindLabel(fact.kind)}</p>
+        <p className={`t-label ${styles.labels}`}>
+          <span>{factKindLabel(fact.kind)}</span>
+          {waiting && <span className={styles.needs}>Needs you</span>}
+        </p>
         {fixing ? (
           <StatementEditor
             label="Your wording"
@@ -162,7 +170,11 @@ function FactRow({ fact, document, busy, fixing, onFix, onCancel, onDecide }: Ro
           </Button>
         </div>
       )}
-      {fact.status === "confirmed" && <Pill tone="ok">Confirmed</Pill>}
+      {fact.status === "confirmed" && (
+        <div className={styles.actions}>
+          <Pill tone="ok">Confirmed</Pill>
+        </div>
+      )}
     </li>
   );
 }

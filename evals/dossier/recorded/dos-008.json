@@ -1,0 +1,66 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Halvern Foods builds payment terminals for food co-operatives."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include food co-operatives and independent shops."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 155 employees across 2 offices."
+   },
+   {
+    "topic": "product",
+    "quote": "Halvern Foods makes tools for its customers."
+   }
+  ],
+  "links": [
+   "https://halvern-foods.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://halvern-foods.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "values",
+    "quote": "We value kindness, patience and rigour."
+   },
+   {
+    "topic": "news",
+    "quote": "In March 2025 we opened an office in Cork."
+   }
+  ],
+  "links": [
+   "https://halvern-foods.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://halvern-foods.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in C++ for our payment terminals."
+   }
+  ],
+  "links": [
+   "https://halvern-foods.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://halvern-foods.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

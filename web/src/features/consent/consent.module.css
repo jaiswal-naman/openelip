@@ -1,38 +1,59 @@
-/* The AI processing consent sheet (FRONTEND_UI 4.6). Inline in onboarding and in settings, never a modal. */
+/*
+ * The AI processing consent sheet (FRONTEND_UI 4.6), inline in onboarding and in settings, never a modal. A clear hairline block:
+ * where text would be sent, what each place receives and what for, then Agree or Not now. Tokens only.
+ */
 
 .sheet {
   display: flex;
   flex-direction: column;
   gap: var(--sp-16);
+  max-width: 56rem;
+}
+
+.sheet > p:first-child {
   max-width: var(--measure);
 }
 
+/* One hairline row for each provider: a hairline on top and under each, three captioned cells across */
 .providers {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-12);
+  border-block-start: 1px solid var(--line);
 }
 
 .provider {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-  padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+  display: grid;
+  gap: var(--sp-8) var(--sp-16);
+  padding: var(--sp-12) var(--sp-8);
+  border-block-end: 1px solid var(--line);
+}
+
+@media (min-width: 48rem) {
+  .provider {
+    grid-template-columns: 12rem minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 
 .name {
   overflow-wrap: anywhere;
 }
 
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .alert {
+  max-width: var(--measure);
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
   border-radius: var(--r-md);
-  background: var(--surface);
-  font-weight: 600;
+  background: var(--redline-soft);
+  color: var(--bad);
+  font-weight: 500;
 }
 
 .actions {
@@ -42,5 +63,6 @@
 }
 
 .note {
+  max-width: var(--measure);
   color: var(--muted);
 }

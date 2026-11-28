@@ -1,4 +1,5 @@
 import { LinkButton } from "@/components/ui/LinkButton";
+import { TitleBlock } from "@/components/ui/TitleBlock";
 import { CONSTRAINT_KIND_LABELS, IMPORTANCE_LABELS, MATCH_REASON_LABELS, OUTCOME_LABELS, VERDICT_LABELS } from "@/lib/labels";
 import type { DecisionData } from "./queries";
 import styles from "./match.module.css";
@@ -24,16 +25,16 @@ export function HeldDecision({ decision }: { decision: DecisionData }) {
   const filtered = decision.outcome === "filtered";
   return (
     <article className={styles.detail}>
-      <header className={styles.head}>
-        <h1 className={`t-page ${styles.title}`}>{job.title}</h1>
-        <p className={styles.company}>{job.company_name.trim() === "" ? "Company not stated" : job.company_name}</p>
-        <p className={styles.banner}>
-          <span className={`t-label ${styles.bannerLabel}`}>{OUTCOME_LABELS[decision.outcome]}</span>
-          <span>{filtered ? "This job no longer meets your constraints." : "This job was held back, so there is no match to open."}</span>
-        </p>
-      </header>
+      <TitleBlock
+        title={<span className={styles.title}>{job.title}</span>}
+        lines={<p className={styles.company}>{job.company_name.trim() === "" ? "Company not stated" : job.company_name}</p>}
+      />
+      <p className={styles.banner}>
+        <span className={`t-label ${styles.bannerLabel}`}>{OUTCOME_LABELS[decision.outcome]}</span>
+        <span>{filtered ? "This job no longer meets your constraints." : "This job was held back, so there is no match to open."}</span>
+      </p>
 
-      <section aria-labelledby="why-heading" className={styles.panel}>
+      <section aria-labelledby="why-heading" className={styles.section}>
         <h2 id="why-heading" className="t-section">
           Why
         </h2>

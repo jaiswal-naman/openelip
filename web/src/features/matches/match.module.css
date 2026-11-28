@@ -1,4 +1,8 @@
-/* One match: its facts, the requirement table, and the two texts it cites (FRONTEND_UI 3.4 and 4.2). Tokens only. */
+/*
+ * One match as a page: the header, a hairline strip of the posting's facts, the requirement ledger, the two texts side by
+ * side at one scale, and the hard-constraint ledger (FRONTEND_UI 3.4 and 4.2). The dismiss dialog's classes live here too.
+ * Tokens only.
+ */
 
 .detail {
   display: flex;
@@ -6,48 +10,53 @@
   gap: var(--sp-24);
 }
 
-.head {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--sp-8);
-}
-
 .title {
   overflow-wrap: anywhere;
 }
 
 .company {
-  font-size: var(--fs-section);
+  color: var(--text);
+  font-size: var(--fs-lede);
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 
-.facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-4) var(--sp-16);
-  color: var(--muted);
-  font-size: var(--fs-small);
-}
-
-.facts li {
+.place {
   overflow-wrap: anywhere;
 }
 
 .summary {
   max-width: var(--measure);
+  margin-block-start: var(--sp-4);
+  color: var(--text);
 }
 
-/* A notice with a bar down its edge and a border: the words carry the meaning, the bar is extra. */
+/* The posting's other facts in hairline cells */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  border-block-start: 1px solid var(--line);
+  border-inline-start: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.facts li {
+  padding: var(--sp-8) var(--sp-12);
+  border-block-end: 1px solid var(--line);
+  border-inline-end: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+/* A notice on the page: bordered, with its label in the notice's colour. The word is the signal, not the colour. */
 .banner {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--sp-4) var(--sp-8);
+  gap: var(--sp-4) var(--sp-12);
   max-width: var(--measure);
   padding: var(--sp-12) var(--sp-16);
-  border: 1px solid var(--line-strong);
-  border-inline-start: 4px solid var(--warn);
+  border: 1px solid var(--warn);
   border-radius: var(--r-md);
   background: var(--surface);
 }
@@ -56,103 +65,122 @@
   color: var(--warn);
 }
 
+/* One size for every button of the row, so the row reads as one line of work */
 .actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--sp-8);
 }
 
 .notice {
   max-width: var(--measure);
-  font-weight: 600;
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-weight: 500;
 }
 
 .problem {
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--bad);
   border-radius: var(--r-md);
-  background: var(--surface);
-  font-weight: 600;
+  background: var(--redline-soft);
+  color: var(--bad);
+  font-weight: 500;
 }
 
-.panel {
+/* ---- a region of the page: a hairline above, no box ---- */
+
+.section {
   display: flex;
   flex-direction: column;
   gap: var(--sp-12);
   min-width: 0;
-  padding: var(--sp-16) var(--sp-20);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+  padding-block-start: var(--sp-16);
+  border-block-start: 1px solid var(--line);
+}
+
+/* What was held back sits a little below the tab line it hangs from */
+.held {
+  padding-block-start: var(--sp-8);
+}
+
+.hint {
+  max-width: var(--measure);
+  color: var(--muted);
 }
 
 .reasonList {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
-  padding-inline-start: var(--sp-20);
-  list-style: disc;
+  border-block-start: 1px solid var(--line);
 }
 
-/* ---- the requirement table ---- */
-
-/* A wide table scrolls inside its own region on a narrow screen, never the whole page (WCAG 1.4.10). */
-.tableWrap {
-  overflow-x: auto;
+.reasonList > li {
+  padding: var(--sp-8);
+  border-block-end: 1px solid var(--line);
+  overflow-wrap: anywhere;
 }
 
-.table,
-.plainTable {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.column {
-  padding: var(--sp-8) var(--sp-12);
-  border-bottom: 1px solid var(--line-strong);
-  color: var(--muted);
-  text-align: start;
-  vertical-align: bottom;
-}
-
-.cell {
-  padding: var(--sp-12);
-  border-top: 1px solid var(--line);
-  font-weight: 400;
-  text-align: start;
-  vertical-align: top;
-}
+/* ---- the requirement ledger (the ledger's own rules come from components/ui/ledger.module.css) ---- */
 
 .row {
   cursor: pointer;
   outline-offset: -2px; /* inside the row: the table's own region would clip a ring drawn outside it */
 }
 
-@media (hover: hover) {
-  .row[data-hovered] {
-    background: var(--surface-2);
-  }
-}
-
 .row[data-focus-visible] {
   outline: 2px solid var(--focus);
 }
 
-/* The selected row: a fill and a bar down its edge, and aria-selected for a screen reader; not colour alone. */
-.row[data-selected="true"] {
+/* The selected row: a tint and a hairline box, its numeral in ink, and aria-selected for a screen reader; not colour alone */
+.table tbody tr.row[data-selected="true"] {
   background: var(--accent-soft);
 }
 
-.row[data-selected="true"] .cell:first-child {
-  box-shadow: inset 4px 0 0 var(--accent-strong);
+.table tbody tr.row[data-selected="true"] td {
+  box-shadow:
+    inset 0 1px 0 var(--accent-strong),
+    inset 0 -1px 0 var(--accent-strong);
 }
 
-.requirement {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--sp-4);
+.table tbody tr.row[data-selected="true"] td:first-child {
+  box-shadow:
+    inset 1px 0 0 var(--accent-strong),
+    inset 0 1px 0 var(--accent-strong),
+    inset 0 -1px 0 var(--accent-strong);
+}
+
+.table tbody tr.row[data-selected="true"] td:last-child {
+  box-shadow:
+    inset -1px 0 0 var(--accent-strong),
+    inset 0 1px 0 var(--accent-strong),
+    inset 0 -1px 0 var(--accent-strong);
+}
+
+.table tbody tr.row[data-selected="true"] .itemNo {
+  color: var(--text);
+}
+
+/* Stacked on a phone the row is one block, so its frame is drawn round the row, not round each cell */
+@media (max-width: 39.99rem) {
+  .table tbody tr.row[data-selected="true"] {
+    outline: 1px solid var(--accent-strong);
+    outline-offset: -1px;
+  }
+
+  .table tbody tr.row[data-selected="true"] td,
+  .table tbody tr.row[data-selected="true"] td:first-child,
+  .table tbody tr.row[data-selected="true"] td:last-child {
+    box-shadow: none;
+  }
+
+  .table tbody tr.row[data-selected="true"][data-focus-visible] {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+  }
 }
 
 .words {
@@ -160,8 +188,17 @@
   overflow-wrap: anywhere;
 }
 
-.badge {
-  padding: 0 var(--sp-8);
+.requirementText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+/* Required in ink, solid; preferred in grey, dashed: the word is the signal and the outline says it again */
+.importance {
+  padding: 0.125rem var(--sp-8);
   border: 1px solid currentColor;
   border-radius: var(--r-pill);
 }
@@ -185,18 +222,16 @@
   display: block;
 }
 
-/* ---- the two texts ---- */
+.noEvidence {
+  color: var(--unk);
+  font-weight: 500;
+}
+
+/* ---- the two texts: A and B at one scale, tops on one line ---- */
 
 .panes {
   display: grid;
   gap: var(--sp-24);
-  align-items: start;
-}
-
-@media (min-width: 64rem) {
-  .panes {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 .pane {
@@ -206,21 +241,87 @@
   min-width: 0;
 }
 
+@media (min-width: 64rem) {
+  .panes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 0 var(--sp-32);
+  }
+
+  /* Both panes share the three rows (head, note, text), so the two texts start on one line whatever a note says */
+  .pane {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    gap: 0;
+  }
+
+  .paneHead {
+    padding-block-end: var(--sp-8);
+  }
+
+  .paneNote:not(:empty) {
+    padding-block-end: var(--sp-8);
+  }
+}
+
+.paneHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+}
+
+/* The column's letter, in a 24px rounded-square badge like an agent's mark */
+.letter {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1;
+}
+
 .paneNote {
+  color: var(--muted);
+}
+
+.paneNote:empty {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .paneNote:empty {
+    display: block;
+  }
+}
+
+.paneEmpty {
+  min-width: 0;
   color: var(--muted);
 }
 
 /* Bounded, so a long posting scrolls to the mark inside its pane; focusable, so the keyboard can scroll it. */
 .scroll {
-  max-height: 22rem;
+  align-self: stretch;
+  min-height: 8rem;
+  max-height: 24rem;
   overflow: auto;
   padding: var(--sp-12) var(--sp-16);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: var(--surface);
+  font-size: var(--fs-body);
+  line-height: 1.6;
 }
 
-/* ---- the dismiss dialog (the same look as the delete-account dialog) ---- */
+/* ---- the dismiss dialog (the delete-account dialog has the same look) ---- */
 
 .overlay {
   position: fixed;
@@ -257,7 +358,7 @@
   gap: var(--sp-8);
 }
 
-/* Each reason is a row with a round marker that fills when chosen; the focus ring is drawn on the row. */
+/* Each reason is a bordered row with a marker that fills when chosen; the focus ring is drawn on the row. */
 .reason {
   display: flex;
   align-items: center;
@@ -266,7 +367,9 @@
   padding: var(--sp-8) var(--sp-12);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-md);
+  background: var(--surface);
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-in);
 }
 
 .reason::before {
@@ -276,6 +379,12 @@
   height: 1rem;
   border: 2px solid var(--line-strong);
   border-radius: var(--r-pill);
+}
+
+@media (hover: hover) {
+  .reason[data-hovered]:not([data-selected]) {
+    background: var(--surface-2);
+  }
 }
 
 .reason[data-selected] {

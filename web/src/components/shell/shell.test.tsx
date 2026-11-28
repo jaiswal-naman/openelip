@@ -5,6 +5,7 @@ import Home from "@/app/page";
 import { INDEPENDENCE_STATEMENT, PRODUCT_NAME } from "@/lib/product";
 import { fail, renderWithApi } from "@/test/render";
 import { SiteFooter } from "./SiteFooter";
+import { RegisterNav } from "./RegisterNav";
 import { SiteHeader } from "./SiteHeader";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -65,6 +66,11 @@ describe("SiteHeader", () => {
     expect(screen.getByRole("link", { name: "Trust" })).not.toHaveAttribute("aria-current");
   });
 
+  it("in local mode the product name opens Today, since there is no signed-out home to go back to", () => {
+    renderWithApi(<RegisterNav local />, signedOut);
+    expect(screen.getByRole("link", { name: `${PRODUCT_NAME} home` })).toHaveAttribute("href", "/app/today");
+  });
+
   it("starts with a skip link to the main content", () => {
     renderWithApi(<SiteHeader />, signedOut);
     expect(screen.getByRole("link", { name: "Skip to main content" })).toHaveAttribute("href", "#main");
@@ -79,22 +85,22 @@ describe("SiteFooter", () => {
 });
 
 describe("home page", () => {
-  it("links to the job search and the trust page", () => {
-    render(<Home />);
+  it("links to the job search and the trust page", async () => {
+    render(await Home());
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Search open jobs" })).toHaveAttribute("href", "/jobs");
     expect(screen.getByRole("link", { name: "See where your data goes" })).toHaveAttribute("href", "/trust");
   });
 
-  it("lists only what works today, each with a text status", () => {
-    render(<Home />);
+  it("lists only what works today, each with a text status", async () => {
+    render(await Home());
     const today = screen.getByRole("region", { name: "What works today" });
     expect(within(today).getAllByText("Working")).toHaveLength(4);
     expect(today).toHaveTextContent("planned and not built yet");
   });
 
-  it("shows no figure at all: a number on this page would have to come from a recorded measurement", () => {
-    const { container } = render(<Home />);
+  it("shows no figure at all: a number on this page would have to come from a recorded measurement", async () => {
+    const { container } = render(await Home());
     expect(container.textContent).not.toMatch(/\d/);
   });
 });

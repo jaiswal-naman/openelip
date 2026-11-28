@@ -1,6 +1,11 @@
 /*
- * Design tokens, copied from FRONTEND_UI 5.2 to 5.5. Contrast ratios in the comments were computed for that document
- * with the WCAG relative-luminance formula; values marked "changed" there failed 4.5:1 for small text and were corrected.
+ * Design tokens: the Workspace. A quiet, near-monochrome product surface: a light grey page with white panels and
+ * hairlines, near-black type and a near-black primary action, Geist for reading and Geist Mono for small figures and ids.
+ * Status colours stay semantic but quiet; the red marks only what needs the person.
+ *
+ * Contrast (WCAG relative luminance, checked for both themes): text and muted at least 6.6:1 on the page, a panel and the
+ * grey fill (muted is 6.8:1 on the grey fill in light, 6.8:1 in dark); status colours at least 4.5:1 on all three and on
+ * their own soft tint; control borders at least 3:1. `--faint` is for disabled controls only.
  * Sizes are in rem so text can be resized to 200% without loss; the pixel value is for a 16px root.
  */
 
@@ -8,41 +13,47 @@
   color-scheme: light;
 
   /* Colour: light */
-  --bg: #f6f3ec;
-  --surface: #fffdf8;
-  --surface-2: #efeadf;
-  --line: #ddd5c4; /* decorative rules and card borders only (1.2 to 1.4:1) */
-  --line-strong: #857a65; /* input and control borders, 3.5:1 or more for non-text */
-  --text: #1b1f24;
-  --muted: #56616d;
-  --faint: #8a929b; /* disabled controls only */
-  --accent: #d9480f; /* brand mark, large accents; not small text (3.9:1) */
-  --accent-strong: #b93d0c; /* small accent text, primary fill with white text (5.62), focus ring */
-  --accent-soft: rgba(217, 72, 15, 0.1);
+  --bg: #fafafa; /* the page */
+  --surface: #ffffff; /* panels, fields, popovers, the sidebar */
+  --surface-2: #f4f4f5; /* hover, table heads, quiet fills */
+  --line: #e5e5e5; /* hairlines: decorative only */
+  --line-strong: #8a8a8a; /* control borders, 3.3:1 on the page and 3.5:1 on a panel */
+  --text: #0a0a0a; /* 19:1 */
+  --muted: #555555; /* 7.1:1 on the page, 6.8:1 on the grey fill */
+  --faint: #a3a3a3; /* disabled controls only */
+  --accent: #0a0a0a; /* the primary fill, a black pill; white on it is 19.8:1 */
+  --accent-strong: #0a0a0a; /* small accent text and the focus ring */
+  --accent-hover: #262626; /* the primary pill under the pointer */
+  --accent-soft: rgb(10 10 10 / 0.05);
   --on-accent: #ffffff;
-  --ok: #0b7550;
-  --warn: #8f5a00;
-  --bad: #b8283a;
-  --info: #1c64d1; /* links and citations */
-  --unk: #5f6873; /* no evidence, not stated, unknown */
+  --redline: #b42318; /* what needs the person: 6.3:1 on the page, 5.5:1 on its own tint (--redline-soft) */
+  --redline-soft: rgb(180 35 24 / 0.07);
+  --ok: #136f37; /* 6.0:1 on the page, 5.3:1 on its own tint */
+  --ok-soft: rgb(19 111 55 / 0.09);
+  --warn: #8f5a06; /* 5.5:1 on the page */
+  --bad: #b42318;
+  --info: #0a0a0a; /* links and citations: ink, underlined where they sit in text */
+  --unk: #555555; /* no evidence, not stated, unknown */
   --focus: var(--accent-strong);
 
-  /* Elevation 0 is a border and no shadow; shadows are only for things that float */
-  --shadow-1: 0 6px 18px -10px rgb(0 0 0 / 0.35);
-  --shadow-2: 0 18px 40px -18px rgb(0 0 0 / 0.5);
+  /* Elevation: a panel has a hairline and at most a soft shadow; what floats over the page casts a stronger one */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.08);
+  --shadow-1: 0 8px 24px -8px rgb(0 0 0 / 0.16), 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-2: 0 24px 56px -16px rgb(0 0 0 / 0.28);
 
-  /* Type */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --fs-display: clamp(2rem, 5vw, 3.5rem);
-  --fs-page: 1.5rem;
-  --fs-section: 1.0625rem;
-  --fs-card: 0.90625rem;
+  /* Type: Geist for reading and headings, Geist Mono for small numerals and data (ids, times, amounts) */
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --fs-display: clamp(2.5rem, 5vw, 3.75rem);
+  --fs-page: clamp(1.75rem, 3vw, 2.5rem);
+  --fs-section: 1.1875rem;
+  --fs-card: 1rem;
   --fs-body: 0.9375rem;
+  --fs-lede: 1.0625rem;
   --fs-small: 0.8125rem;
-  --fs-label: 0.71875rem;
-  --fs-data: 0.78125rem;
-  --fs-pill: 0.6875rem;
+  --fs-label: 0.6875rem;
+  --fs-data: 0.75rem;
+  --fs-pill: 0.625rem;
 
   /* Space: a 4px base */
   --sp-2: 0.125rem;
@@ -56,22 +67,23 @@
   --sp-44: 2.75rem;
   --sp-64: 4rem;
 
-  /* Radius */
-  --r-sm: 0.375rem;
-  --r-md: 0.5rem;
-  --r-lg: 0.75rem;
-  --r-xl: 0.875rem;
+  /* Radius: soft corners; panels 12px, rows and fields 8px, buttons and chips are pills */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
   --r-pill: 999px;
 
-  /* Motion: opacity and transform only, nothing animates layout */
-  --dur-fast: 120ms;
+  /* Motion: 150 to 200ms state changes, nothing loops; opacity and transform only */
+  --dur-fast: 150ms;
   --dur-mid: 200ms;
   --dur-slow: 280ms;
-  --ease-in: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Layout */
-  --header-h: 3.5rem;
-  --content-max: 80rem;
+  --header-h: 3.5rem; /* the sidebar's top bar on a narrow screen */
+  --register-w: 15rem; /* the sidebar */
+  --content-max: 76rem;
   --measure: 42rem;
 }
 
@@ -79,44 +91,58 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0d1015;
-    --surface: #151a21;
-    --surface-2: #1c232c;
-    --line: #29313c;
-    --line-strong: #6b7686;
-    --text: #e8ecf1;
-    --muted: #9ca8b6;
-    --faint: #69747f;
-    --accent: #ff7a45;
-    --accent-strong: #ff7a45;
-    --accent-soft: rgba(255, 122, 69, 0.14);
-    --on-accent: #0d1015; /* white on this orange is 2.59:1 and fails */
-    --ok: #3ddc97;
-    --warn: #f5b53d;
-    --bad: #ff5d6c;
-    --info: #6aa9ff;
-    --unk: #8b95a3;
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface-2: #1c1c1c;
+    --line: #262626;
+    --line-strong: #737373; /* 3.8:1 on a panel, 4.2:1 on the page */
+    --text: #fafafa;
+    --muted: #a3a3a3; /* 7.3:1 on a panel, 6.8:1 on the grey fill */
+    --faint: #6b6b6b;
+    --accent: #fafafa;
+    --accent-strong: #fafafa;
+    --accent-hover: #e5e5e5;
+    --accent-soft: rgb(250 250 250 / 0.08);
+    --on-accent: #0a0a0a;
+    --redline: #ff8a80;
+    --redline-soft: rgb(255 138 128 / 0.1);
+    --ok: #4ade80;
+    --ok-soft: rgb(74 222 128 / 0.1);
+    --warn: #fbbf24;
+    --bad: #ff8a80;
+    --info: #fafafa;
+    --unk: #a3a3a3;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.5);
+    --shadow-1: 0 8px 24px -8px rgb(0 0 0 / 0.7), 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-2: 0 24px 56px -16px rgb(0 0 0 / 0.85);
   }
 }
 
 /* ... and dark when the person chose it. The same values again: a media query cannot share a selector with an attribute. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0d1015;
-  --surface: #151a21;
-  --surface-2: #1c232c;
-  --line: #29313c;
-  --line-strong: #6b7686;
-  --text: #e8ecf1;
-  --muted: #9ca8b6;
-  --faint: #69747f;
-  --accent: #ff7a45;
-  --accent-strong: #ff7a45;
-  --accent-soft: rgba(255, 122, 69, 0.14);
-  --on-accent: #0d1015;
-  --ok: #3ddc97;
-  --warn: #f5b53d;
-  --bad: #ff5d6c;
-  --info: #6aa9ff;
-  --unk: #8b95a3;
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-2: #1c1c1c;
+  --line: #262626;
+  --line-strong: #737373;
+  --text: #fafafa;
+  --muted: #a3a3a3;
+  --faint: #6b6b6b;
+  --accent: #fafafa;
+  --accent-strong: #fafafa;
+  --accent-hover: #e5e5e5;
+  --accent-soft: rgb(250 250 250 / 0.08);
+  --on-accent: #0a0a0a;
+  --redline: #ff8a80;
+  --redline-soft: rgb(255 138 128 / 0.1);
+  --ok: #4ade80;
+  --ok-soft: rgb(74 222 128 / 0.1);
+  --warn: #fbbf24;
+  --bad: #ff8a80;
+  --info: #fafafa;
+  --unk: #a3a3a3;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.5);
+  --shadow-1: 0 8px 24px -8px rgb(0 0 0 / 0.7), 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2: 0 24px 56px -16px rgb(0 0 0 / 0.85);
 }

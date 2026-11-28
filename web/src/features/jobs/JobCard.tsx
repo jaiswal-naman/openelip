@@ -19,7 +19,7 @@ export function JobCard({ job }: { job: Job }) {
         <h2 className={`t-card ${styles.title}`}>
           <Link href={`/jobs/${job.id}`}>{job.title}</Link>
         </h2>
-        <p>{job.company_name.trim() === "" ? "Company not stated" : job.company_name}</p>
+        <p className={styles.company}>{job.company_name.trim() === "" ? "Company not stated" : job.company_name}</p>
         <p className={styles.meta}>
           <span>{locationText(job)}</span>
           {words !== null && <span>Posting says: {words}</span>}
@@ -27,18 +27,18 @@ export function JobCard({ job }: { job: Job }) {
         </p>
       </div>
       <div className={styles.side}>
-        <p className="t-data">Source: {sourceLabel(job.source.ats)}</p>
-        <p className="t-data">
+        <p className="t-small muted">Source: {sourceLabel(job.source.ats)}</p>
+        <p className="t-small muted">
           Verified open <LocalTime iso={job.last_verified_at} />
         </p>
         {applyUrl === null ? (
-          <p className="t-small">No link in the posting</p>
+          <p className={`t-small ${styles.view}`}>No link in the posting</p>
         ) : (
           <a
             href={applyUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={buttonClass("secondary", "sm")}
+            className={`${buttonClass("secondary", "sm")} ${styles.view}`}
             aria-label={`View posting for ${job.title} (opens in a new tab)`}
           >
             View posting

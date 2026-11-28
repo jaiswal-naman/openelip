@@ -18,12 +18,12 @@ export function CreateOrganization() {
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
 
   return (
-    <section aria-labelledby="create-org" className={styles.card}>
+    <section aria-labelledby="create-org" className={styles.paper}>
       <h2 id="create-org" className="t-section">
         Create your organization to post roles.
       </h2>
       <Form
-        className={styles.form}
+        className={styles.stack}
         onSubmit={(event) => {
           event.preventDefault();
           if (name.trim() === "") return;

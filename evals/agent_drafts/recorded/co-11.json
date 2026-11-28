@@ -1,0 +1,68 @@
+[
+ {
+  "questions": [
+   {
+    "text": "How do you write assessment items?",
+    "requirement": "r4",
+    "facts": [
+     "f3"
+    ],
+    "gap": true,
+    "framing": "Describe how you trained teachers on the grading tool, and say honestly that writing assessment items was a smaller part of your work."
+   },
+   {
+    "text": "Have you built SCORM packages?",
+    "requirement": "r3",
+    "facts": [],
+    "gap": true,
+    "framing": "Be honest that you have not used SCORM yet and say how you would learn it."
+   },
+   {
+    "text": "Walk me through a course launch.",
+    "requirement": "r1",
+    "facts": [],
+    "gap": false,
+    "framing": "Tell the story of a project you led."
+   },
+   {
+    "text": "Have you led SCORM projects?",
+    "requirement": "r3",
+    "facts": [
+     "f2"
+    ],
+    "gap": true,
+    "framing": "Say you led SCORM projects for the whole school."
+   }
+  ],
+  "ask_them": [
+   {
+    "text": "How does the portfolio review work?",
+    "dossier_claims": [
+     "d2"
+    ]
+   },
+   {
+    "text": "Do you plan 9 interviews?",
+    "dossier_claims": [
+     "d2"
+    ]
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   },
+   {
+    "edit": "e2",
+    "entailed": true
+   },
+   {
+    "edit": "e3",
+    "entailed": false
+   }
+  ]
+ }
+]

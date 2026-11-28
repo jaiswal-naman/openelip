@@ -1,0 +1,671 @@
+/*
+ * The campaign board and the campaign page (CMP-01 to CMP-07). The board is a list of bordered rows grouped under their
+ * stage chip; the campaign is a page with a header, tabs with an ink underline, and every list a hairline list. The crew tab
+ * is a parallel-execution panel: one bordered column per agent step, a footer strip for what waits for the person. Tokens only.
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8) var(--sp-12);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+/* The regions of a tab (a packet, its approval, its kit) keep a page's gap between them */
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+}
+/* A plain list with a gap; the Autonomy section in settings lays its dials out with it */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+/* A setting's dial: a bordered row */
+.dial {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.tag {
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+/* ---- the page header's own pieces ---- */
+
+.company {
+  color: var(--text);
+  font-size: var(--fs-lede);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.sub {
+  display: block;
+  margin-block-start: var(--sp-2);
+  color: var(--muted);
+  font-size: var(--fs-small);
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+/* ---- controls ---- */
+
+.select,
+.input,
+.textarea {
+  min-height: 2.5rem;
+  padding: 0 var(--sp-12);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.textarea {
+  min-height: 8rem;
+  padding: var(--sp-8) var(--sp-12);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-12) var(--sp-24);
+}
+
+/* ---- notices on the page: bordered boxes, the border in the notice's colour ---- */
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  max-width: var(--measure);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--warn);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.bannerBad {
+  border-color: var(--bad);
+}
+
+.problem {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
+  color: var(--bad);
+  font-weight: 500;
+}
+
+.notice {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+/* ---- tabs ---- */
+
+.tabList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  min-height: 2.5rem;
+  margin-block-end: -1px;
+  padding: var(--sp-8) var(--sp-16);
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: var(--fs-body);
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: color var(--dur-fast) var(--ease-in);
+}
+
+.tab[data-selected] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+@media (hover: hover) {
+  .tab[data-hovered] {
+    color: var(--text);
+  }
+}
+
+.tab[data-focus-visible] {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+  padding-block-start: var(--sp-16);
+  outline: none;
+}
+
+/* The tab line is the top line of a list that opens the panel, so the two never sit side by side */
+.panel > .rows:first-child,
+.panel > .stack:first-child > .rows:first-child,
+.panel > .sections:first-child > .rows:first-child {
+  margin-block-start: calc(-1 * var(--sp-16));
+  border-block-start: 0;
+}
+
+.panel[data-focus-visible] {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---- hairline rows: a hairline on top and under each ---- */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  border-block-start: 1px solid var(--line);
+}
+
+.rows > li {
+  border-block-end: 1px solid var(--line);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding: var(--sp-16) var(--sp-8);
+}
+
+.itemHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8) var(--sp-16);
+}
+
+/* A drafted text sits on a white surface with a hairline */
+.draft {
+  margin: 0;
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  white-space: pre-wrap;
+}
+
+/* What only the person can do: the one place a row speaks in red */
+.needsYou {
+  align-self: flex-start;
+  padding: var(--sp-4) var(--sp-8);
+  border: 1px solid color-mix(in srgb, var(--redline) 55%, transparent);
+  border-radius: var(--r-pill);
+  background: var(--redline-soft);
+  color: var(--redline);
+  font-size: var(--fs-pill);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.todo {
+  align-self: flex-start;
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid color-mix(in srgb, var(--redline) 55%, transparent);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
+  color: var(--redline);
+  font-weight: 500;
+}
+
+.ended {
+  font-weight: 500;
+}
+
+.ended[data-tone="bad"] {
+  color: var(--bad);
+}
+
+.ended[data-tone="muted"] {
+  color: var(--muted);
+}
+
+/* ---- the board: bordered rows under each stage chip ---- */
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-32);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.groupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8);
+}
+
+.count {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+}
+
+.empty {
+  padding: var(--sp-12) var(--sp-8);
+  border-block-start: 1px solid var(--line);
+  color: var(--muted);
+}
+
+/* A campaign on the board: a bordered 8px row, like a task in a list */
+.group .rows {
+  gap: var(--sp-8);
+  border-block-start: 0;
+}
+
+.group .rows > li {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.card {
+  display: grid;
+  gap: var(--sp-8) var(--sp-24);
+  padding: var(--sp-16);
+  border-radius: var(--r-md);
+  transition: background-color var(--dur-fast) var(--ease-in);
+}
+
+@media (min-width: 56rem) {
+  .card {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) minmax(0, 14rem);
+    align-items: start;
+  }
+}
+
+@media (hover: hover) {
+  .card:hover {
+    background: var(--surface-2);
+  }
+}
+
+.cardMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.cardTitle {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.cardTitle a {
+  color: var(--text);
+  text-decoration-color: var(--line-strong);
+}
+
+.cardTitle a:hover {
+  text-decoration-color: currentColor;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4) var(--sp-8);
+}
+
+.nextStep {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.cardSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-8);
+  min-width: 0;
+}
+
+/* ---- timeline rows ---- */
+
+.event {
+  display: grid;
+  gap: var(--sp-4) var(--sp-16);
+  padding: var(--sp-12) var(--sp-8);
+}
+
+@media (min-width: 48rem) {
+  .event {
+    grid-template-columns: 9.5rem 8.5rem minmax(0, 1fr) auto;
+    align-items: start;
+  }
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  min-width: 0;
+}
+
+.what {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.open {
+  white-space: nowrap;
+}
+
+/* ---- the crew tab: a parallel-execution panel ---- */
+
+/* The panel: one bordered frame round the columns and the footer strip */
+.crewPanel {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+/* One column per agent step. Each card draws a hairline on its left and top edge; the grid is pulled 1px out of its clip, so the
+   outer edges are cut off and only the hairlines between cards remain (no grey block where a last row is short). */
+.crewClip {
+  overflow: hidden;
+  border-radius: var(--r-lg);
+}
+
+.crewPanel[data-footer] .crewClip {
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+
+.crewGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  margin: -1px 0 0 -1px;
+}
+
+.crewCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  min-width: 0;
+  padding: var(--sp-16);
+  border-block-start: 1px solid var(--line);
+  border-inline-start: 1px solid var(--line);
+}
+
+.crewHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-8);
+}
+
+.crewText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+/* What the step produced: one row per output, a check mark and its name */
+.outputs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.output {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-8);
+  padding: var(--sp-4) var(--sp-8);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.output svg {
+  flex: none;
+  margin-block-start: 0.2em;
+  color: var(--ok);
+}
+
+/* The footer strip: what waits for the person on the left, the one black action on the right */
+.crewFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8) var(--sp-16);
+  padding: var(--sp-12) var(--sp-16);
+  border-block-start: 1px solid var(--line);
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  background: var(--surface-2);
+}
+
+.crewWaiting {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  color: var(--redline);
+  font-weight: 500;
+}
+
+.crewWaiting::before {
+  content: "";
+  flex: none;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: var(--r-pill);
+  background: currentColor;
+}
+
+/* ---- the dossier and the prep ---- */
+
+.claim {
+  display: grid;
+  gap: var(--sp-8) var(--sp-24);
+  padding: var(--sp-16) var(--sp-8);
+}
+
+@media (min-width: 48rem) {
+  .claim {
+    grid-template-columns: 8rem minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.claimBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  min-width: 0;
+}
+
+.callouts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+.number {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+}
+
+/* ---- the packet and its approval, kept apart ---- */
+
+.approval {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  max-width: var(--measure);
+  padding: var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.approval[data-state="waiting"] {
+  border-color: color-mix(in srgb, var(--redline) 55%, transparent);
+  background: var(--redline-soft);
+}
+
+.approvalHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8) var(--sp-16);
+}
+
+.youAnswer {
+  align-self: flex-start;
+  padding: var(--sp-4) var(--sp-8);
+  border: 1px solid color-mix(in srgb, var(--redline) 55%, transparent);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
+  color: var(--redline);
+  font-weight: 500;
+}
+
+/* ---- follow-ups ---- */
+
+.defs {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--sp-4) var(--sp-16);
+  margin: 0;
+}
+
+.defs dt {
+  color: var(--muted);
+}
+
+.defs dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The undo window, readable at a glance: the time left in Geist Mono figures, beside the button it belongs to */
+.countdown {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.addressBox {
+  max-width: var(--measure);
+  padding: var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.undoLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8) var(--sp-16);
+}
+
+/* ---- dialogs ---- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-16);
+  background: rgb(0 0 0 / 0.55);
+}
+
+.modal {
+  width: min(100%, 30rem);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding: var(--sp-24);
+  outline: none;
+}
+
+.radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8) var(--sp-16);
+}
+
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  cursor: pointer;
+}

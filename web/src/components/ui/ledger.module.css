@@ -1,15 +1,13 @@
 /*
- * Ledger tables: hairline rules, no zebra stripes, mono uppercase headers (FRONTEND_UI 5.1).
+ * Ledger tables: hairline rows only, no vertical rules and no zebra stripes; the head cells are small uppercase labels and a
+ * row picks up the grey fill under the pointer. Figures are Geist Mono and tabular.
  * Under 40rem each row stacks and every cell names itself with its data-label, so nothing scrolls sideways (WCAG 1.4.10).
  */
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  overflow: hidden;
+  border-block-end: 1px solid var(--line);
 }
 
 .table caption {
@@ -18,25 +16,35 @@
 
 .table th,
 .table td {
-  padding: var(--sp-12) var(--sp-16);
+  padding: var(--sp-12) var(--sp-12);
   text-align: start;
   vertical-align: top;
   border-block-start: 1px solid var(--line);
 }
 
+.table tbody tr {
+  transition: background-color var(--dur-fast) var(--ease-in);
+}
+
+@media (hover: hover) {
+  .table tbody tr:hover {
+    background: var(--surface-2);
+  }
+}
+
 .table thead th {
+  padding-block: var(--sp-8);
   border-block-start: 0;
-  background: var(--surface-2);
+  border-block-end: 1px solid var(--line);
   color: var(--muted);
-  font-family: var(--font-mono);
   font-size: var(--fs-label);
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .table tbody th {
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .table .num {
@@ -46,8 +54,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* a numeric column's head keeps the lettering of the other heads; only its figures are mono */
 .table thead th.num {
   text-align: end;
+  font-family: var(--font-sans);
+  font-size: var(--fs-label);
+  font-variant-numeric: normal;
 }
 
 @media (max-width: 39.99rem) {
@@ -86,10 +98,9 @@
     content: attr(data-label);
     display: block;
     color: var(--muted);
-    font-family: var(--font-mono);
     font-size: var(--fs-label);
-    font-weight: 600;
-    letter-spacing: 0.05em;
+    font-weight: 500;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
   }
 

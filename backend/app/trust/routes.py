@@ -14,7 +14,7 @@ from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import Connection, text
@@ -26,7 +26,7 @@ from app.platform.idempotency import Write, idempotent
 from app.platform.llm import registry
 from app.platform.sessions import Principal, current_user
 
-from . import deletion, export
+from . import auditlog, deletion, export
 
 router = APIRouter(prefix="/v1/privacy")
 
@@ -237,3 +237,59 @@ def delete_account(body: PrivacyDeletionBody, write: Idempotent) -> Response:
     response = JSONResponse(envelope(answer), status_code=202)
     response.delete_cookie(sessions.COOKIE_NAME, **sessions.cookie_options())
     return response
+
+
+class AuditOrganization(BaseModel):
+    id: str
+    name: str | None  # None where the caller may not read the organization's name
+
+
+class AuditLink(BaseModel):
+    kind: str
+    href: str
+
+
+class AuditLogEntry(BaseModel):
+    """One automated decision or event about the caller. `summary` is built by code from codes and counts."""
+
+    id: str
+    occurred_at: datetime
+    source: str  # account, matching, guardian (and twin, once the Twin exists)
+    kind: str
+    actor_type: str
+    summary: str
+    outcome: str | None
+    reason_codes: list[str]
+    agent_token_id: UUID | None
+    campaign_id: UUID | None
+    organization: AuditOrganization | None
+    link: AuditLink | None
+
+
+class AuditLogPage(BaseModel):
+    entries: list[AuditLogEntry]
+    next_cursor: str | None
+
+
+@router.get("/audit-log", response_model=Envelope[AuditLogPage])
+def get_audit_log(
+    principal: Signed,
+    agent_token_id: Annotated[UUID | None, Query()] = None,
+    campaign_id: Annotated[UUID | None, Query()] = None,
+    cursor: Annotated[str | None, Query(max_length=512)] = None,
+    limit: Annotated[int, Query(ge=1, le=auditlog.MAX_LIMIT)] = auditlog.DEFAULT_LIMIT,
+) -> dict[str, Any]:
+    """Every automated decision and every agent action about the caller, newest first, from the sources each module
+    registered. Everything runs on the caller's own API connection: another person's entries are not visible to it."""
+    try:
+        before = auditlog.decode_cursor(cursor) if cursor else None
+    except auditlog.BadCursor:
+        raise ApiError(400, "invalid_request", "The cursor is not valid.") from None
+    with db.transaction(principal.user_id) as conn:
+        entries, next_cursor = auditlog.read(
+            conn, principal.user_id, auditlog.AuditFilter(agent_token_id, campaign_id, before, limit)
+        )
+    page = AuditLogPage(
+        entries=[AuditLogEntry.model_validate(e, from_attributes=True) for e in entries], next_cursor=next_cursor
+    )
+    return envelope(page.model_dump(mode="json"), next_cursor=next_cursor, limit=limit)

@@ -1,0 +1,111 @@
+/*
+ * The Autonomy section of Settings: one hairline row for each kind of outside action, with the level chosen on a segmented control
+ * that is as tall as a field. A row with one allowed level is plain text with its reason. Tokens only.
+ */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  max-width: 48rem;
+  padding-block-start: var(--sp-16);
+  border-block-start: 1px solid var(--line);
+}
+
+.lead {
+  max-width: var(--measure);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  border-block-start: 1px solid var(--line);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding: var(--sp-12) 0;
+  border-block-end: 1px solid var(--line);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+/* The levels offered, drawn as one control; the chosen one is filled with ink and says so to a screen reader */
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  min-height: calc(2.5rem - 2px); /* inside the 1px frame, so the control is as tall as a field */
+  padding: 0 var(--sp-16);
+  border-inline-start: 1px solid var(--line);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-in);
+}
+
+.segment:first-child {
+  border-inline-start: 0;
+}
+
+@media (hover: hover) {
+  .segment[data-hovered]:not([data-selected]):not([data-disabled]) {
+    background: var(--surface-2);
+  }
+}
+
+.segment[data-selected] {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.segment[data-disabled] {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.segment[data-focus-visible] {
+  outline: 2px solid var(--focus);
+  outline-offset: -4px;
+}
+
+.problem {
+  max-width: var(--measure);
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--redline-soft);
+  color: var(--bad);
+  font-weight: 500;
+}
+
+/* The undo window and the default budget, under the rows */
+.window {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+.minutes {
+  max-width: 8rem;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8) var(--sp-12);
+}

@@ -75,3 +75,32 @@ def test_the_database_url_is_chosen_by_role():
     assert "two-real-password" in settings.database_url("api")
     assert "three-real-password" in settings.database_url("worker")
     assert "four-real-password" in settings.database_url("match")
+
+
+def test_the_mode_is_server_unless_it_is_set_to_local():
+    assert config.load({}).app_mode == "server" and config.load({"APP_MODE": ""}).app_mode == "server"
+    assert config.load({"APP_MODE": "local"}).app_mode == "local"
+    assert config.load({"APP_MODE": " Server "}).app_mode == "server"
+
+
+def test_a_mode_that_is_not_local_or_server_is_refused_and_never_echoed():
+    with pytest.raises(config.ConfigError) as refused:
+        config.load({"APP_MODE": "locl-typo"})
+    assert "APP_MODE" in str(refused.value) and "locl-typo" not in str(refused.value)
+
+
+@pytest.mark.parametrize("url", ["http://localhost:8080", "http://127.0.0.1:8080", "http://[::1]:8080"])
+def test_local_mode_is_allowed_on_localhost(url):
+    assert config.load({"APP_MODE": "local", "APP_BASE_URL": url}).app_mode == "local"
+
+
+def test_local_mode_is_refused_when_the_address_is_public_even_with_real_secrets():
+    with pytest.raises(config.ConfigError, match="APP_MODE=local"):
+        config.load({"APP_MODE": "local", "APP_BASE_URL": PUBLIC, **REAL_SECRETS})
+    assert config.load({"APP_MODE": "server", "APP_BASE_URL": PUBLIC, **REAL_SECRETS}).app_mode == "server"
+
+
+def test_the_settings_know_whether_the_provider_was_named_in_the_environment():
+    assert config.load({}).llm_provider_is_set is False
+    assert config.load({"LLM_PROVIDER": ""}).llm_provider_is_set is False
+    assert config.load({"LLM_PROVIDER": "fake"}).llm_provider_is_set is True

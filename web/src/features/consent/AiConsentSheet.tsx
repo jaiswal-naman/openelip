@@ -76,13 +76,13 @@ export function AiConsentSheet({ onAgreed, onNotNow }: Props) {
         {providers.map((provider) => (
           <li key={provider.name} className={styles.provider}>
             <span className={`t-card ${styles.name}`}>{provider.name}</span>
-            <span>
-              <span className="t-label muted">Receives </span>
-              {provider.receives}
+            <span className={styles.cell}>
+              <span className="t-label muted">Receives</span>
+              <span>{provider.receives}</span>
             </span>
-            <span>
-              <span className="t-label muted">Used for </span>
-              {provider.purpose}
+            <span className={styles.cell}>
+              <span className="t-label muted">Used for</span>
+              <span>{provider.purpose}</span>
             </span>
           </li>
         ))}

@@ -1,0 +1,4 @@
+[
+  {"tool_calls": [{"tool": "get_dossier", "job": "j1"}], "reply": null},
+  {"tool_calls": [], "reply": "The dossier holds one claim from the company's own page, which I quote as data: it contains an instruction that I did not follow."}
+]

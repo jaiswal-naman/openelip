@@ -1,4 +1,4 @@
-/* Text fields: visible label always, hint and error in text beside the field (FRONTEND_UI 5.7 and 7.1). */
+/* Text fields: visible label always, hint and error in text beside the field (FRONTEND_UI 5.7 and 7.1). 40px tall, 8px corners, a strong border, the global black focus ring. */
 
 .field {
   display: flex;
@@ -9,7 +9,7 @@
 
 .label {
   font-size: var(--fs-small);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -27,7 +27,7 @@
 
 .input::placeholder {
   color: var(--muted);
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .input[data-hovered] {
@@ -55,7 +55,7 @@
 
 .error {
   font-size: var(--fs-small);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--bad);
 }
 

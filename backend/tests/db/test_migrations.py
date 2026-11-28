@@ -16,8 +16,10 @@ REPO = Path(__file__).resolve().parents[3]
 # 03-01 added (consents, audit_log, data_requests), 3.4 for the record tables of plan 03-04 and 3.5 (the job index,
 # converted in place by revision p2_0201_job_index), 3.6 and 3.7 for the match and brief tables of plan 04-01
 # (outbox is 3.7's and Phase 1's), 3.8 and 3.12 for the tailor, apply and chat tables of plan 05-01 (plus the Phase 5
-# column chat_messages.finish_reason), and 3.9 for the hiring tables of plan 06-01, so a change to either side that the
-# other does not follow fails here.
+# column chat_messages.finish_reason), 3.9 for the hiring tables of plan 06-01 and 3.10 for the campaign and Guardian
+# tables of plan 07-01, 3.13 for the wind-tunnel tables and view of plan 08-01, local mode's model key (revision
+# l1_local_mode) and 3.11 for the Twin and agent-token tables of plan 09-01, so a change to either side that the other
+# does not follow fails here.
 # Not autogenerate.
 EXPECTED = {
     "users": """
@@ -184,6 +186,62 @@ EXPECTED = {
     "chat_messages": """
         id uuid; session_id uuid; user_id uuid; role chat_role; content text?; tool_name text?; refs jsonb
         llm_call_id int8?; finish_reason text?; created_at timestamptz""",
+    # DATA_MODEL 3.10, the campaign and Guardian tables that plan 07-01 added (follow_up_email is its amendment).
+    "campaigns": """
+        id uuid; user_id uuid; job_id int8; match_decision_id uuid?; introduction_id uuid?; stage campaign_stage
+        paused_at timestamptz?; closed_reason campaign_closed_reason?; closed_at timestamptz?; budget_microusd int8
+        follow_up_after_days int2; follow_up_email text?; last_update_at timestamptz; lock_version int4
+        created_at timestamptz; updated_at timestamptz""",
+    "campaign_steps": """
+        id uuid; campaign_id uuid; user_id uuid; step_key text; agent_role agent_role; status step_status
+        due_at timestamptz; attempts int2; waiting_for_approval_id uuid?; output jsonb?; error_code text?
+        created_at timestamptz; started_at timestamptz?; finished_at timestamptz?""",
+    "company_dossiers": """
+        id uuid; campaign_id uuid; user_id uuid; company_name text; version int2; claims jsonb; agent_run_id uuid?
+        created_at timestamptz""",
+    "agent_runs": """
+        id uuid; user_id uuid; campaign_id uuid?; campaign_step_id uuid?; twin_session_id uuid?; agent_role agent_role
+        status agent_run_status; config_version text; error_code text?; started_at timestamptz
+        finished_at timestamptz?""",
+    "agent_actions": """
+        id int8; agent_run_id uuid; user_id uuid; campaign_id uuid?; seq int4; kind action_kind
+        action_type action_type?; status action_status; summary text; inputs jsonb; evidence jsonb; payload jsonb?
+        organization_id uuid?; llm_call_id int8?; policy_decision policy_decision?; policy_version text?
+        undo_until timestamptz?; outcome_code text?; created_at timestamptz; executed_at timestamptz?""",
+    "approvals": """
+        id uuid; user_id uuid; agent_action_id int8; status approval_status; requested_at timestamptz
+        expires_at timestamptz; decided_at timestamptz?; decided_via text?; note text?""",
+    "autonomy_settings": """
+        user_id uuid; action_type action_type; level autonomy_level; updated_at timestamptz""",
+    "guardian_checks": """
+        id int8; agent_action_id int8; user_id uuid; check_kind guardian_check_kind; passed bool; reason_code text?
+        details jsonb; guardian_version text; checked_at timestamptz""",
+    "sim_scenarios": """
+        id uuid; key text; version int4; persona sim_persona; title text; definition jsonb; created_at timestamptz""",
+    "sim_runs": """
+        id uuid; eval_run_id uuid; scenario_id uuid; attempt int2; seed int8; status sim_run_status
+        candidate_user_id uuid?; campaign_id uuid?; started_at timestamptz; finished_at timestamptz?""",
+    "sim_results": """
+        id int8; sim_run_id uuid; kind sim_result_kind; code text; passed bool; details jsonb
+        created_at timestamptz""",
+    "local_model_key": """
+        singleton bool; provider text; api_key_sealed text; key_last4 text; updated_at timestamptz""",
+    "twin_scopes": """
+        user_id uuid; topic twin_topic; permission twin_permission; updated_at timestamptz""",
+    "agent_tokens": """
+        id uuid; principal token_principal; user_id uuid; organization_id uuid?; consent_id uuid?; client_name text
+        token_sha256 bytea; scopes _token_scope; expires_at timestamptz; revoked_at timestamptz?
+        last_used_at timestamptz?; created_at timestamptz""",
+    "twin_sessions": """
+        id uuid; introduction_id uuid; user_id uuid; organization_id uuid; opened_by uuid?; agent_token_id uuid?
+        status twin_session_status; created_at timestamptz; closed_at timestamptz?""",
+    "twin_messages": """
+        id uuid; session_id uuid; user_id uuid; organization_id uuid; author twin_author; body text; topic twin_topic?
+        answer_kind twin_answer_kind?; cited_fact_ids _uuid; in_reply_to uuid?; agent_action_id int8?
+        created_at timestamptz""",
+    # a view: information_schema reports every view column as nullable
+    "sim_scenario_verdicts": """
+        eval_run_id uuid?; scenario_id uuid?; attempts int8?; attempts_passed int8?; passed bool?""",
 }
 
 
@@ -197,12 +255,13 @@ def _parse(spec: str) -> set[tuple[str, str, bool]]:
 
 
 def _actual_columns(engine: Engine) -> dict[str, set[tuple[str, str, bool]]]:
-    rows = engine.connect().execute(
-        text(
-            "SELECT table_name, column_name, udt_name, is_nullable = 'YES' FROM information_schema.columns "
-            "WHERE table_schema = 'public' AND table_name <> 'alembic_version'"
-        )
-    )
+    with engine.connect() as c:  # closed at once: an open transaction would block the next CREATE INDEX CONCURRENTLY
+        rows = c.execute(
+            text(
+                "SELECT table_name, column_name, udt_name, is_nullable = 'YES' FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name <> 'alembic_version'"
+            )
+        ).all()
     tables: dict[str, set[tuple[str, str, bool]]] = {}
     for table, column, udt, nullable in rows:
         tables.setdefault(table, set()).add((column, udt, nullable))
@@ -232,15 +291,15 @@ def test_downgrade_to_the_baseline_then_upgrade_again(make_database, alembic_run
     alembic_run("downgrade", url, "0001_baseline")
     engine = _engine(url)
     assert set(_actual_columns(engine)) == {"job_sources", "jobs", "fetch_runs"}
-    owners = (
-        engine.connect()
-        .execute(
-            text("SELECT DISTINCT tableowner FROM pg_tables WHERE tablename = ANY(:t)"),
-            {"t": ["job_sources", "jobs", "fetch_runs"]},
+    with engine.connect() as c:
+        owners = (
+            c.execute(
+                text("SELECT DISTINCT tableowner FROM pg_tables WHERE tablename = ANY(:t)"),
+                {"t": ["job_sources", "jobs", "fetch_runs"]},
+            )
+            .scalars()
+            .all()
         )
-        .scalars()
-        .all()
-    )
     assert owners == ["app"]  # ownership went back to the bootstrap login
     alembic_run("upgrade", url, "head")
     _assert_matches_data_model(engine)
@@ -325,7 +384,12 @@ def test_the_phase_5_revision_sits_on_the_phase_4_one_and_the_merge_with_phase_6
     config.set_main_option("script_location", str(REPO / "db"))
     script = ScriptDirectory.from_config(config)
     assert script.get_revision(REVISION).down_revision == PREVIOUS
-    assert script.get_heads() == ["p56_merge_chat_hiring"]
+    assert script.get_heads() == ["p9_0901_twin_agentnet"]  # 09-01 sits on local mode, local mode on Phase 8
+    assert script.get_revision("p9_0901_twin_agentnet").down_revision == "l1_local_mode"
+    assert script.get_revision("l1_local_mode").down_revision == "p8_0801_wind_tunnel"
+    assert script.get_revision("p8_0801_wind_tunnel").down_revision == "p7_0702_langgraph"
+    assert script.get_revision("p7_0702_langgraph").down_revision == "p7_0701_campaigns_guardian"
+    assert script.get_revision("p7_0701_campaigns_guardian").down_revision == "p56_merge_chat_hiring"
     assert set(script.get_revision("p56_merge_chat_hiring").down_revision) == {REVISION, "p6_0601_hiring"}
 
 
@@ -380,3 +444,130 @@ def test_the_harness_refuses_databases_that_do_not_end_in_test(assert_test_db):
         with pytest.raises(RuntimeError):
             assert_test_db(make_url(f"postgresql://app@localhost/{name}"))
     assert_test_db(make_url("postgresql://app@localhost/app_test"))
+
+
+def test_the_wind_tunnel_revision_goes_down_to_the_phase_7_head_leaving_nothing_and_up_again(
+    make_database, alembic_run
+):
+    url = make_database("p8down_test")
+    engine = _engine(url)
+    tables = ["sim_scenarios", "sim_runs", "sim_results"]
+    try:
+        alembic_run("upgrade", url, "p8_0801_wind_tunnel")
+        alembic_run("downgrade", url, "p7_0702_langgraph")
+        with engine.connect() as c:
+            assert (
+                _names(c, "SELECT relname FROM pg_class WHERE relname = ANY(:n)", n=[*tables, "sim_scenario_verdicts"])
+                == []
+            )
+            assert _names(c, "SELECT typname FROM pg_type WHERE typname LIKE 'sim\\_%'") == []
+        alembic_run("upgrade", url, "p8_0801_wind_tunnel")
+        alembic_run("upgrade", url, "head")
+        with engine.connect() as c:
+            assert _names(c, "SELECT tablename FROM pg_tables WHERE tablename = ANY(:n)", n=tables) == sorted(tables)
+    finally:
+        engine.dispose()
+
+
+def test_the_local_mode_revision_goes_down_to_the_wind_tunnel_leaving_nothing_and_up_again(make_database, alembic_run):
+    url = make_database("l1down_test")
+    engine = _engine(url)
+    try:
+        alembic_run("upgrade", url, "l1_local_mode")
+        alembic_run("downgrade", url, "p8_0801_wind_tunnel")
+        with engine.connect() as c:
+            assert _names(c, "SELECT relname FROM pg_class WHERE relname = 'local_model_key'") == []
+            assert _names(c, "SELECT proname FROM pg_proc WHERE proname = 'local_owner'") == []
+        alembic_run("upgrade", url, "head")
+        with engine.connect() as c:
+            assert _names(c, "SELECT tablename FROM pg_tables WHERE tablename = 'local_model_key'") == [
+                "local_model_key"
+            ]
+            assert _names(c, "SELECT proname FROM pg_proc WHERE proname = 'local_owner'") == ["local_owner"]
+    finally:
+        engine.dispose()
+
+
+def test_local_mode_tables_belong_to_the_owner_and_the_grants_are_as_narrow_as_the_design_says(engine):
+    with engine.connect() as c:
+        assert _names(c, "SELECT tableowner FROM pg_tables WHERE tablename = 'local_model_key'") == ["app_owner"]
+        assert c.execute(text("SELECT relrowsecurity FROM pg_class WHERE relname = 'local_model_key'")).scalar_one()
+        rights = {
+            (role, right): c.execute(
+                text("SELECT has_table_privilege(:r, 'local_model_key', :p)"), {"r": role, "p": right}
+            ).scalar_one()
+            for role in ("app_api", "app_worker", "app_match")
+            for right in ("SELECT", "INSERT", "UPDATE", "DELETE")
+        }
+    assert {key for key, granted in rights.items() if granted} == {
+        ("app_api", "SELECT"),
+        ("app_api", "INSERT"),
+        ("app_api", "UPDATE"),
+        ("app_api", "DELETE"),
+        ("app_worker", "SELECT"),
+    }
+
+
+P9_TABLES = ["twin_scopes", "twin_sessions", "twin_messages", "agent_tokens"]
+P9_ENUMS = [
+    "twin_topic",
+    "twin_permission",
+    "twin_author",
+    "twin_answer_kind",
+    "twin_session_status",
+    "token_principal",
+    "token_scope",
+]
+P9_FUNCTIONS = [
+    "app_scope_ok",
+    "resolve_agent_token",
+    "touch_agent_token",
+    "role_ask_bucket",
+    "twin_message_citations",
+    "twin_sessions_check",
+    "twin_messages_check",
+    "agent_tokens_check",
+    "twin_questions_delete_thread",
+]
+
+
+@pytest.mark.parametrize("type_name", P9_ENUMS)
+def test_every_phase_9_enum_holds_the_data_model_values_in_order(engine, type_name):
+    with engine.connect() as c:
+        labels = c.execute(
+            text("SELECT enumlabel FROM pg_enum WHERE enumtypid = CAST(:t AS regtype) ORDER BY enumsortorder"),
+            {"t": type_name},
+        ).scalars()
+        assert list(labels) == _data_model_labels(type_name)
+
+
+def test_the_twin_revision_goes_down_to_local_mode_restoring_the_guard_and_up_again_twice(make_database, alembic_run):
+    url = make_database("p9down_test")
+    engine = _engine(url)
+    guard = "SELECT md5(pg_get_functiondef('agent_actions_guard'::regproc))"
+    try:
+        alembic_run("upgrade", url, "l1_local_mode")
+        with engine.connect() as c:
+            previous_guard = c.execute(text(guard)).scalar_one()
+        alembic_run("upgrade", url, "p9_0901_twin_agentnet")
+        with engine.connect() as c:
+            assert c.execute(text(guard)).scalar_one() != previous_guard  # the relay amendment
+            assert _names(c, "SELECT tablename FROM pg_tables WHERE tablename = ANY(:n)", n=P9_TABLES) == sorted(
+                P9_TABLES
+            )
+        alembic_run("downgrade", url, "l1_local_mode")
+        with engine.connect() as c:
+            assert _names(c, "SELECT relname FROM pg_class WHERE relname = ANY(:n)", n=P9_TABLES) == []
+            assert _names(c, "SELECT typname FROM pg_type WHERE typname = ANY(:n)", n=P9_ENUMS) == []
+            assert _names(c, "SELECT proname FROM pg_proc WHERE proname = ANY(:n)", n=P9_FUNCTIONS) == []
+            assert _names(c, "SELECT policyname FROM pg_policies WHERE policyname LIKE 'agent\\_%'") == []
+            assert _names(c, "SELECT policyname FROM pg_policies WHERE policyname = 'org_token_calls'") == []
+            assert c.execute(text(guard)).scalar_one() == previous_guard  # the Phase 7 guard, byte for byte
+            assert (
+                _names(c, "SELECT conname FROM pg_constraint WHERE conname IN ('audit_log_agent_token_id_fkey')") == []
+            )
+        alembic_run("upgrade", url, "head")
+        alembic_run("upgrade", url, "head")  # twice: the second changes nothing
+        _assert_matches_data_model(engine)
+    finally:
+        engine.dispose()

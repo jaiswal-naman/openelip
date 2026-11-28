@@ -480,6 +480,10 @@ def test_every_record_table_has_the_two_policies(conn):
     expected = {table: ["candidate_own", "worker_all"] for table in RECORD_TABLES}
     for table in ("profile_facts", "constraints", "preferences"):  # plan 04-01: the match role reads the usable rows
         expected[table] = ["candidate_own", "match_read", "worker_all"]
+    expected["profile_facts"] = [
+        "agent_explanations",
+        *expected["profile_facts"],
+    ]  # plan 09-01: a token with explanations:read
     assert all(row.relrowsecurity and row.policies == expected[row.relname] for row in rows)
 
 

@@ -31,7 +31,7 @@ export function JobsView({ params }: { params: SearchParams }) {
       <SearchForm params={params} />
 
       <section className={styles.results} aria-label="Results" aria-busy={jobs.isFetching}>
-        <div className={`t-data ${styles.toolbar}`}>
+        <div className={`t-small ${styles.count}`}>
           <span>{jobs.data === undefined ? "" : `Showing ${rows.length} ${rows.length === 1 ? "job" : "jobs"}`}</span>
           <span>
             {openCount.isError ? (

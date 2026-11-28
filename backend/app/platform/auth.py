@@ -23,7 +23,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import Connection, text
 
-from . import config, db, errors, log, outbox, sessions
+from . import config, db, errors, local, log, outbox, sessions
 from .api import Envelope, envelope
 from .errors import ApiError
 from .idempotency import Write, idempotent, json_only
@@ -55,6 +55,22 @@ class SessionRequest(BaseModel):
     email: str = Field(min_length=3, max_length=254, pattern=EMAIL_PATTERN)
     code: str = Field(pattern=r"^\d{6}$")
     timezone: str | None = None  # an IANA name; used only when this sign-in creates the account
+
+    @field_validator("timezone")
+    @classmethod
+    def _is_an_iana_name(cls, name: str | None) -> str | None:
+        if name is not None:
+            try:
+                ZoneInfo(name)
+            except (KeyError, ValueError, OSError) as error:  # unknown name, malformed name, a directory
+                raise ValueError("not an IANA time zone name") from error
+        return name
+
+
+class LocalSessionRequest(BaseModel):
+    """POST /v1/auth/local. The body is required (and so must be JSON) only so that a cross-site form cannot send it."""
+
+    timezone: str | None = None  # an IANA name; used only when this call creates the owner's account
 
     @field_validator("timezone")
     @classmethod
@@ -351,7 +367,12 @@ def _exchange(email: str, code: str, timezone: str | None) -> tuple[Me, str] | i
     return me, token
 
 
-@router.post("/auth/codes", status_code=202, response_model=Envelope[CodeRequested], dependencies=[Depends(json_only)])
+@router.post(
+    "/auth/codes",
+    status_code=202,
+    response_model=Envelope[CodeRequested],
+    dependencies=[Depends(local.server_only), Depends(json_only)],
+)
 def request_code(body: CodeRequest, request: Request) -> Response | dict[str, Any]:
     wait = _address_wait(request)
     if wait:
@@ -366,7 +387,12 @@ def request_code(body: CodeRequest, request: Request) -> Response | dict[str, An
     return envelope(CodeRequested(expires_in_seconds=int(CODE_LIFETIME.total_seconds())))
 
 
-@router.post("/auth/sessions", status_code=201, response_model=Envelope[Me], dependencies=[Depends(json_only)])
+@router.post(
+    "/auth/sessions",
+    status_code=201,
+    response_model=Envelope[Me],
+    dependencies=[Depends(local.server_only), Depends(json_only)],
+)
 def create_session(body: SessionRequest, response: Response) -> dict[str, Any]:
     outcome = _exchange(normalize_email(body.email), body.code, body.timezone)
     if isinstance(outcome, int):
@@ -375,6 +401,54 @@ def create_session(body: SessionRequest, response: Response) -> dict[str, Any]:
     me, token = outcome
     max_age = int(sessions.ABSOLUTE_LIFETIME.total_seconds())
     response.set_cookie(sessions.COOKIE_NAME, token, max_age=max_age, **sessions.cookie_options())
+    return envelope(me)
+
+
+def _open_local_session(timezone: str | None) -> tuple[Me, str]:
+    """Sign the owner in: the one account that is not synthetic, made on the first call. Returns the account and the
+    cookie value. More than one such account means the database came from server mode, and nobody is signed in."""
+    with db.transaction() as conn:
+        owner = conn.execute(text("SELECT owner_id FROM local_owner(true)")).scalar_one()
+        if owner is None:
+            raise ApiError(
+                409,
+                "conflict",
+                "This database holds more than one account, so it was used in server mode. Start local mode on a new "
+                "database, or set APP_MODE=server.",
+                {"state": "several_accounts"},
+            )
+        sessions.act_as(conn, owner)
+        account = conn.execute(
+            text("SELECT status = 'active' AS is_active, created_at = now() AS is_new FROM users WHERE id = :id"),
+            {"id": owner},
+        ).one()
+        if not account.is_active:
+            raise ApiError(403, "forbidden", "This account cannot sign in.")
+        if account.is_new and timezone:
+            conn.execute(text("UPDATE users SET timezone = :zone WHERE id = :id"), {"zone": timezone, "id": owner})
+        token = sessions.start(conn, owner)
+        me = _account(conn, owner)
+    if me is None:  # the row was read a moment ago in this same transaction
+        raise ApiError(401, "unauthenticated", "Sign in to continue.")
+    return me, token
+
+
+@router.post(
+    "/auth/local",
+    status_code=201,
+    response_model=Envelope[Me],
+    dependencies=[Depends(local.local_only), Depends(json_only)],
+)
+def create_local_session(body: LocalSessionRequest, response: Response) -> dict[str, Any]:
+    """Local mode only (API.md 2.2): open a session for the owner with no code. Same cookie as create_session."""
+    try:
+        me, token = _open_local_session(body.timezone)
+    except ApiError:
+        log.event("auth.failed", outcome="local_refused")
+        raise
+    max_age = int(sessions.ABSOLUTE_LIFETIME.total_seconds())
+    response.set_cookie(sessions.COOKIE_NAME, token, max_age=max_age, **sessions.cookie_options())
+    log.event("auth.signed_in", outcome="local_owner")
     return envelope(me)
 
 

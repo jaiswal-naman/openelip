@@ -72,7 +72,7 @@ function BriefForm({ me }: { me: Me }) {
   }
 
   return (
-    <section className={styles.card} aria-labelledby="brief-title">
+    <section className={styles.section} aria-labelledby="brief-title">
       <h2 id="brief-title" className="t-section">
         Morning brief
       </h2>

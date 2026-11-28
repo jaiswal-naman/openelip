@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy import Connection, Row, text
 
 from app.ingest import api as ingest
+from app.platform import events
 from app.platform.errors import ApiError
 
 from .models import ApplicationStatus
@@ -40,7 +41,8 @@ ONE_APPLICATION = text(
 )
 # The lock is on the caller's own row only; a second status for the same application waits for the first.
 LOCK_APPLICATION = text(
-    """SELECT status::text AS status, status_changed_at FROM applications WHERE user_id = :u AND id = :id FOR UPDATE"""
+    """SELECT status::text AS status, status_changed_at, job_id FROM applications
+       WHERE user_id = :u AND id = :id FOR UPDATE"""
 )
 EVENTS = text(
     """SELECT application_id, status::text AS status, occurred_at, created_at
@@ -55,7 +57,8 @@ INSERT_APPLICATION = text(
        VALUES (:u, :j, :p, 'applied', :at) ON CONFLICT (user_id, job_id) DO NOTHING RETURNING id"""
 )
 INSERT_EVENT = text(
-    """INSERT INTO application_events (application_id, user_id, status, occurred_at) VALUES (:a, :u, :s, :at)"""
+    """INSERT INTO application_events (application_id, user_id, status, occurred_at) VALUES (:a, :u, :s, :at)
+       RETURNING id"""
 )
 MOVE_STATUS = text("""UPDATE applications SET status = :s, status_changed_at = :at WHERE user_id = :u AND id = :id""")
 
@@ -160,7 +163,19 @@ def create_application(
         raise ApiError(
             409, "conflict", "You already track an application for this job.", {"state": "application_exists"}
         )
-    conn.execute(INSERT_EVENT, {"a": created, "u": user_id, "s": "applied", "at": when})
+    event_id = conn.execute(INSERT_EVENT, {"a": created, "u": user_id, "s": "applied", "at": when}).scalar_one()
+    events.publish(
+        conn,
+        "application.status_changed",
+        {
+            "application_id": str(created),
+            "user_id": str(user_id),
+            "job_id": job_id,
+            "status": "applied",
+            "application_event_id": event_id,
+        },
+        key=str(event_id),
+    )
     return _one(conn, user_id, created)
 
 
@@ -174,6 +189,18 @@ def record_status(
     if status == current.status:
         raise ApiError(409, "conflict", "The application already has this status.", {"state": "same_status"})
     when = _stated_time(occurred_at, not_before=current.status_changed_at)
-    conn.execute(INSERT_EVENT, {"a": application_id, "u": user_id, "s": status, "at": when})
+    event_id = conn.execute(INSERT_EVENT, {"a": application_id, "u": user_id, "s": status, "at": when}).scalar_one()
+    events.publish(
+        conn,
+        "application.status_changed",
+        {
+            "application_id": str(application_id),
+            "user_id": str(user_id),
+            "job_id": current.job_id,
+            "status": status,
+            "application_event_id": event_id,
+        },
+        key=str(event_id),
+    )
     conn.execute(MOVE_STATUS, {"u": user_id, "id": application_id, "s": status, "at": when})
     return _one(conn, user_id, application_id)

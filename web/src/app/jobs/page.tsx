@@ -1,5 +1,6 @@
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import type { Metadata } from "next";
+import { TitleBlock } from "@/components/ui/TitleBlock";
 import { JobsView } from "@/features/jobs/JobsView";
 import { parseSearch, searchToQueryString } from "@/features/jobs/jobs";
 import { jobsQuery, openCountQuery } from "@/features/jobs/queries";
@@ -24,10 +25,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
 
   return (
     <div className="container page">
-      <header>
-        <h1 className="t-page">Open jobs</h1>
-        <p className="muted">Search open jobs from public company boards by meaning and by keyword. No account needed.</p>
-      </header>
+      <TitleBlock title="Open jobs" lines={<p>Search open jobs from public company boards by meaning and by keyword. No account needed.</p>} />
       <HydrationBoundary state={dehydrate(queryClient)}>
         <JobsView key={searchToQueryString(params)} params={params} />
       </HydrationBoundary>

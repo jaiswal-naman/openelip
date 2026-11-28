@@ -1,4 +1,4 @@
-/* Menus that float (theme, account): the only things in this app with a shadow (FRONTEND_UI 5.4, elevation 1). */
+/* Menus that float (theme, account): they cast a stronger shadow than a panel does (FRONTEND_UI 5.4, elevation 1). */
 
 .trigger {
   display: inline-flex;
@@ -13,7 +13,7 @@
   background: transparent;
   color: var(--text);
   font-size: var(--fs-small);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-in);
 }
@@ -85,7 +85,7 @@
   gap: var(--sp-8);
   min-height: 2.25rem;
   padding: 0 var(--sp-12);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   font-size: var(--fs-body);
   cursor: pointer;
   outline: none;
@@ -101,7 +101,7 @@
 }
 
 .item[data-selected] {
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .tick {

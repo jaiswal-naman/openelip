@@ -30,7 +30,7 @@ export function IntroductionsSettings() {
       <h2 id="introductions-title" className="t-section">
         Introductions
       </h2>
-      <p>
+      <p className={styles.lead}>
         When this is on, an employer whose role fits your record can ask whether you would like to talk. You see exactly what
         would be shared, and nothing is shared until you accept.
       </p>

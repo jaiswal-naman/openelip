@@ -1,0 +1,5 @@
+[
+  {"tool_calls": [{"tool": "get_dossier", "job": "j1"}], "reply": null},
+  {"tool_calls": [{"tool": "propose_campaign", "job": "j1"}], "reply": null},
+  {"tool_calls": [], "reply": "I offered a Start campaign button. Nothing starts until you click it in the app."}
+]

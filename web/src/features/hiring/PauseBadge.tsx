@@ -12,11 +12,11 @@ export function PauseBadge({ orgId }: { orgId: string }) {
   const overdue = clock.data.owed.filter((item) => item.is_overdue).length;
   return (
     <div role="status" className={styles.banner}>
-      <span className={styles.bannerLabel}>Paused: answers overdue</span>
-      <span>
+      <span className={`t-label ${styles.bannerLabel}`}>Paused: answers overdue</span>
+      <span className={styles.bannerText}>
         New introductions are paused for the whole organization until you answer {overdue} overdue.
       </span>
-      <Link href="/hire/answers" className={buttonClass("secondary", "sm")}>
+      <Link href="/hire/answers" className={buttonClass("primary", "sm")}>
         Answer now
       </Link>
     </div>

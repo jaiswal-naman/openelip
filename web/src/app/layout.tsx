@@ -1,6 +1,6 @@
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { Providers } from "@/components/shell/Providers";
 import { SiteFooter } from "@/components/shell/SiteFooter";
@@ -14,8 +14,9 @@ import "@/styles/tokens.css";
 import "@/styles/global.css";
 
 // next/font downloads these at build time and serves them from this app: no request goes to a font service at run time.
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono", display: "swap" });
+// Geist for reading and headings, Geist Mono for small numerals and data (ids, times, amounts).
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: PRODUCT_NAME, template: `%s, ${PRODUCT_NAME}` },
@@ -25,8 +26,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   colorScheme: "light dark",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f3ec" },
-    { media: "(prefers-color-scheme: dark)", color: "#0d1015" },
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
   ],
 };
 
@@ -39,18 +40,22 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     // suppressHydrationWarning: the script below sets data-theme on <html> before React sees it
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
         <script>{THEME_SCRIPT}</script>
       </head>
       <body>
         <Providers>
           <HydrationBoundary state={dehydrate(queryClient)}>
-            <SiteHeader />
-            <main id="main" tabIndex={-1}>
-              {children}
-            </main>
-            <SiteFooter />
+            <div className="shell">
+              <SiteHeader />
+              <div className="sheet">
+                <main id="main" tabIndex={-1}>
+                  {children}
+                </main>
+                <SiteFooter />
+              </div>
+            </div>
           </HydrationBoundary>
         </Providers>
       </body>

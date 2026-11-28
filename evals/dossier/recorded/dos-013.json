@@ -1,0 +1,42 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Mervik Labs builds billing software for small clinics."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include small clinics and food co-operatives."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 328 employees across 3 offices."
+   }
+  ],
+  "links": [
+   "https://mervik-labs.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://mervik-labs.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in TypeScript for our billing software."
+   }
+  ],
+  "links": [
+   "https://mervik-labs.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://mervik-labs.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

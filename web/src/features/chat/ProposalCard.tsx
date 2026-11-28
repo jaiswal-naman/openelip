@@ -41,7 +41,7 @@ export function ProposalCard({ proposal }: { proposal: Proposal }) {
 
   return (
     <section className={styles.proposal} aria-label="Suggested change to your record">
-      <p className="t-card">Suggested change to your record</p>
+      <p className={`t-card ${styles.proposalTitle}`}>Suggested change to your record</p>
       <p>{proposal.statement}</p>
       <dl className={styles.values}>
         <dt>Now</dt>

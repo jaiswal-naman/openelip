@@ -14,16 +14,17 @@ package is a public interface.
   get_decision(conn, user_id, decision_id)    one decision of the person's, with its evidence (the chat agent's read)
   list_decisions(conn, user_id, ...)          the person's decisions by outcome and date, newest first
   decision_for_job(conn, user_id, job_id)     the newest decision for a job, else the on-request constraint check
+  list_runs(conn, user_id, ...)               the person's own candidate runs, newest first, for the runs list
 
 BriefMatch, RunActivity, NightlyStatus, RunResult and DecisionView are what they return.
 """
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Connection
+from sqlalchemy import Connection, text
 
 from . import ledger
 from .checker import violations
@@ -67,6 +68,8 @@ __all__ = [
     "run",
     "run_role",
     "violations",
+    "MatchRunRow",
+    "list_runs",
 ]
 
 
@@ -195,3 +198,51 @@ def decision_for_job(conn: Connection, user_id: UUID, job_id: int) -> DecisionVi
     today = ledger.today_in(ledger.timezone_of(conn, user_id))
     checked = ledger.check_job(conn, user_id, job_id, today)
     return None if checked is None else _views(conn, user_id, [checked])[0]
+
+
+@dataclass(frozen=True)
+class MatchRunRow:
+    """One of the person's candidate matching runs. `status` is the runs list's word (`completed` reads `succeeded`)."""
+
+    id: UUID
+    trigger: str
+    status: str
+    started_at: datetime
+    finished_at: datetime | None
+
+
+# match_runs.status -> the word agent runs use
+_RUN_STATUS = {"running": "running", "completed": "succeeded", "failed": "failed"}
+
+
+def list_runs(
+    conn: Connection,
+    user_id: UUID,
+    *,
+    status: str | None = None,
+    before: tuple[datetime, UUID] | None = None,
+    limit: int = 50,
+) -> list[MatchRunRow]:
+    """The person's own candidate matching runs (an employer's role runs are not theirs), newest first, those that
+    started before `before` (a `(started_at, id)` position). `status` uses the agent-run words: `running`, `succeeded`,
+    `failed`; `cancelled` matches nothing. Runs on the caller's own connection: the API login sees only their rows."""
+    stored = {v: k for k, v in _RUN_STATUS.items()}
+    if status is not None and status not in stored:
+        return []
+    where = ["r.user_id = :u", "r.trigger <> 'role'"]
+    params: dict[str, Any] = {"u": user_id, "limit": limit}
+    if status is not None:
+        where.append("r.status = CAST(:status AS match_run_status)")
+        params["status"] = stored[status]
+    if before is not None:
+        where.append("(r.started_at, r.id) < (:at, :id)")
+        params["at"], params["id"] = before
+    rows = conn.execute(
+        text(
+            f"""SELECT r.id, r.trigger::text AS trigger, r.status::text AS status, r.started_at, r.finished_at
+                FROM match_runs r WHERE {" AND ".join(where)}
+                ORDER BY r.started_at DESC, r.id DESC LIMIT :limit"""
+        ),
+        params,
+    ).all()
+    return [MatchRunRow(r.id, r.trigger, _RUN_STATUS[r.status], r.started_at, r.finished_at) for r in rows]

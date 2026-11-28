@@ -1,4 +1,4 @@
-/* One button look for <button> (React Aria) and <a> (links styled as buttons). FRONTEND_UI 5.7: primary, secondary, quiet; 32 and 40px. */
+/* One button look for <button> (React Aria) and <a> (links styled as buttons): primary (a black pill), secondary (white, outlined), quiet (text only); 36 and 40px. */
 
 .button {
   position: relative;
@@ -7,9 +7,9 @@
   justify-content: center;
   gap: var(--sp-8);
   border: 1px solid transparent;
-  border-radius: var(--r-md);
+  border-radius: var(--r-pill);
   font-family: var(--font-sans);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1;
   white-space: nowrap;
   text-decoration: none;
@@ -17,24 +17,25 @@
   transition:
     background-color var(--dur-fast) var(--ease-in),
     border-color var(--dur-fast) var(--ease-in),
-    filter var(--dur-fast) var(--ease-in);
+    color var(--dur-fast) var(--ease-in);
 }
 
 .md {
   min-height: 2.5rem; /* 40px: the touch target on a phone */
-  padding: 0 var(--sp-16);
+  padding: 0 var(--sp-20);
   font-size: var(--fs-body);
 }
 
 .sm {
-  min-height: 2rem;
-  padding: 0 var(--sp-12);
+  min-height: 2.25rem; /* 36px */
+  padding: 0 var(--sp-16);
   font-size: var(--fs-small);
 }
 
-/* The one filled button on a card. White text in light, the page colour in dark (see tokens.css). */
+/* The one filled button in a region: a black pill on light, a white one on dark (see tokens.css) */
 .primary {
-  background: var(--accent-strong);
+  background: var(--accent);
+  border-color: var(--accent);
   color: var(--on-accent);
 }
 
@@ -51,17 +52,23 @@
 
 @media (hover: hover) {
   .primary:hover {
-    filter: brightness(0.92);
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
   }
 
-  .secondary:hover,
+  .secondary:hover {
+    background: var(--surface-2);
+    border-color: var(--text);
+  }
+
   .quiet:hover {
     background: var(--surface-2);
   }
 }
 
 .primary:active {
-  filter: brightness(0.86);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .secondary:active,
@@ -76,7 +83,6 @@
   border-color: var(--line);
   color: var(--faint);
   cursor: not-allowed;
-  filter: none;
 }
 
 /* Pending keeps the label and adds a spinner, so the button does not change width (FRONTEND_UI 5.7) */

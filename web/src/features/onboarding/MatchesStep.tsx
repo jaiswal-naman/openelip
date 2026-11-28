@@ -60,7 +60,7 @@ export function MatchesStep() {
 
   return (
     <div className={styles.stack}>
-      <section aria-labelledby="zone-heading" className={styles.stack}>
+      <section aria-labelledby="zone-heading" className={`${styles.stack} ${styles.part}`}>
         <h2 id="zone-heading" className="t-section">
           Your brief
         </h2>
@@ -84,7 +84,7 @@ export function MatchesStep() {
       </section>
 
       {confirmed && (
-        <section aria-labelledby="first-heading" className={styles.stack}>
+        <section aria-labelledby="first-heading" className={`${styles.stack} ${styles.part}`}>
           <h2 id="first-heading" className="t-section">
             Your first matches
           </h2>

@@ -1,19 +1,40 @@
-/* The site header: brand, two links, theme, account. One row at every width down to 320px. */
+/*
+ * The workspace sidebar. A white column down the left at 64rem and wider with a hairline on its right edge, held in place
+ * while the page scrolls; under that, a top bar whose Menu button unfolds the same list over the page.
+ */
 
-.header {
+.register {
   position: sticky;
   top: 0;
   z-index: 10;
-  height: var(--header-h);
-  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
   border-block-end: 1px solid var(--line);
 }
 
-.inner {
+@media (min-width: 64rem) {
+  .register {
+    height: 100dvh;
+    border-block-end: 0;
+    border-inline-end: 1px solid var(--line);
+  }
+}
+
+.bar {
   display: flex;
   align-items: center;
-  gap: var(--sp-16);
-  height: 100%;
+  justify-content: space-between;
+  gap: var(--sp-12);
+  min-height: var(--header-h);
+  padding-inline: var(--sp-16);
+}
+
+@media (min-width: 64rem) {
+  .bar {
+    min-height: 4rem;
+    padding-inline: var(--sp-20);
+  }
 }
 
 .brand {
@@ -22,64 +43,176 @@
   gap: var(--sp-8);
   min-height: 2.5rem;
   color: var(--text);
-  font-size: 1.0625rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   text-decoration: none;
+}
+
+.menuButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  min-height: 2.5rem;
+  padding: 0 var(--sp-16);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.menuButton[aria-expanded="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+@media (min-width: 64rem) {
+  .menuButton {
+    display: none;
+  }
+}
+
+/* Folded: the panel opens below the bar and over the page, so the sheet underneath does not move */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  padding: var(--sp-16);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+@media (max-width: 63.99rem) {
+  .panel {
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    max-height: calc(100dvh - var(--header-h));
+    background: var(--surface);
+    border-block-end: 1px solid var(--line);
+    box-shadow: var(--shadow-1);
+  }
+
+  .panel:not([data-open]) {
+    display: none;
+  }
+}
+
+@media (min-width: 64rem) {
+  .panel {
+    flex: 1;
+    padding: var(--sp-16) var(--sp-12) var(--sp-16);
+  }
 }
 
 .nav {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--sp-20);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
   gap: var(--sp-4);
-  margin-inline-start: var(--sp-8);
+}
+
+.groupLabel {
+  padding-inline: var(--sp-8);
+  padding-block-end: var(--sp-4);
+  color: var(--muted);
 }
 
 .link {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  min-height: 2.5rem;
+  gap: var(--sp-12);
+  min-height: 2.25rem; /* 36px */
   padding: 0 var(--sp-8);
+  border-radius: var(--r-md);
   color: var(--muted);
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 400;
   text-decoration: none;
-  border-block-end: 2px solid transparent;
-  transition: color var(--dur-fast) var(--ease-in);
+  transition:
+    background-color var(--dur-fast) var(--ease-in),
+    color var(--dur-fast) var(--ease-in);
+}
+
+.link svg {
+  flex: none;
 }
 
 @media (hover: hover) {
   .link:hover {
+    background: var(--surface-2);
     color: var(--text);
   }
 }
 
-/* The current page: ink text and one vermilion underline, the single accent in the header */
+/* The open page: the grey fill and a heavier weight, no stripe or colour */
 .link[aria-current="page"] {
+  background: var(--surface-2);
   color: var(--text);
-  border-block-end-color: var(--accent-strong);
+  font-weight: 500;
+}
+
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  margin-block-start: auto;
+  padding-block-start: var(--sp-16);
+  border-block-start: 1px solid var(--line);
+}
+
+/* "Ask the agent" fills the column: it is the sidebar's one standing action */
+.ask > button {
+  width: 100%;
+}
+
+/* A quiet stat cell: label above, value below, in a hairline box */
+.modelCell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--muted);
+  text-decoration: none;
+  transition: border-color var(--dur-fast) var(--ease-in);
+}
+
+.modelValue {
+  overflow: hidden;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-data);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelValue[data-missing] {
+  color: var(--redline);
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+@media (hover: hover) {
+  .modelCell:hover {
+    border-color: var(--line-strong);
+  }
 }
 
 .tools {
   display: flex;
   align-items: center;
   gap: var(--sp-4);
-  margin-inline-start: auto;
-}
-
-/* Under 380px the wordmark gives way to the mark; its text stays for screen readers */
-@media (max-width: 23.75rem) {
-  .wordmark {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-
-  .inner {
-    gap: var(--sp-8);
-  }
+  min-width: 0;
 }
 
 .skip {
@@ -88,12 +221,12 @@
   top: 0;
   z-index: 20;
   padding: var(--sp-8) var(--sp-16);
-  border-radius: 0 0 var(--r-md) var(--r-md);
-  background: var(--surface);
   border: 1px solid var(--line-strong);
   border-block-start: 0;
+  border-radius: 0 0 var(--r-md) var(--r-md);
+  background: var(--surface);
   color: var(--text);
-  font-weight: 600;
+  font-weight: 500;
   transform: translateY(-120%);
 }
 

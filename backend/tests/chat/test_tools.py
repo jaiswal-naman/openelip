@@ -39,7 +39,7 @@ from tests.match.factories import RESUME_FACTS, make_job
 from tests.p5_factories import make_application
 
 MESSAGE = "I would also take jobs in Pune."
-SEVEN = {
+ELEVEN = {
     "get_record",
     "list_matches",
     "get_decision",
@@ -47,6 +47,10 @@ SEVEN = {
     "get_job",
     "get_applications",
     "propose_record_change",
+    "get_campaign",
+    "get_dossier",
+    "explain_block",
+    "propose_campaign",
 }
 UUID_TEXT = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
@@ -79,10 +83,10 @@ def found_ids(table: AliasTable, rows: list[dict], key: str) -> set[str]:
 # ---- which tools there are -----------------------------------------------------------------------------------------
 
 
-def test_the_tools_are_the_seven_the_model_may_call_and_none_of_them_can_send_fetch_or_approve():
+def test_the_tools_are_the_eleven_the_model_may_call_and_none_of_them_can_send_fetch_or_approve():
     built = tools.build_tools("hello")
-    assert set(built) == tool_names() == SEVEN
-    reads = [name for name in built if name != "propose_record_change"]
+    assert set(built) == tool_names() == ELEVEN
+    reads = [name for name in built if name not in ("propose_record_change", "propose_campaign", "explain_block")]
     assert all(name.startswith(("get_", "list_", "search_")) for name in reads)
 
 

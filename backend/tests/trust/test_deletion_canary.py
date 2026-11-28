@@ -87,6 +87,22 @@ PLANTED = {
     ("application_packets", "cover_note"),
     ("eval_items", "expected"),
     ("eval_items", "actual"),
+    ("campaigns", "follow_up_email"),  # the address the person typed for follow-ups
+    ("campaign_steps", "output"),
+    ("company_dossiers", "claims"),
+    ("agent_actions", "summary"),
+    ("agent_actions", "inputs"),
+    ("agent_actions", "evidence"),
+    ("agent_actions", "payload"),  # exactly what would have left the system
+    ("agent_actions", "outcome_code"),
+    ("approvals", "note"),
+    ("guardian_checks", "reason_code"),
+    ("guardian_checks", "details"),
+    ("langgraph.checkpoints", "checkpoint"),  # the campaign's thread: ids only in production, a canary here
+    ("langgraph.checkpoints", "metadata"),
+    ("langgraph.checkpoint_writes", "blob"),
+    ("twin_messages", "body"),
+    ("agent_tokens", "client_name"),
 }
 AFTER_THE_EXPORT = {("data_requests", "export_archive")}  # a sealed ZIP of everything: the copy most easily forgotten
 
@@ -492,6 +508,141 @@ def seed_person(engine) -> Person:
                VALUES (:a, :u, 'applied', now())""",
             a=application,
             u=user,
+        )
+        # The campaign and Guardian tables (plan 07-01) and the person's checkpoint thread in schema langgraph. The
+        # tables are written as the worker writes them: a proposed outside action, the checks on it, the person's
+        # approval of it. Each free-text or jsonb field carries the canary.
+        campaign = run(
+            """INSERT INTO campaigns (user_id, job_id, budget_microusd, follow_up_email)
+               VALUES (:u, :j, 750000, :e) RETURNING id""",
+            u=user,
+            j=job,
+            e=f"{CANARY}@lumen.example",
+        ).scalar_one()
+        step = run(
+            """INSERT INTO campaign_steps (campaign_id, user_id, step_key, agent_role, status, output)
+               VALUES (:c, :u, 'research', 'researcher', 'done', CAST(:o AS jsonb)) RETURNING id""",
+            c=campaign,
+            u=user,
+            o=json.dumps({"failures": [{"url": f"https://lumen.example/{CANARY}", "code": "blocked"}]}),
+        ).scalar_one()
+        run(
+            """INSERT INTO company_dossiers (campaign_id, user_id, company_name, claims)
+               VALUES (:c, :u, 'Lumen Demo', CAST(:claims AS jsonb))""",
+            c=campaign,
+            u=user,
+            claims=json.dumps(
+                [{"text": f"Claim {CANARY}", "sources": [{"url": "https://lumen.example", "quote": CANARY}]}]
+            ),
+        )
+        agent_run = run(
+            """INSERT INTO agent_runs (user_id, campaign_id, campaign_step_id, agent_role, config_version)
+               VALUES (:u, :c, :s, 'operator', 'seed-1') RETURNING id""",
+            u=user,
+            c=campaign,
+            s=step,
+        ).scalar_one()
+        action = run(
+            """INSERT INTO agent_actions (agent_run_id, user_id, campaign_id, seq, kind, action_type, status, summary,
+                                          inputs, evidence, payload, policy_decision, policy_version, outcome_code)
+               VALUES (:r, :u, :c, 1, 'outside_action', 'send_follow_up', 'proposed', :s, CAST(:i AS jsonb),
+                       CAST(:ev AS jsonb), CAST(:p AS jsonb), 'ask', 'seed-1', :code) RETURNING id""",
+            r=agent_run,
+            u=user,
+            c=campaign,
+            s=f"Follow up {CANARY}",
+            i=json.dumps({"note": CANARY}),
+            ev=json.dumps([{"ref": CANARY}]),
+            p=json.dumps({"to": ADDRESS, "subject": f"Subject {CANARY}", "body": f"Body {CANARY}"}),
+            code=f"code-{CANARY}",
+        ).scalar_one()
+        run(
+            """INSERT INTO guardian_checks (agent_action_id, user_id, check_kind, passed, reason_code, details,
+                                            guardian_version)
+               VALUES (:a, :u, 'scope', false, :r, CAST(:d AS jsonb), 'seed-1')""",
+            a=action,
+            u=user,
+            r=f"reason-{CANARY}",
+            d=json.dumps({"to": ADDRESS, "note": CANARY}),
+        )
+        run(
+            """INSERT INTO approvals (user_id, agent_action_id, expires_at, note)
+               VALUES (:u, :a, now() + interval '7 days', :n)""",
+            u=user,
+            a=action,
+            n=f"Note {CANARY}",
+        )
+        run("INSERT INTO autonomy_settings (user_id, action_type, level) VALUES (:u, 'twin_answer', 'never')", u=user)
+        thread = f"campaign:{campaign}"
+        run(
+            """INSERT INTO langgraph.checkpoints (thread_id, checkpoint_ns, checkpoint_id, checkpoint, metadata)
+               VALUES (:t, '', 'c1', CAST(:cp AS jsonb), CAST(:m AS jsonb))""",
+            t=thread,
+            cp=json.dumps({"seed": CANARY}),
+            m=json.dumps({"seed": CANARY}),
+        )
+        run(
+            """INSERT INTO langgraph.checkpoint_blobs (thread_id, checkpoint_ns, channel, version, type)
+               VALUES (:t, '', 'x', '1', 'empty')""",
+            t=thread,
+        )
+        run(
+            """INSERT INTO langgraph.checkpoint_writes (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel,
+                                                        type, blob)
+               VALUES (:t, '', 'c1', 'task', 0, 'x', 'json', :b)""",
+            t=thread,
+            b=CANARY.encode(),
+        )
+        # The Twin and agent-token tables (plan 09-01): a scope row, a session on the accepted introduction above, an
+        # employer's question with its checkpoint thread, the Twin's answer and the person's own agent token, with the
+        # canary in each free-text field. Written by the migrate login, as the worker would, so the checks run.
+        run("INSERT INTO twin_scopes (user_id, topic, permission) VALUES (:u, 'projects', 'answer')", u=user)
+        twin_session = run(
+            """INSERT INTO twin_sessions (introduction_id, user_id, organization_id)
+               VALUES (:i, :u, :o) RETURNING id""",
+            i=introduction,
+            u=user,
+            o=hiring,
+        ).scalar_one()
+        question = run(
+            """INSERT INTO twin_messages (session_id, user_id, organization_id, author, body)
+               VALUES (:s, :u, :o, 'employer', :b) RETURNING id""",
+            s=twin_session,
+            u=user,
+            o=hiring,
+            b=f"Question {CANARY}",
+        ).scalar_one()
+        run(
+            """INSERT INTO twin_messages (session_id, user_id, organization_id, author, body, topic, answer_kind,
+                                          in_reply_to)
+               VALUES (:s, :u, :o, 'twin', :b, 'current_pay', 'declined', :q)""",
+            s=twin_session,
+            u=user,
+            o=hiring,
+            b=f"Declined {CANARY}",
+            q=question,
+        )
+        twin_thread = f"twin:{question}"
+        run(
+            """INSERT INTO langgraph.checkpoints (thread_id, checkpoint_ns, checkpoint_id, checkpoint, metadata)
+               VALUES (:t, '', 'c1', CAST(:cp AS jsonb), CAST(:m AS jsonb))""",
+            t=twin_thread,
+            cp=json.dumps({"seed": CANARY}),
+            m=json.dumps({"seed": CANARY}),
+        )
+        agent_consent = run(
+            """INSERT INTO consents (user_id, purpose, action, text_version)
+               VALUES (:u, 'agent_access', 'granted', 'v1') RETURNING id""",
+            u=user,
+        ).scalar_one()
+        run(
+            """INSERT INTO agent_tokens (principal, user_id, consent_id, client_name, token_sha256, scopes, expires_at)
+               VALUES ('candidate', :u, :c, :n, :h, ARRAY['matches:read']::token_scope[],
+                       now() + interval '30 days')""",
+            u=user,
+            c=agent_consent,
+            n=f"Client {CANARY}",
+            h=uuid4().bytes * 2,
         )
         # The nightly run and the morning brief of this person, queued by the match and brief schedules themselves (as
         # the parse job above is made by the upload): a job planted by hand with a user id would pass whatever the

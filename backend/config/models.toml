@@ -232,3 +232,82 @@ model = "claude-sonnet-5-5"
 input_usd_per_mtok = 2.00
 output_usd_per_mtok = 10.00
 price_checked_at = 2026-11-22
+
+# The campaign crew (AI_SYSTEM 6.4, 6.8 and 6.9; plan 07-02). The routes follow the AI_SYSTEM 2.2 table: Sonnet 5.5 for the
+# Researcher's planner, the Chaser and the Coach, Haiku 5.5 for the quarantined page reader. Prices are the ones the tasks
+# above use for the same models.
+# The planner and the reader see public company pages and the company name only, never the candidate's record.
+[tasks."research.plan"]
+description = "Researcher planner: picks the next tool call of a company-research run. It never sees page text."
+data_class = "public"
+max_tokens = 3000       # AI_SYSTEM 2.2 (assumption)
+timeout_seconds = 60    # assumption: per turn; the run as a whole is limited to 10 minutes in code
+
+[tasks."research.plan".models.anthropic]
+model = "claude-sonnet-5-5"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-22
+
+[tasks."research.read_page"]
+description = "Researcher reader: returns verbatim claims from one public company page. It has no tools."
+data_class = "public"
+max_tokens = 2000       # AI_SYSTEM 2.2 (assumption)
+timeout_seconds = 30    # AI_SYSTEM 2.2 (assumption)
+
+[tasks."research.read_page".models.anthropic]
+model = "claude-haiku-5-5"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-22
+
+# The Chaser and the Coach get statement texts and aliases only: no name, email or document text.
+[tasks."chaser.draft"]
+description = "Chaser: a short follow-up message built from cited facts, dossier claims and campaign events."
+data_class = "de-identified"
+max_tokens = 1000       # AI_SYSTEM 2.2 (assumption)
+timeout_seconds = 30    # AI_SYSTEM 2.2 (assumption)
+
+[tasks."chaser.draft".models.anthropic]
+model = "claude-sonnet-5-5"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-22
+
+[tasks."coach.prep"]
+description = "Coach: interview questions mapped to requirements and confirmed facts, and questions to ask the company."
+data_class = "de-identified"
+max_tokens = 5000       # AI_SYSTEM 2.2 (assumption)
+timeout_seconds = 90    # AI_SYSTEM 2.2 (assumption)
+
+[tasks."coach.prep".models.anthropic]
+model = "claude-sonnet-5-5"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-22
+
+# The Twin (AI_SYSTEM 8): the classifier reads the employer's own words, so its class is identified; the answerer reads
+# only de-identified facts from topics the candidate opened.
+[tasks."twin.classify"]
+description = "Twin: the topic of an employer's question and whether it asks for pay or contact details."
+data_class = "identified"
+max_tokens = 300        # AI_SYSTEM 2.2
+timeout_seconds = 10    # AI_SYSTEM 2.2
+
+[tasks."twin.classify".models.anthropic]
+model = "claude-haiku-5-5"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-22
+
+[tasks."twin.answer"]
+description = "Twin: a short answer to an employer's question, each sentence citing confirmed facts from open topics."
+data_class = "de-identified"
+max_tokens = 1500       # AI_SYSTEM 2.2
+timeout_seconds = 20    # AI_SYSTEM 2.2
+
+[tasks."twin.answer".models.anthropic]
+model = "claude-sonnet-5-5"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-22

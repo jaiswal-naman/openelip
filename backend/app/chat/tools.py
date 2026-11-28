@@ -1,4 +1,4 @@
-"""The chat agent's seven tools (plan 05-04; AI_SYSTEM 9; CHT-01 to CHT-04): six that read and one that proposes.
+"""The chat agent's eleven tools (plans 05-04, 07-06; AI_SYSTEM 9; CHT-01 to CHT-04): nine read, two propose.
 
     get_record             the candidate's facts, constraints and preferences
     list_matches           their decisions, by outcome and date
@@ -7,9 +7,14 @@
     get_job                one posting: typed fields, requirements, the text
     get_applications       what they applied to and where it stands
     propose_record_change  record.propose on the current message; a proposal waits for the candidate (CHT-03)
+    get_campaign           a job's campaign (stage, pause, next step, steps), or the open ones (plan 07-06)
+    get_dossier            the company dossier of a job's campaign, each claim with its source and time
+    explain_block          why work stopped or an action did not go ahead, in sentences the app wrote
+    propose_campaign       offers a "Start campaign" card; the candidate's click starts it, this starts nothing
 
-None of them sends, fetches or approves anything, and none can change the record: the only write is a `proposed`
-profile event, which changes nothing until the candidate confirms it in the app. Every tool is a function
+None of them sends, fetches or approves anything, and none can change the record or start work: the only write is a
+`proposed` profile event, which changes nothing until the candidate confirms it in the app. The campaign tools read
+through campaigns.api on the API login. Every tool is a function
 (user_id, parsed input, alias table) -> ToolOutput. The person is the session's and arrives as the first argument;
 no tool input has a field for one, so a model cannot ask for anyone else's data. Each tool reads through the `api.py`
 of the module that owns the data, on its own app_api transaction, so row-level security is in force as well.
@@ -25,6 +30,7 @@ from typing import Any
 from uuid import UUID
 
 from app.apply import api as applications
+from app.campaigns import api as campaigns
 from app.ingest import api as ingest
 from app.match import api as match
 from app.platform import db
@@ -34,11 +40,16 @@ from . import proposals
 from .refs import AliasTable
 from .schemas import (
     MAX_SEARCH_RESULTS,
+    CampaignProposal,
+    ExplainBlock,
     GetApplications,
+    GetCampaign,
     GetDecision,
+    GetDossier,
     GetJob,
     GetRecord,
     ListMatches,
+    ProposeCampaign,
     ProposeRecordChange,
     SearchJobs,
     ToolOutput,
@@ -65,7 +76,14 @@ TYPED_FIELDS = (
 MISSING = {
     "unknown_reference": "No tool returned that reference in this conversation, so it cannot be looked up.",
     "not_found": "Nothing was found for that reference.",
+    "no_campaign": "The candidate has no campaign for this job.",
+    "no_dossier": "No company dossier exists yet for this job.",
 }
+CAMPAIGN_NOTE = (
+    "This only offers a button. The candidate decides: nothing was started, and a campaign starts only when they "
+    "click it in the app."
+)
+NO_BLOCKS = "Nothing is blocked or paused on this job's campaign."
 PROPOSAL_NOTE = (
     "These are proposals only. Nothing in the record changes until the candidate confirms each one in the app."
 )
@@ -319,6 +337,124 @@ def get_applications(user_id: UUID, args: GetApplications, aliases: AliasTable) 
     return ToolOutput(data, seen.by_kind, "applications")
 
 
+# ---- campaigns (plan 07-06) ----------------------------------------------------------------------------------------
+
+
+def _job_alias(aliases: AliasTable, alias: str | None) -> int | None:
+    """The job number an alias of kind job stands for in this session, else None (unknown, or another kind)."""
+    found = None if alias is None else aliases.get(alias)
+    return int(found.id) if found is not None and found.kind == "job" else None
+
+
+def _campaign(view: dict[str, Any], seen: _Seen, *, with_steps: bool) -> dict[str, Any]:
+    step = view["next_step"]
+    row: dict[str, Any] = {
+        "job": seen.alias("job", view["job_id"]),
+        "title": view["title"],
+        "company": view["company_name"],
+        "stage": view["stage"],
+        "from_introduction": view["from_introduction"],
+        "paused": view["paused_at"] is not None,
+        "pause_reason": view["pause_reason"],
+        "closed_reason": view["closed_reason"],
+        "next_step": None if step is None else step["text"],
+        "pending_approvals": view["pending_approvals"],
+    }
+    if with_steps:
+        row["steps"] = [{"step": x["step_key"], "status": x["status"], "text": x["text"]} for x in view["steps"]]
+    return row
+
+
+def get_campaign(user_id: UUID, args: GetCampaign, aliases: AliasTable) -> ToolOutput:
+    """One job's campaign (its open one, else its latest), or the open campaigns when no job is named."""
+    seen = _Seen(aliases)
+    if args.job is None:
+        with db.transaction(user_id) as conn:
+            open_ones = campaigns.open_campaigns(conn, user_id)
+        return ToolOutput(
+            {"campaigns": [_campaign(v, seen, with_steps=False) for v in open_ones]}, seen.by_kind, "campaigns"
+        )
+    job_id = _job_alias(aliases, args.job)
+    if job_id is None:
+        return _missing("unknown_reference")
+    with db.transaction(user_id) as conn:
+        view = campaigns.for_job(conn, user_id, job_id)
+    if view is None:
+        return _missing("no_campaign")
+    return ToolOutput(_campaign(view, seen, with_steps=True), seen.by_kind, "campaign")
+
+
+def get_dossier(user_id: UUID, args: GetDossier, aliases: AliasTable) -> ToolOutput:
+    """The newest company dossier of the job's campaign: each claim with the page it came from and when it was read."""
+    job_id = _job_alias(aliases, args.job)
+    if job_id is None:
+        return _missing("unknown_reference")
+    with db.transaction(user_id) as conn:
+        dossier = campaigns.dossier_for_job(conn, user_id, job_id)
+    if dossier is None:
+        return _missing("no_dossier")
+    seen = _Seen(aliases)
+    claims = [
+        {
+            "claim": c.get("text"),
+            "topic": c.get("topic"),
+            "sources": [
+                {"url": src.get("url"), "retrieved_at": src.get("retrieved_at")} for src in c.get("sources", [])
+            ],
+        }
+        for c in dossier["claims"]
+    ]
+    data = {
+        "job": seen.alias("job", job_id),
+        "found": True,
+        "company": dossier["company_name"],
+        "version": dossier["version"],
+        "incomplete": dossier["incomplete"],
+        "claims": claims,
+        "not_found_on_company_pages": dossier["missing_topics"],
+    }
+    return ToolOutput(data, seen.by_kind, "company_dossier")
+
+
+def explain_block(user_id: UUID, args: ExplainBlock, aliases: AliasTable) -> ToolOutput:
+    """Why work stopped or an action did not go ahead: sentences the app wrote from reason codes, nothing else."""
+    job_id = _job_alias(aliases, args.job)
+    if job_id is None:
+        return _missing("unknown_reference")
+    with db.transaction(user_id) as conn:
+        view = campaigns.for_job(conn, user_id, job_id)
+        blocks = [] if view is None else campaigns.blocks_for_job(conn, user_id, job_id)
+    if view is None:
+        return _missing("no_campaign")
+    seen = _Seen(aliases)
+    data = {"job": seen.alias("job", job_id), "blocks": blocks, "note": None if blocks else NO_BLOCKS}
+    return ToolOutput(data, seen.by_kind, "campaign_blocks")
+
+
+def propose_campaign(user_id: UUID, args: ProposeCampaign, aliases: AliasTable) -> ToolOutput:
+    """Offer to start a campaign for a job. Nothing is written: the stream gets a `campaign_proposal` event and the
+    panel shows a card whose button calls POST /v1/campaigns, which has its own refusals (closed job, constraint)."""
+    job_id = _job_alias(aliases, args.job)
+    if job_id is None:
+        return _missing("unknown_reference")
+    with db.transaction(user_id) as conn:
+        job = ingest.get_job(conn, job_id)
+        open_id = campaigns.open_campaign_for_job(conn, user_id, job_id) if job is not None else None
+    if job is None:
+        return _missing("not_found")
+    seen = _Seen(aliases)
+    data = {
+        "offered": True,
+        "job": seen.alias("job", job_id),
+        "title": job["title"],
+        "company": job["company_name"],
+        "campaign_already_open": open_id is not None,
+        "note": CAMPAIGN_NOTE,
+    }
+    offer = CampaignProposal(job_id, job["title"], job["company_name"], open_id)
+    return ToolOutput(data, seen.by_kind, "campaign_offer", campaign_proposals=(offer,))
+
+
 def _propose_record_change(user_text: str) -> Tool:
     """record.propose over the candidate's current message and nothing else (CHT-03). The proposals are stored as
     `proposed` events by profile.api and come back as ProposalEvents for the stream; the record does not change."""
@@ -336,7 +472,7 @@ def _propose_record_change(user_text: str) -> Tool:
 
 
 def build_tools(user_text: str) -> dict[str, Tool]:
-    """The seven tools for one candidate message. `user_text` is that message, which is all record.propose reads."""
+    """The eleven tools for one candidate message. `user_text` is that message, which is all record.propose reads."""
     return {
         "get_record": get_record,
         "list_matches": list_matches,
@@ -345,4 +481,8 @@ def build_tools(user_text: str) -> dict[str, Tool]:
         "get_job": get_job,
         "get_applications": get_applications,
         "propose_record_change": _propose_record_change(user_text),
+        "get_campaign": get_campaign,
+        "get_dossier": get_dossier,
+        "explain_block": explain_block,
+        "propose_campaign": propose_campaign,
     }

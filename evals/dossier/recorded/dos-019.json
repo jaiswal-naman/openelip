@@ -1,0 +1,42 @@
+[
+ {
+  "claims": [
+   {
+    "topic": "product",
+    "quote": "Selvane Learning builds warehouse robots for small clinics."
+   },
+   {
+    "topic": "customers",
+    "quote": "Our customers include small clinics and food co-operatives."
+   },
+   {
+    "topic": "size",
+    "quote": "We have 96 employees across 2 offices."
+   }
+  ],
+  "links": [
+   "https://selvane-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://selvane-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ },
+ {
+  "claims": [
+   {
+    "topic": "engineering",
+    "quote": "You will build services in Java for our warehouse robots."
+   }
+  ],
+  "links": [
+   "https://selvane-learning.example/team",
+   "/press",
+   "https://tracker.example/pixel?x=1",
+   "http://selvane-learning.example/old",
+   "javascript:void(0)"
+  ],
+  "injection_suspected": false
+ }
+]

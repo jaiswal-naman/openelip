@@ -1,0 +1,8 @@
+[
+  {"questions": [
+     {"text": "Tell us about a pipeline you built.", "requirement": "r1", "facts": ["f2"], "gap": false,
+      "framing": "Tell the story of the nightly Python and PostgreSQL pipelines you built."},
+     {"text": "Have you used PostgreSQL in production?", "requirement": "r2", "facts": [], "gap": true,
+      "framing": "Be honest that you have not used PostgreSQL in production yet and say how you would learn it."}],
+   "ask_them": [{"text": "How do trucking companies use your route planning software?", "dossier_claims": ["d1"]}]}
+]

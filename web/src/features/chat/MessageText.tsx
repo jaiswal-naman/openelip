@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { FileTextIcon } from "@/components/icons/icons";
 import type { Citation } from "./queries";
 import styles from "./chat.module.css";
 
@@ -35,10 +36,12 @@ export function MessageText({ text, citations }: { text: string; citations: Reco
       parts.push(
         href === null ? (
           <span key={index} className={styles.chip}>
+            <FileTextIcon />
             {label}
           </span>
         ) : (
           <Link key={index} href={href} className={styles.chip}>
+            <FileTextIcon />
             {label}
           </Link>
         ),

@@ -1,0 +1,57 @@
+[
+ {
+  "sentences": [
+   {
+    "text": "I cut report time by 60 percent with nightly Python and PostgreSQL pipelines.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I applied for the Data Engineer role on 3 November 2026.",
+    "facts": [],
+    "dossier_claims": [],
+    "events": [
+     "e1",
+     "e2"
+    ]
+   },
+   {
+    "text": "You can reach me at someone@mail.example.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I built nightly Python and PostgreSQL pipelines for my last team.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "My expected salary is flexible.",
+    "facts": [],
+    "dossier_claims": [],
+    "events": []
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   },
+   {
+    "edit": "e2",
+    "entailed": true
+   }
+  ]
+ }
+]

@@ -84,13 +84,13 @@ export function DeleteAccount({ email }: { email: string }) {
   };
 
   return (
-    <section className={styles.card} aria-labelledby="delete-title">
+    <section className={`${styles.section} ${styles.danger}`} aria-labelledby="delete-title">
       <h2 id="delete-title" className="t-section">
         Delete your account
       </h2>
       <p className={styles.lead}>Removes your account and everything in it. This cannot be undone.</p>
       <DialogTrigger onOpenChange={(open) => !open && reset()}>
-        <AriaButton className={`${buttonClass("secondary")} ${styles.danger}`}>Delete account</AriaButton>
+        <AriaButton className={`${buttonClass("secondary")} ${styles.dangerButton}`}>Delete account</AriaButton>
         <ModalOverlay className={styles.overlay} isDismissable>
           <Modal className={styles.modal}>
             <Dialog className={styles.dialog}>

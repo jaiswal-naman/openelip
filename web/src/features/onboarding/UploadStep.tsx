@@ -122,7 +122,7 @@ export function UploadStep({ documentId, onDocumentChange, onDone, onSkip, pollM
             </p>
           )}
           <div>
-            <Button variant="quiet" onPress={onSkip}>
+            <Button onPress={onSkip}>
               Skip this step
             </Button>
           </div>

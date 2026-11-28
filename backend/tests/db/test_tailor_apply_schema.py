@@ -25,6 +25,7 @@ from app.chat import privacy as chat_privacy
 from app.tailor import models as tailor_models
 from app.tailor import privacy as tailor_privacy
 from app.trust import privacy
+from tests.campaigns.factories import make_campaign
 from tests.match.factories import RESUME_FACTS, RESUME_TEXT, Job, Record, make_job, make_record, make_user
 
 # The seven tables this revision made, each with a user_id and each erased by cascade.
@@ -506,9 +507,9 @@ def test_the_one_current_packet_rule_is_per_person_and_per_job(conn):
 
 
 def test_a_packet_with_a_campaign_is_held_to_one_current_packet_per_campaign_instead(conn):
-    """campaign_id has no foreign key until Phase 7; the DATA_MODEL index on it is already there."""
+    """The DATA_MODEL index on campaign_id; Phase 7 (plan 07-01) added its foreign key, so the campaign is real."""
     ada = make_world(conn, make_posting(conn))
-    campaign = one(conn, "SELECT gen_random_uuid()")
+    campaign = make_campaign(conn, ada.user, ada.job.id)
     insert = "INSERT INTO application_packets (user_id, job_id, campaign_id) VALUES (:u, :j, :c)"
     conn.execute(text(insert), {"u": ada.user, "j": ada.job.id, "c": campaign})
     add_packet(conn, ada)  # the campaign-less one for the same job does not collide with it

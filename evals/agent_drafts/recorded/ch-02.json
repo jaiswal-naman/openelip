@@ -1,0 +1,60 @@
+[
+ {
+  "sentences": [
+   {
+    "text": "I also have deep SCORM authoring experience.",
+    "facts": [],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I designed online courses for adult learners at my last school.",
+    "facts": [
+     "f2"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I admire your new office.",
+    "facts": [
+     "f9"
+    ],
+    "dossier_claims": [],
+    "events": []
+   },
+   {
+    "text": "I like that Brevo Learning builds language lessons for city schools.",
+    "facts": [],
+    "dossier_claims": [
+     "d1"
+    ],
+    "events": []
+   },
+   {
+    "text": "I rolled out the grading tool across the whole country.",
+    "facts": [
+     "f3"
+    ],
+    "dossier_claims": [],
+    "events": []
+   }
+  ]
+ },
+ {
+  "items": [
+   {
+    "edit": "e1",
+    "entailed": true
+   },
+   {
+    "edit": "e2",
+    "entailed": true
+   },
+   {
+    "edit": "e3",
+    "entailed": false
+   }
+  ]
+ }
+]

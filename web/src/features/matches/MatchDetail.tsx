@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/Button";
 import { buttonClass } from "@/components/ui/buttonStyles";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { Pill } from "@/components/ui/Pill";
+import { StartCampaignButton } from "@/features/campaigns/StartCampaignButton";
 import { ChatContext } from "@/features/chat/ChatContext";
 import { ErrorState } from "@/components/ui/States";
+import { type TitleCell, TitleBlock } from "@/components/ui/TitleBlock";
 import { LocalTime } from "@/components/ui/Viewer";
 import { arrangementsText, locationText, payText, safeHttpUrl, sourceLabel, unplacedWords } from "@/features/jobs/jobs";
 import { useApi } from "@/lib/api/context";
@@ -36,6 +38,25 @@ function requirementFromAddress(raw: string | null, evidence: EvidenceItem[]): n
   return evidence.some((item) => item.requirement.id === id) ? id : null;
 }
 
+const metOf = (items: EvidenceItem[]) => items.filter((item) => item.verdict === "met").length;
+
+/** The page header's cells, counted from what this page already holds. A count of nothing is left out, not shown as 0 of 0. */
+function counts(match: MatchData): TitleCell[] {
+  const required = match.evidence.filter((item) => item.requirement.importance === "required");
+  const preferred = match.evidence.filter((item) => item.requirement.importance === "preferred");
+  const cells: TitleCell[] = [];
+  if (required.length > 0) {
+    const met = metOf(required);
+    cells.push({ label: "Required met", value: `${met} of ${required.length}`, tone: met === required.length ? "ok" : "muted" });
+  }
+  if (preferred.length > 0) cells.push({ label: "Preferred met", value: `${metOf(preferred)} of ${preferred.length}`, tone: "muted" });
+  if (match.constraint_checks.length > 0) {
+    const verified = match.constraint_checks.filter((check) => check.state === "satisfied").length;
+    cells.push({ label: "Constraints verified", value: `${verified} of ${match.constraint_checks.length}`, tone: "muted" });
+  }
+  return cells;
+}
+
 /**
  * One match: the job, every requirement with its verdict and the record evidence for it, and the two texts the selected
  * row points into (MAT-03, MAT-04). Selecting a row marks the exact job sentence and the cited resume words, scrolls both
@@ -52,6 +73,7 @@ export function MatchDetail({ match }: { match: MatchData }) {
   const { job } = match;
 
   const active = match.evidence.find((item) => item.requirement.id === selected) ?? null;
+  const calloutNumber = active === null ? undefined : match.evidence.indexOf(active) + 1; // the row's number, drawn on both marks
 
   // The job side: marked only while the words are still at the stored span of the posting as it reads now.
   const jobPoints = useMemo(() => Array.from(match.description), [match.description]);
@@ -89,73 +111,80 @@ export function MatchDetail({ match }: { match: MatchData }) {
   return (
     <article className={styles.detail}>
       <ChatContext jobId={job.id} company={job.company_name} />
-      <header className={styles.head}>
-        <h1 className={`t-page ${styles.title}`}>{job.title}</h1>
-        <p className={styles.company}>{job.company_name.trim() === "" ? "Company not stated" : job.company_name}</p>
+      <TitleBlock
+        title={<span className={styles.title}>{job.title}</span>}
+        lines={
+          <>
+            <p className={styles.company}>{job.company_name.trim() === "" ? "Company not stated" : job.company_name}</p>
+            <p className={styles.place}>{locationText(job)}</p>
+            <p className={styles.summary}>{match.summary}</p>
+          </>
+        }
+        cells={counts(match)}
+        actions={
+          <div className={styles.actions}>
+            {!closed && <StartCampaignButton jobId={job.id} />}
+            <LinkButton href={`/app/matches/${match.decision_id}/tailor`}>Tailor resume</LinkButton>
+            {!closed && applyUrl !== null && (
+              <a
+                href={applyUrl}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className={buttonClass("secondary", "md")}
+                aria-label={`View posting for ${job.title} (opens in a new tab)`}
+              >
+                View posting
+                <ExternalLinkIcon />
+              </a>
+            )}
+            <Button isPending={feedback.isPending} onPress={feedback.toggleSave}>
+              {feedback.isSaved ? "Unsave" : "Save"}
+            </Button>
+            <DismissDialog onDismiss={feedback.dismiss} isPending={feedback.isPending} />
+            {feedback.isSaved && <Pill tone="ok">Saved</Pill>}
+          </div>
+        }
+      />
 
-        {closed && (
-          <p className={styles.banner}>
-            <span className={`t-label ${styles.bannerLabel}`}>Closed</span>
-            <span>This job has closed. It is kept here for your records.</span>
-          </p>
-        )}
-        {changed && (
-          <p className={styles.banner}>
-            <span className={`t-label ${styles.bannerLabel}`}>{MATCH_REASON_LABELS.material_change}</span>
-            <span>{match.change_note ?? "The posting changed."}</span>
-          </p>
-        )}
+      {closed && (
+        <p className={styles.banner}>
+          <span className={`t-label ${styles.bannerLabel}`}>Closed</span>
+          <span>This job has closed. It is kept here for your records.</span>
+        </p>
+      )}
+      {changed && (
+        <p className={styles.banner}>
+          <span className={`t-label ${styles.bannerLabel}`}>{MATCH_REASON_LABELS.material_change}</span>
+          <span>{match.change_note ?? "The posting changed."}</span>
+        </p>
+      )}
+      {feedback.isDismissed && (
+        <p role="status" className={styles.notice}>
+          You dismissed this job. Save it to take that back.
+        </p>
+      )}
+      {feedback.hasProposal && (
+        <p role="status" className={styles.notice}>
+          We suggested a change to your record. It changes nothing until you confirm it: see <Link href="/app/record">your record</Link>.
+        </p>
+      )}
+      {feedback.error !== null && (
+        <p role="alert" className={styles.problem}>
+          {describeFailure(feedback.error)} Your choice was not saved.
+        </p>
+      )}
 
-        <ul className={styles.facts}>
-          <li>{locationText(job)}</li>
-          {words !== null && <li>Posting says: {words}</li>}
-          <li>{arrangementsText(job.work_arrangements)}</li>
-          <li>Pay: {payText(job.pay, viewer.locale)}</li>
-          <li>Source: {sourceLabel(job.source.ats)}</li>
-          <li>
-            {closed ? "Last verified open" : "Verified open"} <LocalTime iso={job.last_verified_at} />
-          </li>
-        </ul>
-        <p className={styles.summary}>{match.summary}</p>
+      <ul className={styles.facts}>
+        {words !== null && <li>Posting says: {words}</li>}
+        <li>{arrangementsText(job.work_arrangements)}</li>
+        <li>Pay: {payText(job.pay, viewer.locale)}</li>
+        <li>Source: {sourceLabel(job.source.ats)}</li>
+        <li>
+          {closed ? "Last verified open" : "Verified open"} <LocalTime iso={job.last_verified_at} />
+        </li>
+      </ul>
 
-        <div className={styles.actions}>
-          {!closed && applyUrl !== null && (
-            <a
-              href={applyUrl}
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              className={buttonClass("primary", "md")}
-              aria-label={`View posting for ${job.title} (opens in a new tab)`}
-            >
-              View posting
-              <ExternalLinkIcon />
-            </a>
-          )}
-          <LinkButton href={`/app/matches/${match.decision_id}/tailor`}>Tailor resume</LinkButton>
-          <Button isPending={feedback.isPending} onPress={feedback.toggleSave}>
-            {feedback.isSaved ? "Unsave" : "Save"}
-          </Button>
-          <DismissDialog onDismiss={feedback.dismiss} isPending={feedback.isPending} />
-          {feedback.isSaved && <Pill tone="ok">Saved</Pill>}
-        </div>
-        {feedback.isDismissed && (
-          <p role="status" className={styles.notice}>
-            You dismissed this job. Save it to take that back.
-          </p>
-        )}
-        {feedback.hasProposal && (
-          <p role="status" className={styles.notice}>
-            We suggested a change to your record. It changes nothing until you confirm it: see <Link href="/app/record">your record</Link>.
-          </p>
-        )}
-        {feedback.error !== null && (
-          <p role="alert" className={styles.problem}>
-            {describeFailure(feedback.error)} Your choice was not saved.
-          </p>
-        )}
-      </header>
-
-      <section aria-labelledby="evidence-heading" className={styles.panel}>
+      <section aria-labelledby="evidence-heading" className={styles.section}>
         <h2 id="evidence-heading" className="t-section">
           Requirements and your evidence
         </h2>
@@ -163,19 +192,21 @@ export function MatchDetail({ match }: { match: MatchData }) {
           <p>No requirements were recorded for this match.</p>
         ) : (
           <>
-            <p className="t-small muted">Select a requirement, with a click, Enter or Space, to see where it is in the posting and in your resume.</p>
+            <p className={`t-small ${styles.hint}`}>Select a requirement, with a click, Enter or Space, to see where it is in the posting and in your resume.</p>
             <EvidenceTable evidence={match.evidence} selected={active === null ? null : active.requirement.id} onSelect={select} />
           </>
         )}
       </section>
 
-      <section aria-labelledby="texts-heading" className={styles.panel}>
+      <section aria-labelledby="texts-heading" className={styles.section}>
         <h2 id="texts-heading" className="t-section">
           Job text and your resume
         </h2>
         <div className={styles.panes}>
           <TextPane
             title="Job text"
+            letter="A"
+            callout={calloutNumber}
             text={match.description.trim() === "" ? null : match.description}
             span={jobResolves && jobCitation !== null ? jobCitation.span : null}
             announcement={jobResolves ? sentence : ""}
@@ -184,6 +215,8 @@ export function MatchDetail({ match }: { match: MatchData }) {
           />
           <TextPane
             title="Your resume"
+            letter="B"
+            callout={calloutNumber}
             text={resumeText}
             span={resumeResolves && source !== null ? source.span : null}
             announcement={jobResolves ? "" : sentence}
@@ -193,7 +226,7 @@ export function MatchDetail({ match }: { match: MatchData }) {
         </div>
       </section>
 
-      <section aria-labelledby="checks-heading" className={styles.panel}>
+      <section aria-labelledby="checks-heading" className={styles.section}>
         <h2 id="checks-heading" className="t-section">
           Your hard constraints
         </h2>
