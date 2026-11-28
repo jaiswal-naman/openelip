@@ -12,6 +12,7 @@ Working name. The public name is still an open decision (see Key decisions). Thi
 - [API.md](API.md): REST endpoints, server-sent event streams, the MCP server and error codes.
 - [AI_SYSTEM.md](AI_SYSTEM.md): the model gateway, retrieval, the agent crew, the Guardian, the Twin and evaluation.
 - [FRONTEND_UI.md](FRONTEND_UI.md): every screen, the design system, accessibility and the front-end architecture.
+- [TESTING.md](TESTING.md): the test plan, what each layer covers, a feature-by-feature coverage matrix and the real-model scenario run.
 
 Where the documents refer to "the design review", they mean a cross-document review held on 2026-11-22 that settled conflicts between these documents; its outcomes are already applied in each of them.
 
@@ -27,7 +28,23 @@ Every match and every agent action is backed by evidence the user can check, and
 
 ## Current state
 
-A foundation slice works today: it ingests postings from public Greenhouse, Lever and Ashby job boards and records every fetch (IDX-01), closes a job when it leaves its board but never on a failed or suspiciously empty fetch (IDX-02), folds same-company duplicate postings onto one canonical job (IDX-03), and offers keyword search over open, de-duplicated jobs with country and remote filters. First run: 71 live boards, 11,357 postings, 9,996 unique jobs, 1,019 in India, search about 0.1 s. Everything else in this design set is a proposal. What is out of scope, and why, is listed in [REQUIREMENTS.md](REQUIREMENTS.md).
+Both sides of the product are built and run from one `docker compose up`, with automated tests, and one scripted scenario has been run through a real model. **No model's accuracy has been measured:** every gold set has labels drafted by an agent, review pending, and no live gold-set run exists. [TESTING.md](TESTING.md) says what each layer of tests covers, which tests cover which feature, and what the real-model run found.
+
+**Built:**
+
+- **Platform.** The stack (database, API, worker, web app, one-origin proxy, local mail catcher); local mode, where opening the app signs the owner in and the model key is pasted into the app and stored encrypted, and server mode with sign-in by an emailed code; the model gateway (schema-checked answers, one priced row per call, `503 ai_disabled` with no provider); a PostgreSQL queue, scheduler and outbox; consent, audit log, export and account deletion.
+- **Job index and search.** Postings from public Greenhouse, Lever and Ashby boards, refreshed every 6 hours, with fetch history, closed-job detection that never trusts a failed or suspiciously empty fetch, and duplicate folding (IDX-01 to IDX-03); search by meaning and keywords with country and remote filters and no key needed; a location parser that leaves unknown what a posting does not say; requirements extracted as cited items when a model key is set.
+- **Candidate side.** The career record (resume to confirmed facts with source lines, hard constraints, preferences, change log); matches, at most five a day, with a requirement-by-requirement evidence table and a "Why not" view; the morning brief; the chat agent (the Agent page), which reads freely and writes only proposals you confirm; tailored resumes that cannot add experience the record lacks, exported as DOCX and PDF; application packets and the application tracker.
+- **Hiring desk.** Roles read from a description, the anonymous preview, consent-first introductions with a frozen preview, the said-yes shortlist, the answer clock, and the team.
+- **Campaigns under the Guardian.** A durable campaign per job, run by the Researcher, the Writer, the Chaser and the Coach with the fit step as plain code; the policy engine and checks every outside action passes, approvals with an undo window, the autonomy settings, the flight recorder, budgets with pauses, and scam signals that pause a campaign.
+- **Evaluation.** The harness and the regression gate in CI, which replays thirteen suites; the location sample, the matching benchmark, the wind tunnel with two invented scenarios, the scoreboard API, and opt-in live runs for four suites that measure and never gate.
+
+**Not built yet:**
+
+- **The Twin and the MCP agent interface.** The tables exist, and the Twin has question-intake logic, but neither has a route or a screen.
+- **Screens for the evaluation scoreboard and mission-control runs, and the hiring desk's conversations.** `/control/evals`, `/control/runs`, `/app/twin` and `/hire/conversations` in the route lists below are design: none of them exists yet. The scoreboard and the runs have API endpoints.
+
+**Measured so far:** the first run on public boards (22 November 2026: 71 live boards, 11,357 postings, 9,996 unique jobs, 1,019 in India, one keyword search about 0.1 s); the location parser (258 of 260 test rows correct); the matching benchmark (mean ndcg@5 0.598 keyword, 0.684 vector, 0.777 hybrid, 0.795 hybrid plus rules, labels drafted by an agent, review pending); and the real-model scenario of 2026-11-27 (57 model calls, USD 0.106). What is out of scope, and why, is listed in [REQUIREMENTS.md](REQUIREMENTS.md).
 
 ## System shape (canonical names)
 
