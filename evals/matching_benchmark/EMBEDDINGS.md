@@ -63,8 +63,9 @@ intervals exclude 0. `text-embedding-3-small` shows no detectable difference at 
 - **The best width was picked after seeing six widths at two cut-offs.** The interval of 1536 does not account for that
   choice. 1536 is also a size the index can hold: pgvector indexes `vector` columns up to 2,000 dimensions.
 - **The 1536 vectors were made by cutting the 3072-wide ones and scaling them back to length 1**, as OpenAI's embeddings
-  guide shows. The application asks the API for 1536 with the `dimensions` parameter. The guide recommends that parameter
-  but does not say the two give the same vectors, so this measurement strictly describes the cut vectors. It was not
+  guide shows. The application asks the API for 1536 with the `dimensions` parameter. Checked once on 2026-11-28 with
+  one text: the vector the API returned for `dimensions=1536` and the cut-and-scaled 3072-wide one had cosine similarity
+  1.0002 (1 up to rounding), so the measurement describes what the application stores. The full ranking was not
   repeated with the parameter.
 - **One run.** Nothing was repeated, and the latency of an OpenAI call was not measured.
 - **The merged script has not been run against the API.** The tables above are the output of the two scratch scripts
