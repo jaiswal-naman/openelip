@@ -6,6 +6,8 @@ It covers PostgreSQL only. Endpoints and payloads are in [API.md](API.md), modul
 
 All SQL in sections 3, 4, 5 and 7 was applied, in the order printed, to an empty PostgreSQL 17 database with pgvector (and section 8 to a copy of the existing schema), and the invariants were exercised with statements that must be rejected. Section 12 records exactly what ran and what happened.
 
+**Build status.** The migrations in `db/versions/` create the tables of phases 1 to 6 as this document defines them. These tables are in the design but not in any migration on `main`: `agent_actions`, `agent_runs`, `agent_tokens`, `approvals`, `autonomy_settings`, `campaigns`, `campaign_steps`, `company_dossiers`, `guardian_checks`, `sim_scenarios`, `sim_runs`, `sim_results`, `twin_scopes`, `twin_sessions` and `twin_messages`, and the `langgraph` checkpoint schema. The database roles are `app_api`, `app_worker`, `app_match` and the `app_owner` role that owns the schema and cannot log in. Where this document and the migrations differ, the migrations are right.
+
 ## 1. Summary and conventions
 
 ### 1.1 At a glance

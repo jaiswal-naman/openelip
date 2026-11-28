@@ -2,7 +2,7 @@
 
 **Project:** OpenElip (working name; the public name is an open decision in OVERVIEW.md)
 **Date:** 2026-11-22, revised the same day to apply the design review
-**Status:** Design. Only the foundation slice exists and has been measured: job ingestion from public Greenhouse, Lever and Ashby boards, closure detection, same-company duplicate folding and keyword search. Everything else is a proposal.
+**Status:** Design, with phases 1 to 6 built and on `main` (platform, job index, Career Record, matches and the morning brief, chat, tailoring and applications, and the hiring desk). Phases 7 to 9 are not on `main`: `campaigns`, `guardian`, `twin` and `agentnet` below are design, and the proxy forwards `/mcp` to an API that has no route there. Where this document and the code disagree, the code is right. Nothing in the built phases has had a model's accuracy measured; see [TESTING.md](TESTING.md).
 **Sibling documents:** DATA_MODEL.md (DDL, constraints, triggers, row-level security), API.md (endpoints, payloads, errors), AI_SYSTEM.md (prompts, agent internals, models, evaluation), FRONTEND_UI.md (screens). This document owns the runtime shape: processes, modules, flows, background work, security, privacy, operations and testing.
 
 **Conventions.** "Target" marks an unmeasured goal; "assumption" marks a value awaiting a measurement or decision. Every library, version or vendor behaviour carries "(checked 2026-11-22)" next to its official source; anything not checked says "unverified". Names, enums and statuses are DATA_MODEL.md section 1.3's, used unchanged.
@@ -304,7 +304,7 @@ sequenceDiagram
 ```
 
 1. The existing fetch, store and close code (`ats.py`, `ingest.py`) becomes the `ingest.fetch` handler, one job per source per slot (every six hours, assumption). Only a successful fetch closes jobs; an empty feed from a source with more than five open jobs is recorded as `suspicious_empty` (IDX-02).
-2. Requirements are extracted and the posting embedded once per `(job_id, content_version)` (IDX-08). fastembed 0.9.1 (Apache-2.0, released 2026-10-24) runs on ONNX Runtime without PyTorch, and its default model produces 384-dimensional vectors, matching the `vector(384)` column ([fastembed](https://pypi.org/project/fastembed/), checked 2026-11-22). One embedding model serves an instance; changing it is a migration that re-embeds every row.
+2. Requirements are extracted and the posting embedded once per `(job_id, content_version)` (IDX-08). fastembed 0.9.1 (Apache-2.0, released 2026-10-24) runs on ONNX Runtime without PyTorch, and its default model produces 384-dimensional vectors, matching the `vector(384)` column ([fastembed](https://pypi.org/project/fastembed/), checked 2026-11-22). One embedding model serves an instance. Its id is stored with every vector and search ignores vectors made by another model; on `main`, changing the model does not re-embed the existing rows (the embed sweep fills only rows with no vector).
 3. Before a job enters a brief, `ingest.verify_live` checks its apply link through `fetch_public` (7.6) and closes it on 404 or 410 (IDX-07). Every job shows its source and `last_verified_at` (IDX-05). `python -m app.cli sources import` registers only boards answering with live postings (IDX-09).
 
 ### 4.2 Onboarding: resume to first matches
@@ -1187,7 +1187,7 @@ Each issue this document raised, with its resolution from the design review or a
 | I7 | Source of a user's time zone | Resolved | Browser-detected, confirmed, editable (5.3) |
 | I8 | Calendar for business days | Resolved | Monday to Friday, no holidays (4.5) |
 | I9 | Model calls send candidate text out | Resolved | `ai_processing` consent, TRU-05 (8.1) |
-| I10 | API embeddings versus a fixed column | Resolved | One model per instance; changing it re-embeds (4.1) |
+| I10 | API embeddings versus a fixed column | Resolved | One model per instance; its id is stored with each vector and search ignores other models' vectors. Re-embedding after a change is not built (4.1) |
 | I11 | The working name in identifiers | Resolved | Neutral identifiers plus `APP_PRODUCT_NAME` (10.1) |
 | I12 | Which crew roles are agents | Resolved | As 3.5 states |
 | I13 | `/control` serves two audiences | Resolved; instance views owner decision G8, default applied | Own data only; instance-wide views in v2 (9.3) |

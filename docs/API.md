@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft for review, updated after the design review |
+| Status | Design, with the endpoints of phases 1 to 6 implemented on `main`. Checked against the generated contract (`web/openapi.json`, 82 operations) on 2026-11-28: every endpoint whose Phase column of the endpoint tables reads 1 to 6 exists there, except `GET /v1/privacy/audit-log` and `POST /v1/webhooks/email/{provider}`, which are not implemented. Endpoints marked 7 (campaigns and Guardian), 8 (Twin and agent network) or E (the evals scoreboard), and the MCP server at `/mcp`, are not on `main` (the proxy forwards `/mcp` to the API, which has no route there). Where this document and `openapi.json` differ, `openapi.json` is right |
 | Date | 2026-11-22 |
 | Covers | Conventions, every v1 endpoint, server-sent event streams, the MCP server at `/mcp`, received webhooks, and how the contract upholds the project's eight invariants |
 | Not covered | Table definitions (DATA_MODEL.md), module internals and flows (ARCHITECTURE.md), prompts, agents and verifiers (AI_SYSTEM.md), screens (FRONTEND_UI.md) |
@@ -2006,6 +2006,8 @@ data: {"approval_id":"a9b8c7d6-5e4f-4a3b-9c2d-1e0f9a8b7c63","campaign_id":"3a7b9
 
 ## 5. The MCP server at `/mcp`
 
+> **Not implemented on `main`.** The proxy forwards `/mcp` to the API, which has no route there. This section is design.
+
 ### 5.1 Verified specification and SDK
 
 Checked on 2026-11-22:
@@ -2279,6 +2281,8 @@ Defaults (**assumptions**): 60 calls per minute and 1,000 calls per day per toke
 
 ## 6. Webhooks received
 
+> **Not implemented on `main`.** The API has no `/v1/webhooks` route. Bounces and complaints from an email provider are not received. This section is design.
+
 The only inbound webhooks in v1 are delivery events from the configured email provider. With plain SMTP (the self-hosted default) there are no webhooks, and bounces are unknown.
 
 **Endpoint.** `POST /v1/webhooks/email/{provider}`, where `{provider}` names a configured adapter. An unconfigured provider returns `404`.
@@ -2323,6 +2327,8 @@ Resend's exact signed-content format and event names were not confirmed on its o
 
 ## 8. OpenAPI and typed clients
 
+> **On `main`** the contract is FastAPI's generated OpenAPI 3.1.0 document, committed as `web/openapi.json` (not `docs/openapi.json`). CI fails when it differs from `app.openapi()` or when `web/src/lib/api/schema.d.ts` differs from what `pnpm gen:api` produces. Operation ids are FastAPI's defaults, no security schemes are declared in the document, and there are no MCP schemas. The rows below are the design.
+
 | Topic | Rule |
 |---|---|
 | Source of truth | Pydantic request and response models in the backend. Routes declare them; nothing is hand-written in YAML |
@@ -2332,8 +2338,8 @@ Resend's exact signed-content format and event names were not confirmed on its o
 | Envelope in the schema | Each response is declared as the envelope with a typed `data`, so clients get exact types for `data` and one shared type for `error` |
 | Enums | Every enum in 1.12 is declared once as a named component, generated from the same Python enums the database layer uses, so a value added in the schema appears in the client types |
 | Extensions | `x-untrusted-text: true` on third-party text fields (1.10). Stream operations declare `text/event-stream` and reference the event payload models as components (`ChatEvent*` for 4.2, `LiveEvent*` for the ten events of 4.3), so the web app gets types for every event |
-| Published copy | CI exports the document to `docs/openapi.json`. The check fails when the committed file differs from the generated one, so every contract change is a reviewed diff (part of PLT-08) |
-| Web client | `web/` generates types with `openapi-typescript` from `docs/openapi.json` and calls the API with `openapi-fetch` (`createClient<paths>`) on the same origin, so the browser sends the session cookie by itself. One middleware adds a fresh `Idempotency-Key` per write. The web app's type check fails when the contract and the code disagree (verified with the openapi-typescript documentation, 2026-11-22) |
+| Published copy | CI compares the document with the committed `web/openapi.json`. The check fails when the committed file differs from the generated one, so every contract change is a reviewed diff (part of PLT-08) |
+| Web client | `web/` generates types with `openapi-typescript` from `web/openapi.json` and calls the API with `openapi-fetch` (`createClient<paths>`) on the same origin, so the browser sends the session cookie by itself. One middleware adds a fresh `Idempotency-Key` per write. The web app's type check fails when the contract and the code disagree (verified with the openapi-typescript documentation, 2026-11-22) |
 | MCP schemas | Tool input and output schemas are generated from the same Pydantic models the REST endpoints use, and a snapshot test of `tools/list` per token principal runs in CI |
 
 ---
@@ -2428,7 +2434,7 @@ Resend's exact signed-content format and event names were not confirmed on its o
 | UI-01 | The groups behind each screen: Today (`/v1/matches`, `/v1/approvals`, `/v1/briefs`, `/v1/introductions`), Campaigns (`/v1/campaigns`), Record (`/v1/me`), Twin (`/v1/twin`, `/v1/approvals`), Settings (`/v1/me`, `/v1/autonomy`, `/v1/me/agent-tokens`, `/v1/privacy`); Roles, Shortlist, Conversations, Answers, Team (`/v1/roles`, `/v1/introductions`, `/v1/twin`, `/v1/orgs`); Runs, Recorder, Evals, Costs (`/v1/control`) |
 | UI-02 | No endpoint |
 | UI-03 | No endpoint |
-| DOC-01 | `docs/openapi.json` and this document |
+| DOC-01 | `web/openapi.json` and this document |
 | DOC-02 | No endpoint; the seeded demo uses these endpoints |
 
 ---

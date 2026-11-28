@@ -4,6 +4,8 @@ Design document, version 2, 2026-11-22. Updated after the design review of the s
 
 OpenElip is an independent, open-source project. It is not affiliated with, endorsed by, or built from any code or assets of Elip.
 
+**Build status.** This is the design for the whole product. On `main`, phases 1 to 6 are built: the model gateway (11 tasks routed in `backend/config/models.toml`; two adapters, Anthropic and OpenAI-compatible, plus a fake one), local embeddings and hybrid search, resume facts, requirement extraction, the matching pipeline, the chat agent (seven tools), tailoring and the application packet, and role intake. The campaign crew, the Guardian, the Twin, the wind tunnel and the MCP surface (sections on the Researcher, Writer, Chaser and Coach loops, the Guardian, the Twin and the MCP surface) are not on `main`. On `main`, four model tasks (resume reading, requirement extraction, match scoring and role intake) answer `503 ai_disabled` with a real model until a passed live gold-set run for that model and prompt exists (section 2.2), and the only suite with a live command is `evidence_faithfulness`. No model's accuracy has been measured. Where this document and the code disagree, the code is right.
+
 This document covers the parts of OpenElip that use models or decide what models may do: the model gateway, retrieval, the fixed model pipelines, the agent runtime and the crew, the Guardian, the Twin, the chat agent, the MCP surface, the injection threat model, and evaluation, including the simulated market called the wind tunnel. Sibling documents: `ARCHITECTURE.md` (modules, queue, deployment), `DATA_MODEL.md` (tables), `API.md` (endpoints), `FRONTEND_UI.md` (screens). Names, enums and statuses follow `DATA_MODEL.md` and the vocabulary agreed in the design review; where this document names a column, its definition lives in `DATA_MODEL.md`.
 
 ## How to read this document
@@ -291,7 +293,7 @@ Batch is listed at 50% off. OpenAI's retention terms were not checked; until the
 
 It needs no key and no GPU, avoids PyTorch in the image, and its licence fits the intended MIT licence.
 
-**One embedding model serves an instance;** changing it is a migration that re-embeds every row, and the model id is stored with each vector so a mixed state is detected. Before release, 384-dimension alternatives listed by fastembed (`snowflake-arctic-embed-xs`, `all-MiniLM-L6-v2`, a multilingual MiniLM) are compared on the retrieval gold set; the cheapest in CPU time within two points of the best on recall at 300 wins (target). An API embedding model such as `text-embedding-3-small` ($0.02 per million tokens) can be adopted only through the same migration.
+**One embedding model serves an instance;** the model id is stored with each vector and search ignores vectors made by another model, so a mixed state is detected. On `main`, changing the model does not re-embed the existing rows: the embed sweep fills only rows with no vector, and no re-embedding command exists yet. Before release, 384-dimension alternatives listed by fastembed (`snowflake-arctic-embed-xs`, `all-MiniLM-L6-v2`, a multilingual MiniLM) are compared on the retrieval gold set; the cheapest in CPU time within two points of the best on recall at 300 wins (target). An API embedding model such as `text-embedding-3-small` ($0.02 per million tokens) can be adopted only through the same migration.
 
 ### 3.2 What is embedded
 
@@ -1123,6 +1125,8 @@ The chat agent is the only conversational loop (`chat_sessions` of kind `onboard
 | `propose_campaign` | Propose | Offers to start a campaign for a shown match; the candidate approves in the app |
 | `start_tailoring` | Propose | Starts tailoring; edits need approval anyway |
 
+**On `main`** the chat agent has seven tools: `get_record`, `list_matches`, `get_decision`, `search_jobs`, `get_job`, `get_applications` and `propose_record_change`. The other six rows are design and belong to the campaign phases. The model answers with a schema-checked JSON step (a list of tool calls, or the reply) rather than through native tool calling, and a turn is also capped at 40,000 tokens.
+
 **Propose and confirm.** The candidate sees a card with old value, new value and the quote it came from, and confirms in the app.
 
 **Approvals are never made in chat.** "Yes, send it" approves nothing. The chat can display an approval card; only the click, an authenticated action, counts. This removes a whole class of injection: text claiming the candidate approved.
@@ -1591,7 +1595,7 @@ Each issue this document raised, with its resolution from the design review and 
 | 7 | PLT-07 and the flight recorder | Adopted: PLT-07 governs logs and traces; recorder rows are user data |
 | 8 | Places the entity list did not name | Resolved: `campaigns.budget_microusd` and `APP_MONTHLY_BUDGET_USD`; pending Twin questions are pending approvals; the hold is an `outbox` row with `not_before`; small artifacts in `campaign_steps.output`; `llm_calls.prompt_version`, `agent_runs.config_version` |
 | 9 | Batch retention and self-hosting | Owner decision G9; recommended off by default, disclosed on `/trust`; this document assumes off |
-| 10 | API embeddings against `vector(384)` | Resolved: one model per instance; a change is a re-embedding migration |
+| 10 | API embeddings against `vector(384)` | Resolved: one model per instance; its id is stored with each vector and search ignores other models' vectors. Re-embedding after a change is not built |
 | 11 | Local endpoints vary; models needed a lifecycle | Resolved: a passed gold-set run per task and model; retirement is `is_active = false` (see the suite gap in 12.2) |
 | 12 | NET-01 did not say who holds which token | Resolved: two principals with fixed scopes; NET-02 runs the ordinary ask; NET-01 and NET-02 reworded |
 | 13 | Twin cost and abuse | Adopted: attributed to the organization; 40 questions and $0.50 per session |

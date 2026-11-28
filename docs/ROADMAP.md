@@ -2,7 +2,7 @@
 
 ## Overview
 
-OpenElip starts from the foundation slice that already works (a live job index over public Greenhouse, Lever and Ashby boards with keyword search) and grows into a two-sided agent hiring marketplace in nine phases. Phases 1 to 6 build the core agent-marketplace loop on both sides, on an evidence-first base: platform, job index, Career Record, matches with a morning brief, chat and tailoring, and the hiring desk. Phases 7 to 9 add the extensions: done-for-you campaigns under the Guardian, mission control with the wind tunnel, and the Twin with the agent network, ending in a seeded demo a stranger can run in under ten minutes. Every phase ends in something a person can run and see, so the project can be shown at any phase boundary.
+**Status: phases 1 to 6 are built and on `main`; phases 7 to 9 are not.** OpenElip started from the foundation slice (a live job index over public Greenhouse, Lever and Ashby boards with keyword search) and grows into a two-sided agent hiring marketplace in nine phases. Phases 1 to 6 build the core agent-marketplace loop on both sides, on an evidence-first base: platform, job index, Career Record, matches with a morning brief, chat and tailoring, and the hiring desk. Phases 7 to 9 add the extensions: done-for-you campaigns under the Guardian, mission control with the wind tunnel, and the Twin with the agent network, ending in a seeded demo a stranger can run in under ten minutes. Every phase ends in something a person can run and see, so the project can be shown at any phase boundary.
 
 The foundation slice (IDX-01, IDX-02, IDX-03) is complete and is not a phase here. Phase 1 moves that code into `backend/app/` and keeps its tests passing.
 
@@ -32,10 +32,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Platform and web shell** - One-command stack, sign-in, costed model gateway, queue, CI with eval gate, and a public jobs page
 - [x] **Phase 2: Searchable job index** - Search by meaning, source and freshness on every job, scheduled refresh, requirements extracted with spans
-- [ ] **Phase 3: Career Record** - AI-processing consent, resume to confirmed facts with source lines, typed constraints, change log, export and deletion
-- [ ] **Phase 4: Matches and morning brief** - At most five constraint-safe matches a day with cited evidence tables, "why not", and a daily brief
-- [ ] **Phase 5: Chat, tailoring and applications** - Cited chat with propose-and-confirm, resume tailoring that cannot invent, packets and a tracker
-- [ ] **Phase 6: Hiring desk** - Roles, anonymous preview, consent-first introductions, said-yes shortlist, answer clock, interest signals
+- [x] **Phase 3: Career Record** - AI-processing consent, resume to confirmed facts with source lines, typed constraints, change log, export and deletion
+- [x] **Phase 4: Matches and morning brief** - At most five constraint-safe matches a day with cited evidence tables, "why not", and a daily brief
+- [x] **Phase 5: Chat, tailoring and applications** - Cited chat with propose-and-confirm, resume tailoring that cannot invent, packets and a tracker
+- [x] **Phase 6: Hiring desk** - Roles, anonymous preview, consent-first introductions, said-yes shortlist, answer clock, interest signals
 - [ ] **Phase 7: Campaigns under the Guardian** - Durable done-for-you campaigns run by the agent crew, gated by autonomy settings, two keys, an undo window, and budget and scam pauses
 - [ ] **Phase 8: Mission control and wind tunnel** - Live agent status, cost meter, simulated market with five-of-five scenarios, scoreboard, measured README
 - [ ] **Phase 9: Twin, agent network and release** - Cited Twin answers inside consent scopes, MCP server, decision audit log, full app, ten-minute demo
@@ -205,14 +205,16 @@ Mapped: 88 of 88 v1 requirements (3 complete, 85 across Phases 1 to 9). No orpha
 **Execution Order:**
 Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9. Phases 2 and 3 do not depend on each other, nor do Phases 5 and 6.
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Platform and web shell | 7/7 | Complete | 2026-11-23 |
-| 2. Searchable job index | 8/8 | Complete | 2026-11-23 |
-| 3. Career Record | 0/TBD | Not started | - |
-| 4. Matches and morning brief | 0/TBD | Not started | - |
-| 5. Chat, tailoring and applications | 0/TBD | Not started | - |
-| 6. Hiring desk | 0/TBD | Not started | - |
-| 7. Campaigns under the Guardian | 0/TBD | Not started | - |
-| 8. Mission control and wind tunnel | 0/TBD | Not started | - |
-| 9. Twin, agent network and release | 0/TBD | Not started | - |
+Complete means the code and its tests are on `main` (the dates are when the phase merged). It does not mean a model was measured: no live gold-set run exists, so the model-quality targets in the success criteria above (for example the resume-extraction and requirement-extraction F1 targets) have not been checked on a real model, and four model features stay off with a real model until a live run passes. See [TESTING.md](TESTING.md).
+
+| Phase | Status | Completed |
+|-------|--------|-----------|
+| 1. Platform and web shell | Complete | 2026-11-23 |
+| 2. Searchable job index | Complete | 2026-11-23 |
+| 3. Career Record | Complete | 2026-11-23 |
+| 4. Matches and morning brief | Complete | 2026-11-23 |
+| 5. Chat, tailoring and applications | Complete | 2026-11-23 |
+| 6. Hiring desk | Complete | 2026-11-23 |
+| 7. Campaigns under the Guardian | Not on `main` | - |
+| 8. Mission control and wind tunnel | Not on `main` | - |
+| 9. Twin, agent network and release | Not on `main` | - |

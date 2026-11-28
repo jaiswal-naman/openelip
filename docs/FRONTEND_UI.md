@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft for review |
+| Status | Design, with the screens of phases 1 to 6 built on `main` in CSS Modules and one `tokens.css`, as specified in the stack table below. Built: `/`, `/jobs`, `/jobs/[id]`, `/sign-in`, `/trust`, `/unsubscribe`, `/onboarding`, `/app/today`, `/app/matches/[id]` (and `/tailor`), `/app/record`, `/app/settings`, `/control/costs`, and `/hire/roles`, `/hire/roles/new`, `/hire/roles/[id]`, `/hire/shortlist/[roleId]`, `/hire/answers` and `/hire/team`. The chat agent is a side panel opened from the header, not a page. `/app/campaigns` is the applications tracker only, without the campaign board. Not built: `/app/campaigns/[id]`, `/app/twin`, `/hire/conversations`, `/control/runs`, `/control/recorder` and `/control/evals`. Where this document and the screens differ, the screens are right |
 | Date | 2026-11-22 |
 | Scope | The web app in `web/`: information architecture, every screen, interaction patterns, design system, content rules, accessibility, responsive behaviour, front-end architecture, budgets, testing and requirement traceability |
 | Not in scope | Endpoint contracts (`API.md`), tables (`DATA_MODEL.md`), agent internals (`AI_SYSTEM.md`), backend flows (`ARCHITECTURE.md`) |

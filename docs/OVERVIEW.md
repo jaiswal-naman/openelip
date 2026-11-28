@@ -1,6 +1,6 @@
 # OpenElip
 
-Working name. The public name is still an open decision (see Key decisions). This is an independent project. It is not affiliated with, endorsed by, or built from any code or assets of Elip or Freshview Innovations, Inc.
+OpenElip is an independent open-source project. It is not affiliated with Elip.
 
 ## How to read the design set
 
@@ -17,7 +17,7 @@ Where the documents refer to "the design review", they mean a cross-document rev
 
 ## What this is
 
-OpenElip is an open-source, self-hostable agent hiring marketplace: a career agent for the candidate, a hiring agent for the company, and introductions both sides agree to. It is inspired by the agent-marketplace idea Elip describes publicly. It extends that loop with five layers: a trust core, done-for-you campaigns run by a crew of agents, a Twin that answers screening questions from the candidate's record, a market with scarce signals and a guaranteed answer, and an evaluation system that tests the agents in a simulated job market.
+OpenElip is an open-source, self-hostable agent hiring marketplace: a career agent for the candidate, a hiring agent for the company, and introductions both sides agree to. Beyond that basic loop it adds five layers: a trust core, done-for-you campaigns run by a crew of agents, a Twin that answers screening questions from the candidate's record, a market with scarce signals and a guaranteed answer, and an evaluation system that tests the agents in a simulated job market. Of those, the trust core and the market's answer clock and interest signals are built on `main`; campaigns, the Twin and the simulated market are design (see Current state).
 
 It is for two kinds of user: a candidate who wants the job search run for them with their approval at each decision, and an employer who wants interviews with people who have already said yes, each with evidence.
 
@@ -27,13 +27,26 @@ Every match and every agent action is backed by evidence the user can check, and
 
 ## Current state
 
-A foundation slice works today: it ingests postings from public Greenhouse, Lever and Ashby job boards and records every fetch (IDX-01), closes a job when it leaves its board but never on a failed or suspiciously empty fetch (IDX-02), folds same-company duplicate postings onto one canonical job (IDX-03), and offers keyword search over open, de-duplicated jobs with country and remote filters. First run: 71 live boards, 11,357 postings, 9,996 unique jobs, 1,019 in India, search about 0.1 s. Everything else in this design set is a proposal. What is out of scope, and why, is listed in [REQUIREMENTS.md](REQUIREMENTS.md).
+Phases 1 to 6 of [ROADMAP.md](ROADMAP.md) are built and on `main`; phases 7 to 9 are not on `main`. Where a design document and the code disagree, the code is right.
+
+**Built and on `main`:**
+
+- **Platform (phase 1).** One-command Docker Compose stack (database, migration step, api, worker, web app, proxy; a local mail catcher and an optional local model server by profile), sign-in with an emailed six-digit code, idempotent writes, an outbox that never sends twice, a Postgres-backed queue and scheduler, and the model gateway: callers name a task, `backend/config/models.toml` routes 11 tasks, two adapters (Anthropic; OpenAI-compatible, which covers a local server) plus a fake one, every call a priced row with no prompt text, `503 ai_disabled` with no usable route.
+- **Job index (phase 2).** Postings from public Greenhouse, Lever and Ashby boards, refreshed every six hours; closure when a job leaves its board but never on a failed or suspiciously empty fetch; same-company duplicates folded onto one job; hybrid search (keywords plus a local 384-dimension embedding model) with country and remote filters; a location parser that leaves unknown what a posting does not say; requirement extraction, which needs a model. First run: 71 live boards, 11,357 postings, 9,996 unique jobs, 1,019 in India, a keyword search about 0.1 s.
+- **Career record (phase 3).** Resume upload with hidden text stripped, facts tied to the exact source line, hard constraints and preferences, a change log, export and deletion. Reading a resume needs a model.
+- **Matches and the morning brief (phase 4).** At most five matches a day, constraints enforced in the database and re-checked by an independent checker, requirement-by-requirement evidence with citations, a "why not" view, and a daily or weekly brief by email and in the app. Scoring needs a model.
+- **Chat, tailoring and applications (phase 5).** A cited chat agent that only proposes record changes, resume tailoring that cannot add experience the record lacks (two verification layers), PDF and DOCX export, application packets and an application tracker.
+- **Hiring desk (phase 6).** Organizations, roles, an anonymous preview, consent-first introductions, a said-yes shortlist, a five-business-day answer clock and interest signals.
+
+**Not built on `main`:** done-for-you campaigns, the Guardian, mission control beyond the costs page, the wind tunnel and scoreboard, the Twin, and the MCP agent interface. The proxy forwards `/mcp` to the api, which has no route there. The modules `campaigns`, `guardian`, `twin` and `agentnet` named below do not exist on `main`; some are in development on other branches.
+
+**Not measured.** The test suite runs on invented data and recorded model answers. No model's accuracy has been measured, and four model features (resume reading, requirement extraction, match scoring and role intake) stay off with a real model on `main` until a passed live gold-set run for that model and prompt is recorded. See [TESTING.md](TESTING.md). What is out of scope, and why, is listed in [REQUIREMENTS.md](REQUIREMENTS.md).
 
 ## System shape (canonical names)
 
 These names are binding for every design document, plan and line of code.
 
-**Stack.** Backend: Python 3.11+, FastAPI, Pydantic, SQLAlchemy 2, Alembic, psycopg 3. Database: PostgreSQL 17 with pgvector and built-in full-text search; it is also the queue and the outbox. Web: Next.js (App Router, TypeScript). Agents: LangGraph (campaign graph, approval interrupts, chat and Researcher loops) with a PostgreSQL checkpointer, used only as an orchestration library: no hosted platform, tracing off. Embeddings: local by default (384 dimensions) so search runs with no API key. One embedding model serves an instance; changing it is a migration that re-embeds every row. Models: reached only through our own gateway; Anthropic is the default provider, with at least one other provider and an OpenAI-compatible local endpoint supported. Packaging: Docker Compose for the whole stack. No vector database product, no knowledge graph, no multi-agent chat framework (LangGraph runs our graphs; agents do not converse with each other).
+**Stack.** Backend: Python 3.11+, FastAPI, Pydantic, SQLAlchemy 2, Alembic, psycopg 3. Database: PostgreSQL 17 with pgvector and built-in full-text search; it is also the queue and the outbox. Web: Next.js (App Router, TypeScript). Agents: LangGraph (campaign graph, approval interrupts, chat and Researcher loops) with a PostgreSQL checkpointer, used only as an orchestration library: no hosted platform, tracing off. Embeddings: local by default (384 dimensions) so search runs with no API key. One embedding model serves an instance. Its id is stored with every vector and search ignores vectors made by another model; changing the model does not yet re-embed the existing rows. Models: reached only through our own gateway; Anthropic is the default provider, with at least one other provider and an OpenAI-compatible local endpoint supported. Packaging: Docker Compose for the whole stack. No vector database product, no knowledge graph, no multi-agent chat framework (LangGraph runs our graphs; agents do not converse with each other).
 
 **Repository layout.** `backend/` (Python package `app`), `web/` (Next.js), `evals/` (gold sets, scenarios, reports), `docs/` (public design documents), `db/` (migrations), `docker-compose.yml`.
 
