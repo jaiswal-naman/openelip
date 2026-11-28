@@ -1,10 +1,12 @@
-"""A real model scores evidence only after a passed gold-set run proves its route (AI_SYSTEM 2.2 and 12.8; W1).
+"""A real model scores evidence whether or not a gold-set run has measured it (AI_SYSTEM 2.2 and 12.8).
 
-models.toml names claude-haiku-5-5 for match.evidence.score, and no passed evidence_faithfulness run by the model method
-exists, so a key alone must not start sending a candidate's facts to a model nobody has measured, nor show matches from
-its verdicts. The run then completes without scoring: every retrieved job is withheld not_scored, as with no key. The
-fake provider replays recordings and calls no model, so it needs no proof. Nothing here calls a model: the gate only
-reads the routing and the recorded runs.
+models.toml names claude-haiku-5-5 for match.evidence.score. The gold set measures accuracy, it does not decide
+whether a model may be used, so a key alone is enough: the match run scores the candidate's facts with it. What still
+means "AI is off" is a route that cannot be called (no route, no key, an unpriced model, the fake in production): the
+run completes without scoring and every retrieved job is withheld not_scored. A real model with no passed
+evidence_faithfulness run by the model method, naming the model and the prompt in use, is written to the log as one
+info line (status "unproven"); a measured one writes nothing. Nothing here calls a model: the check only reads routing
+and runs.
 """
 
 import json
@@ -41,7 +43,7 @@ def record_run(conn, run_config, *, suite="evidence_faithfulness", status="passe
 
 
 def reason_of(conn):
-    """Why the gate is closed, or None when it is open."""
+    """Why the check refuses the route, or None when it lets a call through."""
     try:
         ai_gate.require_available(conn)
     except AIDisabled as closed:
@@ -51,25 +53,27 @@ def reason_of(conn):
 
 @pytest.fixture
 def keyed(monkeypatch):
-    """A real model with a key. Nothing is called: the gate reads the routing and the recorded runs."""
+    """A real model with a key. Nothing is called: the check reads the routing and the recorded runs."""
     monkeypatch.setattr(config, "get", lambda: KEYED)
 
 
-def test_a_key_alone_does_not_let_a_real_model_score_evidence(conn, keyed):
-    assert reason_of(conn) == "unproven"
+def unproven_lines(caplog):
+    return [json.loads(r.getMessage()) for r in caplog.records if "match.ai_gate" in r.getMessage()]
 
 
-def test_a_closed_gate_says_why_in_the_log_with_the_code_and_the_model_and_nothing_else(conn, keyed, caplog):
+def test_a_key_alone_lets_a_real_model_score_evidence_and_the_log_says_nobody_has_measured_it(conn, keyed, caplog):
     caplog.set_level(logging.INFO, logger="app.event")
-    assert reason_of(conn) == "unproven"
-    (line,) = [json.loads(r.getMessage()) for r in caplog.records if "match.ai_gate" in r.getMessage()]
-    assert (line["level"], line["error_code"], line["model"]) == ("warning", "unproven", ROUTE_MODEL)
-    assert set(line) - {"ts", "level", "event", "request_id"} == {"error_code", "model"}
+    assert reason_of(conn) is None
+    (line,) = unproven_lines(caplog)
+    assert (line["level"], line["status"], line["model"]) == ("info", "unproven", ROUTE_MODEL)
+    assert set(line) - {"ts", "level", "event", "request_id"} == {"status", "model"}  # a code and a model, no text
 
 
-def test_a_passed_run_that_names_the_model_and_the_prompt_in_use_opens_the_gate(conn, keyed):
+def test_a_passed_run_that_names_the_model_and_the_prompt_in_use_writes_no_line(conn, keyed, caplog):
+    caplog.set_level(logging.INFO, logger="app.event")
     record_run(conn, proof())
     assert reason_of(conn) is None
+    assert unproven_lines(caplog) == []
 
 
 @pytest.mark.parametrize(
@@ -97,14 +101,20 @@ def test_a_passed_run_that_names_the_model_and_the_prompt_in_use_opens_the_gate(
         "another suite",
     ],
 )
-def test_a_run_that_differs_in_one_way_does_not_prove_the_route(conn, keyed, over, status, suite):
+def test_a_run_that_differs_in_one_way_is_no_measurement_of_this_route_but_the_model_still_serves(
+    conn, keyed, caplog, over, status, suite
+):
+    caplog.set_level(logging.INFO, logger="app.event")
     record_run(conn, proof(**over), status=status, suite=suite)
-    assert reason_of(conn) == "unproven"
+    assert reason_of(conn) is None
+    assert len(unproven_lines(caplog)) == 1
 
 
-def test_the_replay_the_ci_records_never_proves_a_real_model_but_a_live_run_naming_it_would(conn, keyed):
+def test_the_replay_the_ci_records_is_no_measurement_of_a_real_model_but_a_live_run_naming_it_is(conn, keyed, caplog):
     """The replay names the model "recorded" and has no method (evals/evidence_faithfulness/score.py), so a pull
-    request's gate run cannot open the gate. A live run adds the method and the model it used."""
+    request's gate run does not count as a measurement of the real model. A live run adds the method and the model it
+    used."""
+    caplog.set_level(logging.INFO, logger="app.event")
     replay = {
         "mode": "replay",
         "recorded": "recorded.json",
@@ -116,19 +126,21 @@ def test_the_replay_the_ci_records_never_proves_a_real_model_but_a_live_run_nami
         "gold": "gold.jsonl",
     }
     record_run(conn, replay)
-    assert reason_of(conn) == "unproven"
+    assert reason_of(conn) is None and len(unproven_lines(caplog)) == 1
     record_run(conn, {**replay, "mode": "live", "provider": "anthropic", "method": "model", "model": ROUTE_MODEL})
-    assert reason_of(conn) is None
+    assert reason_of(conn) is None and len(unproven_lines(caplog)) == 1  # no second line: the live run is on record
 
 
-def test_the_fake_provider_replays_recordings_so_it_needs_no_proof(conn, monkeypatch):
+def test_the_fake_provider_replays_recordings_so_it_needs_no_run_and_writes_no_line(conn, monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger="app.event")
     real = config.get()
     monkeypatch.setattr(config, "get", lambda: replace(real, llm_provider="fake"))
     assert reason_of(conn) is None  # no run exists
+    assert unproven_lines(caplog) == []
 
 
-def test_no_provider_is_ai_disabled_for_its_own_reason_not_unproven(conn, monkeypatch):
+def test_no_key_is_still_ai_disabled_and_a_recorded_run_does_not_conjure_a_provider(conn, monkeypatch):
     real = config.get()
     monkeypatch.setattr(config, "get", lambda: replace(real, llm_provider="anthropic", anthropic_api_key=None))
-    record_run(conn, proof())  # a proof does not conjure a provider
+    record_run(conn, proof())
     assert reason_of(conn) == "no_key"

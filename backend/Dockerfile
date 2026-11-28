@@ -28,7 +28,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 # locked dependencies change, and the 65 MB download is not repeated on every code change. The download leaves one file
 # readable by root only, and the app user must read all of them.
 ARG EMBEDDING_MODEL
-RUN FASTEMBED_CACHE_PATH=/srv/models .venv/bin/python -c "import os; from fastembed import TextEmbedding; TextEmbedding(os.environ['EMBEDDING_MODEL'])" \
+RUN ORT_DISABLE_TELEMETRY=1 FASTEMBED_CACHE_PATH=/srv/models .venv/bin/python -c "import os; from fastembed import TextEmbedding; TextEmbedding(os.environ['EMBEDDING_MODEL'])" \
  && chmod -R a+rX /srv/models
 COPY backend/ ./
 RUN uv sync --frozen --no-dev

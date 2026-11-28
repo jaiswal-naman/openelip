@@ -135,16 +135,34 @@ from the gold labels must give 1.0 for all three metrics, so `score` is 1.0: any
 The degraded recording (the importance of a third of the items turned around, and one item whose quote is not in the
 description) must give an importance accuracy below 0.80, score 0.0, and fail the gate. Neither says anything about a
 model. The targets for a live model run are the ones of AI_SYSTEM 4.3 (`req_item_f1 >= 0.85`,
-`req_importance_accuracy >= 0.90`, the same as for postings); applying them in code is part of recording the first live
-run, which needs a model key and is a manual check.
+`req_importance_accuracy >= 0.90`, the same as for postings, with `req_spans_resolved` = 1.0), and a live run
+(`python -m app.evals run role_intake --live`) applies exactly those in code, not the replay's 0.80s. No live run exists
+yet.
 
-## What a passed run allows
+## What a live run measures
 
-Role intake in the API (`hiring/intake.py`) calls a real model only when a passed `eval_runs` row proves it: suite
-`role_intake` with `config.method = 'model'`, or suite `requirement_extraction` with method `model` on the `test` split;
-in both, `config.model` is the route's model and `config.prompt_version` the task's current prompt version. Without one,
-the role is saved with no extracted requirements (`extraction.state` `ai_disabled`) and the employer types them. The fake
-provider needs no proof.
+Role intake runs on any model that is configured: a passed run is not needed (AI_SYSTEM 2.2). The hiring desk
+(`hiring/intake.py`) reads the description whenever a model can be called; with none (no key, no route, an unpriced
+model) the role is saved with no extracted requirements (`extraction.state` `ai_disabled`) and the employer types them. A
+real model with no passed run (suite `role_intake` with `config.method = 'model'`, or `requirement_extraction` with method
+`model` on the `test` split, naming the route's `model` and the current `prompt_version`) is served all the same, and
+intake writes one info line, `unproven`. The fake provider needs no run.
+
+A live run measures a model on this set. Nothing starts it by itself, because it spends the key of whoever runs it:
+
+```
+docker compose exec worker python -m app.evals run role_intake --live     # a local install
+cd backend && uv run python -m app.evals run role_intake --live           # a checkout; LLM_PROVIDER, its key and DATABASE_URL_WORKER set
+cd backend && uv run python -m app.evals gate role_intake --run <the id printed last>
+```
+
+It sends each of the 30 invented descriptions through the same task the posting suite runs (30 requests, a second for a
+description no item of whose first answer survives validation), every one a row of the cost ledger, and records `mode`
+`live`, `method` `model`, the `provider`, the `model`, the `prompt_version` and the bars it was held to. It has no
+split: the set is invented and nothing is tuned on it. `score` is 1.0 only when `req_spans_resolved` = 1.0,
+`req_item_f1` >= 0.85 and `req_importance_accuracy` >= 0.90. Invented text is tidier than employers' real text, so a
+pass here would read better than a score on real role descriptions: say so when reporting it. The measured numbers are
+published per model once a run exists; none exists yet.
 
 ## Commands
 
@@ -173,5 +191,5 @@ pointing at a scratch database whose name ends in `_test` (roles `app`, `app_api
 
 1. The maintainer reviews the labels; a second rater labels 20% of the descriptions; agreement is reported; the
    guideline is amended; the set grows toward 50.
-2. With a model key: a live run (`LLM_PROVIDER=anthropic`), reported with counts and Wilson intervals and against the
-   AI_SYSTEM 4.3 targets. Until then no number of this suite is a quality number.
+2. With a model key: a live run (`python -m app.evals run role_intake --live`), reported with counts and Wilson
+   intervals and against the AI_SYSTEM 4.3 targets. Until then no number of this suite is a quality number.

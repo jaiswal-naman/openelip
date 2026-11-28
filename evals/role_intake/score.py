@@ -15,6 +15,14 @@ from recorded.jsonl, which was built from the gold labels. So the score proves t
 damaged recording fails; it is NOT a model quality number (invariant 8). The scoring itself is the
 requirement-extraction suite's (evals/requirement_extraction/score.py), loaded and used as it is; only the bars differ.
 README.md holds the pre-registered bars.
+
+The same path runs live, with the model the environment configures answering every description (run(None); LIVE below):
+
+    cd backend && uv run python -m app.evals run role_intake --live
+
+That run records method "model", the model's name and the prompt version, and applies the live bars of the README (the
+targets of AI_SYSTEM 4.3, the same as for postings). It is a measurement of the model on invented, tidy employer text:
+it opens and closes no feature (AI_SYSTEM 2.2).
 """
 
 import argparse
@@ -40,6 +48,7 @@ FIXTURE = "labels_fixture"  # the only recording source this scorer judges: answ
 LABELS = "agent-drafted, maintainer review pending"
 # The bars of README.md "Pre-registered bars", written before any run. They are for a replay, which is a wiring check.
 ITEM_F1_BAR, IMPORTANCE_BAR = 0.80, 0.80
+LIVE = True  # run(None) calls the real model: the runner's --live (backend/app/evals/runner.py) needs this to allow it
 
 
 def load_requirement_suite() -> ModuleType:
@@ -64,6 +73,13 @@ CONFIG = {
 }
 
 
+# What only a live run records: no recording, and the bars of a model (the README's "Pre-registered bars")
+LIVE_CONFIG = {
+    "recording_source": None,
+    "bars": {"req_item_f1": phase2.LIVE_ITEM_F1_BAR, "req_importance_accuracy": phase2.LIVE_IMPORTANCE_BAR},
+}
+
+
 def load_recordings(path: Path) -> dict[str, dict[str, Any]]:
     lines = phase2.read_jsonl(path)
     if other := sorted({line["source"] for line in lines} - {FIXTURE}):
@@ -82,24 +98,30 @@ def bars_held(item_f1: float, importance_accuracy: float, spans_resolved: float)
     }
 
 
-def run(recorded: Path) -> Scored:
+def run(recorded: Path | None) -> Scored:
+    """Score every description. `recorded` is a recording to replay through the gateway's fake provider; None is a live
+    run, where the gateway calls the model the environment configures and nothing is replayed."""
     gold = phase2.read_jsonl(GOLD)
-    recordings = load_recordings(recorded)
-    with tempfile.TemporaryDirectory() as folder:
-        try:
-            scored = phase2.score(gold, phase2.replay_extractor(recordings, Path(folder)))
-        finally:
-            fake.replay_from(None)
-    measured = scored["metrics"]
-    held = bars_held(measured["req_item_f1"], measured["req_importance_accuracy"], measured["req_spans_resolved"])
-    bars_met = bool(scored["items"]) and all(held.values())
-    metrics = {
-        **measured,
-        "bars": held,
-        "bars_met": bars_met,
-        "score": 1.0 if bars_met else 0.0,  # the gate reads this: 1.0 only when every bar holds
-        "harness_check_only": True,  # a replay of answers built from the gold says nothing about quality
-    }
+    if recorded is None:
+        scored = phase2.score(gold, phase2.live_extractor)
+        metrics = phase2.live_metrics(scored["metrics"])
+    else:
+        recordings = load_recordings(recorded)
+        with tempfile.TemporaryDirectory() as folder:
+            try:
+                scored = phase2.score(gold, phase2.replay_extractor(recordings, Path(folder)))
+            finally:
+                fake.replay_from(None)
+        measured = scored["metrics"]
+        held = bars_held(measured["req_item_f1"], measured["req_importance_accuracy"], measured["req_spans_resolved"])
+        bars_met = bool(scored["items"]) and all(held.values())
+        metrics = {
+            **measured,
+            "bars": held,
+            "bars_met": bars_met,
+            "score": 1.0 if bars_met else 0.0,  # the gate reads this: 1.0 only when every bar holds
+            "harness_check_only": True,  # a replay of answers built from the gold says nothing about quality
+        }
     slice_of = {row["posting_id"]: row["slice"] for row in gold}
     results = [
         Result(i["key"], slice_of[i["key"]], i["expected"], i["actual"], i["is_passed"]) for i in scored["items"]

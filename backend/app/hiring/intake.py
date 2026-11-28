@@ -11,16 +11,15 @@ Every way this can end has a name, so the API can say why there are no rows inst
 
   extracted    the task ran; rows may be empty when the text states no requirement
   empty        the text is blank: nothing to read and nothing to pay for, so no request is made
-  ai_disabled  no usable model route (no provider, no key, no recording), or a real route no passed eval run
-               proves (the same gate as posting extraction and the match gate): nothing was called, the employer
-               types the requirements instead
+  ai_disabled  no usable model route (no provider, no key, no recording): nothing was called, the employer types
+               the requirements instead. A real model nobody has measured is served all the same; the check logs it as
+               unproven (the same line as posting extraction and the match run)
   failed       the provider did not answer, or answered invalid twice: saving the description again tries again
 
 The retry (one fresh request after an answer no item of which survives validation) already lives in the task; nothing
 here repeats it. Anything else that goes wrong is a bug and is not caught.
 """
 
-import logging
 from dataclasses import dataclass
 from typing import Literal
 from uuid import UUID
@@ -36,8 +35,9 @@ from app.ingest.api import (
 from app.platform import config, log
 from app.platform.llm import AIDisabled, ProviderUnavailable, SchemaInvalid, registry
 
-# A real route may serve role intake only when a passed gold-set run proves this model with this prompt (AI_SYSTEM
-# 2.2): the posting task's run on the test split by the model method, or the role_intake suite's own model run.
+# Whether a passed gold-set run measured this model with this prompt (AI_SYSTEM 2.2): the posting task's run on the
+# test split by the model method, or the role_intake suite's own model run. It decides only whether the log line is
+# written.
 ROUTE_IS_PROVEN = text(
     """SELECT EXISTS (
          SELECT 1 FROM eval_runs
@@ -67,11 +67,10 @@ def extract(conn: Connection, description: str, caller: UUID) -> Intake:
         route = registry.route(REQUIREMENTS_TASK, config.get())
     except AIDisabled:
         return Intake([], "ai_disabled")
-    if route.adapter != "fake":  # the fake replays recordings (the demo and the tests) and needs no proof
-        proof = {"model": route.model, "prompt_version": REQUIREMENTS_PROMPT_VERSION}
-        if not conn.execute(ROUTE_IS_PROVEN, proof).scalar_one():
-            log.event("hiring.intake", level=logging.WARNING, error_code="unproven", model=route.model)
-            return Intake([], "ai_disabled")
+    if route.adapter != "fake":  # the fake replays recordings (the demo and the tests): no model, nothing to measure
+        measured = {"model": route.model, "prompt_version": REQUIREMENTS_PROMPT_VERSION}
+        if not conn.execute(ROUTE_IS_PROVEN, measured).scalar_one():
+            log.event("hiring.intake", status="unproven", model=route.model)
     try:
         result = extract_requirements(description, principal=caller, ledger="api")
     except AIDisabled:

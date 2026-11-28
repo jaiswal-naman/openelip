@@ -80,6 +80,34 @@ def test_with_no_active_source_discovery_is_queued_once_per_slot_instead(conn):
     assert queued(conn, "ingest.discover") == [(f"ingest.discover:{SLOT}", "ingest", {})]
 
 
+def test_discovery_fetches_the_boards_it_registers_at_once_instead_of_waiting_for_the_next_slot(conn, monkeypatch):
+    # A new install starts with no board: the jobs must not wait up to six hours for the next sweep to appear.
+    async def live(tokens):
+        return [("lever", "found", "Found Co", 3)]
+
+    monkeypatch.setattr(jobs.discover, "candidate_tokens", lambda: ["found"])
+    monkeypatch.setattr(jobs.discover, "find_live_boards", live)
+
+    jobs.discover_sources(conn, {})
+
+    source_id = conn.execute(text("SELECT id FROM job_sources WHERE token = 'found'")).scalar_one()
+    assert [(key.split(":")[1], payload["source_id"]) for key, _, payload in queued(conn, "ingest.fetch")] == [
+        (str(source_id), source_id)
+    ]
+
+
+def test_discovery_that_finds_no_board_queues_nothing(conn, monkeypatch):
+    async def none(tokens):
+        return []
+
+    monkeypatch.setattr(jobs.discover, "candidate_tokens", lambda: ["gone"])
+    monkeypatch.setattr(jobs.discover, "find_live_boards", none)
+
+    jobs.discover_sources(conn, {})
+
+    assert queued(conn, "ingest.fetch") == [] and queued(conn, "ingest.discover") == []
+
+
 def test_the_schedule_queues_the_sweep_on_its_own_and_the_sweep_queues_the_fetches(conn):
     assert scheduler._every["ingest.fetch_sweep"] == SIX_HOURS
     assert queue._handlers["ingest.fetch_sweep"] is jobs.fetch_sweep

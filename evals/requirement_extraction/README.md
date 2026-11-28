@@ -125,9 +125,9 @@ a literal `&amp;` that the gold text keeps (see "Limits to keep in mind").
 1. Every run: `req_spans_resolved = 1.0`. Absolute: AI_SYSTEM 12.8 makes a stored citation that does not resolve a
    blocker, whatever the other numbers are.
 2. A live-model run on the test split: `req_item_f1 >= 0.85` and `req_importance_accuracy >= 0.90` (the targets of
-   AI_SYSTEM 4.3). No live run exists, because there is no model key. `score.py` refuses a recording that is not a
-   fixture, so it never judges a live run by accident; applying these two bars in code is part of recording the first
-   live run (a manual check).
+   AI_SYSTEM 4.3). No live run exists yet. `score.py` refuses a recording that is not a fixture, so it never judges a
+   live run by accident; a live run is `python -m app.evals run requirement_extraction --live` (`suite.py`), which applies
+   these two bars and bar 1 in code, as written here.
 3. No bar for the rules method (`--method rules`) or for a replay of `rules_fixture` recordings: they are baselines, and
    a replay shows that the code path works. The CI gate holds the replay to the stored baseline instead: its
    `req_item_f1` and `req_importance_accuracy` may not fall below the replay stored in `baseline.json`. A replay is
@@ -142,6 +142,7 @@ before any figure from this set is published.
 
 | File | What it is |
 |---|---|
+| `suite.py` | The suite as the eval runner calls it (an `OwnScorer` entry in `SUITES`): `run(None)` calls the real model through the same task path over the test split and applies the live bars; without `--live` it replays like `score.py --method model --split test`. |
 | `score.py` | The `requirement_extraction` suite. `--method model` (the default) replays `recordings.jsonl` through the real task path; `--method rules` scores the heading rules on the posting text; `--split dev\|test` (default test); `--record` writes the run to the eval tables, and `--report FILE` stores it in a baseline file. |
 | `record_fixture.py` | Builds `recordings.jsonl`: for every gold posting the answer the heading rules give, in the fake provider's format. |
 | `recordings.jsonl` | One line per gold posting: `posting_id, split, source, request_sha256, answers`. `source` is `rules_fixture`, which says these are not model output. |
@@ -155,9 +156,10 @@ database (the gateway writes its ledger there); the rules method needs none unle
 cannot be deleted, so `--record` and a replay refuse unless that database's name ends in `_test` or is exactly `evals`
 (the CI eval job's database); `--live` writes to any other one, and is for use on purpose only.
 
-The suite is scored by code (span overlap), not by exact match, so it is not in the `SUITES` table of
-`backend/app/evals/runner.py`: that table replays answers and compares them whole. `score.py --record` writes the same
-tables, and `python -m app.evals gate requirement_extraction --run ID` judges the run from them.
+The suite is scored by code (span overlap), not by exact match, so it is an `OwnScorer` entry of `SUITES`
+(`suite.py`), not a `Suite` that replays answers and compares them whole. CI records its replay with
+`score.py --record`, which writes the same tables, and `python -m app.evals gate requirement_extraction --run ID` judges
+a run from them.
 
 In CI the `eval-gate` job (`.github/workflows/ci.yml`) runs `score.py --record` for this suite and then
 `python -m app.evals gate requirement_extraction --run ID`, as it does for every suite. The floor in
@@ -167,15 +169,35 @@ the segmenter, the validator or the heading rules therefore has to rebuild the r
 the numbers move, store new runs (`--record --report baseline.json`, once for each method) with the reason in the commit
 message.
 
-A live recording needs a model key and is a manual check: `score.py` refuses any recording that is not a `rules_fixture`
-one, and applying the live bars of the section above in code belongs with the first live run.
+## What a live run measures
 
-**Until a live run passes, no job is extracted, key or no key.** A route may serve a task only when a passed gold-set run
-for that task and model exists (AI_SYSTEM 2.2). The extraction sweep checks this before it queues anything: it needs a
-passed `requirement_extraction` run in `eval_runs` on the test split, by the model method, whose config names the
-route's `model` and the current `prompt_version`. Otherwise it queues nothing and logs `unproven`. The replay CI records
-names no model, so it never counts; the first live run has to record `model` in its config for the sweep to start, and a
-changed prompt (`prompt_version`) needs a new live run.
+Requirement extraction runs on any model that is configured: a passed run is not needed (AI_SYSTEM 2.2). The extraction
+sweep queues jobs whenever a model can be called (not with no key, no route, an unpriced model or the fake provider). A
+real model with no passed `requirement_extraction` run on the test split, by the model method, naming the route's `model`
+and the current `prompt_version`, is served all the same, and the sweep's one log line says `status` `unproven` with the
+model's name. The replay CI records names no model and never counts.
+
+A live run measures a model on the 39 test postings. Nothing starts it by itself, because it spends the key of whoever
+runs it:
+
+```
+docker compose exec worker python -m app.evals run requirement_extraction --live     # a local install
+cd backend && uv run python -m app.evals run requirement_extraction --live           # a checkout; LLM_PROVIDER, its key and DATABASE_URL_WORKER set
+cd backend && uv run python -m app.evals gate requirement_extraction --run <the id printed last>
+```
+
+Each posting goes through `job.requirements.extract`, the task the sweep runs, one request (a second when no item of the
+first answer survives validation), each a row of the cost ledger. The run records `mode` `live`, `method` `model`,
+`split` `test`, the `provider`, the `model` the route names, the `prompt_version`, the left-out posting and the labels
+note. `score` is 1.0 only when all three bars above hold (`req_spans_resolved` = 1.0, `req_item_f1` >= 0.85,
+`req_importance_accuracy` >= 0.90) and 0.0 otherwise; the intervals, counts and what the validator turned away are
+recorded beside it. A passed run says that this model met the targets on these 39 postings, a failed one that it did not;
+neither changes what runs. The rules baseline above is a measurement of the heading rules, and AI_SYSTEM 4.3's rule that
+rules within three points of a model replace it can be applied only when a live run exists.
+
+Report a live result with the counts and Wilson intervals, the words "labels drafted by an agent, review pending", and
+the left-out `req-049`. The measured numbers are published per model once a run exists; none exists yet. Tuning a prompt
+against these 39 postings after reading a live run is tuning on the test split and has to be said (AI_SYSTEM 12.1).
 
 ## Recorded runs on the test split (2026-11-23)
 

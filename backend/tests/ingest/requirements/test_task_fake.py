@@ -96,8 +96,8 @@ def test_with_no_key_the_task_is_ai_disabled_and_nothing_is_called(gateway_calls
     assert gateway_calls == []
 
 
-def test_there_is_no_fallback_route_until_a_gold_set_run_passes(gateway_calls, use_settings):
-    use_settings(LLM_PROVIDER="openai_compatible", OPENAI_API_KEY="k")  # AI_SYSTEM 2.2: a fallback needs a passed run
+def test_a_local_server_has_no_route_for_the_task_and_nothing_is_called(gateway_calls, use_settings):
+    use_settings(LLM_PROVIDER="openai_compatible", LLM_BASE_URL="http://llm:11434/v1")  # models.toml names none for it
     with pytest.raises(AIDisabled) as disabled:
         run(POSTING)
     assert disabled.value.reason == "no_route"

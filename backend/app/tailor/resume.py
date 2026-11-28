@@ -19,7 +19,7 @@ BASE_KINDS = frozenset({"role", "achievement", "education", "skill", "certificat
 CHAT_SOURCE = "confirmed_proposal"
 OTHER_EXPERIENCE = "Other experience"  # the block for achievements whose role is no longer a usable fact
 PRESENT = "Present"
-# A plain hyphen, not an en dash: the PDF draws Latin-1 only (decision 27), and every resume would be refused with one.
+# A plain hyphen, kept from when the PDF drew Latin-1 only and an en dash would have refused every resume.
 RANGE = " - "
 
 _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")

@@ -5,8 +5,9 @@ request needs no model key and a run gives the same result every time. The run i
 per gold item, and a frozen verdict once it finishes. The regression gate (gate.py) reads those rows afterwards.
 
 A live run (live=True) is the one run that calls a real model: the provider the environment configures answers every
-item, and the run records method "model" and the model's name, which is what a route gate asks for (a replay records
-neither, so it never proves a route). Only a suite whose scorer declares LIVE has one, and only an OwnScorer can.
+item, and the run records method "model" and the model's name beside the prompt version, so a number can be published
+for that model (a replay records neither). It measures: no feature waits for a passed run, and a failed one closes
+nothing (docs/AI_SYSTEM.md 2.2). Only a suite whose scorer declares LIVE has one, and only an OwnScorer can.
 """
 
 import hashlib
@@ -76,7 +77,8 @@ class OwnScorer:
     """A suite that scores itself, because an item needs several gateway calls or a score that is not an exact match.
     Its script (a path under evals/) defines TASK (a task of its route), CONFIG (facts for the run record), RECORDED
     (its default recording) and run(recorded) -> Scored, and brings its own gold set and recording format. A script that
-    sets LIVE = True also takes run(None), which calls the real model instead of replaying a recording."""
+    sets LIVE = True also takes run(None), which calls the real model instead of replaying a recording, and may set
+    LIVE_CONFIG: facts that only a live run records (a split, the bars it was held to), added to CONFIG."""
 
     script: str
 
@@ -90,6 +92,7 @@ SUITES: dict[str, Suite | OwnScorer] = {
         schema=SmokeLabel,
     ),
     "resume_extraction": OwnScorer("resume_extraction/facts/score.py"),
+    "requirement_extraction": OwnScorer("requirement_extraction/suite.py"),
     "evidence_faithfulness": OwnScorer("evidence_faithfulness/score.py"),
     "constraint_property": OwnScorer("constraint_property/score.py"),
     "role_intake": OwnScorer("role_intake/score.py"),
@@ -239,7 +242,7 @@ def _run_own(name: str, own: OwnScorer, recorded: Path | None, live: bool) -> Fi
         if settings.llm_provider == "fake":
             raise LiveNeedsRealProvider()
         route = registry.route(scorer.TASK, settings)  # AIDisabled when there is no key: nothing is written
-        # method "model" and the model name are what a route gate reads (app.match.ai_gate): only this run has them
+        # method "model" and the model name say which model the numbers are about: only this run has them
         how: dict[str, Any] = {"mode": "live", "method": "model"}
         recorded = None
     else:
@@ -248,8 +251,11 @@ def _run_own(name: str, own: OwnScorer, recorded: Path | None, live: bool) -> Fi
         route = registry.route(scorer.TASK, settings)
         recorded = recorded or scorer.RECORDED
         how = {"mode": "replay", "recorded": recorded.name}
+    # after CONFIG: a live run may restate a fact of the replay
+    live_only = getattr(scorer, "LIVE_CONFIG", {}) if live else {}
     run_id = _start(
-        name, {**how, "task": scorer.TASK, "provider": route.provider, "model": route.model, **scorer.CONFIG}
+        name,
+        {**how, "task": scorer.TASK, "provider": route.provider, "model": route.model, **scorer.CONFIG, **live_only},
     )
     results: list[Result] = []
     metrics: dict[str, Any] = {}

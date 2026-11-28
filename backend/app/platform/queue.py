@@ -39,6 +39,11 @@ class NonRetryable(Exception):
     """A handler raises this (or a subclass) for a failure a retry cannot fix, such as invalid input: dead at once."""
 
 
+# Claim order by queue, lowest first. A worker that serves every queue (a local install's one worker) would otherwise
+# take jobs oldest first, so a person's own request waited behind every board fetch of a discovery or sweep burst.
+PRIORITY = {"interactive": 10, "ingest": 200}
+
+
 @dataclass(frozen=True)
 class Job:
     id: int
@@ -83,9 +88,9 @@ def enqueue(
     """
     row = conn.execute(
         text(
-            """INSERT INTO queue_jobs (queue, kind, payload, user_id, unique_key, run_at, max_attempts)
+            """INSERT INTO queue_jobs (queue, kind, payload, user_id, unique_key, run_at, max_attempts, priority)
                VALUES (:queue, :kind, CAST(:payload AS jsonb), :user_id, :unique_key, COALESCE(:run_at, now()),
-                       :max_attempts)
+                       :max_attempts, :priority)
                ON CONFLICT (unique_key) DO NOTHING
                RETURNING id"""
         ),
@@ -97,6 +102,7 @@ def enqueue(
             "unique_key": unique_key,
             "run_at": run_at,
             "max_attempts": max_attempts,
+            "priority": PRIORITY.get(queue, 100),
         },
     ).first()
     return None if row is None else int(row[0])

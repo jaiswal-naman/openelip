@@ -224,7 +224,7 @@ def _prepare(role_id: UUID, job_id: int, candidate_ids: list[UUID], now: datetim
 
 
 def _may_score() -> bool:
-    """Whether the evidence route is open (a fake provider, or a real model a passed run proves). ai_gate reads
+    """Whether the evidence route can be called (a fake provider, or a real model with a key). ai_gate reads
     eval_runs, which the match role cannot, so it is asked on a worker connection."""
     with db.transaction(role="worker") as conn:
         try:

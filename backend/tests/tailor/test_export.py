@@ -1,5 +1,6 @@
-"""TLR-03: a resume document renders to PDF and DOCX. The PDF refuses a character it cannot draw instead of dropping it
-(decision 27); the DOCX carries every character. Every candidate here is invented.
+"""TLR-03: a resume document renders to PDF and DOCX. The PDF embeds a TrueType font, draws the punctuation a real
+resume has and refuses a character the font lacks instead of dropping it (decision 27); the DOCX carries every
+character. Every candidate here is invented.
 """
 
 import io
@@ -104,26 +105,59 @@ def test_markup_characters_in_a_line_are_text_not_markup():
     assert_in_order(text, lines_of(blocks))
 
 
-def test_letters_of_latin_1_are_drawn_and_the_edge_of_latin_1_is_the_edge_of_the_pdf():
+TYPOGRAPHY = "Cut costs by €5 – a lot — “quoted” and ‘single’ • item…"
+NOT_IN_THE_FONT = ("中", "🙂")  # CJK and an emoji: outside any Latin font, so outside the one embedded here
+
+
+def test_the_punctuation_of_a_real_resume_is_drawn_and_reads_back_as_text():
+    blocks = [
+        Block("Zoë Łukasz Çelik – Ağaoğlu", ("Mar 2019 – Aug 2022",), (TYPOGRAPHY,), 0),
+        Block("Skills — “Python”, ‘SQL’", (), ("• nested bullet…",), 1),
+    ]
+    data = render_pdf(blocks)
+    text, _ = pdf_text(data)
+    assert_in_order(text, lines_of(blocks))
+    assert "(cid:" not in text
+    assert b"/FontFile2" in data  # the font is embedded, not left to the viewer
+
+
+def test_the_pdf_carries_a_real_resume_through_build_and_render():
+    wide = doc([role("r1", "Initech Demo", "Engineer", "2019-01"), bullet("b1", TYPOGRAPHY, "r1")])
+    blocks = resume_blocks(wide)
+    assert_in_order(pdf_text(render_pdf(blocks))[0], lines_of(blocks))
+
+
+def test_letters_of_latin_1_are_drawn():
     text, _ = pdf_text(render_pdf([Block("Café ÿ", ("naïve",))]))
     assert "Café" in text and "naïve" in text
-    with pytest.raises(UnsupportedCharacters):
-        render_pdf([Block("Edge", ("Ā",))])  # U+0100 is the first character above Latin-1
+
+
+def test_whitespace_the_font_has_no_glyph_for_is_a_gap_not_a_lost_character():
+    text, _ = pdf_text(render_pdf([Block("Tab	here", ("thin space", "wide　space"))]))
+    assert "Tab here" in text and "thin space" in text and "wide space" in text
 
 
 @pytest.mark.parametrize("where", ["heading", "line", "bullet"])
-def test_a_character_outside_latin_1_is_refused_and_named_never_dropped(where):
+@pytest.mark.parametrize("character", NOT_IN_THE_FONT)
+def test_a_character_the_font_lacks_is_refused_and_named_never_dropped(where, character):
     block = {
-        "heading": Block("Ada – Example"),
-        "line": Block("Fine", ("Mar 2019 – Aug 2022",)),
-        "bullet": Block("Fine", (), ("Cut costs by €5",)),
+        "heading": Block(f"Ada {character} Example"),
+        "line": Block("Fine", (f"Mar 2019 {character} Aug 2022",)),
+        "bullet": Block("Fine", (), (f"Cut costs by {character}",)),
     }[where]
     with pytest.raises(UnsupportedCharacters) as refused:
         render_pdf([Block("Clean"), block])
-    assert set(refused.value.characters) <= {"–", "€"} and refused.value.characters
+    assert refused.value.characters == (character,)
+    assert "the PDF font cannot draw" in str(refused.value) and "Latin-1" not in str(refused.value)
     assert "Mar 2019" not in str(refused.value) and "Cut costs" not in str(
         refused.value
     )  # no resume text in the message
+
+
+def test_every_missing_character_is_named_once_and_the_drawable_ones_are_not():
+    with pytest.raises(UnsupportedCharacters) as refused:
+        render_pdf([Block("中中🙂 – fine", ("中",))])
+    assert refused.value.characters == ("中", "🙂")
 
 
 # ---- the DOCX ----------------------------------------
@@ -149,10 +183,15 @@ def test_the_docx_holds_every_block_line_in_order():
 
 
 def test_the_docx_carries_the_characters_the_pdf_cannot():
-    wide = doc([role("r1", "Initech Demo", "Engineer", "2019-01"), bullet("b1", "Cut costs by €5 – a lot", "r1")])
+    wide = doc([role("r1", "Initech Demo", "Engineer", "2019-01"), bullet("b1", "Cut costs by 中 – a lot", "r1")])
     with pytest.raises(UnsupportedCharacters):
         render_pdf(resume_blocks(wide))
-    assert ("List Bullet", "Cut costs by €5 – a lot") in paragraphs(render_docx(wide))
+    assert ("List Bullet", "Cut costs by 中 – a lot") in paragraphs(render_docx(wide))
+
+
+def test_the_docx_of_a_resume_the_pdf_draws_is_unchanged_by_the_font():
+    wide = doc([role("r1", "Initech Demo", "Engineer", "2019-01"), bullet("b1", TYPOGRAPHY, "r1")])
+    assert ("List Bullet", TYPOGRAPHY) in paragraphs(render_docx(wide))
 
 
 def test_control_characters_do_not_break_the_docx():

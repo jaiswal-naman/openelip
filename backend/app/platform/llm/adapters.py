@@ -48,19 +48,43 @@ def call_anthropic(route: Route, messages: list[dict[str, Any]], schema: dict[st
     return Reply(text, message.usage.input_tokens, message.usage.output_tokens, message.stop_reason == "refusal")
 
 
+def _strict(node: Any) -> Any:
+    """A copy of a JSON schema in the form OpenAI's strict structured outputs accept: every object closed, every
+    property required, no `default`. Pydantic leaves a field that has a default out of `required`, and OpenAI answers
+    a schema like that with a 400. A model that must give every field gives that field its default (a nullable type
+    stays nullable), and the task's own Pydantic class still validates what comes back."""
+    if isinstance(node, list):
+        return [_strict(item) for item in node]
+    if not isinstance(node, dict):
+        return node
+    strict = {key: _strict(value) for key, value in node.items() if key not in ("default", "properties", "$defs")}
+    for key in ("properties", "$defs"):  # maps of names to schemas: a property may be called "default"
+        if key in node:
+            strict[key] = {name: _strict(sub) for name, sub in node[key].items()}
+    if "properties" in node:
+        strict["additionalProperties"] = False
+        strict["required"] = list(node["properties"])
+    return strict
+
+
 def call_openai_compatible(route: Route, messages: list[dict[str, Any]], schema: dict[str, object]) -> Reply:
     import openai
 
     response_format: dict[str, Any] = {"type": "json_object"}  # JSON mode: the prompt itself must ask for JSON
     if route.structured_output == "json_schema":
         name = str(schema.get("title", "result"))
-        response_format = {"type": "json_schema", "json_schema": {"name": name, "schema": schema, "strict": True}}
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {"name": name, "schema": _strict(schema), "strict": True},
+        }
     request: dict[str, Any] = {
         "model": route.model,
         "messages": messages,
         "response_format": response_format,
         route.token_limit_param: route.max_tokens,
     }
+    if route.reasoning_effort:  # the Chat Completions parameter; reasoning tokens count against the limit above
+        request["reasoning_effort"] = route.reasoning_effort
     try:
         with openai.OpenAI(
             api_key=route.api_key, base_url=route.base_url, timeout=route.timeout_seconds, max_retries=SDK_RETRIES

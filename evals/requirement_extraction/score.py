@@ -5,6 +5,9 @@ extractor find, with the right words and importance, and does every stored citat
 
     DATABASE_URL_WORKER=.../name_test uv run --project backend python evals/requirement_extraction/score.py --split dev
 
+A live run, with a real model answering, is not run from here: it is `python -m app.evals run requirement_extraction
+--live` (suite.py), which calls the same task path and applies the live bars below (README, "Pre-registered bars").
+
 --method model (the default) replays recordings.jsonl through the real task path: the gateway's fake provider hands
 each recorded answer to the validator, which computes every span. The recordings are built from the heading rules by
 record_fixture.py, so a replay proves that the code path works and guards it in CI; it is not a model quality number.
@@ -50,6 +53,9 @@ HERE = Path(__file__).parent
 GOLD, RECORDINGS, BASELINE = (HERE / name for name in ("gold.jsonl", "recordings.jsonl", "baseline.json"))
 FIXTURE = "rules_fixture"  # the only recording source this scorer judges (README, bars)
 MIN_IOU = 0.5  # the overlap at which a predicted and a gold item are the same requirement
+# The bars of a live-model run on the test split, written before any run (README, "Pre-registered bars", 2: the targets
+# of AI_SYSTEM 4.3). They are for a real model; a replay and the rules method have none of them.
+LIVE_ITEM_F1_BAR, LIVE_IMPORTANCE_BAR = 0.85, 0.90
 # Test postings that are not unseen data. Left out of every test score, kept in gold.jsonl and in the recordings.
 EXCLUDED = {"req-049": "a near-copy of dev posting req-001 (99.9% the same text)"}
 LABELS = "agent-drafted, maintainer review pending"  # recorded in the run's config
@@ -236,6 +242,33 @@ def replay_extractor(recordings: dict[str, dict[str, Any]], folder: Path) -> Ext
         return result.rows, result.rejected
 
     return extract
+
+
+def live_extractor(posting: dict[str, Any]) -> tuple[Sequence[Any], dict[str, int]]:
+    """The real task path with the model the environment configures: nothing is replayed. An answer invalid twice is
+    that posting's failure and the run goes on; a provider that stops answering ends the run in error."""
+    try:
+        result = run_task(posting["description"])
+    except SchemaInvalid:
+        return [], {"extraction_failed": 1}
+    return result.rows, result.rejected
+
+
+def live_metrics(measured: dict[str, Any]) -> dict[str, Any]:
+    """The metrics of a live run: the three bars of the README, and `score` 1.0 only when every one holds."""
+    held = {
+        "req_spans_resolved": measured["req_spans_resolved"] == 1.0,
+        "req_item_f1": measured["req_item_f1"] >= LIVE_ITEM_F1_BAR,
+        "req_importance_accuracy": measured["req_importance_accuracy"] >= LIVE_IMPORTANCE_BAR,
+    }
+    bars_met = measured["n"] > 0 and all(held.values())
+    return {
+        **measured,
+        "bars": held,
+        "bars_met": bars_met,
+        "score": 1.0 if bars_met else 0.0,
+        "harness_check_only": False,  # a model answered: this is a measurement
+    }
 
 
 def stored_baseline(method: str, split: str, path: Path = BASELINE) -> dict[str, Any] | None:

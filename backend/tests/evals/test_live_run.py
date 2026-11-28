@@ -1,5 +1,6 @@
-"""The first live evidence_faithfulness run: `python -m app.evals run evidence_faithfulness --live` records the run the
-match route gate (app.match.ai_gate) accepts, and nothing else does.
+"""The live evidence_faithfulness run: `python -m app.evals run evidence_faithfulness --live` records a model-method run
+that names the model and the prompt, which is what a published number for that model reads (app.match.ai_gate decides
+only whether to log that nobody has measured the route). It is a measurement: no run opens or closes the route.
 
 A live run calls the real model the environment names, so these tests stand in for it: the anthropic route of
 models.toml with a key, and the n-th answer to the n-th request taken from the gold recording (or from the degraded
@@ -54,8 +55,8 @@ def runs(engine):
         )
 
 
-def gate_is_open(engine) -> bool:
-    """Whether the match run may call the real model now: the route gate's own answer, on the same database."""
+def route_serves(engine) -> bool:
+    """Whether the match run may call the real model now: the route check's own answer, on the same database."""
     with engine.connect() as conn:
         try:
             ai_gate.require_available(conn)
@@ -64,13 +65,21 @@ def gate_is_open(engine) -> bool:
     return True
 
 
+def is_measured(engine) -> bool:
+    """Whether a passed run names this route's model and prompt: what the route check logs "unproven" for."""
+    route = registry.route(evidence.TASK, config.get())
+    found = {"model": route.model, "prompt_version": evidence.PROMPT_VERSION}
+    with engine.connect() as conn:
+        return bool(conn.execute(ai_gate.ROUTE_IS_PROVEN, found).scalar_one())
+
+
 # ---- what a live run records ---------------------------------------------------------------------------
 
 
-def test_a_live_run_that_meets_the_bars_is_a_model_method_run_that_opens_the_evidence_route(engine, monkeypatch):
+def test_a_live_run_that_meets_the_bars_is_a_model_method_run_that_names_the_model_and_the_prompt(engine, monkeypatch):
     charged = real_model(monkeypatch, GOLD_ANSWERS)
     route = registry.route(evidence.TASK, config.get())
-    assert gate_is_open(engine) is False  # a key alone opens nothing
+    assert route_serves(engine) is True and is_measured(engine) is False  # a key alone serves; nobody has measured it
 
     done = runner.run_suite(SUITE, live=True)
 
@@ -91,11 +100,11 @@ def test_a_live_run_that_meets_the_bars_is_a_model_method_run_that_opens_the_evi
         run["metrics"]["score"] == 1.0 and run["metrics"]["harness_check_only"] is False
     )  # a measurement, not a replay
     assert len(charged) == 30 and set(charged) == {None}  # one request per pair, charged to nobody: an evaluation run
-    assert gate_is_open(engine) is True  # and this run is what the route gate was waiting for
+    assert route_serves(engine) is True and is_measured(engine) is True  # served before, and now measured
     assert gate.main(SUITE, done.run_id) == 0
 
 
-def test_a_live_run_that_misses_a_bar_is_recorded_failed_and_leaves_the_route_closed(engine, monkeypatch):
+def test_a_live_run_that_misses_a_bar_is_recorded_failed_and_the_route_still_serves(engine, monkeypatch):
     real_model(monkeypatch, DEGRADED_ANSWERS)  # five false mets on required items and two sets that cite nothing real
 
     done = runner.run_suite(SUITE, live=True)
@@ -103,11 +112,12 @@ def test_a_live_run_that_misses_a_bar_is_recorded_failed_and_leaves_the_route_cl
     assert done.status == "failed" and done.passed < done.n
     (run,) = runs(engine)
     assert (run["status"], run["config"]["method"], run["metrics"]["score"]) == ("failed", "model", 0.0)
-    assert gate_is_open(engine) is False  # a failed run is on record for good and proves nothing
+    assert route_serves(engine) is True  # a failed run is a number on record for good: it closes nothing
+    assert is_measured(engine) is False
     assert gate.main(SUITE, done.run_id) == 1
 
 
-def test_a_provider_that_is_down_mid_run_ends_the_run_in_error_and_proves_nothing(engine, monkeypatch):
+def test_a_provider_that_is_down_mid_run_ends_the_run_in_error_and_measures_nothing(engine, monkeypatch):
     real_model(monkeypatch, GOLD_ANSWERS)
 
     def down(request, *, principal):
@@ -117,17 +127,17 @@ def test_a_provider_that_is_down_mid_run_ends_the_run_in_error_and_proves_nothin
 
     done = runner.run_suite(SUITE, live=True)
 
-    assert done.status == "error" and gate_is_open(engine) is False
+    assert done.status == "error" and route_serves(engine) is True and is_measured(engine) is False
     assert gate.main(SUITE, done.run_id) == 1
 
 
-def test_the_replay_the_ci_records_still_has_no_method_and_never_opens_the_route(engine, monkeypatch):
+def test_the_replay_the_ci_records_still_has_no_method_and_is_no_measurement_of_a_real_model(engine, monkeypatch):
     runner.run_suite(SUITE)  # the fake provider the fixture chose: a replay of the recording
     (run,) = runs(engine)
     assert run["config"]["mode"] == "replay" and "method" not in run["config"]
     assert run["metrics"]["harness_check_only"] is True
     real_model(monkeypatch, GOLD_ANSWERS)  # now a real model is configured, and the replay is all there is on record
-    assert gate_is_open(engine) is False
+    assert is_measured(engine) is False
 
 
 # ---- what a live run refuses, before anything is written -------------------------------------------------------------
@@ -147,8 +157,10 @@ def test_a_live_run_with_no_key_is_refused_by_the_registry_and_writes_nothing(en
     assert refused.value.reason == "no_key" and runs(engine) == []
 
 
-@pytest.mark.parametrize("suite", ["harness_smoke", "resume_extraction", "constraint_property"])
+@pytest.mark.parametrize("suite", ["harness_smoke", "constraint_property", "tailoring_integrity", "chat", "guardian"])
 def test_a_suite_with_no_live_mode_refuses_one(engine, monkeypatch, suite):
+    """Only a suite whose scorer declares LIVE has one: the refusal comes before any model is asked. (The three suites
+    that do have one are tested, behind a stand-in for the provider, in test_live_suites.py.)"""
     real_model(monkeypatch, [])
     with pytest.raises(runner.LiveNotSupported):
         runner.run_suite(suite, live=True)
@@ -173,7 +185,7 @@ def test_the_command_runs_live_prints_the_run_id_last_and_the_gate_takes_it(engi
     out = capsys.readouterr()
     run_id = out.out.strip().splitlines()[-1]
     assert f"{SUITE}: 30 of 30 items passed, status passed" in out.err
-    assert main(["gate", SUITE, "--run", run_id]) == 0 and gate_is_open(engine) is True
+    assert main(["gate", SUITE, "--run", run_id]) == 0 and is_measured(engine) is True
 
 
 def test_the_command_says_what_is_missing_and_exits_2(engine, monkeypatch, capsys):
@@ -208,10 +220,11 @@ def test_only_a_live_run_keeps_the_provider_the_environment_chose():
 # ---- the documentation of the command ------------------------------------------------------------------
 
 
-def test_the_suite_readme_and_the_ai_system_doc_give_the_command_and_say_what_opens_the_route():
+def test_the_suite_readme_and_the_ai_system_doc_give_the_command_and_say_it_opens_nothing():
     command = "python -m app.evals run evidence_faithfulness --live"
     readme = (SUITE_DIR / "README.md").read_text(encoding="utf-8")
     assert command in readme and "DATABASE_URL_WORKER" in readme and "ANTHROPIC_API_KEY" in readme
     assert "`method`" in readme and "`model`" in readme and "`prompt_version`" in readme
+    assert "opens no feature" in readme
     ai_system = (EVALS.parent / "docs" / "AI_SYSTEM.md").read_text(encoding="utf-8")
     assert command in ai_system and "match/ai_gate.py" in ai_system
