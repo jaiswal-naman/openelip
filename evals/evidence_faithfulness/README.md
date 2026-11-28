@@ -132,19 +132,28 @@ uv run python ../evals/evidence_faithfulness/build_gold.py [--check]
 `--recorded FILE` replays another recording of the same suite. A recorded run is frozen and cannot be deleted, so these
 commands write only to a database named `..._test` or `evals`.
 
-## Until a live run passes, no real model scores a match
+## What a live run measures
 
-A route may serve a task only when a passed gold-set run for that task and model exists (AI_SYSTEM 2.2). The match run
-asks `eval_runs` (`backend/app/match/ai_gate.py`) for a passed `evidence_faithfulness` run whose config names `method`
-`"model"`, the `model` the route uses (`claude-haiku-5-5` in `config/models.toml`) and the current `prompt_version`.
-With none, a real model is refused, key or no key: the run completes without scoring and every retrieved job is held
-back as `not_scored`, as with no key. The replay above never counts: its run names the model `recorded` and has no
-method. The fake provider needs no run, because it calls no model.
+A real model scores matches whether or not a run has measured it: a passed run opens no feature and a failed one closes
+none (AI_SYSTEM 2.2). The match run (`backend/app/match/ai_gate.py`) refuses only when no model can be called (no key, no
+route, an unpriced model, the fake in production): the run then completes without scoring and every retrieved job is held
+back as `not_scored`, as with no key. A real model with no passed `evidence_faithfulness` run whose config names `method`
+`"model"`, the `model` the route uses (`claude-haiku-5-5` in `config/models.toml`, or whatever route is configured) and
+the current `prompt_version` is served all the same and the check writes one info line, `unproven`, with the model's
+name. The replay above never counts: its run names the model `recorded` and has no method. The fake provider needs no run,
+because it calls no model.
 
-**The first live run** is the owner's step, once a key exists. It calls the real model for each of the 30 pairs (30 to 60
-requests, with the one fresh call after a rejection), scores the verdicts against the bars above, and records the run
-for good in the database `DATABASE_URL_WORKER` names. That must be the application's own database, the one the running
-worker reads, because that is where the match run looks for it. From `backend/`, in PowerShell:
+**A live run** measures a model on this set. Nothing starts it by itself, because it spends the key of whoever runs it. It
+calls the real model for each of the 30 pairs (30 to 60 requests, with the one fresh call after a rejection, each a row
+of the cost ledger), scores the verdicts against the bars above, and records the run for good in the database
+`DATABASE_URL_WORKER` names. On a local install:
+
+```
+docker compose exec worker python -m app.evals run evidence_faithfulness --live
+```
+
+On a checkout, from `backend/`, in PowerShell (set the provider and its key; `OPENAI_API_KEY` with `LLM_PROVIDER = "openai"`
+works the same where the route exists):
 
 ```
 $env:LLM_PROVIDER = "anthropic"; $env:ANTHROPIC_API_KEY = "<the key>"
@@ -154,12 +163,13 @@ uv run python -m app.evals gate evidence_faithfulness --run <the id printed last
 ```
 
 On a POSIX shell, set the same three variables with `export`. `run` prints the pair count and the run's status on standard
-error and the run id last; the run is `passed` only when all three bars hold (`score` 1.0), and only a passed run opens
-the route. A failed run stays on record and proves nothing; a provider that stops answering ends the run in `error`, and
-the same command can be run again. The run records `mode` `"live"`, `method` `"model"`, the `provider`, the `model`, the
-`prompt_version` and the labels note, and its metrics have `harness_check_only` false: unlike the replay, it is a
-measurement. A changed prompt (`prompt_version`) or a changed model needs a new live run. Report it as the manual checks
-below ask: with counts and Wilson intervals, and with the agent-drafted labels and the single rater said plainly.
+error and the run id last; the run is `passed` only when all three bars hold (`score` 1.0). A failed run stays on record
+and closes nothing; a provider that stops answering ends the run in `error`, and the same command can be run again. The run
+records `mode` `"live"`, `method` `"model"`, the `provider`, the `model`, the `prompt_version` and the labels note, and its
+metrics have `harness_check_only` false: unlike the replay, it is a measurement, and it opens no feature. A changed prompt
+(`prompt_version`) or a changed model is a different thing to measure and needs a new run. Report it as the manual checks
+below ask: with counts and Wilson intervals, and with the agent-drafted labels and the single rater said plainly. The
+measured numbers are published per model once a run exists; none exists yet.
 
 ## Manual checks (they need the maintainer or a model key)
 

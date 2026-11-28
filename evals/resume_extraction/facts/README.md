@@ -12,8 +12,8 @@ that the checks in code catch those faults and that the gateway, the checks, the
 a report as a result (invariant 8). `baseline.json` records it so that a code change which lowers it fails the gate.
 
 The targets in AI_SYSTEM 4.2 are 0.90 field-level F1 overall and 0.95 on employer, title and dates, on 200 to 300
-resumes. They are measured on a live run with a real model, and the first live run is a manual step that has not been
-done. This set has 120 resumes, which is below that size.
+resumes. They are measured on a live run with a real model (see "What a live run measures" below), and no live run has been
+made yet. This set has 120 resumes, which is below that size.
 
 ## Everything here is invented
 
@@ -92,18 +92,39 @@ After rewriting `baseline.json`, set `min_score` for `resume_extraction` in `eva
 state why in the commit. `backend/tests/profile/test_extract_gold.py` checks that the floor equals the baseline, that
 the committed recordings reproduce it, and that a recording set with 35% faults fails the gate.
 
-## Until a live run passes, no real model reads a resume
+## What a live run measures
 
-A route may serve a task only when a passed gold-set run for that task and model exists (AI_SYSTEM 2.2). The resume
-upload asks `eval_runs` (`backend/app/profile/ai_gate.py`) for a passed `resume_extraction` run on the test split, by
-the model method, whose config names the model the three `resume.facts.*` routes use and the current prompt versions of
-the three tasks. With none, a real model is refused as `ai_disabled`, key or no key: the upload answers 503, and a parse
-queued earlier fails the same way. The replay in this folder never counts: its run names the model `recorded` and has no
-method or split. The fake provider needs no run, because it calls no model.
+Reading a resume runs on any model that is configured: a passed run is not needed (AI_SYSTEM 2.2). The upload and the
+queued parse refuse only when no model can be called (no key, no route, an unpriced model, the fake in production: `503
+ai_disabled`). A real model with no passed run on this gold set (`backend/app/profile/ai_gate.py` looks for one) is
+served and writes one info line, `unproven`, with the model's name. A replay never counts: its run names the model
+`recorded` and has no method or split.
 
-The first live run has to record in `eval_runs.config`: `method` `"model"`, `split` `"test"`, `model` (the name
-`models.toml` gives the three routes, which must be one name) and `prompt_versions` (task name to version, as
-`workflow.prompt_versions()` returns it), and it has to pass the gate. A changed prompt or a changed model needs a new
-live run. This gold set has no division into a development and a test part yet; the first live run decides it, and that
-run is a manual step that needs a key.
+A live run measures a model on this set. Nothing starts it by itself, because it spends the key of whoever runs it:
 
+```
+docker compose exec worker python -m app.evals run resume_extraction --live     # a local install
+cd backend && uv run python -m app.evals run resume_extraction --live           # a checkout; LLM_PROVIDER, its key and DATABASE_URL_WORKER set
+```
+
+It sends each of the 120 resumes through `extract_facts`, the code the upload runs (three calls a resume, 360 requests,
+every one a row of the cost ledger), and scores the kept facts against the truth as above. It records `method` `model`,
+the `provider`, the `model` the route of `resume.facts.roles` names (the three routes should name one model; the ledger
+rows say which each call used), `prompt_versions` (task name to version, as `workflow.prompt_versions()` returns it) and
+`split` `test`.
+
+**The bars** are the targets of AI_SYSTEM 4.2, as this README already stated them, applied exactly: `f1_overall >= 0.90`
+and `f1_employer_title_dates >= 0.95`, with every kept item's quote equal to the text at its span (enforced: a mismatch
+ends the run in `error`). `score` is 1.0 only when both F1 bars hold and 0.0 otherwise, so `evals/thresholds.toml`, whose
+floor is the replay's, needs no change for a live run (it is 0.0 or 1.0, and the replay's floor is 0.9527). The metrics
+also hold `f1_by_slice` for the three layouts, the counts, `bars` and `bars_met`, and `replay_only` false. A failed run
+stays on record and closes nothing.
+
+**The split.** The set has no development part. No model has ever answered on it, so nothing was tuned against it, and the
+live run treats all 120 resumes as the test split (AI_SYSTEM 12.1, rule 3: freeze it and never tune a prompt on it). That
+is a claim about the past only: once a live run has been read, a prompt changed to fix what it showed is tuned on this
+set, and any later number must say so (a changed prompt is a new `prompt_versions` and needs a new run). The set is 120
+resumes, below the 200 to 300 that AI_SYSTEM 4.2 aims at, and invented: a score on it is not a score on real resumes.
+
+Report a live result with counts and Wilson intervals, as AI_SYSTEM 12.1 asks. The measured numbers are published per
+model once a run exists; none exists yet.

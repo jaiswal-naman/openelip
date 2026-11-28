@@ -16,6 +16,16 @@ every machine. The headline `score` is the overall F1; employer, title and dates
 verifier) are reported on their own.
 
     python score.py    # development: replay the recordings and write baseline.json (needs a scratch test database)
+
+The same path runs live, with the model the environment configures answering every resume (run(None); LIVE below):
+
+    cd backend && uv run python -m app.evals run resume_extraction --live
+
+That run records method "model", the model's name, the prompt versions and the split beside the score, and applies the
+bars of AI_SYSTEM 4.2 as README.md states them: overall field F1 at least 0.90 and employer, title and dates F1 at least
+0.95. Its `score` is 1.0 only when both hold (and 0.0 otherwise), so the gate's floor needs no change for it; the
+replay's `score` stays the overall F1 against the baseline. A live run is a measurement of the model: it opens and
+closes no feature (AI_SYSTEM 2.2).
 """
 
 import json
@@ -53,6 +63,13 @@ FIELDS = {
     "other": (),
 }
 EMPLOYER_TITLE_DATES = frozenset({"employer", "title", "start_date", "end_date"})  # held to 0.95 (AI_SYSTEM 4.2)
+LIVE = True  # run(None) calls the real model: the runner's --live (backend/app/evals/runner.py) needs this to allow it
+# The bars of a live run, as README.md and AI_SYSTEM 4.2 state them (the targets of 12.1's pre-registration). A kept
+# item whose quote does not match its span is no bar: QuoteMismatch ends the run in error instead.
+F1_BAR, EMPLOYER_TITLE_DATES_BAR = 0.90, 0.95
+# What only a live run records. The gold set has no development part: no model has ever answered on it, so none of
+# it was tuned against and all 120 resumes are the test split (README.md, "What a live run measures").
+LIVE_CONFIG = {"split": "test", "bars": {"f1_overall": F1_BAR, "f1_employer_title_dates": EMPLOYER_TITLE_DATES_BAR}}
 
 
 class QuoteMismatch(Exception):
@@ -140,52 +157,65 @@ def brief_kept(fact):
     return {"kind": fact.kind, "span": list(fact.source_span), **fields}
 
 
-def run(recorded):
-    gold = load_gold()
-    requests = [
-        (task.name, messages)
-        for item in gold
-        for task, messages in workflow.build_requests(result_from_lines(item["lines"]))
-    ]
+def score_items(gold, *, parallel):
+    """Every resume through the real gateway and checks. The gateway answers however the environment configured it: from
+    a recording in a replay (which needs parallel=False: the fake provider answers in call order), from the model when
+    live (the three calls of a resume go together, as they do for a person's upload)."""
     results, totals, by_slice, seen = [], {"all": [0, 0, 0], "group": [0, 0, 0]}, {}, Counter()
-    with tempfile.TemporaryDirectory() as directory:
-        answers = fake.replay_file(requests, fake.load(recorded), Path(directory) / "answers.json")
-        provider.replay_from(answers)  # the gateway's fake provider reads these, in the order the calls are made
-        try:
-            for item in gold:
-                resume = result_from_lines(item["lines"])
-                out = workflow.extract_facts(llm.complete, resume, attribution=None, parallel=False)
-                for fact in out.kept:
-                    if resume.text[fact.source_span[0] : fact.source_span[1]] != fact.source_quote:
-                        raise QuoteMismatch(item["key"])
-                counts = tally(item, out.kept)
-                for name, found in counts.items():
-                    totals[name] = [a + b for a, b in zip(totals[name], found)]
-                slice_counts = by_slice.setdefault(item["slice"], [0, 0, 0])
-                by_slice[item["slice"]] = [a + b for a, b in zip(slice_counts, counts["all"])]
-                seen.update(
-                    kept=len(out.kept),
-                    unverified=len(out.unverified),
-                    protected_skipped=out.protected_skipped,
-                    failed_calls=len(out.failed_calls),
-                )
-                _, fp, fn = counts["all"]
-                results.append(
-                    Result(
-                        item["key"],
-                        item["slice"],
-                        {"facts": [brief_truth(f) for f in item["expected"]["facts"]]},
-                        {
-                            "facts": [brief_kept(f) for f in out.kept],
-                            "unverified": [u.reason for u in out.unverified],
-                            "protected_skipped": out.protected_skipped,
-                            "failed_calls": out.failed_calls,
-                        },
-                        fp == 0 and fn == 0,
-                    )
-                )
-        finally:
-            provider.replay_from(None)
+    for item in gold:
+        resume = result_from_lines(item["lines"])
+        out = workflow.extract_facts(llm.complete, resume, attribution=None, parallel=parallel)
+        for fact in out.kept:
+            if resume.text[fact.source_span[0] : fact.source_span[1]] != fact.source_quote:
+                raise QuoteMismatch(item["key"])
+        counts = tally(item, out.kept)
+        for name, found in counts.items():
+            totals[name] = [a + b for a, b in zip(totals[name], found)]
+        slice_counts = by_slice.setdefault(item["slice"], [0, 0, 0])
+        by_slice[item["slice"]] = [a + b for a, b in zip(slice_counts, counts["all"])]
+        seen.update(
+            kept=len(out.kept),
+            unverified=len(out.unverified),
+            protected_skipped=out.protected_skipped,
+            failed_calls=len(out.failed_calls),
+        )
+        _, fp, fn = counts["all"]
+        results.append(
+            Result(
+                item["key"],
+                item["slice"],
+                {"facts": [brief_truth(f) for f in item["expected"]["facts"]]},
+                {
+                    "facts": [brief_kept(f) for f in out.kept],
+                    "unverified": [u.reason for u in out.unverified],
+                    "protected_skipped": out.protected_skipped,
+                    "failed_calls": out.failed_calls,
+                },
+                fp == 0 and fn == 0,
+            )
+        )
+    return results, totals, by_slice, seen
+
+
+def run(recorded):
+    """Score every resume. `recorded` is a recording to replay through the gateway's fake provider; None is a live run,
+    where the gateway calls the model the environment configures and nothing is replayed."""
+    gold = load_gold()
+    if recorded is None:
+        results, totals, by_slice, seen = score_items(gold, parallel=True)
+    else:
+        requests = [
+            (task.name, messages)
+            for item in gold
+            for task, messages in workflow.build_requests(result_from_lines(item["lines"]))
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            answers = fake.replay_file(requests, fake.load(recorded), Path(directory) / "answers.json")
+            provider.replay_from(answers)  # the gateway's fake provider reads these, in the order the calls are made
+            try:
+                results, totals, by_slice, seen = score_items(gold, parallel=False)
+            finally:
+                provider.replay_from(None)
     metrics = {
         "score": f1(*totals["all"]),
         "f1_overall": f1(*totals["all"]),
@@ -196,9 +226,16 @@ def run(recorded):
         "tp": totals["all"][0],
         "fp": totals["all"][1],
         "fn": totals["all"][2],
-        "replay_only": True,
+        "replay_only": recorded is not None,
         "synthetic": True,
     }
+    if recorded is None:
+        held = {
+            "f1_overall": metrics["f1_overall"] >= F1_BAR,
+            "f1_employer_title_dates": metrics["f1_employer_title_dates"] >= EMPLOYER_TITLE_DATES_BAR,
+        }
+        # The gate reads `score`: 1.0 only when both pre-registered bars hold, so its replay floor never judges a model.
+        metrics |= {"bars": held, "bars_met": all(held.values()), "score": 1.0 if all(held.values()) else 0.0}
     return Scored(results, metrics)
 
 
