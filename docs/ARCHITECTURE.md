@@ -299,12 +299,12 @@ sequenceDiagram
   end
   W->>GW: extract requirements with character spans, if a model is configured
   W->>PG: job_requirements, spans checked against the description
-  W->>W: embed the posting locally, 384 dimensions
+  W->>W: embed the posting (local model, 384 dimensions; OpenAI's, 1536, on an OpenAI key)
   W->>PG: store the embedding
 ```
 
 1. The existing fetch, store and close code (`ats.py`, `ingest.py`) becomes the `ingest.fetch` handler, one job per source per slot (every six hours, assumption). Only a successful fetch closes jobs; an empty feed from a source with more than five open jobs is recorded as `suspicious_empty` (IDX-02).
-2. Requirements are extracted and the posting embedded once per `(job_id, content_version)` (IDX-08). fastembed 0.9.1 (Apache-2.0, released 2026-10-24) runs on ONNX Runtime without PyTorch, and its default model produces 384-dimensional vectors, matching the `vector(384)` column ([fastembed](https://pypi.org/project/fastembed/), checked 2026-11-22). One embedding model serves an instance; changing it is a migration that re-embeds every row.
+2. Requirements are extracted and the posting embedded once per `(job_id, content_version)` (IDX-08). fastembed 0.9.1 (Apache-2.0, released 2026-10-24) runs on ONNX Runtime without PyTorch, and its default model produces 384-dimensional vectors ([fastembed](https://pypi.org/project/fastembed/), checked 2026-11-22). On an OpenAI key the posting is embedded instead by OpenAI's `text-embedding-3-large` at 1536 dimensions, through the model gateway (AI_SYSTEM 3.1); `jobs.embedding` holds either width. One embedding model serves an instance at a time; after a change the sweep re-embeds every job whose vector is of another model.
 3. Before a job enters a brief, `ingest.verify_live` checks its apply link through `fetch_public` (7.6) and closes it on 404 or 410 (IDX-07). Every job shows its source and `last_verified_at` (IDX-05). `python -m app.cli sources import` registers only boards answering with live postings (IDX-09).
 
 ### 4.2 Onboarding: resume to first matches
@@ -1016,6 +1016,7 @@ The `APP_` prefix stays neutral while the public name is undecided; user-facing 
 | `LLM_PROVIDER`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `LLM_BASE_URL` | No | `api`, `worker` | Default `anthropic`; with no usable provider, AI features return `503 ai_disabled`  |
 | `APP_CAMPAIGN_BUDGET_USD`, `APP_MONTHLY_BUDGET_USD` | No; 0.75 and 5 | `api`, `worker` | 5.8; returned by `GET /v1/autonomy` |
 | `EMBEDDING_MODEL` | No; local, 384 dimensions | `api`, `worker` | 4.1 |
+| `EMBEDDING_PROVIDER` | No; `auto` | `api`, `worker` | `auto`, `local` or `openai`: which model makes the vectors (AI_SYSTEM 3.1) |
 | `WORKER_QUEUES` | No; all | `worker` | Bind a worker to some queues |
 | `APP_PRODUCT_NAME` | No | `api`, `worker` | User-facing name |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No | `api`, `worker` | Trace export |

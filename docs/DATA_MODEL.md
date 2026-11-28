@@ -3006,6 +3006,8 @@ Written for `psql` variables (`:'uid'`, `:'org'`, `:'cid'`, `:qvec`, `:'qtext'`)
 
 At the index's current size (OVERVIEW.md reports 9,996 unique jobs) the dense list in 6.1 is an exact scan over the already-filtered set, so the filter is applied before ranking and cannot be skipped by an approximate index. The `jobs_embedding_hnsw` index serves unfiltered semantic search (IDX-04). If the index grows to where the exact scan is too slow, the dense list can move to the HNSW index with `SET hnsw.iterative_scan = relaxed_order` and the same WHERE clause; the filter stays in the query either way. Timings were not measured (section 12.4).
 
+Amendment, revision `e1_embedding_models` (2026-11-28): `jobs.embedding` is a plain `vector`, so vectors of the local model (384 wide) and of OpenAI's (1536 wide) share the column, and `jobs_embedding_hnsw` is replaced by two partial expression indexes, `jobs_embedding_local_hnsw` (`(embedding::vector(384))`, `WHERE embedding_model = <the local model id>`) and `jobs_embedding_openai_hnsw` (`(embedding::vector(1536))`, `WHERE embedding_model = 'openai/text-embedding-3-large@1536'`), as pgvector describes for mixed widths. The statements of 6.1 and the code that runs them name the active model in `embedding_model = :model` before any distance is taken, so a vector of another width is never compared. An `EXPLAIN` of the search and retrieval statements on 2026-11-28 shows no HNSW index used by either (the ranking is inside a MATERIALIZED CTE, as above); the old index was not used either.
+
 ### 6.1 Hybrid retrieval with the constraint filter first
 
 ```sql

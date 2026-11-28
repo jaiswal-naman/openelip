@@ -110,7 +110,7 @@ An outside action is something an agent does that reaches anyone other than the 
 | Build an independent open-source implementation of the agent hiring loop, then extend it | A running, measured system is stronger proof than documents or mock-ups | Pending |
 | Public project name | The working name borrows another company's brand. Recommended: a distinct name, with a note that the project is independent and not affiliated | Accepted as recommended (owner, 2026-11-22) |
 | Modular monolith on one PostgreSQL | Correctness lives in the database (unique keys, triggers, row-level security); one deploy; easy to explain | Pending |
-| Local embeddings by default | Anyone can run search with no key; matches the existing `vector(384)` column | Pending |
+| Local embeddings when there is no OpenAI key | Anyone can run search with no key; on an OpenAI key the platform uses OpenAI's `text-embedding-3-large` instead, which measured better (AI_SYSTEM 3.1) | Pending |
 | Agents run on LangGraph, used in a bounded way: campaigns are a LangGraph graph with a PostgreSQL checkpointer, one thread per campaign, resumed and timed by queue jobs; the policy engine and the Guardian stay our own code | Autonomy without losing control; our tables stay the source of truth, so every step is auditable and replayable; no hosted platform, tracing off | Adopted (owner's decision, 2026-11-22) |
 | Agents share a board instead of chatting | Lower cost, no hidden state, simpler to test | Pending |
 | MIT licence | Signals goodwill; simplest for others to adopt | Accepted as recommended (owner, 2026-11-22) |
