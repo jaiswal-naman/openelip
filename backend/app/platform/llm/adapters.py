@@ -102,3 +102,34 @@ def call_openai_compatible(route: Route, messages: list[dict[str, Any]], schema:
         usage.completion_tokens if usage else 0,
         bool(message and message.refusal),
     )
+
+
+@dataclass(frozen=True)
+class EmbeddingReply:
+    vectors: list[list[float]]  # one per input, in input order
+    input_tokens: int
+
+
+def call_openai_embeddings(route: Route, texts: list[str], *, timeout: float, retries: int) -> EmbeddingReply:
+    """One embeddings request: the texts as they are, and the vector length the route names (OpenAI shortens the model's
+    own vectors to it). The caller chooses the timeout and the SDK's retries, because a search may wait a few seconds
+    and a sweep may wait much longer."""
+    import openai
+
+    try:
+        with openai.OpenAI(
+            api_key=route.api_key, base_url=route.base_url, timeout=timeout, max_retries=retries
+        ) as client:
+            response = client.embeddings.create(
+                model=route.model, input=texts, dimensions=route.dimensions or openai.omit
+            )
+    except openai.APITimeoutError:
+        raise ProviderUnavailable(timed_out=True) from None
+    except openai.APIError:
+        raise ProviderUnavailable() from None
+    ordered = sorted(response.data, key=lambda item: item.index)
+    if [item.index for item in ordered] != list(
+        range(len(texts))
+    ):  # a reply that skips or repeats an input is no reply
+        raise ProviderUnavailable()
+    return EmbeddingReply([[float(x) for x in item.embedding] for item in ordered], response.usage.prompt_tokens)

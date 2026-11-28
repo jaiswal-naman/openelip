@@ -27,6 +27,7 @@ LEDGER: ContextVar[Role] = ContextVar("llm_ledger", default="worker")
 PATH = Path(__file__).resolve().parents[3] / "config" / "models.toml"
 ADAPTERS = ("anthropic", "openai_compatible", "fake")
 DATA_CLASSES = ("public", "de-identified", "identified", "synthetic")  # AI_SYSTEM 2.6
+KINDS = ("chat", "embedding")  # model_kind in the database
 NO_KEY = "not-needed"  # the openai SDK insists on a key string; a local server ignores it
 # The values of reasoning_effort in the Chat Completions reference (read 2026-11-28). Which of them a model takes is on
 # its own page, so models.toml names one per route and the first live call shows a refusal.
@@ -60,6 +61,10 @@ class Route:
     price_checked_at: datetime | None
     # Sent as reasoning_effort to an OpenAI-style server; None leaves the model's own default.
     reasoning_effort: str | None = None
+    kind: str = (
+        "chat"  # "embedding" for the embed task: max_tokens is then the input limit of one text, not an output cap
+    )
+    dimensions: int | None = None  # the length of the vectors an embedding route asks for
     api_key: str | None = field(default=None, repr=False)
 
     @property
@@ -97,6 +102,9 @@ def table() -> list[Route]:
                 p = providers[name]
                 if p["adapter"] not in ADAPTERS or entry["data_class"] not in DATA_CLASSES:
                     raise ModelConfigError(f"{where}: unknown adapter or data_class")
+                kind, dimensions = entry.get("kind", "chat"), model.get("dimensions")
+                if kind not in KINDS or (kind == "embedding") != (dimensions is not None):
+                    raise ModelConfigError(f"{where}: kind is chat or embedding, and only embedding has dimensions")
                 effort = model.get("reasoning_effort")
                 if effort is not None and (effort not in REASONING_EFFORTS or p["adapter"] != "openai_compatible"):
                     raise ModelConfigError(
@@ -122,6 +130,8 @@ def table() -> list[Route]:
                         output_microusd_per_mtok=_micro(model.get("output_usd_per_mtok")),
                         price_checked_at=_when(model.get("price_checked_at")),
                         reasoning_effort=effort,
+                        kind=kind,
+                        dimensions=dimensions,
                     )
                 )
             except KeyError as missing:
@@ -178,6 +188,8 @@ def _params(r: Route) -> dict[str, Any]:
     return {
         "provider": r.provider,
         "model": r.model,
+        "kind": r.kind,
+        "dimensions": r.dimensions,
         "is_local": r.is_local,
         "input": r.input_microusd_per_mtok,
         "output": r.output_microusd_per_mtok,
@@ -187,14 +199,15 @@ def _params(r: Route) -> dict[str, Any]:
 
 
 _INSERT = (
-    "INSERT INTO model_registry (provider, model_name, kind, is_local, input_microusd_per_mtok, "
+    "INSERT INTO model_registry (provider, model_name, kind, embedding_dimensions, is_local, input_microusd_per_mtok, "
     "output_microusd_per_mtok, retention_note, price_checked_at) "
-    "VALUES (:provider, :model, 'chat', :is_local, :input, :output, :note, :checked) "
+    "VALUES (:provider, :model, CAST(:kind AS model_kind), :dimensions, :is_local, :input, :output, :note, :checked) "
     "ON CONFLICT (provider, model_name) "
 )
 _ONLY_IF_MISSING = text(_INSERT + "DO NOTHING")
 _UPDATE = text(
     _INSERT + "DO UPDATE SET is_local = EXCLUDED.is_local, input_microusd_per_mtok = EXCLUDED.input_microusd_per_mtok, "
+    "kind = EXCLUDED.kind, embedding_dimensions = EXCLUDED.embedding_dimensions, "
     "output_microusd_per_mtok = EXCLUDED.output_microusd_per_mtok, retention_note = EXCLUDED.retention_note, "
     "price_checked_at = EXCLUDED.price_checked_at, is_active = true"
 )

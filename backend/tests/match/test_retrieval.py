@@ -4,11 +4,15 @@ Everything is invented. Jobs get hand-made vectors and keywords, so the fusion i
 hand, with no model in the way. Every test runs in the `conn` fixture's transaction, which is rolled back.
 """
 
+import json
+import logging
+
 import pytest
 from sqlalchemy import text
 
 from app.match import checker, retrieval
-from app.platform.llm.embed import MODEL_ID
+from app.platform import config
+from app.platform.llm.embed import LOCAL_MODEL_ID, OPENAI_MODEL_ID, EmbeddingUnavailable
 from tests.match.factories import (
     Verdict,
     make_decision,
@@ -55,7 +59,7 @@ def add_job(conn, title, *, description=None, tilt=None, country="IN", arrangeme
     if tilt is not None:
         conn.execute(
             text("UPDATE jobs SET embedding = CAST(:v AS vector), embedding_model = :m WHERE id = :id"),
-            {"v": literal(vec(tilt)), "m": MODEL_ID, "id": job.id},
+            {"v": literal(vec(tilt)), "m": LOCAL_MODEL_ID, "id": job.id},
         )
     return job
 
@@ -250,7 +254,7 @@ def add_skill(conn, user, statement):
 def test_retrieve_builds_the_keywords_and_the_vector_from_the_persons_own_record(conn, person, monkeypatch):
     embedded = []
 
-    def embed(texts):
+    def embed(texts, **options):
         embedded.append(texts)
         return [QUERY_VECTOR]
 
@@ -403,3 +407,104 @@ def test_the_active_preferences_are_read_without_the_superseded_ones(conn, perso
     assert retrieval.active_preferences(conn, person) == [
         {"kind": "target_title", "value": "staff engineer", "weight": 2}
     ]
+
+
+# --- the OpenAI model is active (AI_SYSTEM 3.1): the passage leaves this computer only with consent -----------------
+
+
+FACTS = [{"kind": "skill", "statement": "Python"}]
+WIDE_QUERY = [1.0] + [0.0] * 1535
+
+
+@pytest.fixture
+def openai_active(monkeypatch):
+    """The platform runs on an OpenAI key. What the embedder is asked is recorded; it answers 1536 wide."""
+    settings = config.load({"APP_ENV": "test", "LLM_PROVIDER": "openai", "OPENAI_API_KEY": "k"})
+    monkeypatch.setattr(config, "get", lambda: settings)
+    asked = []
+
+    def embed(texts, **options):
+        asked.append((texts, options))
+        return [WIDE_QUERY]
+
+    monkeypatch.setattr(retrieval, "embed_passages", embed)
+    return asked
+
+
+def fallbacks(caplog):
+    return [json.loads(r.getMessage()) for r in caplog.records if "match.keyword_fallback" in r.getMessage()]
+
+
+def test_the_profile_passage_goes_to_openai_only_for_a_person_who_agreed_to_ai_processing(openai_active):
+    person = object()
+
+    vector = retrieval.profile_vector(FACTS, [], user_id=person, consented=True)
+
+    assert vector == WIDE_QUERY
+    assert openai_active == [(["Python"], {"model": OPENAI_MODEL_ID, "principal": person})]
+
+
+def test_without_consent_the_passage_is_never_sent_and_never_swapped_for_a_local_vector(
+    openai_active, caplog, monkeypatch
+):
+    """bge vectors cannot be compared with OpenAI's, so the person is retrieved for by keywords alone, and the log says
+    why (a code, never the passage)."""
+    caplog.set_level(logging.INFO, logger="app.event")
+
+    assert retrieval.profile_vector(FACTS, [], user_id=object(), consented=False) is None
+
+    assert openai_active == []
+    assert [(line["event"], line["error_code"]) for line in fallbacks(caplog)] == [
+        ("match.keyword_fallback", "no_ai_consent")
+    ]
+
+
+def test_the_local_model_needs_no_consent_because_nothing_leaves_the_computer(monkeypatch):
+    settings = config.load(
+        {"APP_ENV": "test", "EMBEDDING_PROVIDER": "local", "LLM_PROVIDER": "openai", "OPENAI_API_KEY": "k"}
+    )
+    monkeypatch.setattr(config, "get", lambda: settings)
+    asked = []
+    monkeypatch.setattr(retrieval, "embed_passages", lambda texts, **options: asked.append(options) or [QUERY_VECTOR])
+
+    assert retrieval.profile_vector(FACTS, [], user_id=object(), consented=False) == QUERY_VECTOR
+    assert asked == [{"model": LOCAL_MODEL_ID, "principal": asked[0]["principal"]}]
+
+
+def test_no_passage_means_no_call_and_no_fallback_notice(openai_active, caplog):
+    caplog.set_level(logging.INFO, logger="app.event")
+
+    assert retrieval.profile_vector([], [], user_id=object(), consented=True) is None
+    assert openai_active == [] and fallbacks(caplog) == []
+
+
+def test_an_embedder_that_fails_is_a_keyword_fallback_with_its_reason(openai_active, caplog, monkeypatch):
+    caplog.set_level(logging.INFO, logger="app.event")
+
+    def unavailable(texts, **options):
+        raise EmbeddingUnavailable("OpenAI")
+
+    monkeypatch.setattr(retrieval, "embed_passages", unavailable)
+
+    assert retrieval.profile_vector(FACTS, [], user_id=object(), consented=True) is None
+    assert [line["error_code"] for line in fallbacks(caplog)] == ["embedder_unavailable"]
+
+
+def test_retrieve_hands_the_consent_to_the_passage_and_ranks_only_rows_of_the_active_model(conn, person, openai_active):
+    add_skill(conn, person, "Python")
+    new = add_job(conn, "Plain role", description="Plain role. You will do it every day.")
+    old = add_job(conn, "Another plain role", description="Another plain role. You will do it every day.", tilt=0.0)
+    conn.execute(
+        text("UPDATE jobs SET embedding = CAST(:v AS vector), embedding_model = :m WHERE id = :id"),
+        {"v": literal(WIDE_QUERY), "m": OPENAI_MODEL_ID, "id": new.id},
+    )  # `old` keeps its 384-wide vector of the local model
+
+    assert (
+        ids(retrieval.retrieve(conn, person, mode="vector")) == []
+    )  # no consent said: keywords only, so no vector list
+    assert openai_active == []
+    assert ids(retrieval.retrieve(conn, person, mode="vector", consented=True)) == [
+        new.id
+    ]  # old: other width, left out
+    assert openai_active[0][1]["principal"] == person
+    assert old.id not in ids(retrieval.retrieve(conn, person, mode="vector", consented=True))

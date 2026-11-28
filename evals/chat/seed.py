@@ -273,11 +273,11 @@ def _vector(words: str) -> list[float]:
     return [n / length for n in numbers]
 
 
-def stand_in_passages(texts: list[str]) -> list[list[float]]:
+def stand_in_passages(texts: list[str], **options: object) -> list[list[float]]:
     return [_vector(t) for t in texts]
 
 
-def stand_in_query(query: str) -> list[float]:
+def stand_in_query(query: str, **options: object) -> list[float]:
     return _vector(query)
 
 

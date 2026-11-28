@@ -384,7 +384,8 @@ def test_the_phase_5_revision_sits_on_the_phase_4_one_and_the_merge_with_phase_6
     config.set_main_option("script_location", str(REPO / "db"))
     script = ScriptDirectory.from_config(config)
     assert script.get_revision(REVISION).down_revision == PREVIOUS
-    assert script.get_heads() == ["p9_0901_twin_agentnet"]  # 09-01 sits on local mode, local mode on Phase 8
+    assert script.get_heads() == ["e1_embedding_models"]  # the embedding models sit on 09-01, which sits on local mode
+    assert script.get_revision("e1_embedding_models").down_revision == "p9_0901_twin_agentnet"
     assert script.get_revision("p9_0901_twin_agentnet").down_revision == "l1_local_mode"
     assert script.get_revision("l1_local_mode").down_revision == "p8_0801_wind_tunnel"
     assert script.get_revision("p8_0801_wind_tunnel").down_revision == "p7_0702_langgraph"

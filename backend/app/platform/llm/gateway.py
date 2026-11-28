@@ -20,6 +20,11 @@ from .failures import AIDisabled, ProviderUnavailable, SchemaInvalid
 
 MTOK = 1_000_000
 ATTEMPTS = 2  # one fresh call after invalid output, then failure (AI_SYSTEM 2.4)
+EMBED_TASK = "embed"
+# texts per embeddings request: a failed request is cheap to repeat (OpenAI's own per-request limits were not read)
+EMBED_BATCH = 100
+EMBED_PROMPT_VERSION = "none"  # llm_calls wants one; an embedding has no prompt
+QUERY_TIMEOUT_SECONDS = 4.0  # a search waits this long, once: no SDK retries, then it falls back to keywords
 
 _INSERT_CALL = text(
     "INSERT INTO llm_calls (task, prompt_version, model_id, outcome, user_id, campaign_id, agent_run_id, input_tokens, "
@@ -214,3 +219,57 @@ def _complete_for(
             if result is not None:
                 return result
         raise SchemaInvalid(refused=outcome == "refused")
+
+
+def embed_texts(
+    texts: list[str], *, principal: UUID | None, ledger: Role = "worker", quick: bool = False
+) -> list[list[float]]:
+    """One vector per text, in order, from the `embed` route (OpenAI, and only OpenAI: see models.toml).
+
+    The texts go in requests of at most EMBED_BATCH, and every request leaves one llm_calls row with its input
+    tokens and their cost, as a chat call does (the texts themselves are never stored). Raises AIDisabled when no
+    route or key is configured (nothing is called), or ProviderUnavailable when a request fails: the rows of the
+    requests that succeeded before it stay, and so does the failed one's. `quick` is for a person waiting on a search:
+    a short timeout and no SDK retries. `ledger` is the login that writes the rows, as in `complete`.
+    """
+    if not texts:
+        return []
+    token = registry.LEDGER.set(ledger)
+    try:
+        return _embed_batches(texts, principal, quick)
+    finally:
+        registry.LEDGER.reset(token)
+
+
+def _embed_batches(texts: list[str], principal: UUID | None, quick: bool) -> list[list[float]]:
+    settings = config.get()
+    try:
+        route = registry.route(EMBED_TASK, settings)
+    except AIDisabled as disabled:
+        log.event(
+            "llm.unavailable",
+            level=logging.WARNING,
+            task=EMBED_TASK,
+            provider=settings.llm_provider,
+            error_code=disabled.reason,
+        )
+        raise
+    model_id = registry.model_id(route)
+    timeout, retries = (QUERY_TIMEOUT_SECONDS, 0) if quick else (route.timeout_seconds, adapters.SDK_RETRIES)
+    vectors: list[list[float]] = []
+    with telemetry.span("llm.embed", task=EMBED_TASK, provider=route.provider):
+        for start in range(0, len(texts), EMBED_BATCH):
+            started = time.monotonic()
+            try:
+                reply = adapters.call_openai_embeddings(
+                    route, texts[start : start + EMBED_BATCH], timeout=timeout, retries=retries
+                )
+            except ProviderUnavailable as failure:
+                outcome = "timeout" if failure.timed_out else "provider_error"
+                _record(route, model_id, EMBED_PROMPT_VERSION, principal, 1, outcome, None, started)
+                raise
+            _record(
+                route, model_id, EMBED_PROMPT_VERSION, principal, 1, "ok", Reply("", reply.input_tokens, 0), started
+            )
+            vectors.extend(reply.vectors)
+    return vectors

@@ -13,30 +13,33 @@ import pytest
 from sqlalchemy import text
 
 from app.ingest import embedding, jobs
-from app.platform import db, queue, scheduler
+from app.platform import config, db, queue, scheduler
 from app.platform.llm import embed
 
 NOW = datetime(2030, 1, 1, 10, 30, tzinfo=timezone.utc)
 FIVE_MINUTES = 300
 
 
-def vector(first):
-    """A 384-dimension vector that starts with `first` and is zero elsewhere."""
-    return [first] + [0.0] * 383
+def vector(first, dimensions=384):
+    """A vector of the local model's width (or the width given) that starts with `first` and is zero elsewhere."""
+    return [first] + [0.0] * (dimensions - 1)
 
 
 class StandIn:
     """Replaces the local model: remembers every batch it was given and returns a recognisable vector per text."""
 
-    def __init__(self):
+    def __init__(self, dimensions=384):
         self.batches = []
+        self.options = []  # what each call said besides the texts: the model it expects
+        self.dimensions = dimensions
         self.during = None  # a function to run while the model is "working", to change the database under the sweep
 
-    def __call__(self, texts):
+    def __call__(self, texts, **options):
         self.batches.append(list(texts))
+        self.options.append(options)
         if self.during is not None:
             self.during()
-        return [vector(len(t) / 10000) for t in texts]
+        return [vector(len(t) / 10000, self.dimensions) for t in texts]
 
     @property
     def texts(self):
@@ -46,6 +49,16 @@ class StandIn:
 @pytest.fixture
 def model(monkeypatch):
     stand_in = StandIn()
+    monkeypatch.setattr(embedding, "embed_passages", stand_in)
+    return stand_in
+
+
+@pytest.fixture
+def openai_model(monkeypatch):
+    """The platform runs on an OpenAI key, so the active model is OpenAI's, whose vectors are 1536 wide."""
+    settings = config.load({"APP_ENV": "test", "LLM_PROVIDER": "openai", "OPENAI_API_KEY": "k"})
+    monkeypatch.setattr(config, "get", lambda: settings)
+    stand_in = StandIn(dimensions=1536)
     monkeypatch.setattr(embedding, "embed_passages", stand_in)
     return stand_in
 
@@ -131,15 +144,15 @@ def test_the_sweep_embeds_open_canonical_listed_jobs_and_leaves_every_other_row_
     closed = add_job(conn, source, 2, status="closed", closed_at=NOW)
     duplicate = add_job(conn, source, 3, canonical_job_id=wanted)
     unlisted = add_job(conn, source, 4, is_listed=False)
-    done = add_job(conn, source, 5, embedding="[" + ",".join(["0.5"] * 384) + "]", embedding_model="older-model")
+    done = add_job(conn, source, 5, embedding="[" + ",".join(["0.5"] * 384) + "]", embedding_model=embed.LOCAL_MODEL_ID)
 
     assert embedding.embed_pending(conn) == 1
 
-    assert row(conn, wanted).embedding_model == embed.MODEL_ID  # the vector says which model made it
+    assert row(conn, wanted).embedding_model == embed.LOCAL_MODEL_ID  # the vector says which model made it
     assert stored_first_value(conn, wanted) > 0
     for left_alone in (closed, duplicate, unlisted):
         assert tuple(row(conn, left_alone)) == (None, None)
-    assert tuple(row(conn, done))[1] == "older-model"  # an existing vector is not replaced
+    assert tuple(row(conn, done))[1] == embed.LOCAL_MODEL_ID  # a vector of the active model is not replaced
     assert stored_first_value(conn, done) == 0.5
     assert len(model.texts) == 1
 
@@ -195,7 +208,7 @@ def test_a_vector_is_not_written_over_a_job_that_changed_while_it_was_being_embe
 
     model.during = None
     assert embedding.embed_pending(conn) == 1  # the next sweep picks the new version up
-    assert row(conn, job).embedding_model == embed.MODEL_ID
+    assert row(conn, job).embedding_model == embed.LOCAL_MODEL_ID
     assert model.batches[-1] == ["Invented title 1\nInvented posting, rewritten by a fetch."]
 
 
@@ -206,14 +219,14 @@ def test_a_vector_that_another_sweep_wrote_first_is_kept(conn, model):
     def another_worker_finishes_first():
         literal = embedding.vector_literal(vector(0.5))
         conn.execute(
-            text("UPDATE jobs SET embedding = CAST(:v AS vector), embedding_model = 'other-worker' WHERE id = :id"),
-            {"v": literal, "id": job},
+            text("UPDATE jobs SET embedding = CAST(:v AS vector), embedding_model = :m WHERE id = :id"),
+            {"v": literal, "m": embed.LOCAL_MODEL_ID, "id": job},
         )
 
     model.during = another_worker_finishes_first
     assert embedding.embed_pending(conn) == 0
 
-    assert row(conn, job).embedding_model == "other-worker"
+    assert row(conn, job).embedding_model == embed.LOCAL_MODEL_ID
     assert stored_first_value(conn, job) == 0.5
 
 
@@ -237,13 +250,13 @@ def test_one_sweep_takes_a_bounded_batch_oldest_first(conn, model, monkeypatch):
     ids = [add_job(conn, source, n) for n in (1, 2, 3)]
 
     assert embedding.embed_pending(conn) == 2
-    assert [row(conn, i).embedding_model for i in ids] == [embed.MODEL_ID, embed.MODEL_ID, None]
+    assert [row(conn, i).embedding_model for i in ids] == [embed.LOCAL_MODEL_ID, embed.LOCAL_MODEL_ID, None]
     assert embedding.embed_pending(conn) == 1
-    assert row(conn, ids[2]).embedding_model == embed.MODEL_ID
+    assert row(conn, ids[2]).embedding_model == embed.LOCAL_MODEL_ID
 
 
 def test_a_model_that_is_not_there_fails_the_sweep_so_the_queue_records_it(conn, monkeypatch):
-    def unavailable(texts):
+    def unavailable(texts, **options):
         raise embed.EmbeddingUnavailable("the model")
 
     monkeypatch.setattr(embedding, "embed_passages", unavailable)
@@ -293,5 +306,106 @@ def test_the_worker_role_holds_every_privilege_the_sweep_needs(engine, committed
         embedding.embed_sweep(conn, {})
 
     with engine.connect() as c:
-        assert row(c, job).embedding_model == embed.MODEL_ID
+        assert row(c, job).embedding_model == embed.LOCAL_MODEL_ID
     assert model.texts == ["Invented title 1\nYou need Python"]
+
+
+# ---- a change of model re-embeds every row (AI_SYSTEM 3.1) -----------------------------------------------------------
+
+
+def literal_of(first, dimensions):
+    return embedding.vector_literal(vector(first, dimensions))
+
+
+def test_the_sweep_names_the_model_it_read_so_a_vector_is_never_stored_under_another_name(conn, model):
+    add_job(conn, add_source(conn), 1)
+
+    embedding.embed_pending(conn)
+
+    assert model.options == [{"model": embed.LOCAL_MODEL_ID}]
+
+
+def test_rows_made_by_another_model_are_embedded_again_and_rows_of_the_active_model_are_left_alone(conn, openai_model):
+    source = add_source(conn)
+    local_made = add_job(conn, source, 1, embedding=literal_of(0.5, 384), embedding_model=embed.LOCAL_MODEL_ID)
+    older = add_job(conn, source, 2, embedding=literal_of(0.5, 384), embedding_model="some-older-model")
+    blank = add_job(conn, source, 3)
+    current = add_job(conn, source, 4, embedding=literal_of(0.25, 1536), embedding_model=embed.OPENAI_MODEL_ID)
+    before = conn.execute(text("SELECT xmin::text FROM jobs WHERE id = :id"), {"id": current}).scalar_one()
+
+    assert embedding.embed_pending(conn) == 3
+
+    for job in (local_made, older, blank):
+        found = row(conn, job)
+        assert found.embedding_model == embed.OPENAI_MODEL_ID
+        assert len(found.embedding.strip("[]").split(",")) == 1536  # the old 384-wide vector is gone, not padded
+    assert conn.execute(text("SELECT xmin::text FROM jobs WHERE id = :id"), {"id": current}).scalar_one() == before
+    assert stored_first_value(conn, current) == 0.25
+    assert openai_model.options == [{"model": embed.OPENAI_MODEL_ID}]
+    assert len(openai_model.texts) == 3  # not one for the row that was already current
+
+
+def test_the_new_model_embeds_only_open_canonical_listed_jobs_like_the_old_one(conn, openai_model):
+    source = add_source(conn)
+    old = {"embedding": literal_of(0.5, 384), "embedding_model": "old"}
+    wanted = add_job(conn, source, 1, **old)
+    closed = add_job(conn, source, 2, status="closed", closed_at=NOW, **old)
+    duplicate = add_job(conn, source, 3, canonical_job_id=wanted, **old)
+    unlisted = add_job(conn, source, 4, is_listed=False, **old)
+
+    assert embedding.embed_pending(conn) == 1
+
+    assert row(conn, wanted).embedding_model == embed.OPENAI_MODEL_ID
+    for left_alone in (closed, duplicate, unlisted):
+        assert row(conn, left_alone).embedding_model == "old"  # ranking never reads them, so no money is spent on them
+
+
+def test_a_job_that_changed_while_the_new_model_was_working_keeps_its_newer_version_and_no_stale_vector(
+    conn, openai_model
+):
+    source = add_source(conn)
+    job = add_job(conn, source, 1, embedding=literal_of(0.5, 384), embedding_model=embed.LOCAL_MODEL_ID)
+
+    def a_fetch_changes_the_posting():
+        conn.execute(
+            text(
+                """UPDATE jobs SET description = 'Invented posting, rewritten by a fetch.', content_version = 2,
+                                   embedding = NULL, embedding_model = NULL WHERE id = :id"""
+            ),
+            {"id": job},
+        )
+
+    openai_model.during = a_fetch_changes_the_posting
+    assert embedding.embed_pending(conn) == 0
+    assert tuple(row(conn, job)) == (None, None)  # the vector belonged to the old text, so it was dropped
+
+    openai_model.during = None
+    assert embedding.embed_pending(conn) == 1
+    assert row(conn, job).embedding_model == embed.OPENAI_MODEL_ID
+    assert openai_model.batches[-1] == ["Invented title 1\nInvented posting, rewritten by a fetch."]
+
+
+def test_a_second_sweep_of_the_new_model_does_not_write_over_the_first(conn, openai_model):
+    source = add_source(conn)
+    job = add_job(conn, source, 1, embedding=literal_of(0.5, 384), embedding_model=embed.LOCAL_MODEL_ID)
+
+    def another_worker_finishes_first():
+        conn.execute(
+            text("UPDATE jobs SET embedding = CAST(:v AS vector), embedding_model = :m WHERE id = :id"),
+            {"v": literal_of(0.75, 1536), "m": embed.OPENAI_MODEL_ID, "id": job},
+        )
+
+    openai_model.during = another_worker_finishes_first
+    assert embedding.embed_pending(conn) == 0
+    assert stored_first_value(conn, job) == 0.75
+
+
+def test_when_the_new_model_is_unavailable_the_old_vectors_stay_so_search_keeps_what_it_has(conn, monkeypatch):
+    settings = config.load({"APP_ENV": "test", "EMBEDDING_PROVIDER": "openai"})  # asked for, with no key to serve it
+    monkeypatch.setattr(config, "get", lambda: settings)
+    job = add_job(conn, add_source(conn), 1, embedding=literal_of(0.5, 384), embedding_model=embed.LOCAL_MODEL_ID)
+
+    with pytest.raises(embed.EmbeddingUnavailable):
+        embedding.embed_pending(conn)
+
+    assert row(conn, job).embedding_model == embed.LOCAL_MODEL_ID  # nothing was cleared or written

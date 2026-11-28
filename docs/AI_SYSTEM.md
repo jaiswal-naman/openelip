@@ -259,6 +259,7 @@ All three have a 1M-token context and 128K-token maximum output (models overview
 | `gpt-6.2-sol` | 2.00 | 0.10 | 10.00 |
 | `gpt-6.2-astra` | 8.00 | 0.40 | 40.00 |
 | `text-embedding-3-small` | 0.02 | | |
+| `text-embedding-3-large` (embeddings only; no output price) | 0.13 | | |
 
 Prices read 2026-11-28, standard tier, prompts up to 272k tokens. Above that, input and output rise (`gpt-6-luna` $0.20 and $0.75, `gpt-6.2-sol` $4.00 and $15.00) and cache writes have their own rates. Batch is listed at about half of standard. Models: `gpt-6-luna`, "Our most efficient model for focused, high-volume tasks"; `gpt-6.2-sol`, "Our go-to model for everyday work, from coding to powering agents at scale" ([models](https://developers.openai.com/api/docs/models), [gpt-6-luna](https://developers.openai.com/api/docs/models/gpt-6-luna), [gpt-6.2-sol](https://developers.openai.com/api/docs/models/gpt-6.2-sol), all verified 2026-11-28). Both take Chat Completions and structured outputs; neither page lists a deprecation date. The Chat Completions reference gives `medium` as the default reasoning effort, and the `gpt-6.2-sol` page says the API rejects `none`.
 
@@ -295,21 +296,32 @@ Those terms do not meet the premise of 2.6, that real-time calls are not kept by
 
 ### 3.1 Embedding model
 
-**Decision: `BAAI/bge-small-en-v1.5`, run locally through `fastembed`.**
+**Decision (2026-11-28): two models, chosen by what the platform runs on.** When the platform runs on an OpenAI key, jobs, search queries and profile passages are embedded by OpenAI's `text-embedding-3-large`, asked for 1536 dimensions. Without an OpenAI key, or with `EMBEDDING_PROVIDER=local`, they are embedded by `BAAI/bge-small-en-v1.5` on this machine's CPU through `fastembed`, as before. `EMBEDDING_PROVIDER` is `auto` (the default: OpenAI's when the platform runs on OpenAI, the local model otherwise), `local` (always the local model, for privacy) or `openai` (always OpenAI's; with no usable OpenAI key there are no vectors and search is by keywords, never a quiet change to the local model, because vectors of two models cannot be compared).
 
-| Fact | Value | Source (verified 2026-11-22) |
+| Fact | Local model | OpenAI model |
 |---|---|---|
-| Dimensions | 384, matching the `vector(384)` columns | [model card](https://huggingface.co/BAAI/bge-small-en-v1.5) |
-| Maximum input | 512 tokens | model card |
-| Size | 33.4M parameters; 0.067 GB in fastembed | model card; [fastembed models](https://qdrant.github.io/fastembed/examples/Supported_Models/) |
-| Licence | MIT | model card |
-| Query prefix | "Represent this sentence for searching relevant passages:" recommended for short queries; passages need none | model card |
-| Runtime | ONNX Runtime without PyTorch, Python 3.10+; fastembed's default model | [fastembed](https://pypi.org/project/fastembed/) |
-| Vendor telemetry | Off. ONNX Runtime 1.29+ sends usage events to Microsoft unless `ORT_DISABLE_TELEMETRY=1` is set before it loads; `platform/llm/embed.py` and the image build set it. Measured 2026-11-28 with a DNS probe in the backend image: one lookup of `mobile.events.data.microsoft.com` by default, none with the switch | measured |
+| Model id stored with each vector | `BAAI/bge-small-en-v1.5` | `openai/text-embedding-3-large@1536` |
+| Dimensions | 384 | 1536 (the model's own length is 3072; the API shortens it with `dimensions`) |
+| Maximum input | 512 tokens | 8192 tokens per input |
+| Price | none (CPU time) | USD 0.13 per million input tokens (OpenAI pricing page, standard tier, read 2026-11-28) |
+| Query prefix | "Represent this sentence for searching relevant passages:" for short queries; passages need none | none |
+| Runs | ONNX Runtime without PyTorch, Python 3.10+, no key, no GPU, MIT licence | OpenAI's API, through the model gateway: priced, one `llm_calls` row per request, task `embed` |
+| Sources | [model card](https://huggingface.co/BAAI/bge-small-en-v1.5), [fastembed](https://pypi.org/project/fastembed/) (verified 2026-11-22) | [pricing](https://developers.openai.com/api/docs/pricing), [embeddings guide](https://developers.openai.com/api/docs/guides/embeddings) (read 2026-11-28) |
+| Vendor telemetry | Off. ONNX Runtime 1.29+ sends usage events to Microsoft unless `ORT_DISABLE_TELEMETRY=1` is set before it loads; `platform/llm/embed.py` and the image build set it. Measured 2026-11-28 with a DNS probe in the backend image: one lookup of `mobile.events.data.microsoft.com` by default, none with the switch | none from this code; OpenAI receives the texts sent |
 
-It needs no key and no GPU, avoids PyTorch in the image, and its licence fits the intended MIT licence.
+**Why.** On the matching benchmark's labelled pairs (20 invented profiles, 366 pooled pairs, labels drafted by an agent, maintainer review pending), each profile's labelled jobs were ranked by cosine similarity, using the application's own passage and job text (the first 2,000 characters of the posting). Mean ndcg@5 was 0.684 for bge-small and 0.796 for `text-embedding-3-large` at 1536 (+0.112, 95% paired bootstrap interval +0.058 to +0.166); ndcg@10 was 0.733 and 0.852 (+0.119, +0.079 to +0.162). 1536 was the best of the widths 384, 768, 1024, 1536, 2000 and 3072. `text-embedding-3-small` showed no detectable difference at @5, and embedding the whole posting instead of 2,000 characters did not help. The limits: the measure ranks only each profile's labelled jobs (it is not recall over the index), the pool came from bge-based methods so any pool bias favours bge, the job text is the text before requirements are extracted, 1536 was picked after seeing six widths, and the 1536 vectors were cut from 3072 rather than asked from the API with `dimensions` (one check found the two the same: cosine 1.0002). All of it, with the full tables, is in [`evals/matching_benchmark/EMBEDDINGS.md`](../evals/matching_benchmark/EMBEDDINGS.md).
 
-**One embedding model serves an instance;** changing it is a migration that re-embeds every row, and the model id is stored with each vector so a mixed state is detected. Before release, 384-dimension alternatives listed by fastembed (`snowflake-arctic-embed-xs`, `all-MiniLM-L6-v2`, a multilingual MiniLM) are compared on the retrieval gold set; the cheapest in CPU time within two points of the best on recall at 300 wins (target). An API embedding model such as `text-embedding-3-small` ($0.02 per million tokens) can be adopted only through the same migration.
+**What leaves the computer on the OpenAI path.** Job text (public postings), every search query of a signed-in person, typed into the job search or sent by the chat's search tool (a visitor with no session searches by keywords, because the call could not be recorded against anyone), and, only for a person who agreed to AI processing, a passage built from their confirmed resume facts (contact details removed, as for every task). Without that consent the person is retrieved for by keywords alone and the log says `match.keyword_fallback`. OpenAI keeps API data up to 30 days in its abuse-monitoring logs (the retention note in `backend/config/models.toml`); the `embed` task is listed under OpenAI on `/trust` and in `GET /v1/privacy/subprocessors`, as the other OpenAI tasks are, and it does not change the AI-processing wording people have agreed to. `EMBEDDING_PROVIDER=local` keeps all of it on this computer.
+
+**Cost.** Embedding 10,000 postings at about 500 tokens each (an estimate, not measured on the index) is about 5 million tokens, about USD 0.65 once, then only postings whose text changes. A search query is a few tokens.
+
+**One embedding model serves an instance at a time.** The model's id is stored with each vector (`jobs.embedding_model`). A change of model is not a migration of rows: the sweep (every five minutes, 500 postings each) re-embeds every open, canonical, listed job whose vector is of another model, and writes a vector only if the posting is still the version it read. Until a posting has a vector of the active model it ranks by keywords only, and a search that finds no posting with a vector of the active model answers in keyword mode and calls no embedding model. At 500 a sweep, 10,000 postings take about 20 sweeps, about 100 minutes (calculated, not measured). A model that cannot be reached fails the sweep (the queue records it and tries again) and leaves the old vectors in place.
+
+**The column and its indexes.** `jobs.embedding` is a plain `vector`, so vectors of both widths live in it (revision `e1_embedding_models`). HNSW needs one width per index, so there are two partial expression indexes, one per model id, as pgvector's README describes for mixed widths. The search and retrieval statements rank inside a materialized CTE (an exact scan over the rows the filters kept, DATA_MODEL 6.1), and an `EXPLAIN` of both on 2026-11-28 shows neither index used (nor was the old one), so they are for the day the dense list moves to the index.
+
+**Search latency.** With the OpenAI model each search with a query makes one network request to embed it. It is not measured. The request has a 4-second timeout and no retries; when it fails the search answers by keywords, as it does when the local model cannot load.
+
+Before release, 384-dimension alternatives listed by fastembed (`snowflake-arctic-embed-xs`, `all-MiniLM-L6-v2`, a multilingual MiniLM) are compared on the retrieval gold set for the local model; the cheapest in CPU time within two points of the best on recall at 300 wins (target).
 
 ### 3.2 What is embedded
 
@@ -318,7 +330,7 @@ It needs no key and no GPU, avoids PyTorch in the image, and its licence fits th
 | Job version | Title, then requirement texts in posting order, required first, cut at 512 tokens; boilerplate excluded | After requirement extraction |
 | New job before extraction | Title plus the first description segments | On ingest; replaced once requirements exist |
 | Candidate profile | A code-rendered summary of confirmed facts: target titles, skills, recent titles, strongest achievements. No name or contact details | When the facts version changes |
-| Search query from chat or the jobs page | The query text with the query prefix | At query time |
+| Search query from chat or the jobs page | The query text, with the query prefix for the local model and as it is for OpenAI's | At query time |
 
 There is no vector retrieval over the Career Record: a record is a few dozen facts and fits in a prompt. Researcher pages are not embedded.
 
@@ -1609,7 +1621,7 @@ Each issue this document raised, with its resolution from the design review and 
 | 7 | PLT-07 and the flight recorder | Adopted: PLT-07 governs logs and traces; recorder rows are user data |
 | 8 | Places the entity list did not name | Resolved: `campaigns.budget_microusd` and `APP_MONTHLY_BUDGET_USD`; pending Twin questions are pending approvals; the hold is an `outbox` row with `not_before`; small artifacts in `campaign_steps.output`; `llm_calls.prompt_version`, `agent_runs.config_version` |
 | 9 | Batch retention and self-hosting | Owner decision G9; recommended off by default, disclosed on `/trust`; this document assumes off |
-| 10 | API embeddings against `vector(384)` | Resolved: one model per instance; a change is a re-embedding migration |
+| 10 | API embeddings against `vector(384)` | Resolved 2026-11-28: the column holds any one width, one model is active at a time, and a change re-embeds through the sweep (3.1) |
 | 11 | Local endpoints vary; models needed a lifecycle | Resolved: a gold-set run per task and model measures it and its numbers are published per model; no run opens or closes a feature; retirement is `is_active = false` (see the suite gap in 12.2) |
 | 12 | NET-01 did not say who holds which token | Resolved: two principals with fixed scopes; NET-02 runs the ordinary ask; NET-01 and NET-02 reworded |
 | 13 | Twin cost and abuse | Adopted: attributed to the organization; 40 questions and $0.50 per session |

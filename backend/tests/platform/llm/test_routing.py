@@ -133,12 +133,16 @@ OPENAI_ROUTES = {
     "twin.answer": (SOL, None),
 }
 OPENAI_PRICES = {LUNA: (100_000, 500_000), SOL: (2_000_000, 10_000_000)}
+# The one task that is not a chat: the vectors of search and matching (AI_SYSTEM 3.1). Only OpenAI has a route for it,
+# and the price is the embeddings price (USD 0.13 per million input tokens, nothing for output).
+EMBED = "embed"
+EMBED_MODEL = "text-embedding-3-large"
 
 
 def test_openai_serves_every_task_with_the_model_of_the_same_price_and_the_documented_effort():
-    found = [r for r in registry.table() if r.provider == "openai"]
+    found = [r for r in registry.table() if r.provider == "openai" and r.task != EMBED]
     assert {r.task: (r.model, r.reasoning_effort) for r in found} == OPENAI_ROUTES
-    assert {r.task for r in registry.table()} == set(OPENAI_ROUTES)  # no task is left without an OpenAI route
+    assert {r.task for r in registry.table()} == {*OPENAI_ROUTES, EMBED}  # no task is left without an OpenAI route
     for r in found:
         assert (r.input_microusd_per_mtok, r.output_microusd_per_mtok) == OPENAI_PRICES[r.model]
         assert r.price_checked_at is not None and r.price_checked_at.date().isoformat() == "2026-11-28" and r.priced
@@ -146,6 +150,20 @@ def test_openai_serves_every_task_with_the_model_of_the_same_price_and_the_docum
     for said in ("2026-11-28", "not used for training", "up to 30 days", "may contain prompts and responses"):
         assert said in note
     assert "zero data retention needs OpenAI's approval" in note and "never identified" not in note
+
+
+def test_embed_is_the_one_embedding_task_and_only_openai_has_a_route_for_it():
+    (embed_route,) = [r for r in registry.table() if r.task == EMBED]
+
+    assert (embed_route.provider, embed_route.model, embed_route.kind, embed_route.dimensions) == (
+        "openai",
+        EMBED_MODEL,
+        "embedding",
+        1536,
+    )
+    assert (embed_route.input_microusd_per_mtok, embed_route.output_microusd_per_mtok) == (130_000, 0)
+    assert embed_route.price_checked_at is not None and embed_route.price_checked_at.date().isoformat() == "2026-11-28"
+    assert {r.kind for r in registry.table() if r.task != EMBED} == {"chat"}
 
 
 def test_every_task_resolves_on_openai_with_a_key_and_the_identified_ones_too():
@@ -203,14 +221,14 @@ def test_the_registry_row_is_created_on_first_use_without_a_sync(harness):
 
 def test_sync_mirrors_the_file_one_row_per_model_and_retires_the_rest(harness):
     with harness.engine.begin() as conn:
-        assert registry.sync(conn) == 6  # anthropic haiku and sonnet, openai luna and sol, local, fake
+        assert registry.sync(conn) == 7  # anthropic haiku and sonnet, openai luna, sol and embeddings, local, fake
         conn.execute(
             text(
                 "INSERT INTO model_registry (provider, model_name, kind, is_local, retention_note) "
                 "VALUES ('old', 'm', 'chat', true, 'x')"
             )
         )
-        assert registry.sync(conn) == 6
+        assert registry.sync(conn) == 7
         found = conn.execute(
             text(
                 "SELECT provider, model_name, is_active, input_microusd_per_mtok, output_microusd_per_mtok "
@@ -223,7 +241,8 @@ def test_sync_mirrors_the_file_one_row_per_model_and_retires_the_rest(harness):
     assert rows[("openai", "gpt-6.2-sol")] == (True, 2_000_000, 10_000_000)
     assert rows[("local", "local-model")] == (True, None, None)
     assert rows[("anthropic", "claude-sonnet-5-5")][0] is True
-    assert rows[("old", "m")][0] is False and len(rows) == 7
+    assert rows[("openai", EMBED_MODEL)] == (True, 130_000, 0)
+    assert rows[("old", "m")][0] is False and len(rows) == 8
 
 
 def test_ping_writes_a_row_for_the_user_and_prints_its_id_and_cost(harness, capsys):

@@ -320,7 +320,9 @@ def _to_score(conn: Connection, ranked: list[Candidate], limit: int) -> list[_To
     ]
 
 
-def _prepare(user_id: UUID, trigger: str, day: date, limit: int, now: datetime) -> _Prepared | RunResult:
+def _prepare(
+    user_id: UUID, trigger: str, day: date, limit: int, now: datetime, may_score: bool
+) -> _Prepared | RunResult:
     with db.transaction(user_id=user_id, role="match") as conn:
         version = conn.execute(text("SELECT record_version FROM users WHERE id = :u"), {"u": user_id}).scalar()
         if version is None:
@@ -331,7 +333,8 @@ def _prepare(user_id: UUID, trigger: str, day: date, limit: int, now: datetime) 
         facts = profile.usable_facts(conn, user_id)
         preferences = retrieval.active_preferences(conn, user_id)
         terms = retrieval.query_terms(facts, preferences)
-        vector = retrieval.profile_vector(facts, preferences)
+        # the same consent that lets a model score: an OpenAI profile vector would send the facts to the same provider
+        vector = retrieval.profile_vector(facts, preferences, user_id=user_id, consented=may_score)
         found = retrieval.candidates(conn, user_id, vector=vector, terms=terms)
         sample = retrieval.filtered_sample(conn, user_id, vector=vector, terms=terms)
         total = retrieval.filtered_count(conn, user_id)
@@ -636,7 +639,7 @@ def run(user_id: UUID, *, trigger: str, local_date: date | None = None, score_li
     started, now = time.monotonic(), datetime.now(timezone.utc)
     zone, display_name, may_score = _account(user_id)
     day = local_date or now.astimezone(ZoneInfo(zone)).date()
-    prepared = _prepare(user_id, trigger, day, score_limit, now)
+    prepared = _prepare(user_id, trigger, day, score_limit, now, may_score)
     if isinstance(prepared, RunResult):
         return prepared  # a nightly run already done for this date
     try:

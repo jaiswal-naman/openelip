@@ -430,8 +430,8 @@ def world(engine, evals_db, monkeypatch):
     settings = settings_for(evals_db)
     monkeypatch.setattr(config, "get", lambda: settings)
     monkeypatch.setattr(db, "_engines", {})
-    monkeypatch.setattr(retrieval, "embed_passages", lambda texts: [UNIT for _ in texts])
-    monkeypatch.setattr(embedding, "embed_passages", lambda texts: [UNIT for _ in texts])
+    monkeypatch.setattr(retrieval, "embed_passages", lambda texts, **options: [UNIT for _ in texts])
+    monkeypatch.setattr(embedding, "embed_passages", lambda texts, **options: [UNIT for _ in texts])
     monkeypatch.setattr(bench_run, "IDLE_SECONDS", 0)
     with engine.begin() as c:
         c.execute(text(EMPTY))

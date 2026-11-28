@@ -104,3 +104,16 @@ def test_the_settings_know_whether_the_provider_was_named_in_the_environment():
     assert config.load({}).llm_provider_is_set is False
     assert config.load({"LLM_PROVIDER": ""}).llm_provider_is_set is False
     assert config.load({"LLM_PROVIDER": "fake"}).llm_provider_is_set is True
+
+
+def test_the_embedding_provider_is_auto_unless_the_environment_says_local_or_openai():
+    assert config.load({}).embedding_provider == "auto"
+    assert config.load({"EMBEDDING_PROVIDER": ""}).embedding_provider == "auto"
+    assert config.load({"EMBEDDING_PROVIDER": " Local "}).embedding_provider == "local"
+    assert config.load({"EMBEDDING_PROVIDER": "openai"}).embedding_provider == "openai"
+
+
+def test_an_unknown_embedding_provider_stops_the_process_without_echoing_the_value():
+    with pytest.raises(config.ConfigError) as refused:
+        config.load({"EMBEDDING_PROVIDER": "opnai-typo"})
+    assert "EMBEDDING_PROVIDER" in str(refused.value) and "opnai-typo" not in str(refused.value)

@@ -25,7 +25,7 @@ from uuid import UUID
 from sqlalchemy import Connection, Row, TextClause, text
 
 from app.platform import log
-from app.platform.llm.embed import MODEL_ID, EmbeddingUnavailable, embed_passages
+from app.platform.llm.embed import OPENAI_MODEL_ID, EmbeddingUnavailable, active_model, embed_passages
 from app.profile import api as profile
 
 from .checker import JobFacts
@@ -134,16 +134,27 @@ def query_terms(facts: Sequence[Mapping[str, Any]], preferences: Sequence[Mappin
     return " or ".join(list(words)[:MAX_TERMS])
 
 
-def profile_vector(facts: Sequence[Mapping[str, Any]], preferences: Sequence[Mapping[str, Any]]) -> list[float] | None:
-    """The passage embedded on this machine (nothing is stored), or None when there is no passage or the embedder
-    cannot run here, in which case retrieval is by keywords alone."""
+def profile_vector(
+    facts: Sequence[Mapping[str, Any]], preferences: Sequence[Mapping[str, Any]], *, user_id: UUID, consented: bool
+) -> list[float] | None:
+    """The passage embedded (nothing is stored), or None when there is no passage or it cannot be embedded, in which
+    case retrieval is by keywords alone, and the log says why.
+
+    The passage is built from the person's confirmed resume facts. The local model keeps it on this computer, so it
+    needs no consent. OpenAI's model sends it to OpenAI, so it is embedded only for a person who agreed to AI processing
+    (`consented`); without that the person is retrieved for by keywords, and never with a local vector instead, because
+    vectors of two models cannot be compared. The call is recorded against `user_id`."""
     passage = profile_text(facts, preferences)
     if not passage:
         return None
+    model = active_model()
+    if model == OPENAI_MODEL_ID and not consented:
+        log.event("match.keyword_fallback", level=logging.WARNING, error_code="no_ai_consent")
+        return None
     try:
-        return embed_passages([passage])[0]
+        return embed_passages([passage], model=model, principal=user_id)[0]
     except EmbeddingUnavailable:
-        log.event("match.keyword_fallback", level=logging.WARNING)
+        log.event("match.keyword_fallback", level=logging.WARNING, error_code="embedder_unavailable")
         return None
 
 
@@ -223,7 +234,7 @@ def _fused(
         return []  # nothing to rank on: unknown stays unknown, no job is picked for no reason
     values: dict[str, Any] = {"u": user_id, "limit": limit, "depth": depth}
     if dense and vector is not None:
-        values |= {"vector": _vector_literal(vector), "model": MODEL_ID}
+        values |= {"vector": _vector_literal(vector), "model": active_model()}
     if sparse:
         values["terms"] = terms
     rows = conn.execute(_statement(violators=violators, dense=dense, sparse=sparse), values)
@@ -278,12 +289,20 @@ def filtered_count(conn: Connection, user_id: UUID) -> int:
 
 
 def retrieve(
-    conn: Connection, user_id: UUID, *, mode: str = "hybrid", limit: int = RUN_LIMIT, depth: int = LIST_DEPTH
+    conn: Connection,
+    user_id: UUID,
+    *,
+    mode: str = "hybrid",
+    limit: int = RUN_LIMIT,
+    depth: int = LIST_DEPTH,
+    consented: bool = False,
 ) -> list[Candidate]:
     """candidates() for the person's own record: the keywords and the profile vector are built from their usable facts
-    and preferences. This is the match.api.retrieve of the Phase 4 contract."""
+    and preferences. This is the match.api.retrieve of the Phase 4 contract. `consented` says the person agreed to AI
+    processing, which an OpenAI profile vector needs (profile_vector); the caller knows, this role cannot read
+    consents."""
     facts = profile.usable_facts(conn, user_id)
     preferences = active_preferences(conn, user_id)
-    vector = profile_vector(facts, preferences) if mode != "keyword" else None
+    vector = profile_vector(facts, preferences, user_id=user_id, consented=consented) if mode != "keyword" else None
     terms = query_terms(facts, preferences)
     return candidates(conn, user_id, mode=mode, limit=limit, depth=depth, vector=vector, terms=terms)

@@ -41,6 +41,9 @@ def point_app_at(url: URL) -> None:
     from app.platform import config
 
     os.environ["DATABASE_URL_MIGRATE"] = url.render_as_string(hide_password=False)
+    # The benchmark's vector methods are measured with the local model (REPORT.md), and its invented profiles must
+    # not be sent to a provider by a key left in the shell. embedding_compare.py is the OpenAI comparison.
+    os.environ["EMBEDDING_PROVIDER"] = "local"
     for name, (login, variable, default) in LOGINS.items():
         login_url = url.set(username=login, password=os.environ.get(variable) or default)
         os.environ[f"DATABASE_URL_{name}"] = login_url.render_as_string(hide_password=False)

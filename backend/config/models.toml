@@ -437,3 +437,26 @@ model = "gpt-6.2-sol"
 input_usd_per_mtok = 2.00
 output_usd_per_mtok = 10.00
 price_checked_at = 2026-11-28
+
+# Embeddings (AI_SYSTEM 3.1): the vectors of job postings, of search queries and, for a person who agreed to AI processing,
+# of their profile passage. Only OpenAI has a route: Anthropic offers no embedding model, and a model server of your own
+# (the local provider) or the recorded fake leave the vectors to the local model in app/platform/llm/embed.py, which is
+# also what every other setting of EMBEDDING_PROVIDER means. A posting is public; a search query is typed by a person and
+# the profile passage is built from their confirmed resume facts, so the task's class is the stricter one, identified.
+# `kind = "embedding"` makes the registry row an embedding model; its `dimensions` is the length asked of the API (the
+# model's own is 3072, shortened by the API) and must match the vector columns' index in db/versions/e1_embedding_models.py.
+# There is no output price and the ledger's output tokens are 0. max_tokens is the input limit of one text (8192, from
+# the embeddings guide, read 2026-11-28), not a cap on anything generated. The price is on the pricing page, standard tier.
+[tasks.embed]
+description = "Turns job postings, search queries and, with consent, a profile passage into vectors, so search and matching can rank by meaning."
+data_class = "identified"
+kind = "embedding"
+max_tokens = 8192
+timeout_seconds = 30    # assumption: one request of up to 100 inputs; a search asks for a shorter limit in code
+
+[tasks.embed.models.openai]
+model = "text-embedding-3-large"
+dimensions = 1536
+input_usd_per_mtok = 0.13
+output_usd_per_mtok = 0
+price_checked_at = 2026-11-28

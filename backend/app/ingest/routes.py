@@ -6,6 +6,7 @@ that carry it are marked x-untrusted-text in the schema (API.md 1.10), and the w
 
 from datetime import datetime
 from typing import Any, Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Path, Query, Request
 from pydantic import BaseModel, Field
@@ -105,6 +106,15 @@ def stats() -> dict[str, Any]:
     return envelope(dict(zip(keys, row)))
 
 
+def _signed_in(request: Request) -> UUID | None:
+    """The person behind the session cookie, or None for a visitor: this search is public, and only a signed-in person's
+    query vector (OpenAI's model, a paid request) can be recorded in the cost ledger."""
+    try:
+        return current_user(request).user_id
+    except ApiError:
+        return None
+
+
 @router.get("/v1/jobs", response_model=Envelope[list[Job]])
 def search_jobs(
     request: Request,
@@ -128,6 +138,7 @@ def search_jobs(
     if mode not in MODES:
         raise ApiError(400, "invalid_request", "mode must be hybrid or keyword.")
     person = current_user(request).user_id if apply_constraints else None
+    viewer = person or (_signed_in(request) if q.strip() and mode == "hybrid" else None)
     try:
         with db.transaction(person) as conn:
             page = search(
@@ -140,6 +151,7 @@ def search_jobs(
                 cursor=cursor,
                 mode=mode,
                 constrained_for=person,
+                viewer=viewer,
             )
     except InvalidCursor:
         raise ApiError(400, "invalid_request", "That cursor does not belong to this search. Start the search again.")

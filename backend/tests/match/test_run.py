@@ -12,7 +12,7 @@ import uuid
 import pytest
 from sqlalchemy import text
 
-from app.match import api, evidence, ranking, service
+from app.match import api, evidence, ranking, retrieval, service
 from app.match.validator import Verdict, VerdictSet
 from app.platform import config
 from app.platform.llm import ProviderUnavailable, registry
@@ -548,3 +548,18 @@ def test_a_run_for_a_person_who_cannot_be_matched_is_refused(engine, provider):
 def test_the_entry_points_other_modules_call_are_exported():
     assert api.run is service.run and api.RANKER_VERSION == ranking.RANKER_VERSION
     assert callable(api.retrieve) and callable(api.violations)
+
+
+@pytest.mark.parametrize("consent", [True, False])
+def test_the_run_tells_retrieval_whether_the_person_agreed_before_any_passage_can_be_embedded(
+    engine, provider, monkeypatch, consent
+):
+    provider()
+    seen = []
+    monkeypatch.setattr(retrieval, "profile_vector", lambda facts, preferences, **options: seen.append(options))
+    user = world.add_person(engine, consent=consent)
+    world.add_job(engine, "Role A")
+
+    service.run(user, trigger="onboarding", local_date=LOCAL_DATE)
+
+    assert seen == [{"user_id": user, "consented": consent}]
