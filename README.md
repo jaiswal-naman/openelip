@@ -1,194 +1,429 @@
-# OpenElip
+<p align="center">
+  <img src="https://img.shields.io/badge/OpenElip-Agent%20Job%20Search%20%26%20Hiring-6D5DFC?style=for-the-badge" alt="OpenElip" />
+</p>
 
-An open-source, self-hosted agent hiring marketplace that runs on your own machine.
+<h1 align="center">🧭 OpenElip</h1>
 
-> **Independent project.** OpenElip is independent. It is not affiliated with, endorsed by, or built from any code or assets of Elip.
+<p align="center">
+  <b>Open-Source, Self-Hosted Agent Job Search & Hiring</b>
+</p>
 
-## What it is
+<p align="center">
+  <i>A crew of agents does the searching, researching and drafting. You check the evidence and make every decision.</i>
+</p>
 
-Most job tools hand you a list. OpenElip is being built to do the work behind the list and to show its evidence:
+<br/>
 
-- **Real jobs only.** Postings come from employers' own public job boards, are checked on every refresh, and are closed when they leave the board.
-- **Dealbreakers enforced in code.** A job that breaks a stated hard constraint is filtered by the database before any model sees it.
-- **Reasons you can check.** Each match is a requirement-by-requirement table that points at the exact sentence in the job post and the exact line in your resume.
-- **Done for you, decided by you.** A crew of agents researches the company, prepares the application and drafts follow-ups. Nothing leaves the system without your yes.
-- **Local first.** One `docker compose up`, one person, one computer: open the app and you are in, with no account to make. Search runs with no API key. Language-model features use a key you paste into the app, or a local model through an OpenAI-compatible endpoint.
+<p align="center">
+  <b>⭐️ If OpenElip is useful to you, <a href="https://github.com/jaiswal-naman/openelip">please consider giving it a star!</a> It helps the open-source project grow. ⭐️</b>
+</p>
 
-## Status
+<p align="center">
+  Built by <a href="https://github.com/jaiswal-naman"><b>Naman</b></a>
+</p>
 
-Phases 1 to 4 are built: the platform, the searchable job index, the career record, and matches with the morning brief. The table says exactly what runs today and what does not. Every figure from a labelled set comes with the words "labels drafted by an agent, review pending": the labels were written by an agent and the maintainer has not reviewed them yet.
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="License" /></a>
+  <a href="https://github.com/jaiswal-naman/openelip/actions/workflows/ci.yml"><img src="https://github.com/jaiswal-naman/openelip/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/jaiswal-naman/openelip/pkgs/container/openelip-backend"><img src="https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker images on ghcr.io" /></a>
+  <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/Python%203.11%2B-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Python and FastAPI" /></a>
+  <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js%2016-React%2019-000000?style=flat-square&logo=nextdotjs&logoColor=white" alt="Next.js and React" /></a>
+  <a href="https://github.com/pgvector/pgvector"><img src="https://img.shields.io/badge/PostgreSQL%2017-pgvector-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL and pgvector" /></a>
+</p>
 
-| Area | State |
-|---|---|
-| One command starts the stack: database, API, worker, web app, one-origin proxy, local mail catcher | **Working.** A fresh clone was started and checked with `scripts/fresh-clone-check.ps1` on 22 November 2026 |
-| Local mode (the default in `.env.example`): opening the app signs you in as its owner, with no sign-in page and no code; the model API key is pasted into the app and stored encrypted. Server mode (`APP_MODE=server`): sign-in with a six-digit code sent by email, server-side session, sign-out | **Working**, both. Local mode answers only to localhost, 127.0.0.1 and [::1] (a web page that points its own name at your computer is refused), and the server will not start in local mode when `APP_BASE_URL` is not a localhost address. **Not run in a browser on the Docker stack yet**: the local-mode browser test (`web/tests/e2e/local-mode.spec.ts`) passed against the API and `next dev` on a developer machine, and runs on the Compose stack in the `local` job of `e2e.yml`. In server mode in development the email lands in the local mail catcher |
-| Writes that are safe to repeat (idempotency keys), an outbox and an email relay that never sends a message twice | **Working** |
-| Background jobs in PostgreSQL: unique keys, leases, retries, dead letters, a scheduler | **Working** |
-| Model gateway: one entry point, schema-checked answers, one cost row per call, `503 ai_disabled` when no provider is set | **Working** with the built-in fake provider and recorded answers. The Anthropic, OpenAI and OpenAI-compatible adapters are written and tested against stub clients; **no live model call has been made yet** (see below) |
-| Web app: home, `/jobs` search, `/sign-in`, `/trust` (what this server sends data to), `/control/costs` (model cost), light and dark themes | **Working**, with automated accessibility checks on each screen in both themes |
-| Checks that no resume, chat, contact or query text reaches a log, a metric or a trace | **Working** (a test that fails when one does) |
-| Evaluation harness with a regression gate | **Working.** Gold sets exist for location reading (400 inputs), requirement extraction (50 job postings with their requirements), resume facts (120 invented resumes) and match evidence (30 resume and posting pairs); all but the resume set have labels drafted by an agent, review pending. A fifth suite, `constraint_property`, needs no labels: it generates 14,400 job and constraint-set pairs and fails unless the database filter and the independent checker agree on every one. The gate in CI replays recorded answers: a replay shows that the code path works and is **not** a quality result, and no live model has been measured |
-| Continuous integration (`.github/workflows/`) | **Working.** `ci.yml` (lint, types, the backend and web tests, the eval gates, a secret scan) and `e2e.yml` (the browser tests) run on GitHub on every pull request; `scripts/ci-local.ps1` runs every gate of `ci.yml` on a developer machine |
-| Job index from public Greenhouse, Lever and Ashby boards, closed-job detection, fetch history, duplicate folding | **Working** (the index is empty until you fill it, see below). An index made before phase 2 is converted in place by one migration: back it up and rehearse it on a copy first (`db/rehearse_upgrade.py`) |
-| Search by meaning and by keywords, with country and remote filters; the board each job came from and when it was last seen open on every result and job page | **Working**, with no model key. `/jobs` and `GET /v1/jobs` take a plain-English query and fuse a keyword ranking with a vector ranking from a local embedding model. A test with invented postings and the real model shows a query finding a posting that shares no word with it. While no job has a vector yet, or the model cannot load, search falls back to keywords and the page says so. There is **no search-quality gold set**, so no search quality is claimed |
-| Scheduled refresh and apply-link re-check | **Working.** The worker refreshes every active board every 6 hours with no command, and a job that leaves its board is closed. `python -m app.cli jobs verify JOB_ID` asks a job's own apply link through a guarded fetch (it refuses private addresses) and closes the job on a 404 or 410. The same check runs on a match's apply link just before a morning brief is composed: a job whose link answers 404 or 410 is closed and left out of the brief, and a link the check could not reach keeps its job in, with the brief saying it was not re-checked |
-| Bulk board import | **Working.** `python -m app.cli sources import FILE` (one board name per line, `--dry-run` writes nothing) registers only boards that answer with live postings |
-| Location parser: country and city read from the posting's text, and left unknown when it does not say | **Working.** On 260 test rows of a 400-row labelled sample, 258 were read correctly (0.9923, 95% interval 0.9724 to 0.9979), and the parser gave a place for no row whose label says there is none; labels drafted by an agent, review pending. Only 4 rows have no country label and 46 no city label, so that second result is a weak check, not a guess rate. 40 more test rows are left out because their text is also in the parser's tests or the labelling guideline ([`evals/location/README.md`](evals/location/README.md)). A place that cannot be read shows "Location: unknown" |
-| Requirement extraction: each open job's requirements as cited items, required or preferred, with the exact words marked on the job page | **Built, and off until a model is proven.** It runs only with a model key **and** a passed live gold-set run for that model and prompt. No live run exists, so no job is extracted and job pages say the requirements are not extracted yet. The 50-posting gold set has labels drafted by an agent, review pending, and no extraction quality is claimed ([`evals/requirement_extraction/README.md`](evals/requirement_extraction/README.md)) |
-| System design: overview, requirements, roadmap, architecture, data model, API, AI system, front end | **Published** in [`docs/`](docs/OVERVIEW.md); the data model's schema and integrity rules were executed and tested on PostgreSQL |
-| Career record: upload a resume (PDF or Word), review the facts read from it, each tied to the exact resume line it came from; add facts, hard constraints and preferences yourself; see every change in a log; export your data; delete your account | **Built.** Reading a resume uses a model, so it is **off until a model is proven**: it needs a key **and** a passed live run on the resume gold set for that model, and neither exists yet, so an uploaded resume is refused as `ai_disabled`. The 120-resume gold set is invented, and its replay score shows that the code path works, not how well any model reads a resume ([`evals/resume_extraction/facts/README.md`](evals/resume_extraction/facts/README.md)). Entering facts, constraints and preferences by hand, the change log, export and deletion need no model |
-| Matches: at most five a day, each a requirement-by-requirement table pointing at the exact sentence in the job post and the exact line in your resume; a "Why not" view of everything held back, with the reason; save or dismiss a match with a reason (a dismissal can propose a change to your record, which changes nothing until you confirm it) | **Built.** A job that breaks a hard constraint is removed by one database function before any model sees it, an independently written checker re-checks every job a run records, and the constraints are asked again whenever a match is read (Today, its page, the brief and its email), so one you add after a run still takes the job off; the `constraint_property` suite requires the function and the checker to agree on 14,400 generated pairs. The tables need a model, and a real one is used only with a key **and** a passed live run of the evidence gold set for that model; neither exists yet, so no table is made and no match is shown (with no key, Today says so). **No live model call has been made**, so no match has been scored by a real model. The 30 pairs of the evidence gold set have labels drafted by an agent, review pending, and their replay score is a code-path check, **not** a quality result ([`evals/evidence_faithfulness/README.md`](evals/evidence_faithfulness/README.md)) |
-| Morning brief: one a day in the app (Today) and by email, in your own time zone, daily, weekly or paused, listing the decisions waiting and what was done since the last one; every email has a one-click unsubscribe | **Built.** The email is released between 06:30 and 06:55 local time through the outbox, never twice, and is dropped rather than sent after local noon; those times are assumptions to tune on real mornings, which have not happened yet. In development the email lands in the local mail catcher |
-| Matching benchmark: keyword, vector, hybrid and hybrid-plus-rules ranking compared on quality, cost and latency | **Measured once**, on 758 public job postings, 20 invented profiles and 366 labelled pairs, with labels drafted by an agent, review pending. Mean ndcg@5: keyword 0.598, vector 0.684, hybrid 0.777, hybrid plus rules 0.795. The intervals are wide, and hybrid plus rules is not detectably different from hybrid (+0.018, interval -0.007 to 0.045). No method returned a job that breaks a hard constraint, and none called a model. The two model-backed methods have **not** been run: they need a key ([`evals/matching_benchmark/REPORT.md`](evals/matching_benchmark/REPORT.md)) |
-| A demo of the whole flow on invented data | **Built.** `docker-compose.demo.yml` is a second, throwaway stack (its own ports and a database whose name ends in `_test`, recorded model answers, no real job boards; the commands are at the top of that file). `python -m app.cli demo seed-matches --email ADDRESS` gives a signed-in account an invented record and four invented postings, runs a match on recorded answers and composes the brief, which lands in the local mail catcher. The verdicts are a wiring check, not a model's. Its browser test, `web/tests/e2e/matches-brief.spec.ts`, also scans each screen with axe in both themes and runs in the `demo` job of `e2e.yml` |
-| Chat agent, resume tailoring that cannot invent, application tracking | Planned (phase 5) |
-| Hiring desk: roles, consent-first introductions, answer clock | Planned (phase 6) |
-| Done-for-you campaigns, Guardian, autonomy dial, flight recorder | Planned (phase 7) |
-| Simulated-market evaluation ("wind tunnel") and scoreboard | Planned (phase 8) |
-| Twin and MCP agent interface | Planned (phase 9) |
+<p align="center">
+  <a href="#-quick-start"><b>Getting Started</b></a> ·
+  <a href="docs/OVERVIEW.md"><b>Docs</b></a> ·
+  <a href="docs/TESTING.md"><b>Testing</b></a> ·
+  <a href="https://github.com/jaiswal-naman/openelip/issues"><b>Issues</b></a>
+</p>
 
-### First run, 22 November 2026
+<br/>
 
-Measured on a laptop, from 185 candidate board names:
+---
 
-| Measure | Value |
-|---|---|
-| Live boards found | 71 |
-| Open postings ingested | 11,357 |
-| Unique jobs after folding same-company duplicates | 9,996 |
-| Unique open jobs in India | 1,019 across 43 employers |
-| Jobs whose country could not be recognised (stored as unknown, never guessed) | 3,552 |
-| One keyword search with a country filter | about 0.1 s (single measurement) |
+## 🎯 What is OpenElip?
 
-## Run it locally
+OpenElip is a job-search and hiring app that runs **on your own computer**. It imports real postings from employers' public job boards, matches them to your career record, tailors your resume without inventing anything, and runs campaigns in which a crew of agents researches the company, prepares the application and drafts follow-ups. The same install has a hiring side: describe a role, and see a shortlist of candidates who said yes.
 
-Requirements: Docker with Compose. Running the tests also needs [uv](https://docs.astral.sh/uv/) (Python 3.11) and Node 22 with pnpm.
+**One command. One person. One computer. Nothing goes out without your yes.**
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/jaiswal-naman/openelip/main/install.sh | sh
+# open http://localhost:8080, paste a model key, upload a resume
+```
+
+```text
+  Public job boards ──► job index ──► matches with cited evidence ──► you decide
+                                                   │
+                                                   ▼
+        tailored resume · application packet · campaign crew ──► your approval ──► you submit
+```
+
+> **Status: first public release.** Most of the app is built and tested against recorded and invented data. A real model has been run through one scripted scenario ([docs/TESTING.md](docs/TESTING.md#real-model-scenario-run)); **no model's accuracy has been measured**, and this page makes no accuracy claim. What is not built yet is said under [Core features](#-core-features).
+
+## 🌟 Why OpenElip?
+
+- **Evidence you can check.** Every match is a requirement-by-requirement table that points at the exact sentence in the posting and the exact line in your resume. Missing evidence says "No evidence"; unknown values say "Unknown", never a guess.
+- **Dealbreakers are rules, not suggestions.** A job that breaks a hard constraint you stated is removed by the database before any model sees it, and listed under "Why not" with the reason.
+- **You approve, nothing else sends.** Agents research, draft and follow up. Every outward action waits for your approval, a follow-up email has an undo window, and OpenElip never submits an application for you.
+- **Local first, bring your own key.** The database, your record and your history live on your machine. Model calls use your own key or a model server you run. Search works with no key at all.
+- **Honest about limits.** Numbers come only from recorded runs. A replay of recorded answers is called a wiring check, never model quality.
+
+<br/>
+
+---
+
+## ✨ Core Features
+
+### 🧑‍💼 For job seekers
+
+| Feature | What it does |
+| --- | --- |
+| 🔎 **Real jobs only** | Postings come from employers' public Greenhouse, Lever and Ashby boards, refreshed every 6 hours. A job that leaves its board is closed. Same-company duplicates fold into one. |
+| 🧠 **Search by meaning** | A plain-English query fuses keyword and vector ranking, with country and remote filters, using a local embedding model: no key needed. Each result shows its board and when it was last seen open. |
+| 📋 **Requirements, cited** | Each open job's requirements are listed as required or preferred, with the exact words marked in the posting (needs a model key). |
+| 🗂️ **Career record** | Upload a resume (PDF or Word). Every fact read from it is tied to the resume line it came from, and only facts you confirm are used. Add facts, hard constraints and preferences yourself. Every change is in a log. Export your data or delete your account. |
+| 🎯 **Matches and "Why not"** | At most five matches a day, each a requirement-by-requirement table with citations on both sides. Everything held back is listed with its reason. Save or dismiss with a reason. |
+| ☀️ **Today and morning brief** | Today shows the decisions waiting for you, then what was done since last time. The brief arrives daily or weekly (or is paused), in your time zone, with a one-click unsubscribe. In local mode you read it in the app; email needs server mode. |
+| ✍️ **Tailored resumes** | The model proposes edits; each must cite your confirmed facts and pass a code check and an entailment check. Edits that fail are removed and counted, so a tailored resume cannot add experience your record does not have. Export as DOCX or PDF. |
+| 📦 **Application packets and tracker** | Drafted answers to common questions plus a short note, built only from your confirmed facts and the job's requirements. Pay, notice period, start date and work authorisation are never drafted. You submit; OpenElip records where each application stands. |
+
+### 🏢 For hiring
+
+| Feature | What it does |
+| --- | --- |
+| 📝 **Roles** | Paste a role description; its requirements are read out with the exact words marked, and you edit and confirm them before the role can be published (needs a model key). |
+| 🕶️ **Anonymous preview** | See how many candidates fit a role before anyone is asked. |
+| 🤝 **Consent-first introductions** | A candidate is asked privately and sees exactly what would be shared before accepting. Nothing about a candidate reaches an employer without that action. |
+| ✅ **Said-yes shortlist** | Candidates who accepted, each with the evidence for the role's requirements. |
+| ⏱️ **Answer clock** | The employer answers each accepted introduction yes or no, always with a reason, on a visible clock; an overdue answer holds back further asks until it is given. Team members can be invited. |
+
+One install has one owner, who can use both sides.
+
+### 🤖 The agent and the crew
+
+| Feature | What it does |
+| --- | --- |
+| 💬 **Agent page** | A chat agent that reads your record, matches, applications, campaigns and the job index, and cites what it used. Answers stream, with its tool steps visible. It can only **propose** a change to your record; nothing changes until you confirm. |
+| 🔬 **Researcher** | Reads the company's own public pages and keeps a claim only when its quote is an exact substring of the page it fetched. The result is a dossier: each claim with its source and time. |
+| ✉️ **Writer, Chaser, Coach** | The Writer drafts the packet; the Chaser drafts at most two follow-ups per campaign; the Coach prepares likely interview questions tied to the job's requirements and your facts. Every sentence is checked against its cited sources before you see it. |
+| 🚀 **Campaigns** | A board of campaigns and a per-campaign timeline: dossier, packet, prep, follow-ups, crew. Durable: a campaign survives a restart and picks up where it stopped. |
+
+### 🛡️ Control and trust
+
+| Feature | What it does |
+| --- | --- |
+| 🧱 **The Guardian** | Policy and checks that every outward action must pass, once when it is cleared and again when it runs. Blocked attempts are logged too. A posting with scam signals (a fee, documents before an interview, moving off-platform) pauses the campaign. |
+| ✅ **Approvals and undo** | Approve or reject each action. An approved follow-up waits in the outbox through an undo window (ten minutes by default, 1 to 60 in settings). |
+| 🎚️ **Autonomy settings** | Set what each kind of outward action may do. Application packets are always "ask first"; follow-up emails are "ask first" or "never". No setting lets either go out without your approval. The undo window is set here too. |
+| 🎞️ **Flight recorder** | Every agent step, including blocked ones, is recorded and can be stepped through. |
+| 💰 **Costs and budgets** | Every model call is a priced row on the Costs page. A campaign is metered against a budget (USD 0.75 by default, USD 5 per person per month) and pauses with a reason when it reaches it. |
+| 🔐 **Trust page** | `/trust` lists what this server sends data to. An AI-processing consent names the provider before anything identified is sent. |
+| 📦 **Your data is yours** | Export everything, or delete the account and everything the system stores for you. |
+
+<details>
+<summary><b>What is not built yet, and what is not measured</b></summary>
+<br/>
+
+- **The Twin** (answering an employer's screening questions from your record) and the **MCP interface for outside agents** are designed in [docs/](docs/OVERVIEW.md) and have database tables, but no routes or screens yet.
+- The **evaluation scoreboard** and the simulated-market evaluation ("wind tunnel") exist as an API and a replay harness, with no screen.
+- **No model's accuracy is measured.** The gold sets exist (resumes, postings, match evidence, role descriptions), but no live gold-set run has been made. Their labels are drafted by an agent, review pending.
+- **No search-quality gold set exists**, so no search quality is claimed.
+- The local-model route (Ollama) and the Anthropic adapter have no recorded live run.
+- Morning-brief delivery times and several limits are assumptions to tune on real mornings.
+
+</details>
+
+<details>
+<summary><b>What has been measured</b></summary>
+<br/>
+
+| What | Result |
+| --- | --- |
+| First run on public boards (22 November 2026, a laptop, from 185 candidate board names) | 71 live boards, 11,357 open postings, 9,996 unique jobs after folding same-company duplicates; one keyword search with a country filter took about 0.1 s (a single measurement) |
+| Location parser (a 400-row labelled sample; labels drafted by an agent, review pending) | 258 of 260 test rows read correctly (0.9923, 95% interval 0.9724 to 0.9979); a place it cannot read is stored as unknown, never guessed. See [evals/location](evals/location/README.md) |
+| Matching benchmark (758 public postings, 20 invented profiles, 366 labelled pairs; labels drafted by an agent, review pending) | Mean ndcg@5: keyword 0.598, vector 0.684, hybrid 0.777, hybrid plus rules 0.795, with wide intervals; no method returned a job that breaks a hard constraint. See [the report](evals/matching_benchmark/REPORT.md) |
+| Real-model runs (OpenAI key, a real resume, 16 invented postings and one live public board, 27 and 28 November 2026) | Every built agent ran: resume reading, requirement extraction, matching, tailoring, packet, chat and its record proposals, the Researcher, the Guardian, the Chaser and the Coach. 131 model calls, 0 failures, USD 0.24 in total. See [docs/TESTING.md](docs/TESTING.md#real-model-scenario-run) |
+
+</details>
+
+<br/>
+
+---
+
+## 🚀 Quick Start
+
+> **Requires:** [Docker](https://docs.docker.com/get-docker/) with Docker Compose v2. Nothing else for Options A and B.
+
+### Option A: One-Line Install
+
+```bash
+# Linux / macOS
+curl -fsSL https://raw.githubusercontent.com/jaiswal-naman/openelip/main/install.sh | sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/jaiswal-naman/openelip/main/install.ps1 | iex
+```
+
+The installer checks that Docker is running, puts `docker-compose.yml`, `Caddyfile` and a `.env` with **freshly generated keys** in `~/openelip` (`%USERPROFILE%\openelip` on Windows), pulls the published images, starts everything and opens http://localhost:8080. Run it again to update to the newest images; your data and your `.env` are kept. Everything is bound to `127.0.0.1`.
+
+Optional settings, as environment variables: `OPENELIP_HOME` (where the files go), `OPENELIP_PORT` (default 8080), `OPENELIP_VERSION` (image tag, default `latest`), `OPENELIP_PROJECT` (Compose project name, default `openelip`), `OPENELIP_PULL=0` (use images already on this machine).
+
+### Option B: Pre-built Docker Images
+
+Images are published to GitHub Container Registry for `linux/amd64` and `linux/arm64` by [`.github/workflows/images.yml`](.github/workflows/images.yml): `latest` and `main` on every push to `main`, and `1.2.3` and `1.2` for a `v1.2.3` tag.
+
+```bash
+docker pull ghcr.io/jaiswal-naman/openelip-backend:latest
+docker pull ghcr.io/jaiswal-naman/openelip-web:latest
+```
+
+Then start the stack on those images instead of building them:
+
+```bash
+git clone https://github.com/jaiswal-naman/openelip.git
+cd openelip
+cp .env.example .env
+# add these two lines to .env
+#   OPENELIP_BACKEND_IMAGE=ghcr.io/jaiswal-naman/openelip-backend:latest
+#   OPENELIP_WEB_IMAGE=ghcr.io/jaiswal-naman/openelip-web:latest
+docker compose up -d --no-build
+```
+
+### Option C: Clone & Build from Source
+
+```bash
+git clone https://github.com/jaiswal-naman/openelip.git
+cd openelip
 cp .env.example .env
 docker compose up -d
 ```
 
-The first start builds two images, so it takes a few minutes. Then open http://localhost:8080 and paste your model API key (Anthropic or OpenAI) when the app asks. That is the whole setup: there is no account to make and nothing to sign in to, because `.env.example` runs the app in local mode (`APP_MODE=local`), for one person on their own computer. You can skip the key and look around; anything that needs a language model says so until you add one. When it settles:
+The first start builds two images, so it takes a few minutes.
 
-| What | Where |
-|---|---|
-| The app | http://localhost:8080 |
-| Mail catcher (server mode only: sign-in codes arrive here) | http://localhost:8025 |
-| PostgreSQL 17 with pgvector | 127.0.0.1:5433 |
+> `.env.example` holds development-only keys and passwords that are public in this repository. The server refuses them as soon as `APP_BASE_URL` is not a localhost address. Option A generates its own.
 
-Every port is published on `127.0.0.1` only, so nothing is reachable from another machine. `.env.example` holds development-only keys and passwords that are public in this repository; the server refuses them as soon as `APP_BASE_URL` is not a localhost address. Change a port in `.env` (`APP_HTTP_PORT`, `APP_MAIL_PORT`, `APP_DB_PORT`) if one is taken.
+### What starts
 
-### Local mode and server mode
+| Service | Port | Purpose |
+| --- | --- | --- |
+| **proxy** (Caddy) | `127.0.0.1:8080` | The one address for the app and the API: open http://localhost:8080 |
+| **web** (Next.js) | internal `3000` | The web app |
+| **api** (FastAPI) | internal `8000` | REST under `/v1`, server-sent events |
+| **worker** | none | Background queue, scheduler, job ingest, embeddings, outbox relay |
+| **migrate** | none | Runs once: brings the schema up to date, then exits |
+| **db** (PostgreSQL 17 + pgvector) | `127.0.0.1:5433` | The system of record, the queue and the vector index |
+| **mail** (Mailpit) | `127.0.0.1:8025` | Local mail catcher, started by the `dev` profile that `.env.example` enables |
+| **llm** (Ollama) | internal `11434` | Only with the `local-llm` profile, see [Model providers](#-model-providers) |
 
-Local mode is for one person on their own computer. The first visit makes the one owner account (its address is `owner@example.test`, a reserved name, so no mail is ever sent to it) and opens a session for it; a later visit uses the same account. That one account is a job seeker and an employer at once: your record and matches, and the hiring desk (organizations, roles, shortlists), are both in the account menu. The API answers the routes that do this only when the request names your own computer (`localhost`, `127.0.0.1` or `[::1]`), so a web page that points its own domain at your computer cannot sign itself in, and the server refuses to start in local mode when `APP_BASE_URL` is not a localhost address. A database that already holds two or more accounts came from server mode, and local mode refuses it rather than choose one.
+Change a port in `.env` (`APP_HTTP_PORT`, `APP_DB_PORT`, `APP_MAIL_PORT`) if one is taken. `docker compose stop` pauses everything and `docker compose down` removes the containers; both keep your data in the `pgdata` volume. `docker compose down -v` deletes it.
 
-Server mode (`APP_MODE=server`, also what an unset `APP_MODE` means) is for a server other people can reach, and is the sign-in this project started with: open http://localhost:8080/sign-in, enter any email address and choose Send code. Open the mail catcher at http://localhost:8025, read the six-digit code and type it in. The session lasts until you sign out. The mail catcher keeps the email in memory; nothing is sent to the outside.
+### 🧭 First run
 
-### Fill the job index
+1. **Open http://localhost:8080.** In local mode (the default) opening the app signs you in as its owner: no account, no password, no sign-in page. It answers only to `localhost`, `127.0.0.1` and `[::1]`.
+2. **Set up your model.** Choose Anthropic or OpenAI and paste your key (it is sealed in the local database; only its last four characters are shown again), or use a local model ([below](#-model-providers)). You can skip this: job search works with no key, and anything that needs a model says so until you add one.
+3. **Agree to AI processing.** The consent names the provider and what is sent to it before anything is.
+4. **Upload a resume** (PDF or Word) and check what was read. Each fact comes with the line it came from; confirm, edit or discard.
+5. **Set your rules.** Hard constraints (dealbreakers) and softer preferences, then your time zone. The first matches appear.
+6. **Land on Today.** Decisions first, then what was done since last time. Ask the Agent page anything about your record, matches or applications.
 
-The index starts empty. Ask the worker to find the live boards, wait until the discovery job has finished, then fetch them:
+The job index fills itself. On the first start the worker finds the live boards from the candidate names in `data/seed_candidates.txt`, fetches them, and then refreshes every 6 hours. Jobs appear at `/jobs` as the fetches finish, and get their search vectors in batches.
+
+<details>
+<summary><b>Local mode and server mode</b></summary>
+<br/>
+
+Local mode (`APP_MODE=local`, set by `.env.example`) is for one person on their own computer. The one owner account is both a job seeker and an employer, so the hiring desk is in the same menu. The server refuses to start in local mode when `APP_BASE_URL` is not a localhost address.
+
+Server mode (`APP_MODE=server`, also what an unset `APP_MODE` means) is for a server other people can reach: sign in at `/sign-in` with a six-digit code sent by email. In development the email lands in Mailpit at http://localhost:8025. Putting TLS in front for a public server is not done for you.
+
+</details>
+
+<details>
+<summary><b>Fill the job index by hand</b></summary>
+<br/>
 
 ```bash
 docker compose exec worker python -m app.cli sources discover
-docker compose exec worker python -m app.cli queue list        # wait until ingest.discover shows succeeded
+docker compose exec worker python -m app.cli queue list     # wait until ingest.discover shows succeeded
 docker compose exec worker python -m app.cli ingest run
 ```
 
-Jobs appear at http://localhost:8080/jobs as the fetches finish. A worker runs one fetch at a time; a pass over the 71 boards took under two minutes when this was checked on 22 November 2026. From then on the worker fetches every board again every 6 hours, and gives new and changed jobs their vectors in batches of 500 every five minutes, so a large index takes some time to become searchable by meaning (keyword search works from the start).
+Only public, documented job-board endpoints are read, at a low request rate. OpenElip does not scrape sites behind a sign-in and does not collect people's profiles.
 
-### With no model key
+</details>
 
-The job index and search need no key. Anything that needs a language model answers `503 ai_disabled` until you paste one into the app (or set one in `.env`). To see the screens that show model use (`/trust`, `/control/costs`) with no key, set `LLM_PROVIDER=fake` in `.env`: a built-in provider that replays recorded answers, makes no network call and costs nothing. The setup page then offers "Skip for now, explore with demo data". Its cost rows read zero because nothing was paid. It has an answer only for a task that has a recording, and none of the resume tasks has one here, so a resume you upload is refused as `ai_disabled` within a second (the three resume tasks read a real model only after a passed run on the resume gold set: see `evals/resume_extraction/facts/README.md`).
+### 🔌 Model providers
 
-### Use a real model
+OpenElip talks to models only through its own gateway: schema-checked answers, one priced row per call, and `503 ai_disabled` when no provider is configured. **Which task uses which model, and at what price, is in [`backend/config/models.toml`](backend/config/models.toml)**; the gateway re-reads it on every call. The cost is whatever your own key is billed.
 
-In local mode, paste the key into the app (the setup page, shown on the first visit; it is stored encrypted in the database, with the data key in `.env`, and only its last four characters are ever shown again). Or set these in `.env`, then run `docker compose up -d`; what is in `.env` wins over a key saved in the app:
+| Provider | How to set it |
+| --- | --- |
+| **OpenAI** | Paste the key in the app, or set `LLM_PROVIDER=openai` and `OPENAI_API_KEY` in `.env` |
+| **Anthropic** | Paste the key in the app, or set `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` in `.env` |
+| **A local OpenAI-compatible server (for example Ollama)** | Set `COMPOSE_PROFILES=dev,local-llm`, `LLM_PROVIDER=openai_compatible` and `LLM_BASE_URL=http://llm:11434/v1` in `.env`. Put the model's real name in `backend/config/models.toml` (it holds the placeholder `local-model`) and pull it: `docker compose exec llm ollama pull <name>` |
 
-| Provider | Settings |
-|---|---|
-| Anthropic | `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` |
-| OpenAI | `LLM_PROVIDER=openai` and `OPENAI_API_KEY` |
-| A local model through Ollama | `COMPOSE_PROFILES=dev,local-llm`, `LLM_PROVIDER=openai_compatible`, `LLM_BASE_URL=http://llm:11434/v1`; put the model's real name in `backend/config/models.toml` (it holds a placeholder) and pull it with `docker compose exec llm ollama pull <name>` |
+What is in `.env` wins over a key saved in the app. Nothing falls back from one provider to another. `LLM_PROVIDER=fake` replays recorded answers with no network and no cost; it is for tests and for looking around the screens that show model use, and the server refuses it in production.
 
-**Not checked against a live provider yet.** No provider key was available while this was built: the three adapters have only run against stub clients, and the local-model route has not run at all. The first check, once you have a key:
+OpenAI keeps API calls in abuse-monitoring logs for up to 30 days, and zero data retention needs its approval, so the AI-processing consent shows that note before anything is sent; switching provider asks you to agree again. `models.toml` records the terms as read on 2026-11-28.
+
+To check a key, run `docker compose exec worker python -m app.platform.llm ping --email owner@example.test`, then open `/control/costs` and look for a row for the task `ping`. The scenario run in [docs/TESTING.md](docs/TESTING.md#real-model-scenario-run) used OpenAI and cost USD 0.24 for 131 model calls across every agent; yours will differ.
+
+<br/>
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart TB
+    Browser["💻 Browser\nlocalhost:8080"]
+
+    subgraph Stack ["Docker Compose stack, all on your computer"]
+        direction TB
+        Proxy["🔀 Caddy proxy\none origin"]
+        Web["🖥️ Next.js web app\nReact 19"]
+        API["⚙️ FastAPI api\n/v1 REST and SSE"]
+        Worker["🛠️ Worker\nqueue · scheduler · ingest · outbox relay"]
+        Embed["🧮 Local embeddings\nCPU, no key"]
+        Gateway["🚪 Model gateway\nschema-checked · priced per call"]
+        DB[("🐘 PostgreSQL 17 + pgvector\nrecords · job index · queue · outbox")]
+        Mail["📬 Mailpit\nlocal mail catcher"]
+    end
+
+    Boards["🌐 Public job boards\nGreenhouse · Lever · Ashby"]
+    Provider["🤖 Model provider\nOpenAI · Anthropic · local server"]
+
+    Browser --> Proxy
+    Proxy -->|"/v1/* and /healthz"| API
+    Proxy -->|"everything else"| Web
+    Web -->|"server-side calls"| API
+    API --> DB
+    Worker <-->|"claims jobs from the Postgres queue"| DB
+    API --> Embed
+    Worker --> Embed
+    API -->|"chat turns"| Gateway
+    Worker -->|"extraction, matching, crew steps"| Gateway
+    Gateway -->|"your key"| Provider
+    Worker -->|"low request rate"| Boards
+    Worker -->|"outbox relay"| Mail
+```
+
+OpenElip is a **modular monolith on one PostgreSQL**. One Python package is built into one image and run as two processes: the **api** answers the browser, and the **worker** does everything that takes time. They never call each other; they communicate through rows (queue jobs, outbox rows, domain tables). The database is the system of record, the keyword and vector index, the job queue and the email outbox, so the rules that matter (a hard constraint filters a job, nothing is sent twice, deletion is complete) are enforced where the data lives. Campaigns are a LangGraph graph checkpointed in PostgreSQL. Models are reached only through the gateway, and embeddings run locally, which is why search needs no key. The full design is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+<br/>
+
+---
+
+## 🗂️ Project Structure
+
+```
+openelip/
+├── backend/            # Python package `app`: the FastAPI api and the worker
+│   ├── app/            #   platform, trust, ingest, profile, match, brief, chat, tailor, apply,
+│   │                   #   hiring, campaigns, guardian, twin, agentnet, evals
+│   ├── config/         #   models.toml: which model answers which task, and its price
+│   └── tests/          #   pytest, mirrors app/
+├── web/                # Next.js 16 and React 19 app; Vitest tests; Playwright specs in tests/e2e
+├── db/                 # Alembic migrations: the only source of the schema
+├── evals/              # gold sets, recorded answers, floors, the matching benchmark, wind-tunnel scenarios
+├── data/               # candidate job-board names that discovery starts from
+├── docs/               # the design set and the test plan
+├── scripts/            # ci-local.ps1, fresh-clone-check.ps1 (PowerShell)
+├── .github/workflows/  # ci.yml, e2e.yml, images.yml
+├── docker-compose.yml  # the whole stack; docker-compose.demo.yml is a throwaway demo stack
+├── Caddyfile           # the one-origin proxy
+├── .env.example        # development configuration
+└── install.sh, install.ps1
+```
+
+<br/>
+
+---
+
+## 🛠️ Development
+
+> For contributors. Most users should use the [Quick Start](#-quick-start).
+
+**Prerequisites:** Docker with Compose, [uv](https://docs.astral.sh/uv/) (Python 3.11), Node 22 and pnpm.
 
 ```bash
-docker compose exec worker python -m app.platform.llm ping --email you@example.com
+# Backend: the tests need the database
+docker compose up -d db
+cd backend
+uv sync --frozen
+uv run pytest tests -q                      # uses a database named app_test; refuses any name not ending in _test
+uv run ruff check app tests ../db && uv run mypy app && uv run lint-imports
+
+# Web
+cd web
+pnpm install
+pnpm typecheck && pnpm lint && pnpm test --run      # tsc, eslint, vitest
 ```
 
-Then sign in as that address, open http://localhost:8080/control/costs and confirm a row for the task `ping` with a cost above zero. In local mode there is no sign-in, and the address to use is the owner's, `--email owner@example.test`: any other address makes a second account, which local mode refuses.
+| Layer | What it checks | How to run it |
+| --- | --- | --- |
+| Backend unit and integration | Logic, SQL and HTTP routes on a `_test` PostgreSQL | `uv run pytest tests -q` in `backend/` |
+| Web unit | Components and helpers (Vitest, Testing Library) | `pnpm test --run` in `web/` |
+| Browser | User journeys and axe accessibility scans, light and dark (Playwright) | `pnpm exec playwright test` in `web/`, against a running throwaway stack |
+| Eval suites | **Replay checks of the wiring**: recorded answers go through the real code path. They show the code works, **not** how good a model is | `uv run python -m app.evals run <suite>` then `gate`, see [evals/README.md](evals/README.md) |
+| Live accuracy runs (opt-in) | Measure a real model on a gold set. They gate nothing and spend your key | `python -m app.evals run <suite> --live` |
 
-### Tests and checks
+[docs/TESTING.md](docs/TESTING.md) has the full test plan, a feature-by-feature coverage matrix and the real-model scenario run. On Windows, `powershell -File scripts/ci-local.ps1` runs every gate of `ci.yml` and prints one PASS or FAIL line each.
 
-```bash
-cd backend && uv run pytest                  # needs the database: docker compose up -d db
-cd web && pnpm install && pnpm test --run    # also pnpm typecheck and pnpm lint
-powershell -File scripts/ci-local.ps1        # every gate of the CI workflow, one PASS or FAIL line each
-powershell -File scripts/fresh-clone-check.ps1 -WithBrowserTests
-```
+**How it is built.** Specifications were written first, then AI coding agents implemented them phase by phase, each phase shipping with tests. The maintainer directs the design and reviews the output.
 
-The backend tests use a separate database named `app_test` on the same server and refuse any database whose name does not end in `_test`, so the data in `app` is never touched. `fresh-clone-check.ps1` clones the committed branch into a temporary folder, starts it as its own Compose project on other ports, checks it, runs the browser tests (Playwright: sign in with a code read from the mail catcher, reload, theme switch, search, a model cost row, sign out, and an accessibility scan of every screen in both themes) and deletes the copy; your own stack and database are not touched. The two scripts are PowerShell and were written on Windows. To point the browser tests at a stack you started yourself, set `BASE_URL` and `MAILPIT_URL` (see `web/playwright.config.ts`); they create accounts and write cost rows, so use a throwaway stack. The job specs also add invented jobs to it, and refuse to unless `COMPOSE_PROJECT_NAME` names that stack's Compose project and is not `openelip`, the name your own stack has by default (`E2E_COMPOSE_DIR` is the folder `docker compose` runs in).
+<br/>
 
-### Stop
+---
 
-`docker compose down` stops everything and keeps your data in the `pgdata` volume. `docker compose down -v` also deletes that volume, and the database with it.
+## 🔒 Privacy
 
-### Layout
+- **Local first.** Your record, resumes, matches, chat and history live in a PostgreSQL database in a Docker volume on your computer. In local mode there is no account and no server run by anyone but you.
+- **What leaves the computer:** calls to the **model provider you configure** (only the text a task needs; nothing with a local model), requests the worker makes to **public job boards and company web pages**, which carry nothing from your record, and **email only if you set `SMTP_URL`** to a real provider. By default, mail goes to the local Mailpit.
+- **Consent first.** Before anything that identifies you goes to a provider, the AI-processing consent names that provider and what it receives. The `/trust` page lists where data goes.
+- **No vendor telemetry.** The local embedding library's vendor telemetry is switched off (ONNX Runtime would otherwise send usage events; see "Vendor telemetry" in [docs/AI_SYSTEM.md](docs/AI_SYSTEM.md)). The embedding model is baked into the image, so it is not downloaded at runtime. The proxy writes no access log, and a test fails if resume, chat, contact or query text reaches a log, a metric or a trace.
+- **Delete and export.** Export your data as an archive, or delete your account and everything the system stores for you. In local mode, `docker compose down -v` removes the database itself.
 
-```
-backend/    Python package `app`: platform (config, database, queue, sign-in, model gateway, telemetry), ingest (job index), profile (career record), match, brief (morning brief), trust, evals; the demo seed (demo.py, demo_data/); Dockerfile
-web/        Next.js app: screens, design tokens, typed API client; Dockerfile; browser tests in tests/e2e
-db/         Alembic migrations, the only source of the schema
-evals/      gold sets, recorded answers and floors for the evaluation harness; the matching benchmark
-data/       candidate board names that discovery starts from
-docs/       the design set
-scripts/    ci-local.ps1 and fresh-clone-check.ps1
-.github/    CI workflows: ci.yml and e2e.yml on pull requests, e2e.yml also nightly
-docker-compose.yml, docker-compose.demo.yml, Caddyfile, .env.example
-```
+<br/>
 
-## Rules the project holds itself to
+---
 
-1. A job that violates a stated hard constraint is never shown as a match.
-2. Every shown claim resolves to real text in the job and a confirmed fact in the record.
-3. A resume edit cannot add experience the record does not contain.
-4. Nothing about a candidate reaches an employer or an outside agent without that candidate's action for that employer and role.
-5. No outside action runs unless the policy engine and the Guardian both pass it, and every such action is logged.
-6. No message, brief or introduction is sent twice.
-7. Deletion removes a person from every store the system controls.
-8. No quality claim is published unless a recorded evaluation run produced it.
+## ❓ Troubleshooting
 
-Unknown values stay unknown. Nothing is guessed to fill a gap.
+| Problem | Solution |
+| --- | --- |
+| A port is already in use | Set `APP_HTTP_PORT`, `APP_DB_PORT` or `APP_MAIL_PORT` in `.env` and run `docker compose up -d` again. For the installer, set `OPENELIP_PORT` before the first install |
+| The installer says a Docker project called `openelip` already runs from another folder | It will not take over another copy. Set `OPENELIP_PROJECT=openelip2` and run it again |
+| "Docker is installed but not running" | Start Docker Desktop and run the command again |
+| Containers restart, or the first minutes are very slow | The worker loads a local embedding model and embeds new jobs in batches on the CPU while the index first fills, which takes noticeable memory and processor time. Give Docker more memory (Docker Desktop, Settings, Resources) and run `docker compose up -d`. No minimum has been measured |
+| A feature says AI is off (`503 ai_disabled`) | No usable model key is set. Paste one at `/setup`, or set it in `.env`. Job search and the rest of the app work without one |
+| An uploaded resume is refused as `ai_disabled` | Reading a resume needs a model. Add a key, then upload again |
+| `/jobs` is empty | The worker is still fetching boards. Check `docker compose logs worker`, or run the [commands above](#-first-run) to fetch by hand |
+| Search says it fell back to keywords | No job has a vector yet, or the embedding model could not load. Keyword search keeps working; vectors arrive in batches |
+| Something else | `docker compose logs --tail 50`, then open an [issue](https://github.com/jaiswal-naman/openelip/issues) |
 
-## Roadmap
+<br/>
 
-| Phase | Outcome |
-|---|---|
-| 1 | Platform and web shell: one-command stack, sign-in, model gateway with cost tracking, queue, CI |
-| 2 | Searchable job index: keyword plus semantic search, scheduled refresh, requirement extraction |
-| 3 | Career record: resume to confirmed facts with source lines, constraints, change log, export and delete |
-| 4 | Matches and morning brief: at most five safe matches a day with cited evidence |
-| 5 | Chat agent, verified resume tailoring, application tracking |
-| 6 | Hiring desk: roles, consent-first introductions, said-yes shortlist, answer clock |
-| 7 | Done-for-you campaigns under the Guardian |
-| 8 | Mission control and the simulated-market evaluation |
-| 9 | Twin, MCP agent interface, release |
+---
 
-## Stack
+## 🤝 Contributing
 
-Python, FastAPI, PostgreSQL 17 (full-text search and pgvector), Next.js 16 with React 19 for the web app, a provider-agnostic model gateway, local embeddings (fastembed with `BAAI/bge-small-en-v1.5` on the CPU, no key), Caddy as the one entry point, Docker Compose. Planned: LangGraph for the campaign graph, approval pauses and agent loops, with its state checkpointed in PostgreSQL. No vector database product, no knowledge graph, no hosted agent platform: one database, and plain code wherever plain code is enough.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. The short version: run the tests above, keep a change small and covered by a test, never commit a secret, and do not state a quality number unless a recorded run produced it. To report a vulnerability, follow [SECURITY.md](SECURITY.md).
 
-Start with [`docs/OVERVIEW.md`](docs/OVERVIEW.md) for the design set.
+<br/>
 
-## How this is built
+---
 
-Specifications are written first, then AI coding agents implement them phase by phase, and each phase ships with tests. The maintainer directs the design and reviews the output.
+## 📜 Licence
 
-## Data sources and conduct
+[MIT](LICENSE): free to use, modify and distribute. Third-party data and software notices are in [NOTICE](NOTICE).
 
-Only public, documented job-board endpoints are read, at a low request rate. The project does not scrape sites behind a sign-in and does not collect people's profiles.
+---
 
-## Licence
+<p align="center">
+  <a href="https://github.com/jaiswal-naman/openelip">⭐ Star on GitHub</a> · <a href="https://github.com/jaiswal-naman/openelip/issues">🐛 Report Bug</a> · <a href="https://github.com/jaiswal-naman/openelip/issues">💡 Request Feature</a> · <a href="CONTRIBUTING.md">🤝 Contribute</a>
+</p>
 
-MIT. See [LICENSE](LICENSE).
+<p align="center"><sub>Independent open-source project. Not affiliated with Elip.</sub></p>
