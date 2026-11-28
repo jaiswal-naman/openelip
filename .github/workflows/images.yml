@@ -1,0 +1,78 @@
+# Publishes the two images the one-line installers pull (install.sh, install.ps1):
+#   ghcr.io/jaiswal-naman/openelip-backend and ghcr.io/jaiswal-naman/openelip-web
+# for Intel/AMD and Arm (Apple Silicon) machines, each platform built on its own native GitHub runner and merged into one
+# multi-platform tag by Docker's own reusable workflow. main publishes :latest and :main; a v1.2.3 tag publishes :1.2.3 and
+# :1.2. A pull request builds both images without pushing, so a broken Dockerfile shows before it merges.
+# Push uses the workflow's own GITHUB_TOKEN; no secret is configured. A new GHCR package is private: the owner makes each of
+# the two packages public once (the package's settings, Danger Zone, Change visibility), after the first push to main.
+# The reusable workflow is pinned to a commit SHA (the version is in the comment).
+name: images
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    paths: ["backend/**", "web/**", "db/**", "data/**", "evals/**", ".github/workflows/images.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  backend:
+    uses: docker/github-builder/.github/workflows/build.yml@bb1eb9fb69408ac52395fb21f49c6b52d564529a # v1.20.0
+    permissions:
+      contents: read
+      id-token: write # signs the provenance attestation
+      packages: write # pushes to ghcr.io
+    with:
+      output: image
+      push: ${{ github.event_name != 'pull_request' }}
+      context: .
+      file: backend/Dockerfile
+      platforms: linux/amd64,linux/arm64
+      cache: true
+      cache-scope: backend
+      meta-images: ghcr.io/${{ github.repository }}-backend
+      meta-tags: |
+        type=raw,value=latest,enable={{is_default_branch}}
+        type=ref,event=branch
+        type=semver,pattern={{version}}
+        type=semver,pattern={{major}}.{{minor}}
+      set-meta-labels: true # org.opencontainers.image.source links each package to this repository
+    secrets:
+      registry-auths: |
+        - registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+  web:
+    uses: docker/github-builder/.github/workflows/build.yml@bb1eb9fb69408ac52395fb21f49c6b52d564529a # v1.20.0
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    with:
+      output: image
+      push: ${{ github.event_name != 'pull_request' }}
+      context: web
+      platforms: linux/amd64,linux/arm64
+      cache: true
+      cache-scope: web
+      meta-images: ghcr.io/${{ github.repository }}-web
+      meta-tags: |
+        type=raw,value=latest,enable={{is_default_branch}}
+        type=ref,event=branch
+        type=semver,pattern={{version}}
+        type=semver,pattern={{major}}.{{minor}}
+      set-meta-labels: true
+    secrets:
+      registry-auths: |
+        - registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
