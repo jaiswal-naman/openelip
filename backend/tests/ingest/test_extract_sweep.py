@@ -1,6 +1,7 @@
 """IDX-08: the sweep queues one extraction per open, canonical, listed job whose requirements are not those of its
-current text, oldest change first, a bounded number at a time, and only when a real model can be called and its route
-is proven by a passed gold-set run (AI_SYSTEM 2.2).
+current text, oldest change first, a bounded number at a time, and only when a real model can be called. A real model
+nobody has measured is called all the same (AI_SYSTEM 2.2): the sweep's one log line says "unproven" and nothing else
+changes.
 
 Nothing here calls the gateway: the sweep reads the routing and the recorded runs and writes queue rows, so the tests
 are rolled back in the `conn` fixture's transaction. Dates are explicit because every row inserted in one transaction
@@ -64,7 +65,7 @@ def keyed_route(monkeypatch):
 
 @pytest.fixture
 def with_a_model(conn, keyed_route):
-    """The keyed route, proven by a passed run on the test split that names its model and the current prompt."""
+    """The keyed route, measured by a passed run on the test split that names its model and the current prompt."""
     record_run(conn, proof())
 
 
@@ -117,12 +118,12 @@ def sweep_lines(caplog):
     ("env", "reason"),
     [
         ({"LLM_PROVIDER": "anthropic"}, "no_key"),  # the default provider with no key: AI is off
-        ({"LLM_PROVIDER": "openai_compatible", "OPENAI_API_KEY": "k"}, "no_route"),  # no fallback route yet
+        ({"LLM_PROVIDER": "openai_compatible", "LLM_BASE_URL": "http://llm:11434/v1"}, "no_route"),  # no local route
         ({"LLM_PROVIDER": "nonsense"}, "no_route"),
         ({"LLM_PROVIDER": "fake", "APP_ENV": "production"}, "fake_in_production"),
         ({"LLM_PROVIDER": "fake"}, "replay_only"),  # the keyless install's default: nothing to answer a live posting
     ],
-    ids=["no_key", "no_fallback", "no_such_provider", "fake_in_production", "fake_provider"],
+    ids=["no_key", "no_local_route", "no_such_provider", "fake_in_production", "fake_provider"],
 )
 def test_with_no_model_to_call_nothing_is_queued_and_the_log_says_why(conn, monkeypatch, caplog, env, reason):
     monkeypatch.setattr(config, "get", lambda: settings_for(**env))
@@ -144,13 +145,22 @@ def run_sweep_on_one_job(conn):
     extraction.extract_sweep(conn, {})
 
 
-def test_a_key_alone_starts_nothing_while_no_passed_run_names_the_routes_model(conn, keyed_route, caplog):
+def test_a_key_alone_starts_the_sweep_and_its_one_line_says_nobody_has_measured_the_model(conn, keyed_route, caplog):
     run_sweep_on_one_job(conn)
 
-    assert queued(conn) == []
+    assert len(queued(conn)) == 1
     (line,) = sweep_lines(caplog)
-    assert (line["status"], line["error_code"], line["queued"]) == ("ai_disabled", "unproven", 0)
-    assert set(line) - {"ts", "level", "event", "request_id"} == {"status", "error_code", "queued"}  # no text
+    assert (line["level"], line["status"], line["model"], line["queued"]) == ("info", "unproven", ROUTE_MODEL, 1)
+    assert "error_code" not in line
+    assert set(line) - {"ts", "level", "event", "request_id"} == {"status", "model", "candidates", "queued"}  # no text
+
+
+def test_a_passed_run_for_the_model_and_the_prompt_leaves_the_line_without_a_status(conn, with_a_model, caplog):
+    run_sweep_on_one_job(conn)
+
+    assert len(queued(conn)) == 1
+    (line,) = sweep_lines(caplog)
+    assert set(line) - {"ts", "level", "event", "request_id"} == {"candidates", "queued"}
 
 
 @pytest.mark.parametrize(
@@ -165,16 +175,18 @@ def test_a_key_alone_starts_nothing_while_no_passed_run_names_the_routes_model(c
         ("another suite", {"run_config": proof(), "suite": "location_accuracy"}),
     ],
 )
-def test_a_run_that_differs_in_one_way_does_not_prove_the_route(conn, keyed_route, caplog, what_differs, run):
+def test_a_run_that_differs_in_one_way_is_no_measurement_of_the_route_but_the_sweep_still_queues(
+    conn, keyed_route, caplog, what_differs, run
+):
     record_run(conn, **run)
 
     run_sweep_on_one_job(conn)
 
-    assert queued(conn) == [], what_differs
-    assert sweep_lines(caplog)[-1]["error_code"] == "unproven"
+    assert len(queued(conn)) == 1, what_differs
+    assert sweep_lines(caplog)[-1]["status"] == "unproven"
 
 
-def test_the_replay_ci_records_does_not_prove_the_route_but_the_same_run_naming_the_model_would(
+def test_the_replay_ci_records_is_no_measurement_of_a_real_model_but_the_same_run_naming_the_model_is(
     conn, keyed_route, caplog
 ):
     stored = json.loads((EVALS / "requirement_extraction" / "baseline.json").read_text(encoding="utf-8"))
@@ -182,11 +194,11 @@ def test_the_replay_ci_records_does_not_prove_the_route_but_the_same_run_naming_
     assert replay["method"] == "model" and replay["split"] == "test" and "model" not in replay
     record_run(conn, replay)
     run_sweep_on_one_job(conn)
-    assert queued(conn) == [] and sweep_lines(caplog)[-1]["error_code"] == "unproven"
+    assert len(queued(conn)) == 1 and sweep_lines(caplog)[-1]["status"] == "unproven"
 
     record_run(conn, {**replay, "model": ROUTE_MODEL})  # a live run's config names the model it measured
     extraction.extract_sweep(conn, {})
-    assert len(queued(conn)) == 1
+    assert "status" not in sweep_lines(caplog)[-1]
 
 
 def test_the_sweep_runs_as_the_worker_role_which_may_read_the_runs_that_prove_a_route(conn, with_a_model):

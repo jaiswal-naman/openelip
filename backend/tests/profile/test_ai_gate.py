@@ -1,9 +1,11 @@
-"""A real model reads a resume only after a passed gold-set run proves its route (AI_SYSTEM 2.2; verification W2).
+"""A real model reads a resume whether or not a gold-set run has measured it (AI_SYSTEM 2.2; TRU-05).
 
-models.toml names claude-haiku-5-5 (and a local placeholder) for the three resume.facts tasks, and no passed
-resume_extraction run by the model method exists, so a key alone must not start sending resumes. The upload answers 503
-ai_disabled (the AI-off a person sees with no key) and a queued parse fails as ai_disabled; the fake provider, which
-replays recordings and calls no model, needs no proof. Nothing here calls a model: the gate only reads routing and runs.
+models.toml names claude-haiku-5-5 (and a local placeholder) for the three resume.facts tasks. The gold set measures
+accuracy, it does not decide whether a model may be used, so a key alone is enough: the upload and the parse go on. What
+still means "AI is off" is a route that cannot be called (no route, no key, an unpriced model, the fake in production).
+A real model with no passed resume_extraction run on the test split, by the model method, naming the model and the
+prompts in use, is written to the log as one info line (status "unproven"); a measured one writes nothing. Nothing here
+calls a model: the check only reads routing and runs.
 """
 
 import json
@@ -61,21 +63,23 @@ def keyed(monkeypatch):
 # ---- the gate ------------------------------------------------------------------------------------
 
 
-def test_a_key_alone_does_not_let_a_real_model_read_resumes(conn, keyed):
-    assert reason_of(conn) == "unproven"
+def unproven_lines(caplog):
+    return [json.loads(r.getMessage()) for r in caplog.records if "profile.ai_gate" in r.getMessage()]
 
 
-def test_a_closed_gate_says_why_in_the_log_with_the_code_and_the_model_and_nothing_else(conn, keyed, caplog):
+def test_a_key_alone_lets_a_real_model_read_resumes_and_the_log_says_nobody_has_measured_it(conn, keyed, caplog):
     caplog.set_level(logging.INFO, logger="app.event")
-    assert reason_of(conn) == "unproven"
-    (line,) = [json.loads(r.getMessage()) for r in caplog.records if "profile.ai_gate" in r.getMessage()]
-    assert (line["level"], line["error_code"], line["model"]) == ("warning", "unproven", ROUTE_MODEL)
-    assert set(line) - {"ts", "level", "event", "request_id"} == {"error_code", "model"}
+    assert reason_of(conn) is None
+    (line,) = unproven_lines(caplog)
+    assert (line["level"], line["status"], line["model"]) == ("info", "unproven", ROUTE_MODEL)
+    assert set(line) - {"ts", "level", "event", "request_id"} == {"status", "model"}  # a code and a model, no text
 
 
-def test_a_passed_run_that_names_the_model_and_the_prompts_in_use_opens_the_gate(conn, keyed):
+def test_a_passed_run_that_names_the_model_and_the_prompts_in_use_writes_no_line(conn, keyed, caplog):
+    caplog.set_level(logging.INFO, logger="app.event")
     record_run(conn, proof())
     assert reason_of(conn) is None
+    assert unproven_lines(caplog) == []
 
 
 STALE_PROMPT = {**VERSIONS, workflow.TASKS[0].name: "0123456789ab"}
@@ -109,14 +113,19 @@ ONE_TASK_MISSING = {name: version for name, version in list(VERSIONS.items())[1:
         "another suite",
     ],
 )
-def test_a_run_that_differs_in_one_way_does_not_prove_the_routes(conn, keyed, over, status, suite):
+def test_a_run_that_differs_in_one_way_is_no_measurement_of_these_routes_but_the_model_still_serves(
+    conn, keyed, caplog, over, status, suite
+):
+    caplog.set_level(logging.INFO, logger="app.event")
     record_run(conn, proof(**over), status=status, suite=suite)
-    assert reason_of(conn) == "unproven"
+    assert reason_of(conn) is None
+    assert len(unproven_lines(caplog)) == 1
 
 
-def test_the_replay_ci_records_never_proves_a_real_model_but_a_live_run_naming_it_would(conn, keyed):
+def test_the_replay_ci_records_is_no_measurement_of_a_real_model_but_a_live_run_naming_it_is(conn, keyed, caplog):
     """The replay names the model "recorded" and has no method or split (backend/app/evals/runner.py, score.py), so a
-    pull request's gate run cannot open the gate. What a live run records, besides that, is what opens it."""
+    pull request's gate run does not count as a measurement of the real model. A live run records the model it used."""
+    caplog.set_level(logging.INFO, logger="app.event")
     replay = {
         "mode": "replay",
         "recorded": "recordings.jsonl",
@@ -128,26 +137,42 @@ def test_the_replay_ci_records_never_proves_a_real_model_but_a_live_run_naming_i
         "prompt_versions": VERSIONS,
     }
     record_run(conn, replay)
-    assert reason_of(conn) == "unproven"
+    assert reason_of(conn) is None and len(unproven_lines(caplog)) == 1
     live = {**replay, "mode": "live", "provider": "anthropic", "method": "model", "split": "test", "model": ROUTE_MODEL}
     record_run(conn, live)
-    assert reason_of(conn) is None
+    assert reason_of(conn) is None and len(unproven_lines(caplog)) == 1  # no second line: the live run is on record
 
 
-def test_the_fake_provider_replays_recordings_so_it_needs_no_proof(conn, monkeypatch):
+def test_the_fake_provider_replays_recordings_so_it_needs_no_run_and_writes_no_line(conn, monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger="app.event")
     real = config.get()
     monkeypatch.setattr(config, "get", lambda: replace(real, llm_provider="fake"))
     assert reason_of(conn) is None  # no run exists
+    assert unproven_lines(caplog) == []
 
 
-def test_no_provider_is_ai_disabled_for_its_own_reason_not_unproven(conn, monkeypatch):
+def test_no_key_is_still_ai_disabled_and_a_recorded_run_does_not_conjure_a_provider(conn, monkeypatch):
     real = config.get()
     monkeypatch.setattr(config, "get", lambda: replace(real, llm_provider="anthropic", anthropic_api_key=None))
-    record_run(conn, proof())  # a proof does not conjure a provider
+    record_run(conn, proof())
     assert reason_of(conn) == "no_key"
 
 
-def test_three_tasks_on_different_models_cannot_be_proven_by_one_run(conn, keyed, monkeypatch):
+def test_a_provider_with_no_route_for_the_resume_tasks_is_still_ai_disabled(conn, monkeypatch):
+    real = config.get()
+    monkeypatch.setattr(config, "get", lambda: replace(real, llm_provider="nonsense"))
+    assert reason_of(conn) == "no_route"  # models.toml names no such provider: nothing is called
+
+
+def test_openai_has_a_route_for_the_resume_tasks_and_the_check_lets_a_call_through(conn, monkeypatch):
+    real = config.get()
+    keyed_openai = replace(real, llm_provider="openai", openai_api_key="k", anthropic_api_key=None, llm_base_url=None)
+    monkeypatch.setattr(config, "get", lambda: keyed_openai)
+    assert reason_of(conn) is None  # the consent, not a missing route, is what keeps a resume from OpenAI until agreed
+
+
+def test_three_tasks_on_different_models_serve_and_the_log_names_them_all(conn, keyed, monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger="app.event")
     real_route = registry.route
     other = {workflow.TASKS[1].name: "a-different-model"}
     monkeypatch.setattr(
@@ -155,8 +180,10 @@ def test_three_tasks_on_different_models_cannot_be_proven_by_one_run(conn, keyed
         "route",
         lambda task, settings: replace(real_route(task, settings), model=other.get(task, ROUTE_MODEL)),
     )
-    record_run(conn, proof())
-    assert reason_of(conn) == "unproven"
+    record_run(conn, proof())  # one run names one model, so it cannot vouch for three tasks on two
+    assert reason_of(conn) is None
+    (line,) = unproven_lines(caplog)
+    assert line["model"] == f"a-different-model, {ROUTE_MODEL}"
 
 
 # ---- the upload ----------------------------------------------------------------------------------
@@ -175,9 +202,17 @@ def error_of(response, status, code):
     return body["error"]
 
 
-def test_an_upload_on_a_real_model_nobody_has_measured_says_ai_is_off_before_it_asks_for_a_consent(signed_in, kit):
+def test_an_upload_on_a_real_model_nobody_has_measured_goes_on_to_ask_for_the_consent(signed_in, kit):
+    """The upload reads eval_runs as the API role, so the grant that role has on it is exercised here."""
     kit.provider("anthropic", key="k")
-    for agreed in (False, True):  # an agreement changes nothing while no passed run proves the route
+    error_of(upload(signed_in, kit.docx()), 403, "consent_required")  # not "AI is off": a key is enough to get this far
+    kit.agree(signed_in.user)
+    assert upload(signed_in, kit.docx()).status_code == 202
+
+
+def test_an_upload_with_no_provider_still_says_ai_is_off_before_it_asks_for_a_consent(signed_in, kit):
+    kit.provider("anthropic", key=None)
+    for agreed in (False, True):
         if agreed:
             kit.agree(signed_in.user)
         error = error_of(upload(signed_in, kit.docx()), 503, "ai_disabled")
@@ -186,21 +221,11 @@ def test_an_upload_on_a_real_model_nobody_has_measured_says_ai_is_off_before_it_
     assert signed_in.get("/v1/me/record").status_code == 200  # the record still works
 
 
-def test_a_proven_real_model_lets_the_upload_through_once_the_person_has_agreed(signed_in, kit):
-    """The upload reads eval_runs as the API role, so the grant that role has on it is exercised here."""
-    kit.provider("anthropic", key="k")
-    kit.prove()
-    error_of(upload(signed_in, kit.docx()), 403, "consent_required")  # proven, but not agreed
-    kit.agree(signed_in.user)
-    assert upload(signed_in, kit.docx()).status_code == 202
-
-
 # ---- the parse job -------------------------------------------------------------------------------
 
 
-def test_a_queued_parse_fails_as_ai_disabled_when_the_route_is_not_proven_and_the_model_is_never_called(kit):
-    """A person uploaded while the route was proven, or before the prompts changed. The job checks again."""
-    kit.provider("anthropic", key="k")
+def test_a_queued_parse_fails_as_ai_disabled_when_there_is_no_provider_and_the_model_is_never_called(kit):
+    kit.provider("anthropic", key=None)
     user = kit.person()
     kit.agree(user)
     document_id = kit.store(user, kit.docx())
@@ -214,14 +239,13 @@ def test_a_queued_parse_fails_as_ai_disabled_when_the_route_is_not_proven_and_th
     assert (kit.job(document_id).state, kit.job(document_id).attempts) == ("succeeded", 1)  # finished, not retried
 
 
-def test_a_queued_parse_runs_when_the_route_is_proven(kit):
+def test_a_queued_parse_runs_on_a_real_model_nobody_has_measured(kit):
     kit.provider("anthropic", key="k")
-    kit.prove()
     user = kit.person()
     kit.agree(user)
     document_id = kit.store(user, kit.docx())
     model = kit.model()
 
-    assert kit.run(model) == 1  # the worker role reads the proof too
+    assert kit.run(model) == 1  # the worker role reads the runs too, to know whether to write the log line
 
     assert kit.document(document_id).state == "parsed" and len(model.calls) == 3

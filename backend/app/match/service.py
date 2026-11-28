@@ -12,9 +12,9 @@ Steps 2 and 4 are separate transactions because step 3 can take minutes, and a m
 The database is the last guard: the daily cap, shown-once, the citation trigger and the completeness trigger all hold
 whatever this code does, and a refusal of one job withholds that job alone.
 
-A person who has not agreed to AI processing, or an instance with no model (or with a real model that no passed
-evidence_faithfulness run proves), still gets the retrieval and the rules ranking: every retrieved job is recorded
-withheld as not_scored and nothing is shown (AI_SYSTEM 2.10).
+A person who has not agreed to AI processing, or an instance with no model, still gets the retrieval and the rules
+ranking: every retrieved job is recorded withheld as not_scored and nothing is shown (AI_SYSTEM 2.10). A real model
+that no passed evidence_faithfulness run has measured is called all the same (AI_SYSTEM 2.2).
 """
 
 import logging
@@ -212,8 +212,8 @@ def _checker_constraints(compiled: dict[str, dict[str, Any]]) -> checker.Constra
 
 def _account(user_id: UUID) -> tuple[str, str | None, bool]:
     """(time zone, display name, whether a model may score for this person), read on the worker connection. One may when
-    the person agreed to AI processing and the route that would answer is open: a model is configured and, if it is a
-    real one, a passed evidence_faithfulness run proves it (ai_gate). Otherwise the run still retrieves and ranks."""
+    the person agreed to AI processing and a model can be called (ai_gate). Otherwise the run still retrieves and
+    ranks."""
     with db.transaction(user_id=user_id, role="worker") as conn:
         row = conn.execute(
             text("SELECT timezone, display_name FROM users WHERE id = :u AND status = 'active'"), {"u": user_id}

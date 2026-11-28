@@ -5,6 +5,7 @@ for example on a fresh CI machine). The rest use a stand-in that records what it
 """
 
 import math
+import os
 import re
 from pathlib import Path
 
@@ -181,3 +182,16 @@ def test_ci_keeps_the_downloaded_model_between_runs_under_the_id_of_the_model_th
     assert re.search(r"uses: actions/cache@[0-9a-f]{40}\b", backend_job)  # pinned to a commit, like every action
     assert "path: ${{ env.FASTEMBED_CACHE_PATH }}" in backend_job
     assert "key: fastembed-${{ env.EMBEDDING_MODEL }}" in backend_job
+
+
+def test_the_embedding_runtime_never_reports_to_its_vendor():
+    # ONNX Runtime 1.29+ sends usage events to mobile.events.data.microsoft.com unless this is set before it loads
+    # (measured 2026-11-28: a DNS probe in the backend image saw that lookup by default and none with the switch).
+    # Importing the embed module is what every path to the model does first, so the module sets it.
+    assert os.environ.get("ORT_DISABLE_TELEMETRY") == "1"
+
+
+def test_the_image_build_that_downloads_the_model_has_the_switch_too():
+    dockerfile = (Path(__file__).parents[3] / "Dockerfile").read_text(encoding="utf-8")
+    download = next(line for line in dockerfile.splitlines() if "TextEmbedding(" in line)
+    assert "ORT_DISABLE_TELEMETRY=1" in download

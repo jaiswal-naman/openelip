@@ -1,10 +1,17 @@
 """Consent records (TRU-05; ARCHITECTURE 8.1; DATA_MODEL 3.3): grant, withdraw, check and list.
 
 `consents` is append-only. A grant is active while no withdrawal row points at it; withdrawing inserts those rows and
-never changes a grant. The AI processing wording names the configured model providers, so its version is a hash of
-their names (and of DISCLOSURE_VERSION): when the operator changes the providers, a grant made under the old list no
+never changes a grant. The AI processing wording names the configured model providers, the classes of data each one
+receives and the retention terms each one states, so its version is a hash of those (and of DISCLOSURE_VERSION): when
+the operator changes a provider, the data it receives or its retention note, a grant made under the old wording no
 longer matches, and require_consent says so until the person agrees to the new wording. Search, the record and the
 ledger never call require_consent, so they keep working with no consent at all.
+
+Local mode has one owner, who chose the model provider and gave its key themselves: that choice is the agreement, so
+keep_local_owner_current records the AI processing grant for them and keeps it at the wording in force, with no click.
+Both places that read the consent state (require_consent, the gate every AI feature goes through, and current_consents,
+which GET and PATCH /v1/me and the sign-in answer with) call it first. A withdrawal is the owner's own act and stays:
+only an explicit grant turns it back on. Server mode never reaches it.
 """
 
 import hashlib
@@ -16,7 +23,7 @@ from uuid import UUID
 from sqlalchemy import Connection, Row, func, insert, text
 
 from app.platform import config, log
-from app.platform.auth import ConsentChange, ConsentPurpose, ConsentState
+from app.platform.auth import ConsentChange, ConsentPurpose, ConsentState, ProviderTerms
 from app.platform.errors import ApiError
 from app.platform.llm import registry
 
@@ -38,6 +45,15 @@ _ACTIVE_GRANTS = """SELECT g.id, g.purpose, g.text_version, g.created_at FROM co
                     WHERE g.user_id = :user AND g.action = 'granted'
                       AND NOT EXISTS (SELECT 1 FROM consents w WHERE w.withdraws_id = g.id)"""
 _NEWEST_FIRST = " ORDER BY g.created_at DESC, g.id DESC"
+
+# The audit `source` of a grant the installation recorded for its owner (the consents row has no column for it).
+LOCAL_SETUP = "local_setup"
+# Whether this is a person's own account (a synthetic one is a demo or wind-tunnel account, not the owner), and whether
+# they ever withdrew the AI processing grant.
+_LOCAL_OWNER = """SELECT u.is_synthetic,
+                         EXISTS (SELECT 1 FROM consents w WHERE w.user_id = u.id AND w.purpose = 'ai_processing'
+                                   AND w.action = 'withdrawn') AS has_withdrawn
+                  FROM users u WHERE u.id = :user"""
 
 # One statement, so two withdrawals at once cannot both end the same grant: the unique index turns the second into
 # DO NOTHING. clock_timestamp() (not the transaction's now()) keeps rows made in one transaction in order.
@@ -89,19 +105,37 @@ def _wording_changed(what: str, current: str) -> ApiError:
     )
 
 
+def provider_terms() -> list[ProviderTerms]:
+    """What each model provider a task would be sent to right now receives and keeps, by the names
+    /v1/privacy/subprocessors shows, sorted by name. The retention note is the provider's own (config/models.toml)."""
+    by_provider: dict[str, list[registry.Route]] = {}
+    for route in registry.active_routes(config.get()):
+        by_provider.setdefault(route.provider, []).append(route)
+    terms = [
+        ProviderTerms(
+            name=routes[0].label,
+            data_classes=sorted({route.data_class for route in routes}),
+            retention_note=routes[0].retention_note,
+        )
+        for routes in by_provider.values()
+    ]
+    return sorted(terms, key=lambda item: item.name)
+
+
 def provider_names() -> list[str]:
     """The model providers a task would be sent to right now, by the names /v1/privacy/subprocessors shows, sorted."""
-    routes = registry.active_routes(config.get())
-    return sorted({route.provider: route.label for route in routes}.values())
+    return [item.name for item in provider_terms()]
 
 
-def _version(names: list[str]) -> str:
-    return hashlib.sha256("\n".join([DISCLOSURE_VERSION, *names]).encode()).hexdigest()[:12]
+def _version(terms: list[ProviderTerms]) -> str:
+    wording = [f"{item.name}|{','.join(item.data_classes)}|{item.retention_note}" for item in terms]
+    return hashlib.sha256("\n".join([DISCLOSURE_VERSION, *wording]).encode()).hexdigest()[:12]
 
 
 def ai_processing_text_version() -> str:
-    """The version of the AI processing wording in force now: 12 characters, changing with the provider list."""
-    return _version(provider_names())
+    """The version of the AI processing wording in force now: 12 characters, changing with the providers, the data
+    classes each receives and each one's retention note."""
+    return _version(provider_terms())
 
 
 def _active_grants(conn: Connection, user_id: UUID, purpose: str) -> list[Row[Any]]:
@@ -136,11 +170,12 @@ def _insert_grant(
     return grant_id
 
 
-def grant_consent(conn: Connection, user_id: UUID, purpose: str, text_version: str) -> UUID:
+def grant_consent(conn: Connection, user_id: UUID, purpose: str, text_version: str, source: str | None = None) -> UUID:
     """Record that the person agreed to `purpose` under this wording, and audit it. Returns the grant's id.
 
     Agreeing again to the wording already on file records nothing new. The wording is stored as given: the caller must
-    have shown it (apply_changes refuses a stale AI wording before it gets here).
+    have shown it (apply_changes refuses a stale AI wording before it gets here). `source` names who recorded it when it
+    was not the person's own click (LOCAL_SETUP); it goes in the audit row.
     """
     _check_purpose(purpose)
     if not text_version:
@@ -155,11 +190,39 @@ def grant_consent(conn: Connection, user_id: UUID, purpose: str, text_version: s
         "consent.granted",
         "candidate",
         user_id,
-        {"purpose": purpose, "text_version": text_version},
+        {"purpose": purpose, "text_version": text_version, **({"source": source} if source else {})},
         entity_table="consents",
         entity_id=str(grant_id),
     )
     return grant_id
+
+
+def keep_local_owner_current(conn: Connection, user_id: UUID) -> None:
+    """Local mode only: record the owner's AI processing grant, and re-record it whenever the wording in force changes.
+
+    The owner chose the provider and pasted the key (or set it in .env), so they have agreed to what that provider
+    receives and keeps: no sheet, no banner. A person with an active grant of any older wording gets the current one;
+    a person with no grant at all gets their first, unless they withdrew. A withdrawal is theirs to make and is never
+    undone here, however often the wording changes: only an explicit grant (PATCH /v1/me) ends it. A synthetic account
+    is not the owner and is left alone. The grant is a real consents row, so the export and the audit show it, the audit
+    row with source LOCAL_SETUP.
+
+    Best effort in a savepoint of its own: if recording fails, the caller reads what is on file and fails closed.
+    """
+    if config.get().app_mode != "local":
+        return
+    try:
+        with conn.begin_nested():
+            version = ai_processing_text_version()
+            held = [grant.text_version for grant in _active_grants(conn, user_id, "ai_processing")]
+            if version in held:
+                return
+            person = conn.execute(text(_LOCAL_OWNER), {"user": user_id}).one_or_none()
+            if person is None or person.is_synthetic or (person.has_withdrawn and not held):
+                return
+            grant_consent(conn, user_id, "ai_processing", version, source=LOCAL_SETUP)
+    except Exception as error:  # the caller then reads what is recorded, so nothing opens that was not
+        log.event("consent.local_record_failed", level=logging.ERROR, kind="ai_processing", error=error)
 
 
 def grant_introduction_consent(
@@ -205,8 +268,11 @@ def require_consent(conn: Connection, user_id: UUID, purpose: str) -> None:
     For ai_processing the grant must also carry the wording version in force now, else the reason is providers_changed.
     Fails closed: any error while reading the consents or the provider list counts as missing. The read runs in a
     savepoint, so a database error leaves the caller's transaction usable (a job can still record that it failed).
+    In local mode the owner's grant is brought up to date first (keep_local_owner_current).
     """
     _check_purpose(purpose)
+    if purpose == "ai_processing":
+        keep_local_owner_current(conn, user_id)
     try:
         with conn.begin_nested():
             versions = [grant.text_version for grant in _active_grants(conn, user_id, purpose)]
@@ -223,13 +289,15 @@ def require_consent(conn: Connection, user_id: UUID, purpose: str) -> None:
 def current_consents(conn: Connection, user_id: UUID) -> list[ConsentState]:
     """One entry per consent a person gives in onboarding and settings, in a fixed order, granted or not.
 
-    The ai_processing entry also carries the provider names and the wording version a new grant must carry, so a person
-    who has not agreed yet can be shown what they are agreeing to.
+    The ai_processing entry also carries the provider names, what each receives and keeps, and the wording version a new
+    grant must carry, so a person who has not agreed yet can be shown what they are agreeing to. In local mode the
+    owner's AI processing grant is brought up to date first (keep_local_owner_current).
     """
+    keep_local_owner_current(conn, user_id)
     newest: dict[str, Row[Any]] = {}
     for row in conn.execute(text(_ACTIVE_GRANTS + _NEWEST_FIRST), {"user": user_id}):
         newest.setdefault(row.purpose, row)
-    names = provider_names()
+    terms = provider_terms()
     states = []
     for purpose in PURPOSES:
         grant = newest.get(purpose)
@@ -240,8 +308,9 @@ def current_consents(conn: Connection, user_id: UUID) -> list[ConsentState]:
                 granted=grant is not None,
                 granted_at=grant.created_at if grant else None,
                 text_version=grant.text_version if grant else None,
-                providers=names if is_ai else None,
-                current_text_version=_version(names) if is_ai else None,
+                providers=[item.name for item in terms] if is_ai else None,
+                provider_terms=terms if is_ai else None,
+                current_text_version=_version(terms) if is_ai else None,
             )
         )
     return states

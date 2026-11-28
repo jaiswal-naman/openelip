@@ -13,6 +13,10 @@ from typing import TYPE_CHECKING
 
 from .. import log
 
+# ONNX Runtime (under fastembed) sends usage events to Microsoft unless this is set before it loads. Nothing here may
+# leave the computer, so it is set on import, ahead of the lazy fastembed import below. An explicit setting wins.
+os.environ.setdefault("ORT_DISABLE_TELEMETRY", "1")
+
 if TYPE_CHECKING:
     from fastembed import TextEmbedding
 

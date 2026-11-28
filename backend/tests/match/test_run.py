@@ -400,9 +400,8 @@ def real_model(provider, monkeypatch):
     return asked
 
 
-def test_a_real_model_no_gold_set_run_has_proven_is_never_asked_and_every_retrieved_job_is_withheld_not_scored(
-    engine, provider, monkeypatch
-):
+def test_a_real_model_no_gold_set_run_has_measured_is_asked_and_its_verdicts_are_shown(engine, provider, monkeypatch):
+    """A feature does not wait for a measurement (AI_SYSTEM 2.2): the gold set says how accurate the model is."""
     asked = real_model(provider, monkeypatch)
     user = world.add_person(engine)  # agreed to AI processing, and a key is set
     for name in "AB":
@@ -410,12 +409,13 @@ def test_a_real_model_no_gold_set_run_has_proven_is_never_asked_and_every_retrie
 
     result = service.run(user, trigger="onboarding", local_date=LOCAL_DATE)
 
-    assert (result.shown, result.withheld) == (0, 2) and asked == []
-    assert [(d.outcome, d.reasons, d.evidence) for d in decisions(engine, user)] == [
-        ("withheld", ["not_scored"], 0)
-    ] * 2
+    assert (result.shown, result.withheld) == (2, 0) and asked == [user, user]
     run = run_row(engine, result.run_id)
-    assert (run.status, run.evidence_prompt_version, run.retrieved_count) == ("completed", None, 2)
+    assert (run.status, run.evidence_prompt_version, run.retrieved_count) == (
+        "completed",
+        evidence.PROMPT_VERSION,
+        2,
+    )
 
 
 def test_a_real_model_with_a_passed_gold_set_run_is_asked_and_its_verdicts_are_shown(engine, provider, monkeypatch):

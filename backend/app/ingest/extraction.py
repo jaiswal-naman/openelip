@@ -2,12 +2,13 @@
 
 ingest.extract_sweep runs every 15 minutes and queues one ingest.extract for each open, canonical, listed job whose
 requirements are not those of its current text, but only when a real model can be called: with no key requirements are
-not extracted at all (ARCHITECTURE 10.4), and the sweep says so. It also queues nothing while the route is unproven: a
-route may serve a task only when a passed gold-set run for that task and model exists (AI_SYSTEM 2.2), so the sweep
-asks eval_runs for a passed requirement_extraction run on the test split, by the model method, whose config names the
-route's model and the current prompt version. ingest.extract asks the gateway (task job.requirements.extract) and, in
-the one transaction the queue gives a handler, stores the rows, marks the version done and clears the job's vector, so
-the embed sweep re-embeds it from its requirement texts (AI_SYSTEM 3.2).
+not extracted at all (ARCHITECTURE 10.4), and the sweep says so. A real model is served whether or not anyone has
+measured it (AI_SYSTEM 2.2): the gold set says how accurate a model is, it does not decide whether the model is used.
+When eval_runs holds no passed requirement_extraction run on the test split, by the model method, whose config names the
+route's model and the current prompt version, the sweep's one log line says so (status "unproven"). ingest.extract
+asks the gateway (task job.requirements.extract) and, in the one transaction the queue gives a handler, stores the
+rows, marks the version done and clears the job's vector, so the embed sweep re-embeds it from its requirement texts
+(AI_SYSTEM 3.2).
 
 The text of a version never changes (jobs_version_guard), so a row stored for version v quotes version v for good. A
 posting that changes while the model works is left for the next sweep.
@@ -41,9 +42,10 @@ CANDIDATES = text(
         ORDER BY j.materially_changed_at, j.id
         LIMIT :limit"""
 )
-# Whether a passed gold-set run proves this route (AI_SYSTEM 2.2): the model method on the test split, naming the model
-# and the prompt version in use. The replay CI records names no model, so it never proves a route; a live run must name
-# its model in its config (evals/requirement_extraction/README.md).
+# Whether a passed gold-set run measured this route (AI_SYSTEM 2.2): the model method on the test split, naming the
+# model and the prompt version in use. The replay CI records names no model, so it never counts; a live run names its
+# model in its config (evals/requirement_extraction/README.md). It decides only whether the sweep's log line says
+# "unproven".
 ROUTE_IS_PROVEN = text(
     """SELECT EXISTS (
          SELECT 1 FROM eval_runs
@@ -147,24 +149,29 @@ def extract(conn: Connection, payload: dict[str, Any]) -> None:
     )
 
 
-def _unavailable(conn: Connection) -> str | None:
+def _unavailable() -> str | None:
     """Why no model may be called for this task, or None when one may. The fake provider replays recordings and none
-    exist for live postings, so it counts as no model here: nothing is queued that could only fail. A real route
-    nobody has measured is "unproven": a key alone must not start spending on postings with a model of unknown quality.
-    The check is made when jobs are queued; a job already queued runs on."""
+    exist for live postings, so it counts as no model here: nothing is queued that could only fail. A real route is
+    served whether or not anyone has measured it. The check is made when jobs are queued; a job already queued runs
+    on."""
     try:
         route = registry.route(task.TASK, config.get())
     except AIDisabled as disabled:
         return disabled.reason
-    if route.adapter == "fake":
-        return "replay_only"
-    proven = conn.execute(ROUTE_IS_PROVEN, {"model": route.model, "prompt_version": task.PROMPT_VERSION}).scalar_one()
-    return None if proven else "unproven"
+    return "replay_only" if route.adapter == "fake" else None
+
+
+def _unproven(conn: Connection) -> dict[str, str]:
+    """The log fields that say a real route has no passed gold-set run, or none when it has one. Only called after
+    _unavailable found the route usable and real."""
+    route = registry.route(task.TASK, config.get())
+    measured = conn.execute(ROUTE_IS_PROVEN, {"model": route.model, "prompt_version": task.PROMPT_VERSION}).scalar_one()
+    return {} if measured else {"status": "unproven", "model": route.model}
 
 
 def extract_sweep(conn: Connection, payload: dict[str, Any]) -> None:
     """The scheduled job (ingest.extract_sweep): queue extraction for the jobs that need it, a few at a time."""
-    if (reason := _unavailable(conn)) is not None:
+    if (reason := _unavailable()) is not None:
         log.event("ingest.extract_sweep", status="ai_disabled", error_code=reason, queued=0)
         return
     due = conn.execute(CANDIDATES, {"limit": SWEEP_LIMIT}).all()
@@ -179,4 +186,5 @@ def extract_sweep(conn: Connection, payload: dict[str, Any]) -> None:
         is not None
         for row in due
     )
-    log.event("ingest.extract_sweep", candidates=len(due), queued=queued)
+    fields: dict[str, Any] = {"candidates": len(due), "queued": queued, **_unproven(conn)}
+    log.event("ingest.extract_sweep", **fields)

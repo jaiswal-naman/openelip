@@ -3,8 +3,8 @@ interface.
 
   Fact, Requirement             what tailoring reads: a usable fact, and one requirement of a job
   build_base, apply_edits       the base resume built from facts, and the document after approved edits
-  resume_blocks, render_pdf,    a document as blocks, as a PDF (Latin-1 only: UnsupportedCharacters otherwise) and as
-  render_docx, Block            a DOCX; Block is also what a packet's pages are made of
+  resume_blocks, render_pdf,    a document as blocks, as a PDF (UnsupportedCharacters for a character its embedded font
+  render_docx, Block            cannot draw) and as a DOCX; Block is also what a packet's pages are made of
   propose_and_verify            the edits for one job, each passed or discarded with its reason
   unsupported_reason, entailed  layer 1 and layer 2 for free text, such as a packet's sentences
   derive_op                     the op a stored edit row stands for

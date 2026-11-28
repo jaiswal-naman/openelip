@@ -1,36 +1,53 @@
 """A resume document as blocks, as a PDF and as a DOCX (TLR-03). Rendered on demand from approved edits; nothing is
 stored.
 
-The PDF uses the built-in Helvetica, which draws Latin-1 only. A line with a character above U+00FF is refused with
-UnsupportedCharacters instead of being drawn without it (decision 27): an export that quietly lost a letter of the
-candidate's own resume would be worse than an error. The DOCX carries every character. No model call, no database.
+The PDF embeds Bitstream Vera (regular and bold), the TrueType font reportlab itself ships, so no font file lives in
+this repository. It draws Latin-1, the punctuation a real resume carries (en and em dashes, curly quotes, bullet,
+ellipsis, euro) and some Latin Extended; not the rupee sign, most Latin Extended-A letters, Greek, Cyrillic, CJK or
+emoji. A line with a character the font cannot draw is refused with UnsupportedCharacters instead of being drawn
+without it (decision 27): an export that quietly lost a letter of the candidate's own resume would be worse than an
+error. The DOCX carries every character. No model call, no database.
 """
 
 import io
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from xml.sax.saxutils import escape
 
 import docx
+import reportlab  # type: ignore[import-untyped]
 from reportlab.lib.pagesizes import A4  # type: ignore[import-untyped]
 from reportlab.lib.styles import ParagraphStyle  # type: ignore[import-untyped]
 from reportlab.lib.units import mm  # type: ignore[import-untyped]
+from reportlab.pdfbase import pdfmetrics  # type: ignore[import-untyped]
+from reportlab.pdfbase.ttfonts import TTFont  # type: ignore[import-untyped]
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer  # type: ignore[import-untyped]
 
 from .resume import ResumeDoc
 
 TITLE, SECTION, ENTRY = 0, 1, 2  # the levels of a block heading
-LATIN_1_LAST = 0xFF
-BULLET = "-"  # a plain mark: the built-in font's bullet glyph is read back as (cid:127) by text extractors and ATS
+BULLET = "-"  # a plain mark: every text extractor and ATS reads it back as itself
 _XML_BAD = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")  # a DOCX refuses these
+
+# To draw more scripts (the rupee sign, Cyrillic, Greek), point these two at a wider TrueType family: the check below
+# reads the font's own character map, so nothing else changes.
+_FONT_DIR = Path(reportlab.__file__).parent / "fonts"
+_REGULAR, _BOLD = "Vera", "Vera-Bold"
+pdfmetrics.registerFont(TTFont(_REGULAR, str(_FONT_DIR / "Vera.ttf")))
+pdfmetrics.registerFont(TTFont(_BOLD, str(_FONT_DIR / "VeraBd.ttf")))
+# A character both weights can draw: headings are bold, everything else regular.
+_DRAWABLE = frozenset(pdfmetrics.getFont(_REGULAR).face.charToGlyph) & frozenset(
+    pdfmetrics.getFont(_BOLD).face.charToGlyph
+)
 
 
 class UnsupportedCharacters(ValueError):
     """The PDF cannot draw these characters. They are named in `characters`; the message holds no resume text."""
 
     def __init__(self, characters: Sequence[str]) -> None:
-        super().__init__(f"pdf_unsupported_characters: {len(characters)} distinct characters outside Latin-1")
+        super().__init__(f"pdf_unsupported_characters: {len(characters)} distinct characters the PDF font cannot draw")
         self.characters = tuple(characters)
 
 
@@ -72,15 +89,17 @@ def _texts(block: Block) -> list[str]:
 
 # ---- PDF ----------------------------------------
 
-_BODY = ParagraphStyle("body", fontName="Helvetica", fontSize=10, leading=13)
+_BODY = ParagraphStyle("body", fontName=_REGULAR, fontSize=10, leading=13)
 _STYLES = {
-    TITLE: ParagraphStyle("title", parent=_BODY, fontName="Helvetica-Bold", fontSize=18, leading=22, spaceAfter=2),
+    TITLE: ParagraphStyle("title", parent=_BODY, fontName=_BOLD, fontSize=18, leading=22, spaceAfter=2),
     SECTION: ParagraphStyle(
-        "section", parent=_BODY, fontName="Helvetica-Bold", fontSize=12, leading=15, spaceBefore=12, spaceAfter=3
+        "section", parent=_BODY, fontName=_BOLD, fontSize=12, leading=15, spaceBefore=12, spaceAfter=3
     ),
-    ENTRY: ParagraphStyle("entry", parent=_BODY, fontName="Helvetica-Bold", spaceBefore=6),
+    ENTRY: ParagraphStyle("entry", parent=_BODY, fontName=_BOLD, spaceBefore=6),
 }
-_BULLET_STYLE = ParagraphStyle("bullet", parent=_BODY, leftIndent=14, bulletIndent=4, spaceAfter=1)
+_BULLET_STYLE = ParagraphStyle(
+    "bullet", parent=_BODY, bulletFontName=_REGULAR, leftIndent=14, bulletIndent=4, spaceAfter=1
+)
 
 
 def _markup(text: str) -> str:
@@ -89,14 +108,22 @@ def _markup(text: str) -> str:
 
 
 def _unsupported(blocks: Sequence[Block]) -> list[str]:
-    return sorted({char for block in blocks for text in _texts(block) for char in text if ord(char) > LATIN_1_LAST})
+    """The characters the font cannot draw. Whitespace is not drawn at all: the paragraph folds it into the gap between
+    words, so a tab or a thin space is not a lost character."""
+    return sorted(
+        {
+            char
+            for block in blocks
+            for text in _texts(block)
+            for char in text
+            if ord(char) not in _DRAWABLE and not char.isspace()
+        }
+    )
 
 
 def render_pdf(blocks: Sequence[Block]) -> bytes:
     """A4, plain styles, one column. The same blocks give the same bytes (invariant=1 fixes the dates and the id).
-    Raises UnsupportedCharacters before drawing anything when a line holds a character above U+00FF."""
-    # ponytail: Latin-1 only, so a resume with an en dash or a curly quote gets the DOCX; bundle a Unicode font when a
-    # user needs the PDF for such a resume (INDEX decision 27, manual check 7).
+    Raises UnsupportedCharacters before drawing anything when a line holds a character the font cannot draw."""
     if refused := _unsupported(blocks):
         raise UnsupportedCharacters(refused)
     story: list[Paragraph | Spacer] = []

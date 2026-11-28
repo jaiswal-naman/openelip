@@ -9,8 +9,9 @@ import os
 import re
 from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import httpx
 import pytest
 from alembic import command
 from alembic.config import Config
@@ -90,6 +91,58 @@ def alembic_config(url: URL) -> Config:
     config.set_main_option("script_location", str(REPO / "db"))
     config.attributes["url"] = url  # read by db/env.py
     return config
+
+
+# No test reaches a host outside this computer. httpx's real transports are what the model SDKs and the board fetchers
+# send through; MockTransport and the API's TestClient have their own, so they still work. A blocked attempt raises an
+# httpx error (which an SDK may turn into an ordinary provider error) and is recorded, and the test that made it fails:
+# two tests once sent invented text to a model provider with a dummy key and passed anyway.
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "testserver"}
+_blocked: list[str] = []
+
+
+def _refuse(request: httpx.Request) -> None:
+    if request.url.host not in _LOCAL_HOSTS:
+        _blocked.append(request.url.host)
+        raise httpx.ConnectError(f"tests may not reach {request.url.host}: stub the call", request=request)
+
+
+def _guard_sync(original: Callable[..., httpx.Response]) -> Callable[..., httpx.Response]:
+    def handle_request(self: httpx.HTTPTransport, request: httpx.Request) -> httpx.Response:
+        _refuse(request)
+        return original(self, request)
+
+    return handle_request
+
+
+def _guard_async(original: Callable[..., Any]) -> Callable[..., Any]:
+    async def handle_async_request(self: httpx.AsyncHTTPTransport, request: httpx.Request) -> httpx.Response:
+        _refuse(request)
+        return await original(self, request)
+
+    return handle_async_request
+
+
+httpx.HTTPTransport.handle_request = _guard_sync(httpx.HTTPTransport.handle_request)  # type: ignore[method-assign]
+httpx.AsyncHTTPTransport.handle_async_request = _guard_async(  # type: ignore[method-assign]
+    httpx.AsyncHTTPTransport.handle_async_request
+)
+
+
+@pytest.fixture
+def blocked_hosts() -> list[str]:
+    """The outside hosts this test tried to reach. A test that tries on purpose clears it before it ends."""
+    return _blocked
+
+
+@pytest.fixture(autouse=True)
+def _no_outside_network() -> Iterator[None]:
+    _blocked.clear()
+    yield
+    if _blocked:
+        hosts = sorted(set(_blocked))
+        _blocked.clear()
+        pytest.fail(f"this test tried to reach {hosts} over the network; stub the call instead")
 
 
 @pytest.fixture(scope="session")

@@ -48,7 +48,7 @@ def queue_fetches(conn: Connection, now: datetime) -> int:
     The slot is the number of whole six-hour periods since 1970, so the key ingest.fetch:{source_id}:{slot} is the same
     for every worker and every repeat in that period, and the queue's unique key discards the repeat. With no active
     source there is nothing to fetch, so the slot's one discovery job is queued instead (it registers the boards that
-    exist, and the next slot fetches them).
+    exist and queues their fetches at once).
     """
     slot = int(now.timestamp()) // FETCH_PERIOD_SECONDS
     source_ids = conn.execute(text("SELECT id FROM job_sources WHERE is_active ORDER BY id")).scalars().all()
@@ -136,6 +136,8 @@ def discover_sources(conn: Connection, payload: dict[str, Any]) -> None:
     tokens = discover.candidate_tokens()
     found = asyncio.run(discover.find_live_boards(tokens))
     discover.register(conn, found)
+    if found:  # fetch them now: a new install would otherwise show no jobs until the next six-hour slot
+        queue_fetches(conn, datetime.now(timezone.utc))
     log.event(
         "ingest.discover",
         candidates=len(tokens),

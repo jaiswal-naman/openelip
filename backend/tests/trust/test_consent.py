@@ -6,6 +6,7 @@ models.toml of their own and settings that pick one provider. The wording versio
 
 import os
 from contextlib import contextmanager
+from dataclasses import replace
 from uuid import uuid4
 
 import pytest
@@ -141,6 +142,71 @@ def test_the_providers_are_named_as_the_disclosure_page_names_them(providers):
     assert consent.provider_names() == ["Beta AI"]
 
 
+IDENTIFIED_TASK = """
+[tasks.chat]
+description = "Chat."
+data_class = "identified"
+max_tokens = 8
+timeout_seconds = 1
+[tasks.chat.models.alpha]
+model = "recorded"
+"""
+
+
+def use_shipped(monkeypatch, **env):
+    """Act as an installation on the shipped config/models.toml, with these settings and no key but the ones named."""
+    blank = {"ANTHROPIC_API_KEY": "", "OPENAI_API_KEY": "", "LLM_BASE_URL": ""}
+    settings = config.load({**os.environ, **blank, **env})
+    monkeypatch.setattr(config, "get", lambda: settings)
+
+
+def test_the_ai_consent_names_openai_with_its_retention_note_when_openai_is_the_provider(conn, monkeypatch):
+    use_shipped(monkeypatch, LLM_PROVIDER="openai", OPENAI_API_KEY="k")
+    (terms,) = consent.provider_terms()
+    assert terms.name == "OpenAI" and "identified" in terms.data_classes  # what it receives, with the resume and chat
+    assert (
+        "up to 30 days" in terms.retention_note
+        and "zero data retention needs OpenAI's approval" in terms.retention_note
+    )
+    ai = next(c for c in consent.current_consents(conn, make_user(conn)) if c.purpose == "ai_processing")
+    assert ai.providers == ["OpenAI"] and ai.provider_terms == [terms]
+    assert ai.current_text_version == api.ai_processing_text_version()
+
+
+def test_someone_who_agreed_to_the_anthropic_wording_is_asked_again_when_the_provider_is_openai(conn, monkeypatch):
+    use_shipped(monkeypatch, LLM_PROVIDER="anthropic", ANTHROPIC_API_KEY="k")
+    user = make_user(conn)
+    agree_to_ai(conn, user)
+    api.require_consent(conn, user, "ai_processing")
+    anthropic_version = api.ai_processing_text_version()
+    use_shipped(monkeypatch, LLM_PROVIDER="openai", OPENAI_API_KEY="k")
+    assert api.ai_processing_text_version() != anthropic_version
+    with pytest.raises(api.ConsentRequired) as asked:
+        api.require_consent(conn, user, "ai_processing")
+    assert asked.value.reason == "providers_changed"
+
+
+def test_the_text_version_moves_when_a_provider_starts_receiving_identified_data(conn, providers):
+    user = make_user(conn)
+    agree_to_ai(conn, user)
+    first = api.ai_processing_text_version()
+    registry.PATH.write_text(TOML + IDENTIFIED_TASK, encoding="utf-8")  # the same provider, a new class of data
+    assert consent.provider_names() == ["Alpha AI"] and api.ai_processing_text_version() != first
+    with pytest.raises(api.ConsentRequired) as asked:
+        api.require_consent(conn, user, "ai_processing")
+    assert asked.value.reason == "providers_changed"
+
+
+def test_the_text_version_moves_when_a_providers_retention_note_changes(conn, providers):
+    user = make_user(conn)
+    agree_to_ai(conn, user)
+    first = api.ai_processing_text_version()
+    registry.PATH.write_text(TOML.replace("Invented provider for tests.", "Kept 30 days.", 1), encoding="utf-8")
+    assert api.ai_processing_text_version() != first
+    with pytest.raises(api.ConsentRequired):
+        api.require_consent(conn, user, "ai_processing")
+
+
 def test_withdrawing_ends_the_grant_and_keeps_the_history(conn, providers):
     user = make_user(conn)
     grant = agree_to_ai(conn, user)
@@ -265,7 +331,7 @@ def test_require_fails_closed_when_the_provider_list_cannot_be_read(conn, provid
     def unreadable():
         raise OSError("models.toml is gone")
 
-    monkeypatch.setattr(consent, "provider_names", unreadable)
+    monkeypatch.setattr(consent, "provider_terms", unreadable)
     with pytest.raises(api.ConsentRequired) as refused_call:
         api.require_consent(conn, user, "ai_processing")
     assert refused_call.value.reason == "missing"
@@ -327,7 +393,14 @@ def test_me_lists_every_consent_with_the_ai_wording_to_show_before_anything_is_g
     ai = data["consents"][1]
     assert (ai["providers"], ai["current_text_version"]) == (["Alpha AI"], api.ai_processing_text_version())
     assert (ai["text_version"], ai["granted_at"]) == (None, None)
-    assert all(c["providers"] is None and c["current_text_version"] is None for c in data["consents"] if c is not ai)
+    assert ai["provider_terms"] == [
+        {"name": "Alpha AI", "data_classes": ["synthetic"], "retention_note": "Invented provider for tests."}
+    ]
+    assert all(
+        c["providers"] is None and c["provider_terms"] is None and c["current_text_version"] is None
+        for c in data["consents"]
+        if c is not ai
+    )
 
 
 def test_granting_the_ai_wording_in_force_records_it_and_me_shows_it(person, engine):
@@ -474,3 +547,152 @@ def test_signing_in_returns_the_consents_too(api_client, engine, providers):
     assert signed_in.status_code == 201
     assert [c["purpose"] for c in signed_in.json()["data"]["consents"]] == PURPOSES
     assert api_client.get("/v1/me").json()["data"]["consents"] == signed_in.json()["data"]["consents"]
+
+
+# ---- local mode: the owner configured the provider, so the AI wording is recorded and kept current for them ----------
+
+
+@pytest.fixture
+def local_mode(providers, monkeypatch):
+    """local_mode("beta"): the same swap of the provider as `providers`, in a process running as APP_MODE=local."""
+
+    def use(name: str) -> None:
+        settings = replace(config.load({**os.environ, "LLM_PROVIDER": name}), app_mode="local")
+        monkeypatch.setattr(config, "get", lambda: settings)
+
+    use("alpha")
+    return use
+
+
+def ai_state(conn, user):
+    """What /v1/me shows for the AI wording: (granted, wording it was given under, wording in force)."""
+    ai = next(c for c in api.current_consents(conn, user) if c.purpose == "ai_processing")
+    return ai.granted, ai.text_version, ai.current_text_version
+
+
+def test_local_owner_needs_no_click_the_gate_opens_and_the_grant_is_a_real_audited_row(conn, local_mode):
+    user = make_user(conn)
+    api.require_consent(conn, user, "ai_processing")  # does not raise
+    version = api.ai_processing_text_version()
+    assert history(conn, user) == [("ai_processing", "granted", None, version)]
+    (audit,) = audit_rows(conn, user)
+    assert (audit.event_type, audit.actor_type, audit.actor_user_id) == ("consent.granted", "candidate", user)
+    assert audit.details == {"purpose": "ai_processing", "text_version": version, "source": consent.LOCAL_SETUP}
+
+
+def test_local_owner_me_shows_the_wording_in_force_as_agreed_with_no_gate_call_first(conn, local_mode):
+    user = make_user(conn)
+    version = api.ai_processing_text_version()
+    assert ai_state(conn, user) == (True, version, version)
+    assert ai_state(conn, user) == (True, version, version)
+    assert len(history(conn, user)) == 1  # reading again records nothing new
+
+
+def test_local_consent_follows_the_provider_so_providers_changed_never_shows(conn, local_mode):
+    user = make_user(conn)
+    first = api.ai_processing_text_version()
+    api.require_consent(conn, user, "ai_processing")
+    local_mode("beta")
+    second = api.ai_processing_text_version()
+    assert second != first
+    assert ai_state(conn, user) == (True, second, second)
+    api.require_consent(conn, user, "ai_processing")  # no providers_changed
+    assert [row.text_version for row in history(conn, user)] == [first, second]
+    assert [e.details.get("source") for e in audit_rows(conn, user)] == [consent.LOCAL_SETUP] * 2
+
+
+def test_an_explicit_grant_in_local_mode_is_recorded_as_the_persons_own_and_is_not_repeated(conn, local_mode):
+    user = make_user(conn)
+    agree_to_ai(conn, user)
+    api.require_consent(conn, user, "ai_processing")
+    (audit,) = audit_rows(conn, user)
+    assert "source" not in audit.details and len(history(conn, user)) == 1
+
+
+def test_a_local_withdrawal_stays_withdrawn_across_a_provider_change_until_the_owner_grants_again(conn, local_mode):
+    user = make_user(conn)
+    api.require_consent(conn, user, "ai_processing")
+    assert api.withdraw_consent(conn, user, "ai_processing") == 1
+    for provider in ("alpha", "beta", "alpha"):
+        local_mode(provider)
+        with pytest.raises(api.ConsentRequired) as refused_call:
+            api.require_consent(conn, user, "ai_processing")
+        assert refused_call.value.reason == "missing"
+        granted, version, _ = ai_state(conn, user)
+        assert (granted, version) == (False, None)
+    assert [row.action for row in history(conn, user)] == ["granted", "withdrawn"]  # nothing was re-granted
+
+    agree_to_ai(conn, user)  # only an explicit grant turns it back on...
+    api.require_consent(conn, user, "ai_processing")
+    local_mode("beta")  # ...and then it is kept current again
+    api.require_consent(conn, user, "ai_processing")
+    assert ai_state(conn, user)[:2] == (True, api.ai_processing_text_version())
+
+
+def test_a_person_who_withdrew_a_grant_under_older_wording_stays_withdrawn_too(conn, local_mode):
+    user = make_user(conn)
+    api.grant_consent(conn, user, "ai_processing", "an-older-wording")  # a grant on file under other wording...
+    api.withdraw_consent(conn, user, "ai_processing")  # ...withdrawn
+    with pytest.raises(api.ConsentRequired):
+        api.require_consent(conn, user, "ai_processing")
+    assert [row.action for row in history(conn, user)] == ["granted", "withdrawn"]
+
+
+def test_local_mode_leaves_other_purposes_and_synthetic_accounts_alone(conn, local_mode):
+    user = make_user(conn)
+    demo = conn.execute(
+        text("INSERT INTO users (email, is_synthetic) VALUES ('demo@example.test', true) RETURNING id")
+    ).scalar_one()
+    api.require_consent(conn, user, "ai_processing")
+    with pytest.raises(api.ConsentRequired):
+        api.require_consent(conn, demo, "ai_processing")  # not the owner: nobody agreed for them
+    assert ai_state(conn, demo)[0] is False
+    assert history(conn, demo) == []
+    assert [(c.purpose, c.granted) for c in api.current_consents(conn, user) if c.purpose != "ai_processing"] == [
+        ("terms", False),
+        ("brief_email", False),
+        ("open_to_introductions", False),
+    ]
+
+
+def test_server_mode_still_needs_the_click_and_reading_records_nothing(conn, providers):
+    user = make_user(conn)
+    with pytest.raises(api.ConsentRequired) as refused_call:
+        api.require_consent(conn, user, "ai_processing")
+    assert refused_call.value.reason == "missing"
+    assert ai_state(conn, user)[0] is False
+    assert history(conn, user) == []
+    agree_to_ai(conn, user)
+    providers("beta")
+    with pytest.raises(api.ConsentRequired) as stale:
+        api.require_consent(conn, user, "ai_processing")
+    assert stale.value.reason == "providers_changed"
+    assert len(history(conn, user)) == 1
+
+
+def test_local_gate_fails_closed_when_the_grant_cannot_be_recorded_and_the_transaction_stays_usable(
+    conn, local_mode, monkeypatch
+):
+    def broken(*args, **kwargs):
+        conn.execute(text("SELECT 1 / 0"))
+
+    monkeypatch.setattr(consent, "grant_consent", broken)
+    user = make_user(conn)
+    with pytest.raises(api.ConsentRequired) as refused_call:
+        api.require_consent(conn, user, "ai_processing")
+    assert refused_call.value.reason == "missing"
+    assert conn.execute(text("SELECT count(*) FROM users WHERE id = :u"), {"u": user}).scalar_one() == 1
+
+
+def test_over_the_api_a_local_owner_sees_consent_given_and_a_withdrawal_sticks(person, local_mode, engine):
+    version = api.ai_processing_text_version()
+    ai = person.get("/v1/me").json()["data"]["consents"][1]
+    assert (ai["granted"], ai["text_version"], ai["current_text_version"]) == (True, version, version)
+    withdrawn = patch(person, [{"purpose": "ai_processing", "granted": False}]).json()["data"]["consents"][1]
+    assert (withdrawn["granted"], withdrawn["text_version"]) == (False, None)
+    local_mode("beta")
+    again = person.get("/v1/me").json()["data"]["consents"][1]
+    assert (again["granted"], again["current_text_version"]) == (False, api.ai_processing_text_version())
+    assert [row[1] for row in stored_consents(engine, person.user)] == ["granted", "withdrawn"]
+    granted = patch(person, [agree("ai_processing", api.ai_processing_text_version())]).json()["data"]["consents"][1]
+    assert granted["granted"] is True

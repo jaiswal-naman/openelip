@@ -535,9 +535,8 @@ FIVE = {
 
 
 @pytest.mark.parametrize("task", sorted(FIVE))
-def test_the_five_phase_5_tasks_are_routed_to_anthropic_with_the_ai_system_limits_and_no_fallback(task):
-    routes = [r for r in registry.table() if r.task == task]
-    assert [r.provider for r in routes] == ["anthropic"]  # no fallback, no OpenAI: candidate data goes nowhere else
+def test_the_five_phase_5_tasks_are_routed_to_anthropic_with_the_ai_system_limits(task):
+    routes = [r for r in registry.table() if r.task == task and r.provider == "anthropic"]
     (route,) = routes
     data_class, model, cap, timeout, prices = FIVE[task]
     assert (route.data_class, route.model, route.max_tokens, route.timeout_seconds) == (data_class, model, cap, timeout)
@@ -546,9 +545,11 @@ def test_the_five_phase_5_tasks_are_routed_to_anthropic_with_the_ai_system_limit
     assert route.description and route.priced
 
 
-def test_the_proposer_and_the_checker_are_different_models():
-    models = {r.task: r.model for r in registry.table() if r.task in ("tailor.propose", "verify.entail")}
-    assert models["tailor.propose"] != models["verify.entail"]  # AI_SYSTEM 4.7: layer 2 is on a different model
+@pytest.mark.parametrize("provider", ["anthropic", "openai"])
+def test_the_proposer_and_the_checker_are_different_models(provider):
+    models = {r.task: r.model for r in registry.table() if r.provider == provider}
+    # AI_SYSTEM 4.7: layer 2 is on a different model
+    assert models["tailor.propose"] != models["verify.entail"]
 
 
 def test_a_route_is_served_under_the_fake_provider_and_refused_without_a_key():

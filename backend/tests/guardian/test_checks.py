@@ -103,6 +103,20 @@ def test_the_registered_checks_verdict_becomes_one_of_the_two_codes(reason):
     assert found.details["quote"] == APPLIED
 
 
+def test_a_judgement_that_passed_on_the_same_content_is_reused_not_rolled_again():
+    """Seen live: the judge passed a packet at propose time and failed the same packet at approval 18 s later."""
+    sentence = CitedSentence("body", APPLIED, fact_ids=("fact-1",), events=(APPLIED,))
+    inp = follow_up(sentences=(sentence,), facts={"fact-1": FACT})
+    first = result(inp, "citations")
+    assert first.passed and "reused" not in first.details
+    checks.register_citation_check(lambda sentences, **k: ["unsupported_claim"] * len(sentences))
+    again = result(replace(inp, judged=frozenset({first.details["content"]})), "citations")
+    assert again.passed and again.details["reused"] is True
+    edited = {"fact-1": {**FACT, "statement": "Cut report time from 6 hours to 4 hours."}}
+    changed = result(replace(inp, facts=edited, judged=frozenset({first.details["content"]})), "citations")
+    assert (changed.passed, changed.reason_code) == (False, "unsupported_claim")  # a cited fact changed: judged anew
+
+
 def test_the_registered_check_gets_the_resolved_sentences_facts_claims_and_the_principal():
     seen = {}
 

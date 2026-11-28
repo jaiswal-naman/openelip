@@ -28,6 +28,9 @@ PATH = Path(__file__).resolve().parents[3] / "config" / "models.toml"
 ADAPTERS = ("anthropic", "openai_compatible", "fake")
 DATA_CLASSES = ("public", "de-identified", "identified", "synthetic")  # AI_SYSTEM 2.6
 NO_KEY = "not-needed"  # the openai SDK insists on a key string; a local server ignores it
+# The values of reasoning_effort in the Chat Completions reference (read 2026-11-28). Which of them a model takes is on
+# its own page, so models.toml names one per route and the first live call shows a refusal.
+REASONING_EFFORTS = ("none", "minimal", "low", "medium", "high", "xhigh", "max")
 
 
 class ModelConfigError(RuntimeError):
@@ -55,6 +58,8 @@ class Route:
     input_microusd_per_mtok: int | None
     output_microusd_per_mtok: int | None
     price_checked_at: datetime | None
+    # Sent as reasoning_effort to an OpenAI-style server; None leaves the model's own default.
+    reasoning_effort: str | None = None
     api_key: str | None = field(default=None, repr=False)
 
     @property
@@ -92,6 +97,11 @@ def table() -> list[Route]:
                 p = providers[name]
                 if p["adapter"] not in ADAPTERS or entry["data_class"] not in DATA_CLASSES:
                     raise ModelConfigError(f"{where}: unknown adapter or data_class")
+                effort = model.get("reasoning_effort")
+                if effort is not None and (effort not in REASONING_EFFORTS or p["adapter"] != "openai_compatible"):
+                    raise ModelConfigError(
+                        f"{where}: reasoning_effort is not an OpenAI value or not on an OpenAI-style provider"
+                    )
                 routes.append(
                     Route(
                         task=task,
@@ -111,6 +121,7 @@ def table() -> list[Route]:
                         input_microusd_per_mtok=_micro(model.get("input_usd_per_mtok")),
                         output_microusd_per_mtok=_micro(model.get("output_usd_per_mtok")),
                         price_checked_at=_when(model.get("price_checked_at")),
+                        reasoning_effort=effort,
                     )
                 )
             except KeyError as missing:

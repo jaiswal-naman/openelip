@@ -89,6 +89,14 @@ class LocalSessionRequest(BaseModel):
 ConsentPurpose = Literal["terms", "ai_processing", "brief_email", "open_to_introductions"]
 
 
+class ProviderTerms(BaseModel):
+    """What one model provider receives and says it keeps, as the AI processing wording shows it (TRU-05)."""
+
+    name: str
+    data_classes: list[str]  # the data classes its tasks carry: public, de-identified, identified, synthetic
+    retention_note: str  # the provider's retention terms, as config/models.toml states them
+
+
 class ConsentState(BaseModel):
     """One consent as GET /v1/me reports it. A purpose that was never granted, or was withdrawn, has granted false."""
 
@@ -97,6 +105,7 @@ class ConsentState(BaseModel):
     granted_at: datetime | None
     text_version: str | None  # the wording the active grant was given under
     providers: list[str] | None = None  # ai_processing only: the providers the wording names today
+    provider_terms: list[ProviderTerms] | None = None  # ai_processing only: what each receives and keeps
     current_text_version: str | None = None  # ai_processing only: the version a new grant must carry
 
 

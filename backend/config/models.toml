@@ -7,10 +7,19 @@
 # "openai_compatible" means any OpenAI-style server: the `local` entry at LLM_BASE_URL when that is set, else `openai`.
 # A provider with no key means "AI disabled" (503 ai_disabled); nothing is called. `fake` is refused in production.
 #
-# Prices are US dollars per million tokens, read from the providers' pricing pages on 2026-11-22 (AI_SYSTEM 2.12).
+# Prices are US dollars per million tokens, read from the providers' pricing pages: Anthropic's on 2026-11-22, OpenAI's
+# on 2026-11-28 (AI_SYSTEM 2.12).
 # A model that is not local needs both prices and a date. Write "unknown" for a price nobody has checked: the gateway
 # then refuses the route instead of guessing a cost. A local model has no per-token price; its calls cost 0.
 # A task name with dots must be quoted: [tasks."job.requirements.extract"].
+#
+# Identified data (AI_SYSTEM 2.6) goes only to the provider this installation is set to use, which in local mode is the
+# one whose key the person pasted in. That provider's retention_note is part of the AI-processing consent the person
+# agrees to before anything is sent: app/trust/consent.py names the provider, the classes of data it receives and its
+# note, and hashes them into the wording version, so changing any of them asks everyone again. Anthropic does not keep
+# real-time calls by default; OpenAI keeps them in abuse-monitoring logs for up to 30 days unless it approves zero data
+# retention for the account, and its note says so. A route is picked by provider alone; nothing falls back from one
+# provider to another.
 
 [providers.anthropic]
 label = "Anthropic"
@@ -18,12 +27,23 @@ adapter = "anthropic"
 structured_output = "json_schema"
 retention_note = "Provider terms as read on 2026-11-22: real-time calls are not retained by default outside the Covered Models; batch requests are kept 29 days and are not eligible for zero data retention; structured-output schemas are cached up to 24 hours, so they never contain personal data; flagged content may be kept up to 2 years; no training without express permission."
 
+# OpenAI, terms read from OpenAI's own pages on 2026-11-28 (the retention_note below; URLs in AI_SYSTEM 2.12).
+# Models: gpt-6-luna where Anthropic uses claude-haiku-5-5 and gpt-6.2-sol where it uses claude-sonnet-5-5; each pair
+# has the same price. Prices are the standard tier for prompts up to 272k tokens, as on the pricing page. That page
+# also lists cached-input and cache-write rates; the ledger prices every prompt token at the input rate.
+# Both models reason before they answer, and max_completion_tokens counts that reasoning together with the answer, so a
+# cap that suits Anthropic may cut an answer short here (a schema_invalid row in llm_calls). A model entry may name a
+# reasoning_effort, which the adapter sends as Chat Completions' reasoning_effort. gpt-6-luna's page lists none, low,
+# medium (the default), high, xhigh and max: its routes say low, and none for twin.classify, a classification with a
+# 300-token cap (OpenAI's reasoning guide names classification as a use of none). gpt-6.2-sol's page lists no values and
+# says only that the API rejects none, so its routes name no effort and run at the model's default. No gold-set run has
+# measured either model on these tasks.
 [providers.openai]
 label = "OpenAI"
 adapter = "openai_compatible"
 base_url = "https://api.openai.com/v1"
 structured_output = "json_schema"
-retention_note = "Retention terms not checked. Until they are, this provider carries only public, synthetic and consented evaluation data."
+retention_note = "Provider terms as read on 2026-11-28: API data is not used for training unless you agree to it; abuse-monitoring logs, which may contain prompts and responses, are kept up to 30 days by default (longer when the law requires or to protect against harm); zero data retention needs OpenAI's approval."
 
 [providers.local]
 label = "Local model server"
@@ -56,7 +76,8 @@ price_checked_at = 2026-11-22
 model = "gpt-6-luna"
 input_usd_per_mtok = 0.10
 output_usd_per_mtok = 0.50
-price_checked_at = 2026-11-22
+price_checked_at = 2026-11-28
+reasoning_effort = "low"
 
 [tasks.ping.models.local]
 model = "local-model"   # placeholder: set this to the model name your server runs
@@ -65,9 +86,9 @@ model = "local-model"   # placeholder: set this to the model name your server ru
 model = "recorded"
 
 # Resume facts (AI_SYSTEM 4.2): three calls per resume. They carry resume lines with contact details masked, so the data
-# class is identified. OpenAI has no route here: its retention terms are not checked (see its retention_note), so it
-# does not receive identified data. The Anthropic prices are the ping task's, for the same model and the same date: a
-# resume is far under the 100k-token tier.
+# class is identified. OpenAI has a route here, for an instance set to use it: its retention_note (kept up to 30 days in
+# its abuse-monitoring logs) is in the consent the person agrees to first. The Anthropic prices are the ping task's, for
+# the same model and the same date: a resume is far under the 100k-token tier.
 [tasks."resume.facts.roles"]
 description = "Finds the jobs, achievements and projects in a resume, by line number."
 data_class = "identified"
@@ -79,6 +100,13 @@ model = "claude-haiku-5-5"
 input_usd_per_mtok = 0.10
 output_usd_per_mtok = 0.50
 price_checked_at = 2026-11-22
+
+[tasks."resume.facts.roles".models.openai]
+model = "gpt-6-luna"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-28
+reasoning_effort = "low"
 
 [tasks."resume.facts.roles".models.local]
 model = "local-model"   # placeholder: set this to the model name your server runs
@@ -98,6 +126,13 @@ input_usd_per_mtok = 0.10
 output_usd_per_mtok = 0.50
 price_checked_at = 2026-11-22
 
+[tasks."resume.facts.education_skills".models.openai]
+model = "gpt-6-luna"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-28
+reasoning_effort = "low"
+
 [tasks."resume.facts.education_skills".models.local]
 model = "local-model"   # placeholder: set this to the model name your server runs
 
@@ -116,6 +151,13 @@ input_usd_per_mtok = 0.10
 output_usd_per_mtok = 0.50
 price_checked_at = 2026-11-22
 
+[tasks."resume.facts.summary".models.openai]
+model = "gpt-6-luna"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-28
+reasoning_effort = "low"
+
 [tasks."resume.facts.summary".models.local]
 model = "local-model"   # placeholder: set this to the model name your server runs
 
@@ -124,7 +166,7 @@ model = "recorded"
 
 # Requirements of one public job posting (AI_SYSTEM 4.3). Real time: the gateway has no batch mode yet, and batch
 # (AI_SYSTEM 2.2) only saves money at volume. AI_SYSTEM 2.2 lists effort "low"; the gateway sends no effort setting,
-# so the model's default applies. No fallback route until a gold-set run passes for it.
+# so the model's default applies. The OpenAI route is for an instance that runs on OpenAI, not a fallback.
 [tasks."job.requirements.extract"]
 description = "Reads one public job posting and lists what it asks of candidates, each tied to the lines it came from."
 data_class = "public"
@@ -137,12 +179,19 @@ input_usd_per_mtok = 0.10     # prompts up to 100k tokens; a posting is a few th
 output_usd_per_mtok = 0.50
 price_checked_at = 2026-11-22
 
+[tasks."job.requirements.extract".models.openai]
+model = "gpt-6-luna"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-28
+reasoning_effort = "low"
+
 # Evidence verdicts for one candidate and one job (AI_SYSTEM 4.4): the candidate's confirmed facts with name, contact
 # details and links removed, against the posting's requirements, so the data class is de-identified. AI_SYSTEM 2.2 lists
-# gpt-6-luna as the fallback "once its gold set passes": it has no route here until a gold-set run passes for it, and
-# until OpenAI's retention terms are checked (see its retention_note: it carries only public, synthetic and consented
-# evaluation data), so this candidate data is never sent to it. The Anthropic prices are the ping task's, for the same
-# model and the same date: a request is a few thousand tokens, far under the 100k-token tier.
+# gpt-6-luna as the fallback "once its gold set passes". It is routed here for an instance that runs on OpenAI; no
+# gold-set run has measured it, and the candidate's facts may stay in OpenAI's abuse-monitoring logs for up to 30 days
+# (see its retention_note). The Anthropic prices are the ping task's, for the same model and the same date: a request is a
+# few thousand tokens, far under the 100k-token tier.
 [tasks."match.evidence.score"]
 description = "Judges each requirement of one job posting against a candidate's confirmed facts and cites the facts each verdict rests on."
 data_class = "de-identified"
@@ -155,17 +204,24 @@ input_usd_per_mtok = 0.10
 output_usd_per_mtok = 0.50
 price_checked_at = 2026-11-22
 
+[tasks."match.evidence.score".models.openai]
+model = "gpt-6-luna"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-28
+reasoning_effort = "low"
+
 [tasks."match.evidence.score".models.local]
 model = "local-model"   # placeholder: set this to the model name your server runs
 
 [tasks."match.evidence.score".models.fake]
 model = "recorded"
 
-# Phase 5 (AI_SYSTEM 2.2 lines 130-136, prices 2.12 read on 2026-11-22). Anthropic only, and no fallback route: OpenAI's
-# retention terms are not checked (see its retention_note), so candidate data is never sent to it, and AI_SYSTEM 2.2 lists
-# "none" as the fallback for these tasks. The output caps and timeouts are the assumptions of AI_SYSTEM 2.2. The fake
-# provider serves any task that has a recording, so no fake entry is needed. Candidate-facing tasks are called with the
-# person's consent only (the callers check it), and each prompt lives next to its code in a prompts/ folder.
+# Phase 5 (AI_SYSTEM 2.2 lines 130-136, prices 2.12 read on 2026-11-22). Anthropic, and OpenAI for an instance set to
+# use it (see the header). AI_SYSTEM 2.2 lists "none" as the fallback for these tasks: no route falls back to another
+# provider. The output caps and timeouts are the assumptions of AI_SYSTEM 2.2. The fake provider serves any task that
+# has a recording, so no fake entry is needed. Candidate-facing tasks are called with the person's consent only (the
+# callers check it), and each prompt lives next to its code in a prompts/ folder.
 
 # One chat turn (INDEX decision 1: a validated step, not token streaming). It reads the person's record, matches and
 # decisions through tools, and their own messages: identified data.
@@ -181,6 +237,12 @@ input_usd_per_mtok = 2.00
 output_usd_per_mtok = 10.00
 price_checked_at = 2026-11-22
 
+[tasks."chat.turn".models.openai]
+model = "gpt-6.2-sol"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-28
+
 # Record-change proposals from the candidate's own message (AI_SYSTEM 4.8): identified data.
 [tasks."record.propose"]
 description = "Finds changes to a candidate's record that their latest chat message states, each with the words it rests on."
@@ -193,6 +255,13 @@ model = "claude-haiku-5-5"
 input_usd_per_mtok = 0.10
 output_usd_per_mtok = 0.50
 price_checked_at = 2026-11-22
+
+[tasks."record.propose".models.openai]
+model = "gpt-6-luna"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-28
+reasoning_effort = "low"
 
 # Tailoring (AI_SYSTEM 4.7): confirmed fact statements and the job's requirement texts, no name or contact details, so the
 # data class is de-identified. The proposer and the checker are different models on purpose.
@@ -208,6 +277,12 @@ input_usd_per_mtok = 2.00
 output_usd_per_mtok = 10.00
 price_checked_at = 2026-11-22
 
+[tasks."tailor.propose".models.openai]
+model = "gpt-6.2-sol"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-28
+
 [tasks."verify.entail"]
 description = "Checks whether new resume wording says anything that the facts it rests on do not say."
 data_class = "de-identified"
@@ -219,6 +294,13 @@ model = "claude-haiku-5-5"
 input_usd_per_mtok = 0.10
 output_usd_per_mtok = 0.50
 price_checked_at = 2026-11-22
+
+[tasks."verify.entail".models.openai]
+model = "gpt-6-luna"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-28
+reasoning_effort = "low"
 
 # The application packet's answers and note (AI_SYSTEM 6.6): de-identified facts and the job's requirement texts.
 [tasks."writer.packet"]
@@ -233,9 +315,15 @@ input_usd_per_mtok = 2.00
 output_usd_per_mtok = 10.00
 price_checked_at = 2026-11-22
 
+[tasks."writer.packet".models.openai]
+model = "gpt-6.2-sol"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-28
+
 # The campaign crew (AI_SYSTEM 6.4, 6.8 and 6.9; plan 07-02). The routes follow the AI_SYSTEM 2.2 table: Sonnet 5.5 for the
 # Researcher's planner, the Chaser and the Coach, Haiku 5.5 for the quarantined page reader. Prices are the ones the tasks
-# above use for the same models.
+# above use for the same models. OpenAI's equivalents are gpt-6.2-sol and gpt-6-luna.
 # The planner and the reader see public company pages and the company name only, never the candidate's record.
 [tasks."research.plan"]
 description = "Researcher planner: picks the next tool call of a company-research run. It never sees page text."
@@ -249,6 +337,12 @@ input_usd_per_mtok = 2.00
 output_usd_per_mtok = 10.00
 price_checked_at = 2026-11-22
 
+[tasks."research.plan".models.openai]
+model = "gpt-6.2-sol"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-28
+
 [tasks."research.read_page"]
 description = "Researcher reader: returns verbatim claims from one public company page. It has no tools."
 data_class = "public"
@@ -260,6 +354,13 @@ model = "claude-haiku-5-5"
 input_usd_per_mtok = 0.10
 output_usd_per_mtok = 0.50
 price_checked_at = 2026-11-22
+
+[tasks."research.read_page".models.openai]
+model = "gpt-6-luna"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-28
+reasoning_effort = "low"
 
 # The Chaser and the Coach get statement texts and aliases only: no name, email or document text.
 [tasks."chaser.draft"]
@@ -274,6 +375,12 @@ input_usd_per_mtok = 2.00
 output_usd_per_mtok = 10.00
 price_checked_at = 2026-11-22
 
+[tasks."chaser.draft".models.openai]
+model = "gpt-6.2-sol"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-28
+
 [tasks."coach.prep"]
 description = "Coach: interview questions mapped to requirements and confirmed facts, and questions to ask the company."
 data_class = "de-identified"
@@ -286,8 +393,14 @@ input_usd_per_mtok = 2.00
 output_usd_per_mtok = 10.00
 price_checked_at = 2026-11-22
 
+[tasks."coach.prep".models.openai]
+model = "gpt-6.2-sol"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-28
+
 # The Twin (AI_SYSTEM 8): the classifier reads the employer's own words, so its class is identified; the answerer reads
-# only de-identified facts from topics the candidate opened.
+# only de-identified facts from topics the candidate opened, and the employer's question. OpenAI serves both.
 [tasks."twin.classify"]
 description = "Twin: the topic of an employer's question and whether it asks for pay or contact details."
 data_class = "identified"
@@ -300,6 +413,13 @@ input_usd_per_mtok = 0.10
 output_usd_per_mtok = 0.50
 price_checked_at = 2026-11-22
 
+[tasks."twin.classify".models.openai]
+model = "gpt-6-luna"
+input_usd_per_mtok = 0.10
+output_usd_per_mtok = 0.50
+price_checked_at = 2026-11-28
+reasoning_effort = "none"
+
 [tasks."twin.answer"]
 description = "Twin: a short answer to an employer's question, each sentence citing confirmed facts from open topics."
 data_class = "de-identified"
@@ -311,3 +431,9 @@ model = "claude-sonnet-5-5"
 input_usd_per_mtok = 2.00
 output_usd_per_mtok = 10.00
 price_checked_at = 2026-11-22
+
+[tasks."twin.answer".models.openai]
+model = "gpt-6.2-sol"
+input_usd_per_mtok = 2.00
+output_usd_per_mtok = 10.00
+price_checked_at = 2026-11-28

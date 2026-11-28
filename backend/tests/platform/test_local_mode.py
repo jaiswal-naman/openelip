@@ -190,6 +190,18 @@ def test_the_first_call_makes_the_owner_and_the_second_uses_the_same_account(loc
     assert rows(engine, "SELECT count(*) FROM sessions")[0][0] == 2
 
 
+def test_the_owner_has_agreed_to_ai_processing_from_the_first_sign_in_with_no_click(local, engine):
+    me = sign_in(local)
+    ai = next(c for c in me["consents"] if c["purpose"] == "ai_processing")
+    assert ai["granted"] is True and ai["text_version"] == ai["current_text_version"] is not None
+    (grant,) = rows(engine, "SELECT action::text AS action, text_version FROM consents WHERE user_id = :u", u=me["id"])
+    assert (grant.action, grant.text_version) == ("granted", ai["current_text_version"])
+    (audit,) = rows(
+        engine, "SELECT event_type, details->>'source' AS source FROM audit_log WHERE subject_user_id = :u", u=me["id"]
+    )
+    assert (audit.event_type, audit.source) == ("consent.granted", "local_setup")
+
+
 def test_the_owner_is_a_real_account_that_no_mail_is_ever_sent_to(local, engine):
     sign_in(local)
     (owner,) = rows(engine, "SELECT email, is_synthetic, status::text AS status FROM users")

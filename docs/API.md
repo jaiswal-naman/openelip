@@ -240,7 +240,7 @@ Text written by someone other than the caller or the system is data, never instr
 | 422 | `quota_exhausted` | A weekly product quota is used up (interest signals); `details.resets_at` |
 | 429 | `rate_limited` | Section 1.8; `Retry-After` is set |
 | 500 | `internal_error` | Unexpected; `request_id` is the only detail |
-| 503 | `ai_disabled` | The feature needs a model and no provider is configured for that task, or the provider is the fake and has no recording for it, or a real model's route has no passed gold-set run yet (AI_SYSTEM.md 2.2). Search, the record and the ledger still work |
+| 503 | `ai_disabled` | The feature needs a model and no provider is configured for that task, or the provider is the fake and has no recording for it, or the route cannot be called (no key, or an unpriced model). A real model nobody has measured is called all the same (AI_SYSTEM.md 2.2). Search, the record and the ledger still work |
 | 503 | `dependency_unavailable` | A model provider or the database is failing; `details.retry_after_seconds` |
 
 **Database refusals.** The database enforces several invariants with `CHECK` constraints and triggers that raise SQLSTATE 23514 with a message prefix. The API maps them, so a refusal from the last line of defence still reads correctly:
@@ -336,7 +336,7 @@ Columns: **Caller** uses the codes in 1.2. **Req** lists the requirement ids ser
 
 | Method | Path | Purpose | Caller | Req | Phase |
 |---|---|---|---|---|---|
-| GET | `/v1/me` | Account: email, display name, `timezone`, brief settings, session expiry times, current consents (with the providers named for `ai_processing`), `capabilities` (the model tasks with a configured provider), organization memberships with roles, pending invitations | U | PLT-02, BRF-03, TRU-05 | 1 |
+| GET | `/v1/me` | Account: email, display name, `timezone`, brief settings, session expiry times, current consents (with the providers named for `ai_processing`, and for each the data classes it receives and its retention note as `provider_terms`), `capabilities` (the model tasks with a configured provider), organization memberships with roles, pending invitations | U | PLT-02, BRF-03, TRU-05 | 1 |
 | PATCH | `/v1/me` | Change display name, `timezone`, brief `frequency` and `weekday`; grant or withdraw the consents a person gives in onboarding and settings (`terms`, `ai_processing`, `brief_email`, `open_to_introductions`), each with the wording version shown | U | BRF-03, TRU-05, HIR-04 | 1 |
 | GET | `/v1/me/record` | The whole Career Record on one page: confirmed facts with sources, constraints, preferences, counts of unconfirmed facts and open proposals, `record_version` | C | REC-05 | 2 |
 | POST | `/v1/me/documents` | Upload a resume (multipart, PDF or DOCX, 10 MB at most). `202`; extraction runs in the background | C | REC-01, REC-06 | 2 |
@@ -359,7 +359,7 @@ Columns: **Caller** uses the codes in 1.2. **Req** lists the requirement ids ser
 | POST | `/v1/me/agent-tokens` | Issue a candidate token (`matches:read`, `explanations:read`); records the `agent_access` consent; the secret is returned once | C | NET-01 | 8 |
 | DELETE | `/v1/me/agent-tokens/{token_id}` | Revoke a token; the next call with it gets `401` | C | NET-01 | 8 |
 
-Consents with purpose `introduction` and `agent_access` are not set through `PATCH /v1/me`; they are recorded by the action that needs them (accepting an introduction, issuing a token). Withdrawing `ai_processing` turns AI features off at once; they then return `403 consent_required`.
+Consents with purpose `introduction` and `agent_access` are not set through `PATCH /v1/me`; they are recorded by the action that needs them (accepting an introduction, issuing a token). Withdrawing `ai_processing` turns AI features off at once; they then return `403 consent_required`. In local mode (1.2) the owner chose the model provider themselves, so their `ai_processing` grant is recorded for them (audit `details.source` is `local_setup`), at sign-in and again whenever the providers' wording changes, and `GET /v1/me` shows it granted at the current `current_text_version`. A withdrawal is still theirs: it is never re-recorded on its own, and only an explicit grant through `PATCH /v1/me` turns it back on. Server mode is unchanged.
 
 ### 2.4 `/v1/jobs` and `/v1/stats`
 
@@ -508,7 +508,7 @@ Phase 6: members are addressed by `member_id` (not `user_id`) so a pending invit
 
 | Method | Path | Purpose | Caller | Req | Phase |
 |---|---|---|---|---|---|
-| POST | `/v1/roles` | Describe a role in text; requirements are extracted with spans; the role starts as `draft`. The model reads the text only on a route a passed eval run proves; otherwise `extraction.state` is `ai_disabled` and the employer types the requirements | E | HIR-02 | 6 |
+| POST | `/v1/roles` | Describe a role in text; requirements are extracted with spans; the role starts as `draft`. The model reads the text on any route that can be called; with none, `extraction.state` is `ai_disabled` and the employer types the requirements | E | HIR-02 | 6 |
 | GET | `/v1/roles?org_id=` | The organization's roles | E | HIR-02 | 6 |
 | GET | `/v1/roles/{role_id}` | One role with requirements, pay range, `can_publish` and any blockers | E | HIR-02 | 6 |
 | PATCH | `/v1/roles/{role_id}` | Change title, description, location, work arrangements, employment type, seniority, visa sponsorship or pay range | E | HIR-02 | 6 |
@@ -2499,7 +2499,7 @@ Resend's exact signed-content format and event names were not confirmed on its o
 | TRU-02 | `POST /v1/privacy/deletion` (the eraser test is below the API) |
 | TRU-03 | `GET /v1/privacy/audit-log`, `GET /v1/decisions` |
 | TRU-04 | `GET /v1/privacy/subprocessors` |
-| TRU-05 | `ai_processing` consent through `PATCH /v1/me`, shown in `GET /v1/me` with the providers named; `403 consent_required` on AI features without it |
+| TRU-05 | `ai_processing` consent through `PATCH /v1/me`, shown in `GET /v1/me` with the providers named, the data classes each receives and its retention note; `403 consent_required` on AI features without it |
 | UI-01 | The groups behind each screen: Today (`/v1/matches`, `/v1/approvals`, `/v1/briefs`, `/v1/introductions`), Campaigns (`/v1/campaigns`), Record (`/v1/me`), Twin (`/v1/twin`, `/v1/approvals`), Settings (`/v1/me`, `/v1/autonomy`, `/v1/me/agent-tokens`, `/v1/privacy`); Roles, Shortlist, Conversations, Answers, Team (`/v1/roles`, `/v1/introductions`, `/v1/twin`, `/v1/orgs`); Runs, Recorder, Evals, Costs (`/v1/control`) |
 | UI-02 | No endpoint |
 | UI-03 | No endpoint |

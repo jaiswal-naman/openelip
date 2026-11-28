@@ -342,7 +342,7 @@ def test_an_answer_that_is_invalid_twice_is_schema_invalid_after_two_requests(ga
     ("env", "reason"),
     [
         ({"LLM_PROVIDER": "anthropic"}, "no_key"),
-        ({"LLM_PROVIDER": "openai_compatible", "OPENAI_API_KEY": "k"}, "no_route"),
+        ({"LLM_PROVIDER": "openai_compatible"}, "no_key"),  # OpenAI has a route for this task, and no key here
     ],
 )
 def test_with_no_usable_provider_the_task_is_ai_disabled_and_nothing_is_called_or_recorded(

@@ -301,8 +301,8 @@ def test_another_persons_packet_is_404_and_the_list_is_the_callers(w):
 # ---- the PDF ----------------------------------------
 
 
-def make_ready(w, *, approved: bool):
-    """A ready packet; with `approved` its tailored resume has one approved edit."""
+def make_ready(w, *, approved: bool, rephrase: str = "ZZapproved rephrase"):
+    """A ready packet; with `approved` its tailored resume has one approved edit, worded `rephrase`."""
     f = w.record.facts
     with w.engine.begin() as c:
         tailored = make_tailored_resume(
@@ -312,7 +312,7 @@ def make_ready(w, *, approved: bool):
             edits=(
                 Edit(
                     BULLET_A1,
-                    "ZZapproved rephrase",
+                    rephrase,
                     (f["bullet_initech_1"],),
                     target_fact_id=f["bullet_initech_1"],
                     decision="approved" if approved else "pending",
@@ -337,6 +337,23 @@ def test_the_pdf_holds_the_note_every_question_and_the_resume_with_approved_edit
         assert question.text in words
     assert words.count(packet.YOU_ANSWER) == 4
     assert "ZZapproved rephrase" in words and BULLET_A1 not in words  # the approved edit, not the bullet it replaced
+
+
+def test_the_pdf_draws_the_dashes_quotes_and_bullets_a_real_resume_has(w):
+    rephrase = "ZZtypography Cut costs by €5 – a lot — “quoted” and ‘single’ • item…"
+    created = make_ready(w, approved=True, rephrase=rephrase)
+    response = w.client.get(f"/v1/applications/packets/{created}/file", params={"format": "pdf"})
+    assert response.status_code == 200 and response.headers["content-type"] == "application/pdf"
+    words = " ".join(pdf_text(response.content).split())
+    assert rephrase in words and "(cid:" not in words
+    assert packet.PACKET_QUESTIONS[0].text in words  # the packet's own pages are in the same font
+
+
+def test_a_character_the_pdf_font_lacks_is_422_naming_the_issue_not_a_dropped_letter(w):
+    created = make_ready(w, approved=True, rephrase="ZZcjk 中 character")
+    response = w.client.get(f"/v1/applications/packets/{created}/file", params={"format": "pdf"})
+    error = refused(response, 422, "validation_failed")
+    assert error["details"]["fields"] == [{"field": "format", "issue": "pdf_unsupported_characters"}]
 
 
 def test_without_an_approved_edit_the_pdf_holds_the_base_resume(w):

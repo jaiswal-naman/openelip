@@ -8,6 +8,7 @@ tests read to prove a blank text costs nothing and a failure is recorded.
 
 import ast
 import json
+import logging
 import os
 from pathlib import Path
 
@@ -241,7 +242,7 @@ def test_intake_reaches_the_ingest_module_only_through_its_api_and_never_calls_t
     assert ("app.platform.llm", "complete") not in imports  # no prompt and no route of its own: it asks ingest
 
 
-# ---- a real route must be proven (B1) ----------------------------------------
+# ---- a real route is served whether or not a run has measured it (B1) ----------------------------------------
 
 
 def record_run(conn, suite, model, **over):
@@ -280,24 +281,36 @@ def routed_model():
     return registry.route(task.TASK, config.get()).model
 
 
-def test_a_real_route_with_no_passed_eval_run_is_ai_disabled_and_the_model_is_never_called(
-    engine, conn, provider, real_route
+def intake_lines(caplog):
+    return [json.loads(r.getMessage()) for r in caplog.records if "hiring.intake" in r.getMessage()]
+
+
+def test_a_real_route_with_no_passed_eval_run_is_called_and_the_log_says_nobody_has_measured_it(
+    engine, conn, provider, real_route, caplog
 ):
+    caplog.set_level(logging.INFO, logger="app.event")
     result = intake.extract(conn, DESCRIPTION, provider.employer)
-    assert (result.state, result.rows) == ("ai_disabled", [])
-    assert real_route == []
-    assert ledger(engine) == []
+    assert result.state == "extracted" and result.rows
+    assert real_route == [routed_model()]
+    assert len(ledger(engine)) == 1  # the call is on the employer's ledger like any other
+    (line,) = intake_lines(caplog)
+    assert (line["level"], line["status"], line["model"]) == ("info", "unproven", routed_model())
+    assert set(line) - {"ts", "level", "event", "request_id"} == {"status", "model"}
 
 
 @pytest.mark.parametrize(
     ("suite", "extra"),
     [("requirement_extraction", {"split": "test"}), ("role_intake", {})],
 )
-def test_a_real_route_with_a_passed_run_for_its_model_and_prompt_is_called(conn, provider, real_route, suite, extra):
+def test_a_real_route_with_a_passed_run_for_its_model_and_prompt_is_called_and_writes_no_line(
+    conn, provider, real_route, caplog, suite, extra
+):
+    caplog.set_level(logging.INFO, logger="app.event")
     record_run(conn, suite, routed_model(), **extra)
     result = intake.extract(conn, DESCRIPTION, provider.employer)
     assert result.state == "extracted"
     assert real_route == [routed_model()]
+    assert intake_lines(caplog) == []
 
 
 @pytest.mark.parametrize(
@@ -311,7 +324,18 @@ def test_a_real_route_with_a_passed_run_for_its_model_and_prompt_is_called(conn,
         ("role_intake", {"model": "another-model"}),
     ],
 )
-def test_a_run_for_another_split_model_prompt_method_or_suite_proves_nothing(conn, provider, real_route, suite, wrong):
+def test_a_run_for_another_split_model_prompt_method_or_suite_is_no_measurement_but_the_route_is_called(
+    conn, provider, real_route, caplog, suite, wrong
+):
+    caplog.set_level(logging.INFO, logger="app.event")
     record_run(conn, suite, wrong.pop("model", routed_model()), **wrong)
-    assert intake.extract(conn, DESCRIPTION, provider.employer).state == "ai_disabled"
+    assert intake.extract(conn, DESCRIPTION, provider.employer).state == "extracted"
+    assert real_route == [routed_model()]
+    assert len(intake_lines(caplog)) == 1
+
+
+def test_a_provider_with_no_key_is_still_ai_disabled_and_nothing_is_called(provider, conn, real_route):
+    provider.use(LLM_PROVIDER="anthropic", ANTHROPIC_API_KEY="")
+    result = intake.extract(conn, DESCRIPTION, provider.employer)
+    assert (result.state, result.rows) == ("ai_disabled", [])
     assert real_route == []

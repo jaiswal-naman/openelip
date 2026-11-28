@@ -15,6 +15,8 @@ The citation check refuses a model field with any text that is neither a listed 
 model cannot slip text past the check by leaving it out of the list.
 """
 
+import hashlib
+import json
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -110,6 +112,9 @@ class CheckInput:
     campaign_exhausted: bool = False
     month_exhausted: bool = False
     input_flags: tuple[str, ...] = ()
+    # content keys whose citation judgement already passed for this action: the model judge is not run again on
+    # the same sentences and cited sources, so a re-check at release or send cannot flip on a second roll
+    judged: frozenset[str] = frozenset()
 
 
 # ---- reading the world (the only database reads) -------------------------------------------------------------------
@@ -185,6 +190,17 @@ def gather(
                 {"c": gate.id, "self": action_id},
             ).scalar_one()
         )
+    judged = frozenset(
+        conn.execute(
+            text(
+                """SELECT DISTINCT details ->> 'content' FROM guardian_checks
+                   WHERE agent_action_id = :a AND check_kind = 'citations' AND passed AND details ? 'content'"""
+            ),
+            {"a": action_id},
+        ).scalars()
+        if action_id is not None
+        else ()
+    )
     return CheckInput(
         action_type=action_type,
         gate=gate,
@@ -207,6 +223,7 @@ def gather(
         campaign_exhausted=campaign_exhausted,
         month_exhausted=month_exhausted,
         input_flags=tuple(str(x) for x in provenance.get("input_flags") or ()),
+        judged=judged,
     )
 
 
@@ -254,6 +271,9 @@ def check_citations(inp: CheckInput, *, principal: UUID | None) -> CheckResult:
                 CITATION_UNRESOLVED,
                 {"field": sentence.field, "unknown_facts": len(unknown_fact), "unknown_claims": len(bad_claim)},
             )
+    key = _content_key(inp, sentences)
+    if key in inp.judged:
+        return CheckResult("citations", True, None, {"sentences": len(sentences), "content": key, "reused": True})
     verdicts = _citation_check(
         sentences, facts=inp.facts, claims=inp.claims, skills=inp.skills, job_terms=inp.job_terms, principal=principal
     )
@@ -261,7 +281,24 @@ def check_citations(inp: CheckInput, *, principal: UUID | None) -> CheckResult:
         if reason is not None:
             code = reason if reason in (CITATION_UNRESOLVED, UNSUPPORTED_CLAIM) else UNSUPPORTED_CLAIM
             return CheckResult("citations", False, code, {"field": sentence.field, "quote": sentence.text})
-    return CheckResult("citations", True, None, {"sentences": len(sentences)})
+    return CheckResult("citations", True, None, {"sentences": len(sentences), "content": key})
+
+
+def _content_key(inp: CheckInput, sentences: Sequence[CitedSentence]) -> str:
+    """A hash of everything the model judge reads: each sentence and the text of what it cites, plus the skills and
+    job terms layer 1 reads. Editing a sentence or a cited fact changes it, so the judge runs again."""
+    material = [
+        [
+            s.field,
+            s.text,
+            [[inp.facts[f].get("statement"), inp.facts[f].get("attributes")] for f in s.fact_ids if f in inp.facts],
+            [inp.claims[i].get("text") for i in s.claim_indexes if 0 <= i < len(inp.claims)],
+            list(s.events),
+        ]
+        for s in sentences
+    ]
+    blob = json.dumps([material, list(inp.skills), list(inp.job_terms)], sort_keys=True, default=str)
+    return hashlib.sha256(blob.encode()).hexdigest()
 
 
 def _has_source(claim: Mapping[str, Any]) -> bool:

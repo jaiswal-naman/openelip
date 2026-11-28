@@ -10,7 +10,7 @@ a retry could not change the answer.
      scanned).
   3. Consent and route. ai_processing is required as it stands now, so a consent withdrawn after the upload stops the
      parse before the gateway sees anything (consent_required). So does a route that is no longer available: no
-     provider, or a real model that no passed gold-set run proves (ai_gate; ai_disabled).
+     provider (ai_gate; ai_disabled). A real model nobody has measured is served; ai_gate logs it as unproven.
   4. Extract the facts through the gateway (a provider with no answer to give, such as the fake with no recording for
      the task: ai_disabled).
   5. One transaction writes the text, the hidden-text count, status parsed and every fact, so a crash leaves nothing or

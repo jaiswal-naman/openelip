@@ -195,6 +195,15 @@ def test_a_job_that_waits_for_its_run_at_is_not_claimed(factory):
     assert queue.run_once(factory, "w1") == 0
 
 
+def test_one_worker_serving_every_queue_takes_the_persons_work_before_older_background_jobs(factory):
+    add(factory, "test.noop", "fetch", queue="ingest")
+    add(factory, "test.noop", "export")  # the default queue, enqueued after the fetch
+    add(factory, "test.noop", "parse", queue="interactive")
+    with factory() as conn:
+        order = [queue.claim(conn, "w1").queue for _ in range(3)]
+    assert order == ["interactive", "default", "ingest"]
+
+
 def test_a_worker_takes_only_the_queues_it_was_given(factory):
     add(factory, "test.noop", "a-job", queue="alpha")
     other = add(factory, "test.noop", "b-job", queue="beta")
