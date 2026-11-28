@@ -7818,6 +7818,20 @@
             ],
             "title": "Providers"
           },
+          "provider_terms": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ProviderTerms"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Terms"
+          },
           "current_text_version": {
             "anyOf": [
               {
@@ -14641,6 +14655,33 @@
         ],
         "title": "ProposalView",
         "description": "A record change the agent proposed. It is only a proposal until the candidate confirms event_id in the app."
+      },
+      "ProviderTerms": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "data_classes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Data Classes"
+          },
+          "retention_note": {
+            "type": "string",
+            "title": "Retention Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "data_classes",
+          "retention_note"
+        ],
+        "title": "ProviderTerms",
+        "description": "What one model provider receives and says it keeps, as the AI processing wording shows it (TRU-05)."
       },
       "RecordCitation": {
         "properties": {

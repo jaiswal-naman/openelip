@@ -2444,6 +2444,8 @@ export interface components {
             text_version: string | null;
             /** Providers */
             providers?: string[] | null;
+            /** Provider Terms */
+            provider_terms?: components["schemas"]["ProviderTerms"][] | null;
             /** Current Text Version */
             current_text_version?: string | null;
         };
@@ -4514,6 +4516,18 @@ export interface components {
             } | null;
             /** Statement */
             statement: string;
+        };
+        /**
+         * ProviderTerms
+         * @description What one model provider receives and says it keeps, as the AI processing wording shows it (TRU-05).
+         */
+        ProviderTerms: {
+            /** Name */
+            name: string;
+            /** Data Classes */
+            data_classes: string[];
+            /** Retention Note */
+            retention_note: string;
         };
         /**
          * RecordCitation
